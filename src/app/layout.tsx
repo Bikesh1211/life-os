@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Providers } from "@/infrastructure/providers";
+import { ColorSchemeScript } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@/app/globals.css";
 
@@ -14,6 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <ColorSchemeScript />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

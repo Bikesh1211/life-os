@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   AppShellNavbar,
   AppShellSection,
@@ -8,7 +7,6 @@ import {
   NavLink,
   Group,
   Text,
-  UnstyledButton,
   Collapse,
   ThemeIcon,
   Box,
@@ -16,10 +14,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import {
-  IconChevronRight,
-  IconSearch,
-} from "@tabler/icons-react";
+import { IconChevronRight } from "@tabler/icons-react";
 import { navigation, type NavItem } from "@/core/navigation";
 import { cn } from "@/core/utils";
 
@@ -35,7 +30,6 @@ function NavItemLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
     return (
       <NavLink
         label={item.label}
-        description={item.description}
         leftSection={
           <ThemeIcon variant="light" size="sm" color="red">
             <item.icon size={16} />
@@ -47,28 +41,38 @@ function NavItemLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
     );
   }
 
-  const content = (
+  const content = hasChildren ? (
     <NavLink
       label={item.label}
-      description={item.description}
       leftSection={
         <ThemeIcon variant={isActive ? "filled" : "light"} size="sm" color={isActive ? "blue" : "gray"}>
           <item.icon size={16} />
         </ThemeIcon>
       }
       rightSection={
-        hasChildren ? (
-          <IconChevronRight
-            size={14}
-            className={cn("transition-transform", opened && "rotate-90")}
-          />
-        ) : undefined
+        <IconChevronRight
+          size={14}
+          className={cn("transition-transform", opened && "rotate-90")}
+        />
       }
-      onClick={hasChildren ? toggle : undefined}
+      onClick={toggle}
       active={isActive}
       style={{ borderRadius: "var(--mantine-radius-md)" }}
-      component={hasChildren ? undefined : Link}
-      href={hasChildren ? "#" : item.route}
+      mod={{ active: isActive }}
+    />
+  ) : (
+    <NavLink
+      label={item.label}
+      leftSection={
+        <ThemeIcon variant={isActive ? "filled" : "light"} size="sm" color={isActive ? "blue" : "gray"}>
+          <item.icon size={16} />
+        </ThemeIcon>
+      }
+      onClick={toggle}
+      active={isActive}
+      style={{ borderRadius: "var(--mantine-radius-md)" }}
+      component={Link}
+      href={item.route}
       mod={{ active: isActive }}
     />
   );
@@ -90,47 +94,10 @@ function NavItemLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
 }
 
 export function Sidebar() {
-  const [search, setSearch] = useState("");
-
-  const filtered = navigation.map((group) => ({
-    ...group,
-    items: group.items.filter(
-      (item) =>
-        item.label.toLowerCase().includes(search.toLowerCase()) ||
-        item.description.toLowerCase().includes(search.toLowerCase()),
-    ),
-  })).filter((group) => group.items.length > 0);
-
   return (
     <AppShellNavbar p="md">
-      <AppShellSection>
-        <Group mb="md" px="xs">
-          <Text fw={700} size="lg">
-            Life OS
-          </Text>
-        </Group>
-        <UnstyledButton
-          onClick={() => {}}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "8px 12px",
-            borderRadius: "var(--mantine-radius-md)",
-            backgroundColor: "var(--mantine-color-default-hover)",
-            width: "100%",
-            marginBottom: "8px",
-          }}
-        >
-          <IconSearch size={16} />
-          <Text size="sm" c="dimmed">
-            Search...
-          </Text>
-        </UnstyledButton>
-      </AppShellSection>
-
       <AppShellSection grow component={ScrollArea}>
-        {filtered.map((group) => (
+        {navigation.map((group) => (
           <Box key={group.label} mb="md">
             <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb="xs" px="xs">
               {group.label}
