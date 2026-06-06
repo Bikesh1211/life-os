@@ -15,7 +15,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { IconChevronRight } from "@tabler/icons-react";
-import { navigation, type NavItem } from "@/core/navigation";
+import { navigation, type NavItem, type NavGroup } from "@/core/navigation";
 import { cn } from "@/core/utils";
 
 function NavItemLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
@@ -93,19 +93,49 @@ function NavItemLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
   );
 }
 
+function GroupSection({ group }: { group: NavGroup }) {
+  const pathname = usePathname();
+  const hasActiveItem = group.items.some(
+    (item) =>
+      pathname === item.route ||
+      pathname.startsWith(item.route + "/") ||
+      item.children?.some((c) => pathname === c.route || pathname.startsWith(c.route + "/")),
+  );
+  const [opened, { toggle }] = useDisclosure(hasActiveItem);
+
+  return (
+    <Box mb="md">
+      <Group
+        gap="xs"
+        px="xs"
+        mb="xs"
+        onClick={toggle}
+        style={{ cursor: "pointer", userSelect: "none" }}
+      >
+        <IconChevronRight
+          size={12}
+          className={cn("transition-transform", opened && "rotate-90")}
+          style={{ color: "var(--mantine-color-dimmed)" }}
+        />
+        <Text size="xs" fw={600} c="dimmed" tt="uppercase">
+          {group.label}
+        </Text>
+      </Group>
+      <Collapse in={opened}>
+        {group.items.map((item) => (
+          <NavItemLink key={item.featureId} item={item} />
+        ))}
+      </Collapse>
+    </Box>
+  );
+}
+
 export function Sidebar() {
   return (
     <AppShellNavbar p="md">
       <AppShellSection grow component={ScrollArea}>
         {navigation.map((group) => (
-          <Box key={group.label} mb="md">
-            <Text size="xs" fw={600} c="dimmed" tt="uppercase" mb="xs" px="xs">
-              {group.label}
-            </Text>
-            {group.items.map((item) => (
-              <NavItemLink key={item.featureId} item={item} />
-            ))}
-          </Box>
+          <GroupSection key={group.label} group={group} />
         ))}
       </AppShellSection>
     </AppShellNavbar>

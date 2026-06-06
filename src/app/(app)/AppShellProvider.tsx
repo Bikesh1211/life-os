@@ -11,7 +11,7 @@ type AppShellContextType = {
 const AppShellContext = createContext<AppShellContextType | null>(null);
 
 export function AppShellNavbarProvider({ children }: { children: ReactNode }) {
-  const [opened, { toggle }] = useDisclosure();
+  const [opened, { toggle }] = useDisclosure(true);
 
   return (
     <AppShellContext.Provider value={{ opened, toggle }}>
