@@ -17,12 +17,11 @@ import {
   IconBell,
   IconLogout,
   IconSettings,
-  IconUserCircle,
   IconMenu2,
-  IconX,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import { navigation } from "@/core/navigation";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 
@@ -58,18 +57,26 @@ export function Header() {
   return (
     <AppShellHeader>
       <Group h="100%" px="md" justify="space-between">
-        <Group gap="xs">
+        <Group gap={4}>
           <ActionIcon variant="subtle" size="lg" onClick={toggle} aria-label="Toggle sidebar">
-            {opened ? <IconX size={20} /> : <IconMenu2 size={20} />}
+            <IconMenu2 size={20} />
           </ActionIcon>
+          <Link href="/dashboard" className="no-underline">
+            <Text size="sm" fw={700} className="text-gray-900 dark:text-white">
+              Life OS
+            </Text>
+          </Link>
           {breadcrumb && (
             <>
+              <Text size="sm" c="dimmed" className="mx-1 select-none">
+                /
+              </Text>
               <Text size="sm" c="dimmed" visibleFrom="sm">
                 {breadcrumb.group}
               </Text>
               {breadcrumb.parent && (
                 <>
-                  <Text size="sm" c="dimmed" visibleFrom="sm">
+                  <Text size="sm" c="dimmed" visibleFrom="sm" className="mx-0.5 select-none">
                     ·
                   </Text>
                   <Text size="sm" c="dimmed" visibleFrom="sm">
@@ -103,7 +110,7 @@ export function Header() {
             </ActionIcon>
           </Tooltip>
 
-          <Menu shadow="md" width={200}>
+          <Menu shadow="md" width={220} position="bottom-end" offset={6} withArrow>
             <Menu.Target>
               <ActionIcon variant="subtle" size="lg">
                 <Avatar
@@ -116,12 +123,14 @@ export function Header() {
             </Menu.Target>
 
             <Menu.Dropdown>
-              <Menu.Item leftSection={<IconUserCircle size={16} />}>
-                <Text size="sm">{user?.fullName}</Text>
-                <Text size="xs" c="dimmed">
+              <div className="px-3 py-2">
+                <Text size="sm" fw={600} truncate>
+                  {user?.fullName}
+                </Text>
+                <Text size="xs" c="dimmed" truncate>
                   {user?.primaryEmailAddress?.emailAddress}
                 </Text>
-              </Menu.Item>
+              </div>
               <Menu.Divider />
               <Menu.Item
                 leftSection={<IconSettings size={16} />}
