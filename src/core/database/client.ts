@@ -12,7 +12,9 @@ if (!databaseUrl) {
   throw new Error("DATABASE_URL is required but not set. Check your .env file.");
 }
 
-const queryClient = postgres(databaseUrl);
+const queryClient = postgres(databaseUrl, {
+  ssl: { rejectUnauthorized: false },
+});
 
 export const db = drizzle(queryClient, {
   schema: {
