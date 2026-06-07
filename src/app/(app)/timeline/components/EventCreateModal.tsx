@@ -208,6 +208,7 @@ export function EventCreateModal({ opened, onClose, onCreated }: Props) {
           leftSection={<IconCalendar size={16} />}
           valueFormat="MMM D, YYYY"
           clearable={false}
+          popoverProps={{ withinPortal: true }}
         />
 
         <Select

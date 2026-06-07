@@ -228,6 +228,7 @@ export function EventEditModal({
           leftSection={<IconCalendar size={16} />}
           valueFormat="MMM D, YYYY"
           clearable={false}
+          popoverProps={{ withinPortal: true }}
         />
 
         <Select
