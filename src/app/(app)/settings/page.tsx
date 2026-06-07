@@ -2,8 +2,9 @@
 
 import { Stack, Title, Text, Paper, Group, Avatar, Divider, Checkbox, Box } from "@mantine/core";
 import { useUser } from "@clerk/nextjs";
-import { navigation, type NavItem } from "@/core/navigation";
+import { navigation, findNavItemByFeatureId, type NavItem } from "@/core/navigation";
 import { useSidebarVisibility } from "@/core/sidebar-visibility";
+import { useSidebarFavorites } from "@/core/sidebar-favorites";
 import { cn } from "@/core/utils";
 
 function ItemCheckbox({ item, checked, onChange, disabled }: { item: NavItem; checked: boolean; onChange: () => void; disabled: boolean }) {
@@ -42,6 +43,49 @@ function ItemList({ items, hiddenItems, toggleItem, groupHidden }: { items: NavI
   );
 }
 
+function SidebarFavoritesSection() {
+  const { favorites, toggleFavorite, getFavoriteItems } = useSidebarFavorites();
+  const items = getFavoriteItems();
+
+  return (
+    <Paper withBorder p="lg" radius="md">
+      <Text fw={500} mb="sm">
+        Sidebar Favorites
+      </Text>
+      <Text size="sm" c="dimmed" mb="md">
+        Your starred items appear in a Favorites section at the top of the sidebar. Click the star on any nav item to add or remove it.
+      </Text>
+      {items.length === 0 ? (
+        <Text size="sm" c="dimmed">
+          No favorites yet. Star items from the sidebar to add them here.
+        </Text>
+      ) : (
+        <Stack gap="xs">
+          {items.map((item) => (
+            <div key={item.featureId} className="flex items-center gap-3 rounded-lg px-3 py-1.5">
+              <div className="text-gray-500">
+                <item.icon size={16} />
+              </div>
+              <Text size="sm" className="flex-1">
+                {item.label}
+              </Text>
+              <Text
+                component="button"
+                size="xs"
+                c="red"
+                className="cursor-pointer bg-transparent border-0"
+                onClick={() => toggleFavorite(item.featureId)}
+              >
+                Remove
+              </Text>
+            </div>
+          ))}
+        </Stack>
+      )}
+    </Paper>
+  );
+}
+
 function SidebarVisibilitySection() {
   const { state, toggleGroup, toggleItem } = useSidebarVisibility();
 
@@ -55,7 +99,7 @@ function SidebarVisibilitySection() {
       </Text>
       <Stack gap="md">
         {navigation.map((group) => {
-          if (group.label === "System") return null;
+          if (group.label === "System" || group.label === "Favorites") return null;
           const groupChecked = !state.hiddenGroups.includes(group.label);
           return (
             <Box key={group.label}>
@@ -113,6 +157,7 @@ export default function SettingsPage() {
         </Text>
       </Paper>
 
+      <SidebarFavoritesSection />
       <SidebarVisibilitySection />
     </Stack>
   );

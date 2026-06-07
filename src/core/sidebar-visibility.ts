@@ -67,7 +67,7 @@ export function useSidebarVisibility() {
   function getVisibleGroups(): NavGroup[] {
     return navigation
       .map((group) => {
-        if (group.label === "System") return group;
+        if (group.label === "System" || group.label === "Favorites") return group;
         if (state.hiddenGroups.includes(group.label)) return null;
 
         const items = group.items.filter((item) => {
