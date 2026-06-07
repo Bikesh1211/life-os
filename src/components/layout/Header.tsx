@@ -58,9 +58,11 @@ export function Header() {
     <AppShellHeader>
       <Group h="100%" px="md" justify="space-between">
         <Group gap={4}>
-          <ActionIcon variant="subtle" size="lg" onClick={toggle} aria-label="Toggle sidebar">
-            <IconMenu2 size={20} />
-          </ActionIcon>
+          <div className="hidden sm:block">
+            <ActionIcon variant="subtle" size="lg" onClick={toggle} aria-label="Toggle sidebar">
+              <IconMenu2 size={20} />
+            </ActionIcon>
+          </div>
           <Link href="/dashboard" className="no-underline">
             <Text size="sm" fw={700} className="text-gray-900 dark:text-white">
               Life OS

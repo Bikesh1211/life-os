@@ -6,6 +6,8 @@ type AppShellContextType = {
   opened: boolean;
   mobileOpened: boolean;
   toggle: () => void;
+  toggleMobile: () => void;
+  closeMobile: () => void;
 };
 
 const AppShellContext = createContext<AppShellContextType | null>(null);
@@ -22,8 +24,16 @@ export function AppShellNavbarProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const toggleMobile = useCallback(() => {
+    setMobileOpened((m) => !m);
+  }, []);
+
+  const closeMobile = useCallback(() => {
+    setMobileOpened(false);
+  }, []);
+
   return (
-    <AppShellContext.Provider value={{ opened, mobileOpened, toggle }}>
+    <AppShellContext.Provider value={{ opened, mobileOpened, toggle, toggleMobile, closeMobile }}>
       {children}
     </AppShellContext.Provider>
   );

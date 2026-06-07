@@ -138,27 +138,41 @@ function GroupSection({ group }: GroupSectionProps) {
   );
 }
 
-export function Sidebar() {
-  const { opened } = useAppShell();
+export function SidebarContent() {
   const { loaded, getVisibleGroups } = useSidebarVisibility();
-
-  if (!opened) return null;
 
   const groups = loaded ? getVisibleGroups() : [];
 
   return (
-    <AppShellNavbar className="sidebar-navbar-inner">
-      <div className="flex h-full flex-col">
-        <div className="flex-1 overflow-hidden pt-3">
-          <ScrollArea h="100%" scrollbarSize={4} type="hover">
-            <div className="px-2 pb-4">
-              {groups.map((group) => (
-                <GroupSection key={group.label} group={group} />
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
+    <div className="flex h-full flex-col">
+      <div className="block sm:hidden px-4 pt-4 pb-2">
+        <Link href="/dashboard" className="no-underline">
+          <span className="text-lg font-bold text-gray-900 dark:text-white">
+            Life OS
+          </span>
+        </Link>
       </div>
+      <div className="flex-1 overflow-hidden pt-3">
+        <ScrollArea h="100%" scrollbarSize={4} type="hover">
+          <div className="px-2 pb-4">
+            {groups.map((group) => (
+              <GroupSection key={group.label} group={group} />
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
+  );
+}
+
+export function Sidebar() {
+  const { opened } = useAppShell();
+
+  if (!opened) return null;
+
+  return (
+    <AppShellNavbar className="sidebar-navbar-inner">
+      <SidebarContent />
     </AppShellNavbar>
   );
 }
