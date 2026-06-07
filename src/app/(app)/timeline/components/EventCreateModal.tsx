@@ -101,9 +101,7 @@ type Props = {
 export function EventCreateModal({ opened, onClose, onCreated }: Props) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [eventDate, setEventDate] = useState<string | null>(
-    new Date().toISOString(),
-  );
+  const [eventDate, setEventDate] = useState<Date | null>(new Date());
   const [category, setCategory] = useState("personal");
   const [importance, setImportance] = useState("medium");
   const [recurrence, setRecurrence] = useState("none");
@@ -133,7 +131,7 @@ export function EventCreateModal({ opened, onClose, onCreated }: Props) {
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || undefined,
-          eventDate: eventDate ?? new Date().toISOString(),
+          eventDate: (eventDate ?? new Date()).toISOString(),
           category,
           importance,
           recurrence,
@@ -159,7 +157,7 @@ export function EventCreateModal({ opened, onClose, onCreated }: Props) {
   const resetForm = () => {
     setTitle("");
     setDescription("");
-    setEventDate(new Date().toISOString());
+    setEventDate(new Date());
     setCategory("personal");
     setImportance("medium");
     setRecurrence("none");
@@ -205,7 +203,7 @@ export function EventCreateModal({ opened, onClose, onCreated }: Props) {
           label="Event Date"
           placeholder="Pick date"
           value={eventDate}
-          onChange={setEventDate}
+          onChange={(val) => setEventDate(val ? new Date(val) : null)}
           required
           leftSection={<IconCalendar size={16} />}
           valueFormat="MMM D, YYYY"

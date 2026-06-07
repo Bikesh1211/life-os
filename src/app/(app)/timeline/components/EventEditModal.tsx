@@ -114,8 +114,8 @@ export function EventEditModal({
 }: Props) {
   const [title, setTitle] = useState(event.title);
   const [description, setDescription] = useState(event.description ?? "");
-  const [eventDate, setEventDate] = useState<string | null>(
-    new Date(event.eventDate).toISOString(),
+  const [eventDate, setEventDate] = useState<Date | null>(
+    new Date(event.eventDate),
   );
   const [category, setCategory] = useState<string>(event.category);
   const [importance, setImportance] = useState<string>(event.importance);
@@ -130,7 +130,7 @@ export function EventEditModal({
   useEffect(() => {
     setTitle(event.title);
     setDescription(event.description ?? "");
-    setEventDate(new Date(event.eventDate).toISOString());
+    setEventDate(new Date(event.eventDate));
     setCategory(event.category);
     setImportance(event.importance);
     setRecurrence(event.recurrence);
@@ -159,7 +159,7 @@ export function EventEditModal({
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || undefined,
-          eventDate: eventDate ?? new Date().toISOString(),
+          eventDate: (eventDate ?? new Date()).toISOString(),
           category,
           importance,
           recurrence,
@@ -223,7 +223,7 @@ export function EventEditModal({
           label="Event Date"
           placeholder="Pick date"
           value={eventDate}
-          onChange={setEventDate}
+          onChange={(val) => setEventDate(val ? new Date(val) : null)}
           required
           leftSection={<IconCalendar size={16} />}
           valueFormat="MMM D, YYYY"
