@@ -33,6 +33,9 @@ A fixed enum on timeline events: `none`, `daily`, `weekly`, `monthly`, `yearly`.
 **Life Timeline** (aka "Timeline"):
 The plugin at `src/modules/timeline/`. Database table is `timeline_events`. Route is `/timeline`. Feature ID is `timeline`. This is the user-facing name "Life Timeline" internally shortened to `timeline`.
 
+**Backdated Entry**:
+A journal entry with an `eventDate` that differs from its `createdAt`. The user creates the entry on one date but writes about a different (past) date. Displayed in the journal timeline under its `eventDate` with a "Written [date]" badge indicating when it was actually created. The `eventDate` column is optional — if null, the entry is a normal "written today" entry.
+
 ## Example dialogue
 
 **Dev**: I need to add a priority field to Tasks. Where's the schema?

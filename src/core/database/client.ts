@@ -14,6 +14,8 @@ if (!databaseUrl) {
 
 const queryClient = postgres(databaseUrl, {
   ssl: { rejectUnauthorized: false },
+  max: 20,
+  idle_timeout: 30,
 });
 
 export const db = drizzle(queryClient, {
