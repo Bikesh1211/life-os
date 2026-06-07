@@ -5,13 +5,16 @@ import * as habitsSchema from "@/modules/habits/schema";
 import * as notesSchema from "@/modules/notes/schema";
 import * as journalSchema from "@/modules/journal/schema";
 import * as goalsSchema from "@/modules/goals/schema";
+import * as timelineSchema from "@/modules/timeline/schema";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
   throw new Error("DATABASE_URL is required but not set. Check your .env file.");
 }
 
-const queryClient = postgres(databaseUrl);
+const queryClient = postgres(databaseUrl, {
+  ssl: { rejectUnauthorized: false },
+});
 
 export const db = drizzle(queryClient, {
   schema: {
@@ -20,6 +23,7 @@ export const db = drizzle(queryClient, {
     ...notesSchema,
     ...journalSchema,
     ...goalsSchema,
+    ...timelineSchema,
   },
 });
 

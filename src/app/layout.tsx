@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Providers } from "@/infrastructure/providers";
 import { ColorSchemeScript } from "@mantine/core";
 import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
 import "@/app/globals.css";
 
 export const dynamic = "force-dynamic";

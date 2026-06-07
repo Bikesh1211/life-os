@@ -3,8 +3,8 @@
 import {
   Group,
   ActionIcon,
-  useMantineColorScheme,
   Text,
+  useMantineColorScheme,
   Menu,
   Avatar,
   AppShellHeader,
@@ -17,13 +17,31 @@ import {
   IconBell,
   IconLogout,
   IconSettings,
-  IconUserCircle,
   IconMenu2,
-  IconX,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
+import { navigation } from "@/core/navigation";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
+
+function useBreadcrumb() {
+  const pathname = usePathname();
+  for (const group of navigation) {
+    for (const item of group.items) {
+      if (pathname === item.route || pathname.startsWith(item.route + "/")) {
+        return { group: group.label, item: item.label };
+      }
+      if (item.children) {
+        const child = item.children.find(
+          (c) => pathname === c.route || pathname.startsWith(c.route + "/"),
+        );
+        if (child) return { group: group.label, item: child.label, parent: item.label };
+      }
+    }
+  }
+  return null;
+}
 
 export function Header() {
   const [mounted, setMounted] = useState(false);
@@ -33,18 +51,44 @@ export function Header() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
+  const breadcrumb = useBreadcrumb();
   const { opened, toggle } = useAppShell();
 
   return (
     <AppShellHeader>
       <Group h="100%" px="md" justify="space-between">
-        <Group gap="xs">
-          <ActionIcon variant="subtle" size="lg" onClick={toggle}>
-            {opened ? <IconX size={20} /> : <IconMenu2 size={20} />}
+        <Group gap={4}>
+          <ActionIcon variant="subtle" size="lg" onClick={toggle} aria-label="Toggle sidebar">
+            <IconMenu2 size={20} />
           </ActionIcon>
-          <Text fw={700} size="lg">
-            Life OS
-          </Text>
+          <Link href="/dashboard" className="no-underline">
+            <Text size="sm" fw={700} className="text-gray-900 dark:text-white">
+              Life OS
+            </Text>
+          </Link>
+          {breadcrumb && (
+            <>
+              <Text size="sm" c="dimmed" className="mx-1 select-none">
+                /
+              </Text>
+              <Text size="sm" c="dimmed" visibleFrom="sm">
+                {breadcrumb.group}
+              </Text>
+              {breadcrumb.parent && (
+                <>
+                  <Text size="sm" c="dimmed" visibleFrom="sm" className="mx-0.5 select-none">
+                    ·
+                  </Text>
+                  <Text size="sm" c="dimmed" visibleFrom="sm">
+                    {breadcrumb.parent}
+                  </Text>
+                </>
+              )}
+              <Text size="sm" fw={600}>
+                {breadcrumb.item}
+              </Text>
+            </>
+          )}
         </Group>
 
         <Group gap="xs">
@@ -56,11 +100,17 @@ export function Header() {
 
           <Tooltip label={colorScheme === "dark" ? "Light mode" : "Dark mode"}>
             <ActionIcon variant="subtle" size="lg" onClick={() => toggleColorScheme()}>
-              {!mounted ? <IconSun size={20} /> : colorScheme === "dark" ? <IconSun size={20} /> : <IconMoon size={20} />}
+              {!mounted ? (
+                <IconSun size={20} />
+              ) : colorScheme === "dark" ? (
+                <IconSun size={20} />
+              ) : (
+                <IconMoon size={20} />
+              )}
             </ActionIcon>
           </Tooltip>
 
-          <Menu shadow="md" width={200}>
+          <Menu shadow="md" width={220} position="bottom-end" offset={6} withArrow>
             <Menu.Target>
               <ActionIcon variant="subtle" size="lg">
                 <Avatar
@@ -73,12 +123,14 @@ export function Header() {
             </Menu.Target>
 
             <Menu.Dropdown>
-              <Menu.Item leftSection={<IconUserCircle size={16} />}>
-                <Text size="sm">{user?.fullName}</Text>
-                <Text size="xs" c="dimmed">
+              <div className="px-3 py-2">
+                <Text size="sm" fw={600} truncate>
+                  {user?.fullName}
+                </Text>
+                <Text size="xs" c="dimmed" truncate>
                   {user?.primaryEmailAddress?.emailAddress}
                 </Text>
-              </Menu.Item>
+              </div>
               <Menu.Divider />
               <Menu.Item
                 leftSection={<IconSettings size={16} />}

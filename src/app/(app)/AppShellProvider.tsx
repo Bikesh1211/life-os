@@ -1,20 +1,29 @@
 "use client";
 
-import { useDisclosure } from "@mantine/hooks";
-import { createContext, useContext, type ReactNode } from "react";
+import { useState, createContext, useContext, useCallback, type ReactNode } from "react";
 
 type AppShellContextType = {
   opened: boolean;
+  mobileOpened: boolean;
   toggle: () => void;
 };
 
 const AppShellContext = createContext<AppShellContextType | null>(null);
 
 export function AppShellNavbarProvider({ children }: { children: ReactNode }) {
-  const [opened, { toggle }] = useDisclosure(true);
+  const [opened, setOpened] = useState(true);
+  const [mobileOpened, setMobileOpened] = useState(false);
+
+  const toggle = useCallback(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 576) {
+      setMobileOpened((m) => !m);
+    } else {
+      setOpened((o) => !o);
+    }
+  }, []);
 
   return (
-    <AppShellContext.Provider value={{ opened, toggle }}>
+    <AppShellContext.Provider value={{ opened, mobileOpened, toggle }}>
       {children}
     </AppShellContext.Provider>
   );
