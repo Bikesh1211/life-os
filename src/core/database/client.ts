@@ -5,6 +5,7 @@ import * as habitsSchema from "@/modules/habits/schema";
 import * as notesSchema from "@/modules/notes/schema";
 import * as journalSchema from "@/modules/journal/schema";
 import * as goalsSchema from "@/modules/goals/schema";
+import * as timelineSchema from "@/modules/timeline/schema";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -20,6 +21,7 @@ export const db = drizzle(queryClient, {
     ...notesSchema,
     ...journalSchema,
     ...goalsSchema,
+    ...timelineSchema,
   },
 });
 

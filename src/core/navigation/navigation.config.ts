@@ -498,6 +498,18 @@ export const navigation: NavGroup[] = [
     ],
   },
   {
+    label: "Life Timeline",
+    items: [
+      {
+        label: "Timeline",
+        route: "/timeline",
+        description: "Life timeline & countdowns",
+        icon: IconTimelineEvent,
+        featureId: "timeline",
+      },
+    ],
+  },
+  {
     label: "System",
     items: [
       {

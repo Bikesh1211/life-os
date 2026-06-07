@@ -18,6 +18,21 @@ A person who authenticates with Clerk and owns their data. `userId` is the Clerk
 
 *Avoid*: Account, customer, member
 
+**Timeline Event**:
+A life event with a date. Can be past (birth, started career) or future (vacation, deadline). Past/future is computed from `eventDate`, never stored. Every event is scoped to a `userId`.
+
+**Category**:
+A fixed enum on timeline events: `personal`, `career`, `education`, `health`, `finance`, `travel`, `relationships`, `business`, `entertainment`, `custom`.
+
+**Importance**:
+A fixed enum on timeline events: `critical`, `high`, `medium`, `low`.
+
+**Recurrence**:
+A fixed enum on timeline events: `none`, `daily`, `weekly`, `monthly`, `yearly`. Defines how the event repeats after its initial `eventDate`. For past events with recurring, the "next occurrence" is computed on-the-fly by adding the recurrence period from `eventDate` until a future date is reached. No instance rows are stored.
+
+**Life Timeline** (aka "Timeline"):
+The plugin at `src/modules/timeline/`. Database table is `timeline_events`. Route is `/timeline`. Feature ID is `timeline`. This is the user-facing name "Life Timeline" internally shortened to `timeline`.
+
 ## Example dialogue
 
 **Dev**: I need to add a priority field to Tasks. Where's the schema?
