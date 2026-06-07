@@ -24,6 +24,7 @@ export const createEntrySchema = z.object({
   tags: z.array(z.string().max(50)).max(20).optional(),
   reflectionScore: z.number().int().min(1).max(10).optional(),
   isPrivate: z.boolean().optional(),
+  eventDate: z.string().datetime().optional(),
 });
 
 export const updateEntrySchema = createEntrySchema.partial();
@@ -56,6 +57,7 @@ export async function createJournalEntry(userId: string, params: CreateEntryPara
     tags: validated.tags,
     reflectionScore: validated.reflectionScore,
     isPrivate: validated.isPrivate,
+    eventDate: validated.eventDate ? new Date(validated.eventDate) : undefined,
   };
   return createEntry(input);
 }
@@ -84,7 +86,10 @@ export const getJournalEntries = cache(async (userId: string, filters: Partial<J
 
 export async function updateJournalEntry(id: string, userId: string, params: UpdateEntryParams) {
   const validated = updateEntrySchema.parse(params);
-  return updateEntry(id, userId, validated);
+  return updateEntry(id, userId, {
+    ...validated,
+    eventDate: validated.eventDate ? new Date(validated.eventDate) : undefined,
+  });
 }
 
 export async function deleteJournalEntry(id: string, userId: string) {

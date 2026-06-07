@@ -22,6 +22,7 @@ export const journalEntries = pgTable(
     tags: text("tags").array().default([]).notNull(),
     reflectionScore: integer("reflection_score"),
     isPrivate: boolean("is_private").default(true).notNull(),
+    eventDate: timestamp("event_date", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

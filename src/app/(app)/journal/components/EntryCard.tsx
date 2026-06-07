@@ -1,6 +1,6 @@
 "use client";
 
-import { Paper, Text, Group, Box } from "@mantine/core";
+import { Paper, Text, Group, Box, Badge } from "@mantine/core";
 import Link from "next/link";
 import { getMoodEmoji, getMoodColor, formatDate } from "@/modules/journal/utils";
 import type { JournalEntry } from "@/modules/journal";
@@ -12,6 +12,10 @@ type EntryCardProps = {
 };
 
 export function EntryCard({ entry, isSelected, onSelect }: EntryCardProps) {
+  const isBackdated =
+    entry.eventDate &&
+    Math.abs(new Date(entry.eventDate).getTime() - new Date(entry.createdAt).getTime()) > 86400000;
+
   return (
     <Paper
       component={Link}
@@ -32,9 +36,16 @@ export function EntryCard({ entry, isSelected, onSelect }: EntryCardProps) {
         <Text size="sm" fw={600} lineClamp={1} style={{ flex: 1 }}>
           {entry.title}
         </Text>
-        <Text size="xs" c="dimmed">
-          {formatDate(new Date(entry.createdAt))}
-        </Text>
+        <Group gap={4}>
+          {isBackdated && (
+            <Badge size="xs" variant="light" color="gray">
+              Written {formatDate(new Date(entry.createdAt))}
+            </Badge>
+          )}
+          <Text size="xs" c="dimmed">
+            {formatDate(new Date(entry.eventDate ?? entry.createdAt))}
+          </Text>
+        </Group>
       </Group>
 
       {entry.content && (

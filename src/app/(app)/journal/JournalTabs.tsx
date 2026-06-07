@@ -2,11 +2,12 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { Tabs } from "@mantine/core";
-import { IconTimeline, IconBrain } from "@tabler/icons-react";
+import { IconTimeline, IconBrain, IconHistory } from "@tabler/icons-react";
 
 const TABS = [
   { value: "list", label: "Entries", route: "/journal", icon: null },
   { value: "timeline", label: "Timeline", route: "/journal/timeline", icon: IconTimeline },
+  { value: "backfill", label: "Backfill", route: "/journal/backfill", icon: IconHistory },
   { value: "insights", label: "Insights", route: "/journal/insights", icon: IconBrain },
 ] as const;
 

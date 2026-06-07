@@ -14,13 +14,20 @@ export function TimelineContent({ entries }: TimelineContentProps) {
   const grouped = useMemo(() => {
     const groups = new Map<string, JournalEntry[]>();
     for (const entry of entries) {
-      const d = new Date(entry.createdAt);
+      const d = new Date(entry.eventDate ?? entry.createdAt);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(entry);
     }
     return Array.from(groups.entries()).sort(([a], [b]) => b.localeCompare(a));
   }, [entries]);
+
+  function isBackdated(entry: JournalEntry) {
+    return (
+      entry.eventDate &&
+      Math.abs(new Date(entry.eventDate).getTime() - new Date(entry.createdAt).getTime()) > 86400000
+    );
+  }
 
   return (
     <Stack gap="md">
@@ -77,9 +84,16 @@ export function TimelineContent({ entries }: TimelineContentProps) {
                             <Text size="sm" fw={600}>
                               {entry.title}
                             </Text>
-                            <Text size="xs" c="dimmed" className="ml-auto">
-                              {formatDate(new Date(entry.createdAt))}
-                            </Text>
+                            <Group gap={4} className="ml-auto">
+                              {isBackdated(entry) && (
+                                <Badge size="xs" variant="light" color="gray">
+                                  Written {formatDate(new Date(entry.createdAt))}
+                                </Badge>
+                              )}
+                              <Text size="xs" c="dimmed">
+                                {formatDate(new Date(entry.eventDate ?? entry.createdAt))}
+                              </Text>
+                            </Group>
                           </Group>
                           {entry.content && (
                             <Text size="xs" c="dimmed" lineClamp={1}>

@@ -1,6 +1,6 @@
 import { db } from "@/core/database";
 import { journalEntries, type moodEnum } from "./schema";
-import { eq, and, isNull, desc, asc, sql, gte, lte, inArray } from "drizzle-orm";
+import { eq, and, isNull, desc, asc, sql, gte, lte } from "drizzle-orm";
 
 export type JournalEntry = typeof journalEntries.$inferSelect;
 
@@ -12,6 +12,7 @@ export type CreateJournalEntryInput = {
   tags?: string[];
   reflectionScore?: number;
   isPrivate?: boolean;
+  eventDate?: Date;
 };
 
 export type UpdateJournalEntryInput = Partial<Omit<CreateJournalEntryInput, "userId">>;
@@ -39,6 +40,7 @@ export const entryColumns = {
   tags: journalEntries.tags,
   reflectionScore: journalEntries.reflectionScore,
   isPrivate: journalEntries.isPrivate,
+  eventDate: journalEntries.eventDate,
   deletedAt: journalEntries.deletedAt,
   createdAt: journalEntries.createdAt,
   updatedAt: journalEntries.updatedAt,
@@ -55,6 +57,7 @@ export async function createEntry(input: CreateJournalEntryInput) {
       tags: input.tags ?? [],
       reflectionScore: input.reflectionScore,
       isPrivate: input.isPrivate ?? true,
+      eventDate: input.eventDate,
     })
     .returning(entryColumns);
   return entry;
