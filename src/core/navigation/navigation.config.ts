@@ -71,7 +71,24 @@ export type NavGroup = {
   items: NavItem[];
 };
 
+export function findNavItemByFeatureId(featureId: string): NavItem | undefined {
+  for (const group of navigation) {
+    for (const item of group.items) {
+      if (item.featureId === featureId) return item;
+      if (item.children) {
+        const child = item.children.find((c) => c.featureId === featureId);
+        if (child) return child;
+      }
+    }
+  }
+  return undefined;
+}
+
 export const navigation: NavGroup[] = [
+  {
+    label: "Favorites",
+    items: [],
+  },
   {
     label: "Operations",
     items: [
