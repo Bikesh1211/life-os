@@ -107,6 +107,13 @@ export const navigation: NavGroup[] = [
         featureId: "quick_note",
       },
       {
+        label: "Journal",
+        route: "/journal",
+        description: "Daily journal & reflection",
+        icon: IconBook,
+        featureId: "journal",
+      },
+      {
         label: "Discovery Feed",
         route: "/discovery-feed",
         description: "Explore and discover",
@@ -196,22 +203,6 @@ export const navigation: NavGroup[] = [
             description: "Video scripts",
             icon: IconVideo,
             featureId: "vlog_scripts",
-          },
-        ],
-      },
-      {
-        label: "Journal",
-        route: "/journal",
-        description: "Personal journal",
-        icon: IconBook,
-        featureId: "journal",
-        children: [
-          {
-            label: "Drafts",
-            route: "/journal/drafts",
-            description: "Journal drafts",
-            icon: IconFilePencil,
-            featureId: "drafts",
           },
         ],
       },

@@ -1,12 +1,15 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconBook } from "@tabler/icons-react";
+import { auth } from "@clerk/nextjs/server";
+import { getJournalEntries } from "@/modules/journal";
+import { computeStreak } from "@/modules/journal";
+import { JournalContent } from "./JournalContent";
 
-export default function JournalPage() {
-  return (
-    <FeaturePlaceholder
-      title="Journal"
-      description="Personal journal entries"
-      icon={IconBook}
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function JournalPage() {
+  const { userId } = await auth();
+  const entries = await getJournalEntries(userId!, { limit: 100, sortBy: "createdAt", sortOrder: "desc" });
+  const dates = entries.map((e) => new Date(e.createdAt));
+  const streak = computeStreak(dates);
+
+  return <JournalContent entries={entries} streak={streak} />;
 }

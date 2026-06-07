@@ -5,9 +5,11 @@ import { useState, createContext, useContext, useCallback, type ReactNode } from
 type AppShellContextType = {
   opened: boolean;
   mobileOpened: boolean;
+  minimalChrome: boolean;
   toggle: () => void;
   toggleMobile: () => void;
   closeMobile: () => void;
+  setMinimalChrome: (v: boolean) => void;
 };
 
 const AppShellContext = createContext<AppShellContextType | null>(null);
@@ -15,6 +17,7 @@ const AppShellContext = createContext<AppShellContextType | null>(null);
 export function AppShellNavbarProvider({ children }: { children: ReactNode }) {
   const [opened, setOpened] = useState(true);
   const [mobileOpened, setMobileOpened] = useState(false);
+  const [minimalChrome, setMinimalChrome] = useState(false);
 
   const toggle = useCallback(() => {
     if (typeof window !== "undefined" && window.innerWidth < 576) {
@@ -33,7 +36,7 @@ export function AppShellNavbarProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AppShellContext.Provider value={{ opened, mobileOpened, toggle, toggleMobile, closeMobile }}>
+    <AppShellContext.Provider value={{ opened, mobileOpened, minimalChrome, toggle, toggleMobile, closeMobile, setMinimalChrome }}>
       {children}
     </AppShellContext.Provider>
   );

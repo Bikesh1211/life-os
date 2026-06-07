@@ -5,7 +5,7 @@ import { Sidebar, SidebarContent, Header, MobileDrawer, MobileNav } from "@/comp
 import { useAppShell } from "./AppShellProvider";
 
 export function AppShellInner({ children }: { children: React.ReactNode }) {
-  const { opened, mobileOpened, closeMobile } = useAppShell();
+  const { opened, mobileOpened, minimalChrome, closeMobile } = useAppShell();
 
   return (
     <>
@@ -14,23 +14,25 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
         navbar={{
           width: 280,
           breakpoint: "sm",
-          collapsed: { desktop: !opened, mobile: true },
+          collapsed: { desktop: minimalChrome || !opened, mobile: true },
         }}
-        header={{ height: 56 }}
+        header={{ height: minimalChrome ? 0 : 56 }}
         classNames={{ navbar: "sidebar-navbar", main: "sidebar-main" }}
       >
         <Header />
-        <Sidebar />
+        {!minimalChrome && <Sidebar />}
         <AppShellMain>{children}</AppShellMain>
       </AppShell>
 
-      <MobileNav />
+      {!minimalChrome && <MobileNav />}
 
-      <MobileDrawer opened={mobileOpened} onClose={closeMobile}>
-        <div className="sidebar-navbar-inner h-full">
-          <SidebarContent />
-        </div>
-      </MobileDrawer>
+      {!minimalChrome && (
+        <MobileDrawer opened={mobileOpened} onClose={closeMobile}>
+          <div className="sidebar-navbar-inner h-full">
+            <SidebarContent />
+          </div>
+        </MobileDrawer>
+      )}
     </>
   );
 }

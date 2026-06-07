@@ -52,7 +52,9 @@ export function Header() {
   const { signOut } = useClerk();
   const router = useRouter();
   const breadcrumb = useBreadcrumb();
-  const { opened, toggle } = useAppShell();
+  const { opened, toggle, minimalChrome } = useAppShell();
+
+  if (minimalChrome) return null;
 
   return (
     <AppShellHeader>
