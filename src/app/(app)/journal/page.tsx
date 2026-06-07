@@ -1,9 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { getJournalEntries } from "@/modules/journal";
-import { computeStreak } from "@/modules/journal";
+import { computeStreak } from "@/modules/journal/utils";
 import { JournalContent } from "./JournalContent";
-
-export const dynamic = "force-dynamic";
 
 export default async function JournalPage() {
   const { userId } = await auth();

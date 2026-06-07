@@ -1,23 +1,16 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Text, Loader } from "@mantine/core";
 import { JournalEditor } from "../components/JournalEditor";
-import { useAppShell } from "@/app/(app)/AppShellProvider";
 import type { JournalEntry } from "@/modules/journal";
 
 export default function EditJournalEntryPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { setMinimalChrome } = useAppShell();
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setMinimalChrome(true);
-    return () => setMinimalChrome(false);
-  }, [setMinimalChrome]);
 
   useEffect(() => {
     fetch(`/api/journal/${id}`)

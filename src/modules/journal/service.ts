@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { z } from "zod";
 import { moodEnum } from "./schema";
 import {
@@ -59,11 +60,11 @@ export async function createJournalEntry(userId: string, params: CreateEntryPara
   return createEntry(input);
 }
 
-export async function getJournalEntry(id: string, userId: string) {
+export const getJournalEntry = cache(async (id: string, userId: string) => {
   return getEntryById(id, userId);
-}
+});
 
-export async function getJournalEntries(userId: string, filters: Partial<JournalFiltersParams> = {}) {
+export const getJournalEntries = cache(async (userId: string, filters: Partial<JournalFiltersParams> = {}) => {
   const validated = journalFiltersSchema.parse(filters);
   const dbFilters: JournalFilters = {
     search: validated.search,
@@ -79,7 +80,7 @@ export async function getJournalEntries(userId: string, filters: Partial<Journal
     offset: validated.offset,
   };
   return getEntriesForUser(userId, dbFilters);
-}
+});
 
 export async function updateJournalEntry(id: string, userId: string, params: UpdateEntryParams) {
   const validated = updateEntrySchema.parse(params);
