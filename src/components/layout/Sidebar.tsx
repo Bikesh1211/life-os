@@ -178,9 +178,9 @@ export function SidebarContent() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="block sm:hidden px-4 pt-4 pb-2">
+      <div className="block sm:hidden mx-5">
         <Link href="/dashboard" className="no-underline">
-          <span className="text-lg font-bold text-gray-900 dark:text-white">
+          <span className="text-xl font-bold text-gray-900 dark:text-white">
             Life OS
           </span>
         </Link>
