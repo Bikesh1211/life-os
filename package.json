@@ -24,6 +24,7 @@
     "@drizzle-team/brocli": "^0.10.0",
     "@mantine/core": "^8.0.0",
     "@mantine/dates": "^8.0.0",
+    "@mantine/form": "^9.3.0",
     "@mantine/hooks": "^8.0.0",
     "@mantine/notifications": "^8.0.0",
     "@mantine/nprogress": "^8.0.0",
@@ -42,6 +43,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hook-form": "^7.54.0",
+    "recharts": "^3.8.1",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.24.0",
     "zustand": "^5.0.0"
