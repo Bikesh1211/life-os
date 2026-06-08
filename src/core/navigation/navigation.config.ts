@@ -326,6 +326,13 @@ export const navigation: NavGroup[] = [
         featureId: "expenses",
         children: [
           {
+            label: "Finance",
+            route: "/finance/dashboard",
+            description: "Finance Dashboard",
+            icon: IconCoin,
+            featureId: "finance_dashboard",
+          },
+                    {
             label: "Transactions",
             route: "/finance/transactions",
             description: "All transactions",

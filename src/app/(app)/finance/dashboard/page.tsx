@@ -5,10 +5,10 @@ import { IconPlus, IconCoin, IconTrendingUp, IconWallet, IconReceipt } from "@ta
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import dayjs from "dayjs";
-import { MetricCard } from "./_components/MetricCard";
-import { SpendingTimeline } from "./_components/SpendingTimeline";
-import { CategoryBreakdown } from "./_components/CategoryBreakdown";
-import { QuickAddModal } from "./_components/QuickAddModal";
+import { MetricCard } from "../_components/MetricCard";
+import { SpendingTimeline } from "../_components/SpendingTimeline";
+import { CategoryBreakdown } from "../_components/CategoryBreakdown";
+import { QuickAddModal } from "../_components/QuickAddModal";
 
 type OverviewData = {
   summary: {
