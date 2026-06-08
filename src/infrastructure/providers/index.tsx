@@ -5,6 +5,7 @@ import { MantineProvider } from "@mantine/core";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { theme } from "@/core/design-system";
+import { ServiceWorkerRegister } from "./ServiceWorkerRegister";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -23,6 +24,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <ClerkProvider>
       <QueryClientProvider client={queryClient}>
         <MantineProvider theme={theme} defaultColorScheme="auto">
+          <ServiceWorkerRegister />
           {children}
         </MantineProvider>
       </QueryClientProvider>
