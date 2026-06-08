@@ -135,7 +135,12 @@ type GroupSectionProps = {
 };
 
 function GroupSection({ group, onFavorite, isFavorited }: GroupSectionProps) {
-  const [opened, { toggle }] = useDisclosure(false);
+  const pathname = usePathname();
+  const hasActiveItem = group.items.some((item) => {
+    if (item.route && (pathname === item.route || pathname.startsWith(item.route + "/"))) return true;
+    return item.children?.some((c) => pathname === c.route || pathname.startsWith(c.route + "/")) ?? false;
+  });
+  const [opened, { toggle }] = useDisclosure(hasActiveItem);
 
   return (
     <div className="mb-4">
