@@ -16,7 +16,10 @@ The physical directory under `src/modules/` where a Plugin's code lives. Every P
 **User**:
 A person who authenticates with Clerk and owns their data. `userId` is the Clerk user ID string (`auth().userId`). There is no local `users` table — Clerk is the identity source of truth. Every data row across all plugins is scoped to this `userId`.
 
-*Avoid*: Account, customer, member
+*Avoid*: Account (when referring to user identity — use Clerk instead), customer, member
+
+**Financial Account**:
+A financial institution account or wallet owned by a User. Examples: bank account, credit card, cash wallet, UPI, PayPal. Not a user identity concept — distinct from the Clerk-based User model. Every Financial Account is scoped to a `userId`. Managed by the Expenses plugin.
 
 **Timeline Event**:
 A life event with a date. Can be past (birth, started career) or future (vacation, deadline). Past/future is computed from `eventDate`, never stored. Every event is scoped to a `userId`.
@@ -32,6 +35,9 @@ A fixed enum on timeline events: `none`, `daily`, `weekly`, `monthly`, `yearly`.
 
 **Life Timeline** (aka "Timeline"):
 The plugin at `src/modules/timeline/`. Database table is `timeline_events`. Route is `/timeline`. Feature ID is `timeline`. This is the user-facing name "Life Timeline" internally shortened to `timeline`.
+
+**Expenses** (plugin):
+The personal finance tracker plugin at `src/modules/expenses/`. Owns all financial data — transactions, budgets, financial accounts, subscriptions, and analytics. Route group is `/finance/*`. Feature ID is `expenses`. Sub-routes: Overview (`/finance`), Transactions (`/finance/transactions`), Budgets (`/finance/budgets`), Accounts (`/finance/accounts`), Subscriptions (`/finance/subscriptions`), Analytics (`/finance/analytics`).
 
 **Backdated Entry**:
 A journal entry with an `eventDate` that differs from its `createdAt`. The user creates the entry on one date but writes about a different (past) date. Displayed in the journal timeline under its `eventDate` with a "Written [date]" badge indicating when it was actually created. The `eventDate` column is optional — if null, the entry is a normal "written today" entry.
