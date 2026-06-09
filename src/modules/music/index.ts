@@ -11,6 +11,7 @@ export {
   musicCollectionItems,
   musicGoalConfig,
   musicSpotifyTokens,
+  musicNotes,
 } from "./schema";
 
 export {
@@ -45,6 +46,12 @@ export {
   getGoalConfigs,
   updateGoalConfig,
   deleteGoalConfig,
+  createNote,
+  getNotesByEntity,
+  getNoteById,
+  updateNote,
+  deleteNote,
+  evaluateSmartFilter,
   getAnalytics,
   syncArtistFromSpotify,
   syncAlbumFromSpotify,
@@ -62,6 +69,8 @@ export {
   addCollectionItemSchema,
   createGoalConfigSchema,
   updateGoalConfigSchema,
+  createNoteSchema,
+  updateNoteSchema,
 } from "./service";
 
 export type {
@@ -78,6 +87,8 @@ export type {
   AddCollectionItemParams,
   CreateGoalConfigParams,
   UpdateGoalConfigParams,
+  CreateNoteParams,
+  UpdateNoteParams,
 } from "./service";
 
 export type {
@@ -92,4 +103,5 @@ export type {
   Collection,
   CollectionItem,
   GoalConfig,
+  MusicNote,
 } from "./repository";

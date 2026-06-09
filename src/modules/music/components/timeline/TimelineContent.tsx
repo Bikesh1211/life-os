@@ -8,10 +8,10 @@ import { IconTimelineEvent } from "@tabler/icons-react";
 
 type TimelineEvent = {
   id: string;
-  year: number;
+  date: string;
   title: string;
   description: string | null;
-  type: "album" | "artist" | "memory" | "journal";
+  type: "album" | "artist" | "memory" | "journal" | "listen" | "favorite";
 };
 
 export function TimelineContent() {
@@ -51,8 +51,9 @@ export function TimelineContent() {
 
   const groupedByYear: Record<number, TimelineEvent[]> = {};
   for (const event of timeline) {
-    if (!groupedByYear[event.year]) groupedByYear[event.year] = [];
-    groupedByYear[event.year].push(event);
+    const year = new Date(event.date).getFullYear();
+    if (!groupedByYear[year]) groupedByYear[year] = [];
+    groupedByYear[year].push(event);
   }
 
   const years = Object.keys(groupedByYear).map(Number).sort((a, b) => b - a);

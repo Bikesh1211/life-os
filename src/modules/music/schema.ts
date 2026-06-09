@@ -131,9 +131,20 @@ export const musicCollectionItems = pgTable("music_collection_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   collectionId: uuid("collection_id").references(() => musicCollections.id, { onDelete: "cascade" }).notNull(),
   entityType: text("entity_type").notNull(), // "track", "album", "artist"
-  entityId: uuid("entity_id").notNull(),
+  entityId: text("entity_id").notNull(),
   position: integer("position").default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const musicNotes = pgTable("music_notes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  entityType: text("entity_type").notNull(), // "track", "album", "artist"
+  entityId: text("entity_id").notNull(), // text to support itunes- prefix
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 // ─── Music Goals (links to the external Goals plugin) ────────────

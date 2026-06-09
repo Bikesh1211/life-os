@@ -17,8 +17,6 @@ type SearchResult = {
   type: "artist" | "album" | "track";
 };
 
-type Tab = "artist" | "album" | "track";
-
 type AlbumItem = {
   id: string;
   title: string;
@@ -41,17 +39,19 @@ type TrackItem = {
   imageUrl: string | null;
 };
 
+type SearchResponse = {
+  artists: SearchResult[];
+  albums: SearchResult[];
+  tracks: SearchResult[];
+  query: string;
+  source: string;
+};
+
 type ExploreData = {
   newReleases: AlbumItem[];
   trending: PlaylistItem[];
   recommendations: TrackItem[];
 };
-
-const tabs: { key: Tab; label: string }[] = [
-  { key: "track", label: "Tracks" },
-  { key: "album", label: "Albums" },
-  { key: "artist", label: "Artists" },
-];
 
 function ExploreSection({ title, icon, items, href, renderItem }: {
   title: string;
@@ -90,7 +90,6 @@ function ExploreSection({ title, icon, items, href, renderItem }: {
 
 export function MusicHome() {
   const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<Tab>("track");
   const [favoriting, setFavoriting] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -101,12 +100,12 @@ export function MusicHome() {
 
   // Search
   const { data: searchData, isLoading: searchLoading } = useQuery({
-    queryKey: ["music-search", query, activeTab],
+    queryKey: ["music-search", query],
     queryFn: async () => {
-      if (!query.trim()) return { results: [] };
-      const res = await fetch(`/api/music/search?q=${encodeURIComponent(query)}&type=${activeTab}`);
+      if (!query.trim()) return { artists: [], albums: [], tracks: [], query: "", source: "itunes" };
+      const res = await fetch(`/api/music/search?q=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error("Search failed");
-      return res.json() as Promise<{ results: SearchResult[] }>;
+      return res.json() as Promise<SearchResponse>;
     },
     enabled: query.length > 0,
   });
@@ -122,7 +121,10 @@ export function MusicHome() {
     enabled: !query.trim(),
   });
 
-  const searchResults = searchData?.results ?? [];
+  const artists = searchData?.artists ?? [];
+  const albums = searchData?.albums ?? [];
+  const tracks = searchData?.tracks ?? [];
+  const hasResults = artists.length > 0 || albums.length > 0 || tracks.length > 0;
   const isSearching = query.length > 0;
 
   // Favorite mutation
@@ -188,22 +190,6 @@ export function MusicHome() {
             </button>
           )}
         </div>
-
-        <div className="mt-4 flex gap-2">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`rounded-full px-4 py-1.5 text-sm transition-all ${
-                activeTab === tab.key
-                  ? "bg-white/10 text-white"
-                  : "text-[var(--mantine-color-dimmed,#5c5f66)] hover:text-white"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
       </motion.div>
 
       {/* Search Results */}
@@ -220,7 +206,7 @@ export function MusicHome() {
               <div key={i} className="aspect-square animate-pulse rounded-xl bg-[var(--mantine-color-dark-6,#1a1b1e)]" />
             ))}
           </motion.div>
-        ) : isSearching && searchResults.length === 0 ? (
+        ) : isSearching && !hasResults ? (
           <motion.div
             key="empty"
             initial={{ opacity: 0 }}
@@ -229,7 +215,7 @@ export function MusicHome() {
           >
             <MusicEmptyState
               title="No results"
-              description={`No ${activeTab}s found for "${query}". Try a different search term.`}
+              description={`Nothing found for "${query}". Try a different search term.`}
             />
           </motion.div>
         ) : isSearching ? (
@@ -238,43 +224,98 @@ export function MusicHome() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+            className="space-y-8"
           >
-            {searchResults.map((result, i) => (
-              <motion.div
-                key={result.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.03 }}
-                className="group relative"
-              >
-                <Link
-                  href={`/music/${result.type === "artist" ? "artists" : result.type === "album" ? "albums" : "tracks"}/${result.id}`}
-                >
-                  <MusicCard
-                    imageUrl={result.imageUrl}
-                    title={result.title}
-                    subtitle={result.subtitle}
-                    aspectRatio={result.type === "track" ? "square" : "portrait"}
-                    badge={result.type}
-                  />
-                </Link>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    handleFavorite(result.id, result.type);
-                  }}
-                  disabled={favoriting.has(result.id)}
-                  className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/70 disabled:opacity-50"
-                >
-                  {favoriting.has(result.id) ? (
-                    <span className="h-4 w-4 animate-ping rounded-full bg-pink-500" />
-                  ) : (
-                    <IconHeart size={16} />
-                  )}
-                </button>
-              </motion.div>
-            ))}
+            {artists.length > 0 && (
+              <section>
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--mantine-color-dimmed,#5c5f66)]">Artists</h3>
+                <div className="flex gap-4 overflow-x-auto pb-2">
+                  {artists.map((result) => (
+                    <div key={result.id} className="group relative w-40 shrink-0">
+                      <Link href={`/music/artists/${result.id}`}>
+                        <MusicCard
+                          imageUrl={result.imageUrl}
+                          title={result.title}
+                          subtitle={result.subtitle}
+                          aspectRatio="square"
+                        />
+                      </Link>
+                      <button
+                        onClick={(e) => { e.preventDefault(); handleFavorite(result.id, result.type); }}
+                        disabled={favoriting.has(result.id)}
+                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/70 disabled:opacity-50"
+                      >
+                        {favoriting.has(result.id) ? (
+                          <span className="h-4 w-4 animate-ping rounded-full bg-pink-500" />
+                        ) : (
+                          <IconHeart size={16} />
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+            {albums.length > 0 && (
+              <section>
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--mantine-color-dimmed,#5c5f66)]">Albums</h3>
+                <div className="flex gap-4 overflow-x-auto pb-2">
+                  {albums.map((result) => (
+                    <div key={result.id} className="group relative w-40 shrink-0">
+                      <Link href={`/music/albums/${result.id}`}>
+                        <MusicCard
+                          imageUrl={result.imageUrl}
+                          title={result.title}
+                          subtitle={result.subtitle}
+                          aspectRatio="portrait"
+                        />
+                      </Link>
+                      <button
+                        onClick={(e) => { e.preventDefault(); handleFavorite(result.id, result.type); }}
+                        disabled={favoriting.has(result.id)}
+                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/70 disabled:opacity-50"
+                      >
+                        {favoriting.has(result.id) ? (
+                          <span className="h-4 w-4 animate-ping rounded-full bg-pink-500" />
+                        ) : (
+                          <IconHeart size={16} />
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+            {tracks.length > 0 && (
+              <section>
+                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-[var(--mantine-color-dimmed,#5c5f66)]">Tracks</h3>
+                <div className="flex gap-4 overflow-x-auto pb-2">
+                  {tracks.map((result) => (
+                    <div key={result.id} className="group relative w-40 shrink-0">
+                      <Link href={`/music/tracks/${result.id}`}>
+                        <MusicCard
+                          imageUrl={result.imageUrl}
+                          title={result.title}
+                          subtitle={result.subtitle}
+                          aspectRatio="square"
+                        />
+                      </Link>
+                      <button
+                        onClick={(e) => { e.preventDefault(); handleFavorite(result.id, result.type); }}
+                        disabled={favoriting.has(result.id)}
+                        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/70 disabled:opacity-50"
+                      >
+                        {favoriting.has(result.id) ? (
+                          <span className="h-4 w-4 animate-ping rounded-full bg-pink-500" />
+                        ) : (
+                          <IconHeart size={16} />
+                        )}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </motion.div>
         ) : null}
       </AnimatePresence>

@@ -65,7 +65,7 @@ export const updateCollectionSchema = createCollectionSchema.partial();
 
 export const addCollectionItemSchema = z.object({
   entityType: z.enum(["track", "album", "artist"]),
-  entityId: z.string().uuid(),
+  entityId: z.string().min(1).max(200),
   position: z.number().int().min(0).optional(),
 });
 
@@ -91,8 +91,20 @@ export type CreateFavoriteParams = z.infer<typeof createFavoriteSchema>;
 export type CreateCollectionParams = z.infer<typeof createCollectionSchema>;
 export type UpdateCollectionParams = z.infer<typeof updateCollectionSchema>;
 export type AddCollectionItemParams = z.infer<typeof addCollectionItemSchema>;
+export const createNoteSchema = z.object({
+  entityType: z.enum(["track", "album", "artist"]),
+  entityId: z.string().min(1).max(200),
+  content: z.string().min(1).max(10000),
+});
+
+export const updateNoteSchema = z.object({
+  content: z.string().min(1).max(10000),
+});
+
 export type CreateGoalConfigParams = z.infer<typeof createGoalConfigSchema>;
 export type UpdateGoalConfigParams = z.infer<typeof updateGoalConfigSchema>;
+export type CreateNoteParams = z.infer<typeof createNoteSchema>;
+export type UpdateNoteParams = z.infer<typeof updateNoteSchema>;
 
 // ─── Search (MusicBrainz + local cache) ───────────────────────────
 
@@ -403,6 +415,30 @@ export async function deleteGoalConfig(id: string, userId: string) {
   return repo.deleteGoalConfig(id, userId);
 }
 
+// ─── Notes ─────────────────────────────────────────────────────────
+
+export async function createNote(userId: string, params: CreateNoteParams) {
+  const validated = createNoteSchema.parse(params);
+  return repo.createNote({ ...validated, userId });
+}
+
+export async function getNotesByEntity(userId: string, entityType: string, entityId: string) {
+  return repo.getNotesByEntity(userId, entityType, entityId);
+}
+
+export async function getNoteById(id: string, userId: string) {
+  return repo.getNoteById(id, userId);
+}
+
+export async function updateNote(id: string, userId: string, params: UpdateNoteParams) {
+  const validated = updateNoteSchema.parse(params);
+  return repo.updateNote(id, userId, validated);
+}
+
+export async function deleteNote(id: string, userId: string) {
+  return repo.deleteNote(id, userId);
+}
+
 // ─── Spotify Sync ─────────────────────────────────────────────────
 
 export async function syncArtistFromSpotify(spotifyId: string) {
@@ -531,6 +567,12 @@ export async function syncTrackFromSpotify(spotifyId: string) {
   } as repo.CreateTrackInput);
 
   return track;
+}
+
+// ─── Smart Collections ───────────────────────────────────────────
+
+export async function evaluateSmartFilter(userId: string, filter: Record<string, unknown>) {
+  return repo.evaluateSmartFilter(userId, filter);
 }
 
 // ─── Analytics ────────────────────────────────────────────────────

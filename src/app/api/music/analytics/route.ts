@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-
+import { db } from "@/core/database";
+import { eq, sql, count, desc } from "drizzle-orm";
+import { musicJournal } from "@/modules/music";
 import * as repo from "@/modules/music/repository";
 
 export async function GET() {
@@ -8,11 +10,20 @@ export async function GET() {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const [topArtists, streaks, totalHours, yearlyStats] = await Promise.all([
+    const [topArtists, streaks, totalHours, yearlyStats, moodData] = await Promise.all([
       repo.getMostListenedArtists(userId),
       repo.getListeningStreaks(userId),
       repo.getTotalListeningHours(userId),
       repo.getYearlyListeningStats(userId, new Date().getFullYear()),
+      db
+        .select({
+          mood: musicJournal.mood,
+          count: count(),
+        })
+        .from(musicJournal)
+        .where(eq(musicJournal.userId, userId))
+        .groupBy(musicJournal.mood)
+        .orderBy(desc(count())),
     ]);
 
     const streakDates = streaks.map((s: any) => s.date);
@@ -48,6 +59,7 @@ export async function GET() {
         uniqueArtists: 0,
         uniqueAlbums: 0,
       },
+      moodData: moodData.map((m) => ({ mood: m.mood ?? "unset", count: Number(m.count) })),
     });
   } catch {
     return NextResponse.json({ error: "Failed to fetch analytics" }, { status: 500 });

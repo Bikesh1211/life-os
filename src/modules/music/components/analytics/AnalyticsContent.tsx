@@ -16,6 +16,7 @@ type AnalyticsData = {
   longestStreak: number;
   topArtists: Array<{ name: string; count: number }>;
   yearlyStats: { totalSongs: number; uniqueArtists: number; uniqueAlbums: number };
+  moodData: Array<{ mood: string; count: number }>;
 };
 
 export function AnalyticsContent() {
@@ -159,6 +160,30 @@ export function AnalyticsContent() {
             </div>
           </div>
         </section>
+
+        {data.moodData.length > 0 && (
+          <section>
+            <SectionHeading title="Moods" />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {data.moodData.map((m, i) => (
+                <motion.div
+                  key={m.mood}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 text-center"
+                >
+                  <p className="text-lg font-bold text-[var(--mantine-color-text,#c1c2c5)]">
+                    {m.count}
+                  </p>
+                  <p className="mt-1 text-xs capitalize text-[var(--mantine-color-dimmed,#5c5f66)]">
+                    {m.mood}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </MusicContainer>
   );

@@ -12,6 +12,7 @@ import {
   musicCollections,
   musicCollectionItems,
   musicGoalConfig,
+  musicNotes,
 } from "./schema";
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -549,6 +550,58 @@ export async function removeCollectionItem(id: string) {
   return item ?? null;
 }
 
+export async function evaluateSmartFilter(userId: string, filter: Record<string, unknown>) {
+  const type = filter.type as string | undefined;
+
+  if (type === "most-listened") {
+    const period = (filter.period as string) ?? "month";
+    const daysAgo = period === "week" ? 7 : period === "year" ? 365 : 30;
+    const since = new Date(Date.now() - daysAgo * 86400000);
+
+    const rows = await db
+      .select({
+        entityId: musicListeningHistory.trackId,
+        count: sql<number>`count(*)`,
+      })
+      .from(musicListeningHistory)
+      .where(
+        and(
+          eq(musicListeningHistory.userId, userId),
+          gte(musicListeningHistory.listenedAt, since),
+        ),
+      )
+      .groupBy(musicListeningHistory.trackId)
+      .orderBy(desc(sql`count(*)`))
+      .limit((filter.limit as number) ?? 20);
+
+    return rows.filter((r) => r.entityId).map((r) => ({
+      entityType: "track" as const,
+      entityId: r.entityId!,
+    }));
+  }
+
+  if (type === "highest-rated") {
+    const minScore = (filter.minScore as number) ?? 8;
+    const rows = await db
+      .select({
+        entityType: musicRatings.entityType,
+        entityId: musicRatings.entityId,
+      })
+      .from(musicRatings)
+      .where(
+        and(
+          eq(musicRatings.userId, userId),
+          gte(musicRatings.score, minScore),
+        ),
+      )
+      .limit((filter.limit as number) ?? 20);
+
+    return rows;
+  }
+
+  return [];
+}
+
 export async function reorderCollectionItem(id: string, position: number) {
   const [item] = await db
     .update(musicCollectionItems)
@@ -663,4 +716,48 @@ export async function getYearlyListeningStats(userId: string, year: number) {
     )
     .groupBy(sql`EXTRACT(MONTH FROM ${musicListeningHistory.listenedAt})`)
     .orderBy(sql`EXTRACT(MONTH FROM ${musicListeningHistory.listenedAt})`);
+}
+
+// ─── Notes ─────────────────────────────────────────────────────────
+
+export type MusicNote = typeof musicNotes.$inferSelect;
+export type CreateNoteInput = typeof musicNotes.$inferInsert;
+
+export async function createNote(input: CreateNoteInput) {
+  const [note] = await db.insert(musicNotes).values(input).returning();
+  return note;
+}
+
+export async function getNotesByEntity(userId: string, entityType: string, entityId: string) {
+  return db
+    .select()
+    .from(musicNotes)
+    .where(and(eq(musicNotes.userId, userId), eq(musicNotes.entityType, entityType), eq(musicNotes.entityId, entityId), isNull(musicNotes.deletedAt)))
+    .orderBy(desc(musicNotes.createdAt));
+}
+
+export async function getNoteById(id: string, userId: string) {
+  const [note] = await db
+    .select()
+    .from(musicNotes)
+    .where(and(eq(musicNotes.id, id), eq(musicNotes.userId, userId), isNull(musicNotes.deletedAt)));
+  return note;
+}
+
+export async function updateNote(id: string, userId: string, input: { content: string }) {
+  const [note] = await db
+    .update(musicNotes)
+    .set({ ...input, updatedAt: new Date() })
+    .where(and(eq(musicNotes.id, id), eq(musicNotes.userId, userId)))
+    .returning();
+  return note;
+}
+
+export async function deleteNote(id: string, userId: string) {
+  const [note] = await db
+    .update(musicNotes)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(musicNotes.id, id), eq(musicNotes.userId, userId)))
+    .returning();
+  return note;
 }

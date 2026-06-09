@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { searchQuerySchema } from "@/modules/music";
 import { searchItunes } from "@/modules/music/itunes";
 
 export async function GET(request: Request) {
@@ -9,18 +8,22 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const q = searchParams.get("q") ?? "";
-  const type = (searchParams.get("type") ?? "track") as "artist" | "album" | "track";
 
-  const parsed = searchQuerySchema.safeParse({ q, type });
-
-  if (!parsed.success) {
-    return NextResponse.json({ results: [], type, query: q, source: "error" });
+  if (!q.trim()) {
+    return NextResponse.json({ artists: [], albums: [], tracks: [], query: q, source: "itunes" });
   }
 
-  try {
-    const results = await searchItunes(parsed.data.q, parsed.data.type as "artist" | "album" | "track");
-    return NextResponse.json({ results, type: parsed.data.type, query: parsed.data.q, source: "itunes" });
-  } catch {
-    return NextResponse.json({ results: [], type: parsed.data.type, query: parsed.data.q, source: "error" });
-  }
+  const [artistsRes, albumsRes, tracksRes] = await Promise.allSettled([
+    searchItunes(q, "artist"),
+    searchItunes(q, "album"),
+    searchItunes(q, "track"),
+  ]);
+
+  return NextResponse.json({
+    artists: artistsRes.status === "fulfilled" ? artistsRes.value : [],
+    albums: albumsRes.status === "fulfilled" ? albumsRes.value : [],
+    tracks: tracksRes.status === "fulfilled" ? tracksRes.value : [],
+    query: q,
+    source: "itunes",
+  });
 }

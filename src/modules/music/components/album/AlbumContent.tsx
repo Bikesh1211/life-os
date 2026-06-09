@@ -1,14 +1,15 @@
 "use client";
 
-import { use } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { use, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { GradientHero } from "../design-system/GradientHero";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { SectionHeading } from "../design-system/SectionHeading";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
+import { AddToCollectionButton } from "../design-system/AddToCollectionButton";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { IconExternalLink } from "@tabler/icons-react";
+import { IconExternalLink, IconHeart, IconHeartFilled } from "@tabler/icons-react";
 
 type TrackItem = {
   id: string;
@@ -56,6 +57,32 @@ export function AlbumContent({ idPromise }: { idPromise: Promise<{ id: string }>
       const res = await fetch(`/api/music/albums/${id}`);
       if (!res.ok) throw new Error("Album not found");
       return res.json();
+    },
+  });
+
+  const queryClient = useQueryClient();
+  const [favoriting, setFavoriting] = useState(false);
+
+  const favoriteMutation = useMutation({
+    mutationFn: async (action: "add" | "remove") => {
+      if (action === "add") {
+        const res = await fetch("/api/music/favorites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ spotifyId: id, entityType: "album" }),
+        });
+        if (!res.ok) throw new Error("Failed to favorite");
+        return res.json();
+      } else {
+        const res = await fetch(`/api/music/favorites?entityType=album&entityId=${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Failed to unfavorite");
+        return res.json();
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["album", id] });
     },
   });
 
@@ -119,6 +146,37 @@ export function AlbumContent({ idPromise }: { idPromise: Promise<{ id: string }>
               ★ {data.stats.rating}/10
             </div>
           )}
+
+          <button
+            onClick={() => {
+              setFavoriting(true);
+              if (data.isFavorited) {
+                favoriteMutation.mutate("remove", {
+                  onSettled: () => setFavoriting(false),
+                });
+              } else {
+                favoriteMutation.mutate("add", {
+                  onSettled: () => setFavoriting(false),
+                });
+              }
+            }}
+            disabled={favoriting}
+            className="rounded-full px-3 py-1 text-sm backdrop-blur-sm transition-colors disabled:opacity-50"
+          >
+            {data.isFavorited ? (
+              <span className="flex items-center gap-1.5 text-pink-400">
+                <IconHeartFilled size={16} />
+                Favorited
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-white/80">
+                <IconHeart size={16} />
+                Favorite
+              </span>
+            )}
+          </button>
+
+          <AddToCollectionButton entityType="album" entityId={data.id} />
 
           {data.collectionViewUrl && (
             <Link

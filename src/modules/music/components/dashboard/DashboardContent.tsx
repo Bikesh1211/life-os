@@ -34,8 +34,8 @@ type DashboardData = {
   memories: Array<{
     id: string;
     year: number;
-    trackName: string;
-    artistName: string;
+    trackName?: string;
+    artistName?: string;
     contextText: string;
   }>;
   goals: Array<{
