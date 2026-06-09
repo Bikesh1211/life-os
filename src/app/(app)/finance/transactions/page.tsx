@@ -16,6 +16,7 @@ import {
   Menu,
   Pagination,
   ThemeIcon,
+  Box,
 } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -90,6 +91,7 @@ export default function TransactionsPage() {
               leftSection={<IconFilter size={16} />}
               clearable
               size="sm"
+              className="hidden sm:block"
             />
             <Select
               placeholder="Type"
@@ -99,108 +101,166 @@ export default function TransactionsPage() {
               ]}
               clearable
               size="sm"
+              className="hidden sm:block"
             />
           </Group>
 
-          <Table striped highlightOnHover>
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th>Date</Table.Th>
-                <Table.Th>Merchant</Table.Th>
-                <Table.Th>Category</Table.Th>
-                <Table.Th>Amount</Table.Th>
-                <Table.Th>Payment Method</Table.Th>
-                <Table.Th>Account</Table.Th>
-                <Table.Th>Actions</Table.Th>
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
-              {isLoading ? (
-                <Table.Tr>
-                  <Table.Td colSpan={7}>
-                    <Text c="dimmed" ta="center" py="xl">
-                      Loading...
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
-              ) : !data?.length ? (
-                <Table.Tr>
-                  <Table.Td colSpan={7}>
-                    <Text c="dimmed" ta="center" py="xl">
-                      No transactions yet. Add your first expense!
-                    </Text>
-                  </Table.Td>
-                </Table.Tr>
-              ) : (
-                data.map((tx) => (
-                  <Table.Tr key={tx.id}>
-                    <Table.Td>
-                      <Text size="sm">
-                        {dayjs(tx.transactionDate).format("MMM D, YYYY")}
+          {/* Mobile card view */}
+          <Box visibleFrom="sm" hidden>
+            {/* hidden utility — cards show below sm */}
+          </Box>
+          <Box hiddenFrom="sm">
+            {isLoading ? (
+              <Text c="dimmed" ta="center" py="xl">
+                Loading...
+              </Text>
+            ) : !data?.length ? (
+              <Text c="dimmed" ta="center" py="xl">
+                No transactions yet. Add your first expense!
+              </Text>
+            ) : (
+              <Stack gap="sm">
+                {data.map((tx) => (
+                  <Card key={tx.id} padding="sm" radius="md" withBorder>
+                    <Group justify="space-between" mb={4}>
+                      <Text size="sm" fw={600}>
+                        {tx.merchant ?? "—"}
                       </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Group gap="xs">
-                        <Text size="sm" fw={500}>
-                          {tx.merchant ?? "—"}
-                        </Text>
-                        {tx.isRecurring && (
-                          <Badge size="xs" variant="light" color="blue">
-                            Recurring
-                          </Badge>
-                        )}
-                      </Group>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {tx.categoryId ? "—" : "Uncategorized"}
-                      </Text>
-                    </Table.Td>
-                    <Table.Td>
                       <Text
                         size="sm"
-                        fw={600}
+                        fw={700}
                         c={tx.type === "income" ? "teal" : undefined}
                       >
                         {tx.type === "income" ? "+" : "-"}₹
                         {Number(tx.amount).toLocaleString()}
                       </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed" tt="capitalize">
-                        {tx.paymentMethod?.replace(/_/g, " ") ?? "—"}
+                    </Group>
+                    <Group gap="xs">
+                      <Text size="xs" c="dimmed">
+                        {dayjs(tx.transactionDate).format("MMM D, YYYY")}
                       </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Text size="sm" c="dimmed">
-                        {tx.accountId ? "—" : "—"}
+                      {tx.paymentMethod && (
+                        <>
+                          <Text size="xs" c="dimmed">·</Text>
+                          <Text size="xs" c="dimmed" tt="capitalize">
+                            {tx.paymentMethod.replace(/_/g, " ")}
+                          </Text>
+                        </>
+                      )}
+                      {tx.isRecurring && (
+                        <Badge size="xs" variant="light" color="blue">
+                          Recurring
+                        </Badge>
+                      )}
+                    </Group>
+                  </Card>
+                ))}
+              </Stack>
+            )}
+          </Box>
+
+          {/* Desktop table view */}
+          <Box visibleFrom="sm">
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Date</Table.Th>
+                  <Table.Th>Merchant</Table.Th>
+                  <Table.Th>Category</Table.Th>
+                  <Table.Th>Amount</Table.Th>
+                  <Table.Th>Payment Method</Table.Th>
+                  <Table.Th>Account</Table.Th>
+                  <Table.Th>Actions</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {isLoading ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={7}>
+                      <Text c="dimmed" ta="center" py="xl">
+                        Loading...
                       </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Menu shadow="md" width={150}>
-                        <Menu.Target>
-                          <ActionIcon variant="subtle" size="sm">
-                            <IconDotsVertical size={16} />
-                          </ActionIcon>
-                        </Menu.Target>
-                        <Menu.Dropdown>
-                          <Menu.Item leftSection={<IconEye size={14} />}>
-                            View
-                          </Menu.Item>
-                          <Menu.Item
-                            leftSection={<IconTrash size={14} />}
-                            color="red"
-                          >
-                            Delete
-                          </Menu.Item>
-                        </Menu.Dropdown>
-                      </Menu>
                     </Table.Td>
                   </Table.Tr>
-                ))
-              )}
-            </Table.Tbody>
-          </Table>
+                ) : !data?.length ? (
+                  <Table.Tr>
+                    <Table.Td colSpan={7}>
+                      <Text c="dimmed" ta="center" py="xl">
+                        No transactions yet. Add your first expense!
+                      </Text>
+                    </Table.Td>
+                  </Table.Tr>
+                ) : (
+                  data.map((tx) => (
+                    <Table.Tr key={tx.id}>
+                      <Table.Td>
+                        <Text size="sm">
+                          {dayjs(tx.transactionDate).format("MMM D, YYYY")}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Group gap="xs">
+                          <Text size="sm" fw={500}>
+                            {tx.merchant ?? "—"}
+                          </Text>
+                          {tx.isRecurring && (
+                            <Badge size="xs" variant="light" color="blue">
+                              Recurring
+                            </Badge>
+                          )}
+                        </Group>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">
+                          {tx.categoryId ? "—" : "Uncategorized"}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text
+                          size="sm"
+                          fw={600}
+                          c={tx.type === "income" ? "teal" : undefined}
+                        >
+                          {tx.type === "income" ? "+" : "-"}₹
+                          {Number(tx.amount).toLocaleString()}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed" tt="capitalize">
+                          {tx.paymentMethod?.replace(/_/g, " ") ?? "—"}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">
+                          {tx.accountId ? "—" : "—"}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Menu shadow="md" width={150}>
+                          <Menu.Target>
+                            <ActionIcon variant="subtle" size="sm">
+                              <IconDotsVertical size={16} />
+                            </ActionIcon>
+                          </Menu.Target>
+                          <Menu.Dropdown>
+                            <Menu.Item leftSection={<IconEye size={14} />}>
+                              View
+                            </Menu.Item>
+                            <Menu.Item
+                              leftSection={<IconTrash size={14} />}
+                              color="red"
+                            >
+                              Delete
+                            </Menu.Item>
+                          </Menu.Dropdown>
+                        </Menu>
+                      </Table.Td>
+                    </Table.Tr>
+                  ))
+                )}
+              </Table.Tbody>
+            </Table>
+          </Box>
 
           <Group justify="center" mt="md">
             <Pagination total={10} value={page} onChange={setPage} size="sm" />

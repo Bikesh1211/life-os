@@ -60,21 +60,19 @@ export function Header() {
     <AppShellHeader>
       <Group h="100%" px="md" justify="space-between">
         <Group gap={4}>
-          <div className="hidden sm:block">
-            <ActionIcon variant="subtle" size="lg" onClick={toggle} aria-label="Toggle sidebar">
-              <IconMenu2 size={20} />
-            </ActionIcon>
-          </div>
-          <Link href="/dashboard" className="no-underline">
+          <ActionIcon variant="subtle" size="lg" onClick={toggle} aria-label="Toggle sidebar" className="hidden sm:inline-flex">
+            <IconMenu2 size={20} />
+          </ActionIcon>
+          {/* <Link href="/dashboard" className="no-underline">
             <Text size="sm" fw={700} className="text-gray-900 dark:text-white">
               Life OS
             </Text>
-          </Link>
+          </Link> */}
           {breadcrumb && (
             <>
-              <Text size="sm" c="dimmed" className="mx-1 select-none">
+              {/* <Text size="sm" c="dimmed" className="mx-1 select-none">
                 /
-              </Text>
+              </Text> */}
               <Text size="sm" c="dimmed" visibleFrom="sm">
                 {breadcrumb.group}
               </Text>

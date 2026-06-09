@@ -76,7 +76,6 @@ export function MobileDrawer({ opened, onClose, children }: MobileDrawerProps) {
               background: "var(--mantine-color-body)",
               borderRight: "1px solid var(--mantine-color-default-border)",
               boxShadow: "4px 0 32px rgba(0,0,0,0.3)",
-              paddingTop: 56,
             }}
             variants={drawerVariants}
             initial="hidden"
