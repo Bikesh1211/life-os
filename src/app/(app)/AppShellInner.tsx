@@ -5,14 +5,15 @@ import { Sidebar, SidebarContent, Header, MobileDrawer, MobileNav } from "@/comp
 import { useAppShell } from "./AppShellProvider";
 
 export function AppShellInner({ children }: { children: React.ReactNode }) {
-  const { opened, mobileOpened, minimalChrome, closeMobile } = useAppShell();
+  const { opened, collapsed, mobileOpened, minimalChrome, closeMobile } = useAppShell();
+  const sidebarWidth = collapsed ? 64 : 280;
 
   return (
     <>
       <AppShell
         padding="md"
         navbar={{
-          width: 280,
+          width: sidebarWidth,
           breakpoint: "sm",
           collapsed: { desktop: minimalChrome || !opened, mobile: true },
         }}
@@ -20,7 +21,7 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
         classNames={{ navbar: "sidebar-navbar", main: "sidebar-main" }}
       >
         <Header />
-        {!minimalChrome && <Sidebar />}
+        <Sidebar />
         <AppShellMain>{children}</AppShellMain>
       </AppShell>
 
@@ -28,8 +29,18 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
 
       {!minimalChrome && (
         <MobileDrawer opened={mobileOpened} onClose={closeMobile}>
-          <div className="sidebar-navbar-inner h-full">
-            <SidebarContent />
+          <div className="h-full flex flex-col">
+            <div className="flex items-center gap-2.5 px-4 py-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-[10px] font-bold text-white">
+                L
+              </div>
+              <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
+                Life OS
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <SidebarContent showBrand={false} />
+            </div>
           </div>
         </MobileDrawer>
       )}
