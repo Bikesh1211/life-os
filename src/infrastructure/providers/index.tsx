@@ -9,7 +9,7 @@ import { ServiceWorkerRegister } from "./ServiceWorkerRegister";
   const localization = {
     signIn: {
       start: {
-        title: "Sign in to FocusLinq",
+        title: "Sign in",
         subtitle: "Welcome back",
       },
     },
