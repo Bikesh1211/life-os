@@ -7,6 +7,14 @@ import { MusicContainer } from "../design-system/MusicContainer";
 import { SectionHeading } from "../design-system/SectionHeading";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { motion } from "framer-motion";
+import Link from "next/link";
+
+type TrackItem = {
+  id: string;
+  title: string;
+  duration: number | null;
+  trackNumber: number | null;
+};
 
 type AlbumData = {
   id: string;
@@ -16,9 +24,17 @@ type AlbumData = {
   coverArtUrl: string | null;
   releaseDate: string | null;
   totalTracks: number | null;
-  tracks: Array<{ id: string; title: string; duration: number | null; trackNumber: number | null }>;
+  tracks: TrackItem[];
+  isFavorited: boolean;
   stats: { plays: number; rating: number | null; listeningHours: number };
 };
+
+function formatDuration(seconds: number | null): string {
+  if (!seconds) return "--:--";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 export function AlbumContent({ idPromise }: { idPromise: Promise<{ id: string }> }) {
   const { id } = use(idPromise);
@@ -50,13 +66,6 @@ export function AlbumContent({ idPromise }: { idPromise: Promise<{ id: string }>
         <MusicEmptyState title="Album not found" description="This album doesn't exist in your library." />
       </MusicContainer>
     );
-  }
-
-  function formatDuration(seconds: number | null): string {
-    if (!seconds) return "--:--";
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
   }
 
   return (
@@ -100,17 +109,21 @@ export function AlbumContent({ idPromise }: { idPromise: Promise<{ id: string }>
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.03 }}
-                  className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]"
                 >
-                  <span className="w-6 text-right text-sm text-[var(--mantine-color-dimmed,#5c5f66)]">
-                    {track.trackNumber ?? i + 1}
-                  </span>
-                  <span className="flex-1 text-sm text-[var(--mantine-color-text,#c1c2c5)]">
-                    {track.title}
-                  </span>
-                  <span className="text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">
-                    {formatDuration(track.duration)}
-                  </span>
+                  <Link
+                    href={`/music/tracks/${track.id}`}
+                    className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]"
+                  >
+                    <span className="w-6 text-right text-sm text-[var(--mantine-color-dimmed,#5c5f66)]">
+                      {track.trackNumber ?? i + 1}
+                    </span>
+                    <span className="flex-1 text-sm text-[var(--mantine-color-text,#c1c2c5)]">
+                      {track.title}
+                    </span>
+                    <span className="text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">
+                      {formatDuration(track.duration)}
+                    </span>
+                  </Link>
                 </motion.div>
               ))}
             </div>

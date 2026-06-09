@@ -14,20 +14,24 @@ export async function GET(
   const { id } = await params;
 
   try {
-    // iTunes proxy IDs — skip DB (no valid UUID) and iTunes lookup
+    // iTunes proxy IDs — skip DB, fetch tracks from iTunes
     if (id.startsWith("itunes-")) {
-      const { lookupItunesEntity } = await import("@/modules/music/itunes");
-      const entity = await lookupItunesEntity(id.replace("itunes-", ""));
-      if (!entity) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      const { getAlbumTracks } = await import("@/modules/music/itunes");
+      const data = await getAlbumTracks(id.replace("itunes-", ""));
       return NextResponse.json({
-        id: entity.id,
-        title: entity.title,
-        artistName: entity.subtitle,
-        coverArtUrl: entity.imageUrl,
-        releaseDate: entity.releaseDate,
-        totalTracks: null,
-        tracks: [],
+        id,
+        title: data.title,
+        artistName: data.artistName,
+        coverArtUrl: data.coverArtUrl,
+        releaseDate: data.releaseDate,
+        totalTracks: data.totalTracks,
         isFavorited: false,
+        tracks: data.tracks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          duration: t.duration,
+          trackNumber: t.trackNumber,
+        })),
         stats: { plays: 0, rating: null, listeningHours: 0 },
       });
     }

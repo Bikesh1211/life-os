@@ -21,10 +21,11 @@ type ItunesResult = {
   collectionName?: string;
   trackId?: number;
   trackName?: string;
+  trackNumber?: number;
+  trackCount?: number;
   artworkUrl100?: string;
   primaryGenreName?: string;
   trackTimeMillis?: number;
-  trackCount?: number;
   releaseDate?: string;
 };
 
@@ -143,4 +144,80 @@ export async function getExploreAlbums(limit = 12) {
     imageUrl: a.imageUrl,
     type: "album" as const,
   }));
+}
+
+export async function getArtistAlbumsAndTracks(artistId: string) {
+  const url = (entity: string) => `${ITUNES_LOOKUP}?id=${artistId}&entity=${entity}&limit=50`;
+
+  const [albumRes, trackRes] = await Promise.all([
+    fetchWithTimeout(url("album")),
+    fetchWithTimeout(url("song")),
+  ]);
+
+  if (!albumRes.ok || !trackRes.ok) {
+    throw new Error("iTunes artist lookup failed");
+  }
+
+  const albumData: ItunesSearchResponse = await albumRes.json();
+  const trackData: ItunesSearchResponse = await trackRes.json();
+
+  const artist = albumData.results.find((r) => r.wrapperType === "artist");
+
+  const albums = albumData.results
+    .filter((r) => r.wrapperType === "collection")
+    .map((r) => ({
+      id: `itunes-${r.collectionId}`,
+      title: r.collectionName ?? "",
+      coverArtUrl: pickImage(r.artworkUrl100),
+      releaseDate: r.releaseDate ?? null,
+      trackCount: r.trackCount ?? null,
+    }));
+
+  const tracks = trackData.results
+    .filter((r) => r.wrapperType === "track")
+    .map((r) => ({
+      id: `itunes-${r.trackId}`,
+      title: r.trackName ?? "",
+      duration: r.trackTimeMillis ? Math.round(r.trackTimeMillis / 1000) : null,
+      collectionId: r.collectionId ? `itunes-${r.collectionId}` : null,
+      collectionName: r.collectionName ?? null,
+    }));
+
+  return {
+    name: artist?.artistName ?? "Unknown Artist",
+    imageUrl: pickImage(artist?.artworkUrl100),
+    genres: artist?.primaryGenreName ? [artist.primaryGenreName] : [],
+    albums,
+    tracks,
+  };
+}
+
+export async function getAlbumTracks(collectionId: string) {
+  const res = await fetchWithTimeout(
+    `${ITUNES_LOOKUP}?id=${collectionId}&entity=song`,
+  );
+
+  if (!res.ok) throw new Error("iTunes album lookup failed");
+
+  const data: ItunesSearchResponse = await res.json();
+
+  const album = data.results.find((r) => r.wrapperType === "collection");
+
+  const tracks = data.results
+    .filter((r) => r.wrapperType === "track")
+    .map((r) => ({
+      id: `itunes-${r.trackId}`,
+      title: r.trackName ?? "",
+      duration: r.trackTimeMillis ? Math.round(r.trackTimeMillis / 1000) : null,
+      trackNumber: r.trackNumber ?? null,
+    }));
+
+  return {
+    title: album?.collectionName ?? "Unknown Album",
+    artistName: album?.artistName ?? "Unknown Artist",
+    coverArtUrl: pickImage(album?.artworkUrl100),
+    releaseDate: album?.releaseDate ?? null,
+    totalTracks: album?.trackCount ?? tracks.length,
+    tracks,
+  };
 }

@@ -14,20 +14,25 @@ export async function GET(
   const { id } = await params;
 
   try {
-    // iTunes proxy IDs — skip DB (no valid UUID) and iTunes lookup
+    // iTunes proxy IDs — skip DB, fetch from iTunes
     if (id.startsWith("itunes-")) {
-      const { lookupItunesEntity } = await import("@/modules/music/itunes");
-      const entity = await lookupItunesEntity(id.replace("itunes-", ""));
-      if (!entity) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      const { getArtistAlbumsAndTracks } = await import("@/modules/music/itunes");
+      const data = await getArtistAlbumsAndTracks(id.replace("itunes-", ""));
       return NextResponse.json({
-        id: entity.id,
-        name: entity.title,
-        coverArtUrl: entity.imageUrl,
-        imageUrl: entity.imageUrl,
-        genres: [],
+        id,
+        name: data.name,
+        imageUrl: data.imageUrl,
+        coverArtUrl: data.imageUrl,
+        genres: data.genres,
         popularity: null,
-        albums: [],
         isFavorited: false,
+        albums: data.albums.map((a) => ({
+          id: a.id,
+          title: a.title,
+          coverArtUrl: a.coverArtUrl,
+          releaseDate: a.releaseDate,
+        })),
+        topTracks: data.tracks,
         stats: { firstListened: "—", totalPlays: 0, listeningHours: 0 },
       });
     }
@@ -52,6 +57,7 @@ export async function GET(
     if (!artist) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const albums = await repo.getAlbumsByArtist(artist.id);
+    const topTracks = await repo.getTracksByArtist(artist.id);
     const plays = await repo.getListeningHistoryByDateRange(
       userId,
       new Date(0),
@@ -77,6 +83,11 @@ export async function GET(
         title: a.title,
         coverArtUrl: a.coverArtUrl,
         releaseDate: a.releaseDate?.toISOString() ?? null,
+      })),
+      topTracks: topTracks.map((t) => ({
+        id: t.id,
+        title: t.title,
+        duration: t.duration,
       })),
       stats: { firstListened: "—", totalPlays, listeningHours: 0 },
     });
