@@ -23,6 +23,7 @@ import {
   IconSchool,
   IconGridPattern,
   IconBooks,
+  IconMusic,
   IconPackage,
   IconShirt,
   IconDeviceLaptop,
@@ -58,6 +59,7 @@ import {
   IconArchive,
   IconLogout,
   IconCompass,
+  IconSearch,
 } from "@tabler/icons-react";
 
 export type NavItem = {
@@ -268,6 +270,43 @@ export const navigation: NavGroup[] = [
         description: "Your library",
         icon: IconBooks,
         featureId: "library",
+      },
+      {
+        label: "Music",
+        route: "/music",
+        description: "Music tracking & discovery",
+        icon: IconMusic,
+        featureId: "music",
+        children: [
+          {
+            label: "Library",
+            route: "/music/library",
+            description: "Your saved music",
+            icon: IconBooks,
+            featureId: "music_library",
+          },
+          {
+            label: "History",
+            route: "/music/history",
+            description: "Listening history",
+            icon: IconRepeat,
+            featureId: "music_history",
+          },
+          {
+            label: "Journal",
+            route: "/music/journal",
+            description: "Music journal",
+            icon: IconBook,
+            featureId: "music_journal",
+          },
+          {
+            label: "Analytics",
+            route: "/music/analytics",
+            description: "Listening insights",
+            icon: IconChartBar,
+            featureId: "music_analytics",
+          },
+        ],
       },
     ],
   },

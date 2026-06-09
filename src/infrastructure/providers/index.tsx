@@ -6,7 +6,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { theme } from "@/core/design-system";
 import { ServiceWorkerRegister } from "./ServiceWorkerRegister";
-
+  const localization = {
+    signIn: {
+      start: {
+        title: "Sign in to FocusLinq",
+        subtitle: "Welcome back",
+      },
+    },
+  } as const;
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
     () =>
@@ -21,7 +28,7 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ClerkProvider>
+      <ClerkProvider localization={localization}>
       <QueryClientProvider client={queryClient}>
         <MantineProvider theme={theme} defaultColorScheme="auto">
           <ServiceWorkerRegister />

@@ -1,0 +1,25 @@
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+
+import { getGoalConfigs } from "@/modules/music";
+
+export async function GET() {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const configs = await getGoalConfigs(userId);
+
+    const goals = configs.map((c: any) => ({
+      id: c.id,
+      label: `${c.targetCount ?? 0} ${c.targetType}`,
+      current: c.currentCount ?? 0,
+      target: c.targetCount ?? 1,
+      unit: c.targetType ?? "items",
+    }));
+
+    return NextResponse.json({ goals });
+  } catch {
+    return NextResponse.json({ error: "Failed to load goals" }, { status: 500 });
+  }
+}
