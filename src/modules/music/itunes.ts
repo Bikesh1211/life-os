@@ -99,7 +99,7 @@ export async function lookupItunesEntity(id: string) {
 
   const data: ItunesSearchResponse = await res.json();
   const item = data.results[0];
-  if (!item) throw new Error("Not found");
+  if (!item) return null;
 
   return {
     id: `itunes-${id}`,

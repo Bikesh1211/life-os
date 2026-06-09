@@ -14,6 +14,26 @@ export async function GET(
   const { id } = await params;
 
   try {
+    // iTunes proxy IDs — skip DB (no valid UUID) and iTunes lookup
+    if (id.startsWith("itunes-")) {
+      const { lookupItunesEntity } = await import("@/modules/music/itunes");
+      const entity = await lookupItunesEntity(id.replace("itunes-", ""));
+      if (!entity) return NextResponse.json({ error: "Not found" }, { status: 404 });
+      return NextResponse.json({
+        id: entity.id,
+        title: entity.title,
+        artistName: entity.subtitle,
+        albumTitle: entity.collectionName,
+        albumCoverUrl: entity.imageUrl,
+        duration: null,
+        explicit: false,
+        popularity: null,
+        isFavorited: false,
+        journalEntries: [],
+        memories: [],
+      });
+    }
+
     // Try local UUID first
     let track = await repo.getTrackById(id);
 
@@ -24,23 +44,6 @@ export async function GET(
 
     // Sync from Spotify if still not found
     if (!track) {
-      if (id.startsWith("itunes-")) {
-        const { lookupItunesEntity } = await import("@/modules/music/itunes");
-        const entity = await lookupItunesEntity(id.replace("itunes-", ""));
-        return NextResponse.json({
-          id: entity.id,
-          title: entity.title,
-          artistName: entity.subtitle,
-          albumTitle: entity.collectionName,
-          albumCoverUrl: entity.imageUrl,
-          duration: null,
-          explicit: false,
-          popularity: null,
-          isFavorited: false,
-          journalEntries: [],
-          memories: [],
-        });
-      }
       try {
         track = await syncTrackFromSpotify(id);
       } catch {
