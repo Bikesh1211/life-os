@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { IconMenu2, IconLayoutDashboard, IconPencilBolt, IconUser, IconTimelineEvent } from "@tabler/icons-react";
+import { IconMenu2, IconHome2, IconPencilBolt, IconUser, IconCoin } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 
@@ -10,13 +10,13 @@ interface Tab {
   id: string;
   label: string;
   href: string;
-  icon: typeof IconLayoutDashboard;
+  icon: typeof IconHome2;
 }
 
 const tabs: Tab[] = [
-  { id: "dashboard", label: "Home", href: "/dashboard", icon: IconLayoutDashboard },
+  { id: "dashboard", label: "Home", href: "/dashboard", icon: IconHome2 },
   { id: "quick_note", label: "Quick Note", href: "/quick-note", icon: IconPencilBolt },
-  { id: "timeline", label: "Timeline", href: "/timeline", icon: IconTimelineEvent },
+  { id: "finance", label: "Finance", href: "/finance/dashboard", icon: IconCoin },
   { id: "profile", label: "Profile", href: "/settings", icon: IconUser },
 ];
 

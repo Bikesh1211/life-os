@@ -24,7 +24,7 @@ export function DashboardContent({ userId, taskSummary }: DashboardContentProps)
       <div>
         <Title order={2}>Dashboard</Title>
         <Text c="dimmed" size="sm">
-          Welcome to Life OS
+          Welcome to Focus Linq
         </Text>
       </div>
 

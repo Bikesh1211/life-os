@@ -47,10 +47,10 @@ export default function SignInPage() {
       initial="hidden"
       animate="visible"
     >
-      {/* ── Brand Section ── */}
+      {/* ── Brand Section (hidden on mobile) ── */}
       <motion.div
         variants={itemVariants}
-        className="flex-1 max-w-lg space-y-4 text-center lg:text-left"
+        className="hidden lg:block flex-1 max-w-lg space-y-4 text-center lg:text-left"
       >
         <motion.div variants={itemVariants} className="space-y-2">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-[var(--mantine-color-text)]">
