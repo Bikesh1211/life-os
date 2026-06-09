@@ -42,6 +42,44 @@ The personal finance tracker plugin at `src/modules/expenses/`. Owns all financi
 **Backdated Entry**:
 A journal entry with an `eventDate` that differs from its `createdAt`. The user creates the entry on one date but writes about a different (past) date. Displayed in the journal timeline under its `eventDate` with a "Written [date]" badge indicating when it was actually created. The `eventDate` column is optional — if null, the entry is a normal "written today" entry.
 
+**Music** (plugin):
+The music tracking plugin at `src/modules/music/`. Route group is `/music/*`. Feature ID is `music`. Owns all music-related data — reference metadata (artists, albums, tracks synced from MusicBrainz), listening history, music journal, memories, ratings, favorites, collections, and goal configuration. Sub-routes: Overview (`/music`), Library (`/music/library`), History (`/music/history`), Journal (`/music/journal`), Ratings (`/music/ratings`), Analytics (`/music/analytics`), Goals (`/music/goals`).
+
+**Spotify**:
+A secondary external data provider for the Music plugin. Spotify fields (`spotifyUri`, `spotifyId`, `spotifyPopularity`) enrich reference data with cover art, popularity scores, and album/track metadata. Spotify OAuth is optional — used only for importing the user's personal listening history. Never the canonical data source; MusicBrainz remains the primary reference provider.
+
+**MusicBrainz**:
+The primary external metadata provider for the Music plugin. MusicBrainz IDs (`musicBrainzId`) are the canonical external identifiers for artists, albums (Release Groups), and tracks. The service layer caches MusicBrainz data locally on first query (pull-on-demand pattern). Cover art is fetched from the Cover Art Archive.
+
+**Music Reference Data**:
+The `music_artists`, `music_albums`, and `music_tracks` tables. Populated from MusicBrainz on first search query. Not scoped to any user — these are shared reference tables. Never written by users directly; only by the MusicBrainz sync service layer.
+
+**Music Listening History**:
+A scrobble-model log of songs listened to, stored in `music_listening_history`. Free-form entry supported (artist name + track name without a linked MusicBrainz reference). Analytics (most listened, streaks, genre breakdown) are computed on-read.
+
+**Music Journal**:
+A reflection entry linked to a track, album, or artist. Stored in `music_journal`. Separate from the general Journal plugin — music journal entries have music-specific fields (trackId, albumId, artistId) that don't fit the generic journal schema.
+
+**Music Memory**:
+A lightweight link between a track/artist and a life context. Stored in `music_memories`. Contains context text and an optional `linkedEventId` pointing to a Timeline plugin event. Distinct from the richer Music Journal.
+
+**Music Rating**:
+A user score (1–10) for a track, album, or artist. Polymorphic — `entityType` + `entityId` pattern on `music_ratings`. Optional review text.
+
+**Music Favorite**:
+A user's favorited entity — track, album, artist, genre, or decade. Polymorphic on `music_favorites`. Genre/decade favorites use string keys (e.g., `"rock"`, `"2020s"`).
+
+**Music Collection**:
+A user-curated or smart-generated group of tracks/albums/artists. Custom collections are manually populated. Smart collections are computed on-read (e.g., "Recently listened", "Highest rated") using query parameters stored as JSON in `smartFilter`.
+
+**Music Goal Config**:
+Music-specific tracking configuration linked to a Goal from the Goals plugin. Stores `targetType` (albums, tracks, genres, countries), `targetCount`, and `currentCount`. The goal itself lives in the `goals` table (Goals plugin); Music only stores the additional context.
+
+**Soundtrack Timeline**:
+A computed chronological view at `/music/timeline` joining music memories, listening history, and timeline event links to render a personal music-themed timeline. No dedicated table — derived on-read.
+
+*Avoid*: Playlist (prefer Collection instead), Scrobble (prefer Listening History), Rating Score (redundant — just Rating), Memory vs Journal (Memories are lightweight links to life events; Journal is active reflection)
+
 ## Example dialogue
 
 **Dev**: I need to add a priority field to Tasks. Where's the schema?
