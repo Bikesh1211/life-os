@@ -7,7 +7,7 @@ body {
   padding: 0;
 }
 
-/* ── Auth Layout ── */
+/* ── Premium Auth Layout ── */
 
 .auth-layout {
   position: relative;
@@ -16,39 +16,138 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: linear-gradient(135deg, #07070a 0%, #0d0d14 50%, #0a0a12 100%);
 }
 
-.auth-layout::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 80% 60% at 50% 45%, black 20%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 45%, black 20%, transparent 70%);
-  pointer-events: none;
-}
-
-.auth-layout::after {
-  content: "";
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  top: 0;
-  left: 0;
-  background:
-    radial-gradient(ellipse 60% 50% at 50% 40%, rgba(59, 130, 246, 0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 40% at 80% 80%, rgba(139, 92, 246, 0.04) 0%, transparent 60%),
-    radial-gradient(ellipse 30% 30% at 20% 20%, rgba(59, 130, 246, 0.03) 0%, transparent 50%);
-  pointer-events: none;
-}
-
-.auth-layout > * {
+.auth-layout > *:not(.auth-bg):not(.auth-blob):not(.auth-grid) {
   position: relative;
   z-index: 1;
+}
+
+/* Animated gradient background */
+.auth-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  transition: background 0.5s ease;
+}
+
+[data-mantine-color-scheme="dark"] .auth-bg {
+  background: linear-gradient(135deg, #070714 0%, #0a0a24 30%, #15082e 50%, #0a0a24 70%, #070714 100%);
+  background-size: 200% 200%;
+  animation: authGradientShift 20s ease infinite;
+}
+
+[data-mantine-color-scheme="light"] .auth-bg {
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 30%, #f5f0ff 50%, #e8eeff 70%, #f0f4ff 100%);
+  background-size: 200% 200%;
+  animation: authGradientShift 20s ease infinite;
+}
+
+@keyframes authGradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* Floating decorative blobs */
+.auth-blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+[data-mantine-color-scheme="dark"] .auth-blob-1 {
+  width: 500px;
+  height: 500px;
+  background: #6366f1;
+  top: -150px;
+  right: -100px;
+  opacity: 0.12;
+  animation: authBlobFloat 25s ease infinite;
+}
+
+[data-mantine-color-scheme="dark"] .auth-blob-2 {
+  width: 350px;
+  height: 350px;
+  background: #8b5cf6;
+  bottom: -80px;
+  left: -80px;
+  opacity: 0.1;
+  animation: authBlobFloat 20s ease infinite reverse;
+}
+
+[data-mantine-color-scheme="dark"] .auth-blob-3 {
+  width: 250px;
+  height: 250px;
+  background: #3b82f6;
+  top: 40%;
+  left: 60%;
+  opacity: 0.08;
+  animation: authBlobFloat 22s ease infinite;
+}
+
+[data-mantine-color-scheme="light"] .auth-blob-1 {
+  width: 500px;
+  height: 500px;
+  background: #818cf8;
+  top: -150px;
+  right: -100px;
+  opacity: 0.08;
+  animation: authBlobFloat 25s ease infinite;
+}
+
+[data-mantine-color-scheme="light"] .auth-blob-2 {
+  width: 350px;
+  height: 350px;
+  background: #a78bfa;
+  bottom: -80px;
+  left: -80px;
+  opacity: 0.06;
+  animation: authBlobFloat 20s ease infinite reverse;
+}
+
+[data-mantine-color-scheme="light"] .auth-blob-3 {
+  width: 250px;
+  height: 250px;
+  background: #93c5fd;
+  top: 40%;
+  left: 60%;
+  opacity: 0.05;
+  animation: authBlobFloat 22s ease infinite;
+}
+
+@keyframes authBlobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(40px, -30px) scale(1.05); }
+  50% { transform: translate(-20px, 20px) scale(0.95); }
+  75% { transform: translate(30px, 30px) scale(1.02); }
+}
+
+/* Grid overlay */
+.auth-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+[data-mantine-color-scheme="dark"] .auth-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 70%);
+}
+
+[data-mantine-color-scheme="light"] .auth-grid {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 70%);
 }
 
 /* Sidebar transition */
