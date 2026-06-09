@@ -14,7 +14,7 @@ export async function GET(
   const { id } = await params;
 
   try {
-    // iTunes proxy IDs — skip DB (no valid UUID) and iTunes lookup
+    // iTunes proxy IDs — skip DB, fetch from iTunes
     if (id.startsWith("itunes-")) {
       const { lookupItunesEntity } = await import("@/modules/music/itunes");
       const entity = await lookupItunesEntity(id.replace("itunes-", ""));
@@ -23,12 +23,24 @@ export async function GET(
         id: entity.id,
         title: entity.title,
         artistName: entity.subtitle,
+        artistId: String(entity.artistId ?? ""),
+        albumId: entity.collectionId ? `itunes-${entity.collectionId}` : null,
         albumTitle: entity.collectionName,
         albumCoverUrl: entity.imageUrl,
-        duration: null,
-        explicit: false,
+        duration: entity.trackTimeMillis ? Math.round(entity.trackTimeMillis / 1000) : null,
+        trackNumber: entity.trackNumber,
+        discNumber: entity.discNumber,
+        explicit: entity.trackExplicitness === "explicit" || entity.collectionExplicitness === "explicit",
+        genre: entity.primaryGenreName,
+        releaseDate: entity.releaseDate,
+        previewUrl: entity.previewUrl,
+        trackViewUrl: entity.trackViewUrl,
+        albumViewUrl: entity.collectionViewUrl,
+        artistViewUrl: entity.artistViewUrl,
+        isStreamable: entity.isStreamable,
         popularity: null,
         isFavorited: false,
+        rating: null,
         journalEntries: [],
         memories: [],
       });

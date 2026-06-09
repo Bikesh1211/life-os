@@ -17,16 +17,38 @@ type ItunesResult = {
   wrapperType: string;
   artistId: number;
   artistName: string;
+  artistType?: string;
+  artistLinkUrl?: string;
+  artistViewUrl?: string;
+  amgArtistId?: number;
   collectionId?: number;
   collectionName?: string;
+  collectionType?: string;
+  collectionCensoredName?: string;
+  collectionExplicitness?: string;
+  collectionViewUrl?: string;
+  collectionPrice?: number;
   trackId?: number;
   trackName?: string;
+  trackCensoredName?: string;
   trackNumber?: number;
   trackCount?: number;
+  discNumber?: number;
+  discCount?: number;
+  trackExplicitness?: string;
+  trackViewUrl?: string;
+  trackPrice?: number;
+  previewUrl?: string;
   artworkUrl100?: string;
+  artworkUrl60?: string;
   primaryGenreName?: string;
   trackTimeMillis?: number;
   releaseDate?: string;
+  copyright?: string;
+  country?: string;
+  currency?: string;
+  isStreamable?: boolean;
+  kind?: string;
 };
 
 type ItunesSearchResponse = {
@@ -109,10 +131,28 @@ export async function lookupItunesEntity(id: string) {
     imageUrl: pickImage(item.artworkUrl100),
     wrapperType: item.wrapperType,
     artistName: item.artistName,
+    artistId: item.artistId,
+    artistType: item.artistType ?? null,
+    artistLinkUrl: item.artistLinkUrl ?? null,
+    artistViewUrl: item.artistViewUrl ?? null,
+    collectionId: item.collectionId ?? null,
     collectionName: item.collectionName ?? null,
+    collectionViewUrl: item.collectionViewUrl ?? null,
+    collectionExplicitness: item.collectionExplicitness ?? null,
     trackName: item.trackName ?? null,
+    trackNumber: item.trackNumber ?? null,
+    discNumber: item.discNumber ?? null,
+    trackExplicitness: item.trackExplicitness ?? null,
+    trackViewUrl: item.trackViewUrl ?? null,
+    previewUrl: item.previewUrl ?? null,
     releaseDate: item.releaseDate ?? null,
     primaryGenreName: item.primaryGenreName ?? null,
+    copyright: item.copyright ?? null,
+    country: item.country ?? null,
+    currency: item.currency ?? null,
+    isStreamable: item.isStreamable ?? null,
+    trackCount: item.trackCount ?? null,
+    trackTimeMillis: item.trackTimeMillis ?? null,
   };
 }
 
@@ -169,8 +209,11 @@ export async function getArtistAlbumsAndTracks(artistId: string) {
       id: `itunes-${r.collectionId}`,
       title: r.collectionName ?? "",
       coverArtUrl: pickImage(r.artworkUrl100),
+      collectionViewUrl: r.collectionViewUrl ?? null,
       releaseDate: r.releaseDate ?? null,
       trackCount: r.trackCount ?? null,
+      primaryGenreName: r.primaryGenreName ?? null,
+      collectionExplicitness: r.collectionExplicitness ?? null,
     }));
 
   const tracks = trackData.results
@@ -181,11 +224,17 @@ export async function getArtistAlbumsAndTracks(artistId: string) {
       duration: r.trackTimeMillis ? Math.round(r.trackTimeMillis / 1000) : null,
       collectionId: r.collectionId ? `itunes-${r.collectionId}` : null,
       collectionName: r.collectionName ?? null,
+      previewUrl: r.previewUrl ?? null,
+      trackViewUrl: r.trackViewUrl ?? null,
+      explicit: r.trackExplicitness === "explicit",
+      trackNumber: r.trackNumber ?? null,
     }));
 
   return {
     name: artist?.artistName ?? "Unknown Artist",
     imageUrl: pickImage(artist?.artworkUrl100),
+    artistType: artist?.artistType ?? null,
+    artistLinkUrl: artist?.artistLinkUrl ?? null,
     genres: artist?.primaryGenreName ? [artist.primaryGenreName] : [],
     albums,
     tracks,
@@ -210,13 +259,27 @@ export async function getAlbumTracks(collectionId: string) {
       title: r.trackName ?? "",
       duration: r.trackTimeMillis ? Math.round(r.trackTimeMillis / 1000) : null,
       trackNumber: r.trackNumber ?? null,
+      discNumber: r.discNumber ?? null,
+      explicit: r.trackExplicitness === "explicit",
+      previewUrl: r.previewUrl ?? null,
+      trackViewUrl: r.trackViewUrl ?? null,
+      artistName: r.artistName,
     }));
 
   return {
+    id: `itunes-${collectionId}`,
     title: album?.collectionName ?? "Unknown Album",
+    artistId: album?.artistId ?? null,
     artistName: album?.artistName ?? "Unknown Artist",
+    artistViewUrl: album?.artistViewUrl ?? null,
     coverArtUrl: pickImage(album?.artworkUrl100),
+    collectionViewUrl: album?.collectionViewUrl ?? null,
+    collectionExplicitness: album?.collectionExplicitness ?? null,
     releaseDate: album?.releaseDate ?? null,
+    primaryGenreName: album?.primaryGenreName ?? null,
+    copyright: album?.copyright ?? null,
+    country: album?.country ?? null,
+    currency: album?.currency ?? null,
     totalTracks: album?.trackCount ?? tracks.length,
     tracks,
   };

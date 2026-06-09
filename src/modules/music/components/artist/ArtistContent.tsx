@@ -9,13 +9,27 @@ import { SectionHeading } from "../design-system/SectionHeading";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { IconExternalLink } from "@tabler/icons-react";
 
 type TrackItem = {
   id: string;
   title: string;
   duration: number | null;
-  collectionId?: string | null;
   collectionName?: string | null;
+  explicit?: boolean;
+  previewUrl?: string | null;
+  trackViewUrl?: string | null;
+  trackNumber?: number | null;
+};
+
+type AlbumItem = {
+  id: string;
+  title: string;
+  coverArtUrl: string | null;
+  releaseDate: string | null;
+  trackCount: number | null;
+  genre: string | null;
+  explicit: boolean;
 };
 
 type ArtistData = {
@@ -23,7 +37,9 @@ type ArtistData = {
   name: string;
   imageUrl: string | null;
   genres: string[];
-  albums: Array<{ id: string; title: string; coverArtUrl: string | null; releaseDate: string | null }>;
+  artistType: string | null;
+  artistLinkUrl: string | null;
+  albums: AlbumItem[];
   topTracks: TrackItem[];
   isFavorited: boolean;
   stats: { firstListened: string; totalPlays: number; listeningHours: number };
@@ -78,16 +94,36 @@ export function ArtistContent({ idPromise }: { idPromise: Promise<{ id: string }
         title={data.name}
         subtitle={data.genres.slice(0, 3).join(" · ")}
       >
-        <div className="flex flex-wrap gap-3">
-          <div className="rounded-full bg-white/10 px-4 py-1.5 text-sm text-white backdrop-blur-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          {data.artistType && (
+            <div className="rounded-full bg-white/10 px-3 py-1 text-sm text-white/80 backdrop-blur-sm">
+              {data.artistType === "Group" ? "Group" : data.artistType === "Person" ? "Solo Artist" : data.artistType}
+            </div>
+          )}
+
+          <div className="rounded-full bg-white/10 px-3 py-1 text-sm text-white backdrop-blur-sm">
             First listened {data.stats.firstListened}
           </div>
-          <div className="rounded-full bg-white/10 px-4 py-1.5 text-sm text-white backdrop-blur-sm">
+
+          <div className="rounded-full bg-white/10 px-3 py-1 text-sm text-white backdrop-blur-sm">
             {data.stats.totalPlays} plays
           </div>
-          <div className="rounded-full bg-white/10 px-4 py-1.5 text-sm text-white backdrop-blur-sm">
+
+          <div className="rounded-full bg-white/10 px-3 py-1 text-sm text-white backdrop-blur-sm">
             {data.stats.listeningHours}h listened
           </div>
+
+          {data.artistLinkUrl && (
+            <Link
+              href={data.artistLinkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full bg-white/10 px-3 py-1 text-sm text-blue-300 backdrop-blur-sm transition-colors hover:bg-white/20"
+            >
+              <IconExternalLink size={14} className="inline -mt-0.5 mr-1" />
+              Apple Music
+            </Link>
+          )}
         </div>
       </GradientHero>
 
@@ -95,7 +131,7 @@ export function ArtistContent({ idPromise }: { idPromise: Promise<{ id: string }
         <div className="space-y-10">
           {hasAlbums && (
             <section>
-              <SectionHeading title="Albums" />
+              <SectionHeading title={`Albums (${data.albums.length})`} />
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -124,7 +160,7 @@ export function ArtistContent({ idPromise }: { idPromise: Promise<{ id: string }
 
           {hasTracks && (
             <section>
-              <SectionHeading title="Tracks" />
+              <SectionHeading title={`Tracks (${data.topTracks.length})`} />
               <div className="overflow-hidden rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)]">
                 {data.topTracks.map((track, i) => (
                   <motion.div
@@ -150,6 +186,9 @@ export function ArtistContent({ idPromise }: { idPromise: Promise<{ id: string }
                           </span>
                         )}
                       </div>
+                      {track.explicit && (
+                        <span className="text-[10px] font-semibold text-[var(--mantine-color-dimmed,#5c5f66)]">E</span>
+                      )}
                       <span className="shrink-0 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">
                         {formatDuration(track.duration)}
                       </span>
