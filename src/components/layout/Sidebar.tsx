@@ -42,7 +42,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
   return collapsed ? (
     <button
       onClick={toggleCollapsed}
-      className="flex items-center justify-center h-14 border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors w-full"
+      className="cursor-pointer flex items-center justify-center h-14 border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors w-full"
       title="Expand sidebar"
     >
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-sm">
@@ -52,14 +52,14 @@ function Brand({ collapsed }: { collapsed: boolean }) {
   ) : (
     <button
       onClick={toggleCollapsed}
-      className="flex items-center gap-2.5 px-4 h-14 w-full border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors text-left"
+      className="cursor-pointer flex items-center gap-2.5 px-4 h-14 w-full border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors text-left"
       title="Collapse sidebar"
     >
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-sm">
         L
       </div>
       <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-        Life OS
+        Focus Linq
       </span>
     </button>
   );
