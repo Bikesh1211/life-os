@@ -3,7 +3,7 @@ import { Providers } from "@/infrastructure/providers";
 import { ColorSchemeScript } from "@mantine/core";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
-import "@mantine/notifications/styles.css";
+import "@mantine/spotlight/styles.css";
 import "@/app/globals.css";
 
 export const dynamic = "force-dynamic";
