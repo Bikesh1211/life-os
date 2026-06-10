@@ -10,6 +10,7 @@ import {
   IconArrowBarToRight,
   IconStar,
   IconStarFilled,
+  IconSearch,
 } from "@tabler/icons-react";
 import { type NavItem } from "@/core/navigation";
 import { cn } from "@/core/utils";
@@ -27,14 +28,14 @@ function CollapseBtn() {
   return (
     <button
       onClick={toggleCollapsed}
-      className="flex items-center justify-center h-9 w-9 mx-auto rounded-lg transition-all duration-150 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5"
+      className="flex items-center justify-center h-8 w-8 mx-auto rounded-lg transition-all duration-200 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] active:scale-95"
       title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
       <motion.div
         animate={{ rotate: collapsed ? 0 : 180 }}
-        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       >
-        <IconArrowBarToRight size={16} />
+        <IconArrowBarToRight size={15} strokeWidth={1.5} />
       </motion.div>
     </button>
   );
@@ -48,25 +49,32 @@ function Brand({ collapsed }: { collapsed: boolean }) {
     <button
       onClick={toggleCollapsed}
       className={cn(
-        "cursor-pointer flex items-center h-14 w-full border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors",
-        collapsed ? "justify-center" : "gap-2.5 px-4 text-left",
+        "cursor-pointer flex items-center flex-shrink-0 transition-colors",
+        collapsed
+          ? "justify-center h-14 w-full"
+          : "gap-3 h-14 w-full px-4 text-left border-b border-gray-100/80 dark:border-white/[0.06] hover:bg-gray-50/50 dark:hover:bg-white/[0.02]",
       )}
       title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-sm">
-      L
+      <div className="sd-brand-logo flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-xs font-bold text-white shadow-sm shadow-blue-500/20 dark:shadow-blue-500/10 ring-1 ring-white/10 dark:ring-white/5">
+        L
       </div>
       <AnimatePresence>
         {!collapsed && (
-          <motion.span
-            initial={{ opacity: 0, x: -6 }}
+          <motion.div
+            initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -6 }}
-            transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
-            className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white"
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+            className="flex flex-col items-start leading-tight"
           >
-            Focus Linq
-          </motion.span>
+            <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
+              Focus Linq
+            </span>
+            <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 tracking-wide">
+              Life OS
+            </span>
+          </motion.div>
         )}
       </AnimatePresence>
     </button>
@@ -127,30 +135,30 @@ function NavItemLink({
   }
 
   return (
-    <div className={cn("group relative flex items-center", depth > 0 && "pl-8")}>
+    <div className={cn("group relative flex items-center", depth > 0 && "pl-7")}>
       <Link
         href={item.route}
         onClick={closeMobile}
         className={cn(
-          "flex flex-1 items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-all duration-150",
-          "text-sm font-medium",
+          "flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-all duration-150",
+          "text-sm",
           depth > 0 && "text-xs",
           isActive
-            ? "sd-nav-active text-blue-700 dark:text-blue-300"
-            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200",
+            ? "sd-nav-active font-semibold text-blue-700 dark:text-blue-300"
+            : "font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200",
         )}
       >
         <div
           className={cn(
-            "flex-shrink-0",
+            "flex-shrink-0 flex items-center justify-center",
             isActive
-              ? "text-blue-600 dark:text-blue-400"
+              ? "sd-nav-active-icon"
               : "text-gray-400 dark:text-gray-500",
           )}
         >
-          <Icon size={depth > 0 ? 14 : NAV_ICON_SIZE} />
+          <Icon size={depth > 0 ? 14 : NAV_ICON_SIZE} strokeWidth={isActive ? 2.5 : 1.75} />
         </div>
-        <span className="truncate leading-none">{item.label}</span>
+        <span className="truncate leading-snug">{item.label}</span>
       </Link>
       {onFavorite && !isDefault && (
         <button
@@ -213,16 +221,20 @@ function NavItemParent({
       <button
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-all duration-150",
-          "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200",
+          "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-all duration-150",
+          "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200",
         )}
       >
-        <div className="flex-shrink-0 text-gray-400 dark:text-gray-500">
-          <Icon size={NAV_ICON_SIZE} />
+        <div className={cn(
+          "flex-shrink-0 flex items-center justify-center",
+          hasActiveChild ? "sd-nav-active-icon" : "text-gray-400 dark:text-gray-500",
+        )}>
+          <Icon size={NAV_ICON_SIZE} strokeWidth={1.75} />
         </div>
         <span className="flex-1 truncate text-left">{item.label}</span>
         <IconChevronRight
           size={12}
+          strokeWidth={1.5}
           className={cn(
             "flex-shrink-0 transition-transform duration-200 text-gray-400 dark:text-gray-500",
             open && "rotate-90",
@@ -426,10 +438,8 @@ function GroupSection({
     return (
       <div>
         {group.label !== "Favorites" && (
-          <div className="px-3 pb-1 pt-1">
-            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">
-              {group.label}
-            </span>
+          <div className="px-3 pb-0.5 pt-1">
+            <span className="sd-group-label">{group.label}</span>
           </div>
         )}
         <div className="space-y-0.5">
@@ -458,26 +468,25 @@ function GroupSection({
 
   return (
     <div>
-      <div className="px-3 pt-3 pb-1">
+      <div className="px-3 pt-3 pb-0.5">
         <div className="flex items-center gap-2">
-          <div className="h-px flex-1 bg-gray-100 dark:bg-white/5" />
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200/60 dark:via-white/[0.06] to-transparent" />
         </div>
       </div>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-1.5 px-3 py-1 text-left transition-colors group"
+        className="flex w-full items-center gap-1.5 px-3 py-0.5 text-left transition-colors group hover:opacity-80"
       >
         <IconChevronRight
           size={9}
+          strokeWidth={1.5}
           className={cn(
             "flex-shrink-0 transition-transform duration-200",
             open && "rotate-90",
-            "text-gray-500 dark:text-gray-400",
+            "text-gray-400 dark:text-gray-500",
           )}
         />
-        <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300 cursor-pointer">
-          {group.label}
-        </span>
+        <span className="sd-group-label cursor-pointer">{group.label}</span>
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -534,9 +543,28 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
   const customItems = favLoaded ? getCustomFavoriteItems() : [];
   const hasFavorites = defaultItems.length > 0 || customItems.length > 0;
 
+  const openSpotlight = useCallback(() => {
+    document.dispatchEvent(new CustomEvent("opencode-spotlight"));
+  }, []);
+
   return (
     <div className="flex h-full flex-col sd-content">
       {showBrand && <Brand collapsed={collapsed} />}
+
+      {!collapsed && (
+        <div className="px-3 pt-2 pb-1.5">
+          <button
+            onClick={openSpotlight}
+            className="flex items-center gap-2 w-full rounded-lg border border-gray-200/70 dark:border-white/[0.08] bg-gray-50/60 dark:bg-white/[0.03] px-3 py-2 text-sm text-gray-400 dark:text-gray-500 transition-all duration-150 hover:border-gray-300 dark:hover:border-white/[0.15] hover:bg-gray-100/60 dark:hover:bg-white/[0.06] cursor-text active:scale-[0.99]"
+          >
+            <IconSearch size={15} strokeWidth={1.5} className="flex-shrink-0" />
+            <span className="flex-1 text-left text-xs">Search...</span>
+            <kbd className="flex-shrink-0 hidden sm:inline-flex items-center gap-px px-1.5 py-0.5 text-[9px] font-medium rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] text-gray-400 dark:text-gray-500 leading-none">
+              <span className="text-[8px]">⌘</span>K
+            </kbd>
+          </button>
+        </div>
+      )}
 
       <AnimatePresence mode="popLayout">
         <motion.div
@@ -572,7 +600,7 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
           )}
 
           {hasFavorites && !collapsed && (
-            <div className="h-px bg-gray-100 dark:bg-white/5 mx-2 my-1.5" />
+            <div className="h-px bg-gradient-to-r from-transparent via-gray-200/60 dark:via-white/[0.06] to-transparent mx-2 my-1.5" />
           )}
 
           {groups.map((group) =>
@@ -590,7 +618,7 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
         </motion.div>
       </AnimatePresence>
 
-      <div className="border-t border-gray-100 dark:border-white/5 py-1">
+      <div className="border-t border-gray-100/80 dark:border-white/[0.06] py-1.5">
         <CollapseBtn />
       </div>
     </div>

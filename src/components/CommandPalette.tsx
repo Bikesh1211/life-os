@@ -1,13 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Spotlight } from "@mantine/spotlight";
+import { Spotlight, spotlight } from "@mantine/spotlight";
 import { IconSearch } from "@tabler/icons-react";
 import { navigation } from "@/core/navigation";
 
 export function CommandPalette() {
   const router = useRouter();
+
+  useEffect(() => {
+    const handler = () => spotlight.open();
+    document.addEventListener("opencode-spotlight", handler);
+    return () => document.removeEventListener("opencode-spotlight", handler);
+  }, []);
 
   const actions = useMemo(() => {
     const result: Array<{
@@ -52,6 +58,11 @@ export function CommandPalette() {
       searchProps={{
         leftSection: <IconSearch size={18} />,
         placeholder: "Search pages...",
+        rightSection: (
+          <kbd className="flex items-center gap-px px-1.5 py-0.5 text-[9px] font-medium rounded border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-400 dark:text-gray-500 leading-none">
+            <span className="text-[8px]">⌘</span>K
+          </kbd>
+        ),
       }}
       nothingFound="No results found"
       maxHeight={600}
