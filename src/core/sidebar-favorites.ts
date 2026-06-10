@@ -24,6 +24,37 @@ export function useSidebarFavorites() {
     setLoaded(true);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    fetch("/api/sidebar/preferences")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch");
+        return res.json();
+      })
+      .then((data) => {
+        if (data.favorites) {
+          setFavorites((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(data.favorites)) return prev;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data.favorites));
+            return data.favorites;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const timer = setTimeout(() => {
+      fetch("/api/sidebar/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favorites }),
+      }).catch(() => {});
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [favorites, loaded]);
+
   const toggleFavorite = useCallback((featureId: string) => {
     setFavorites((prev) => {
       const next = prev.includes(featureId)
