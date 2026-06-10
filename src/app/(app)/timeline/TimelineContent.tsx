@@ -7,21 +7,27 @@ import {
   Group,
   Button,
   Tabs,
+  Text,
   rem,
 } from "@mantine/core";
 import {
+  IconSun,
   IconCards,
   IconTimelineEvent,
   IconCalendar,
   IconChartBar,
-  IconPlus,
+  IconTags,
+  IconHeart,
+  IconSettings,
 } from "@tabler/icons-react";
+import { QuickAdd } from "./components/QuickAdd";
+import { TodayView } from "./components/TodayView";
 import { EventCard } from "./components/EventCard";
-import { EventCreateModal } from "./components/EventCreateModal";
-import { EventEditModal } from "./components/EventEditModal";
 import { TimelineView } from "./components/TimelineView";
 import { CalendarView } from "./components/CalendarView";
 import { InsightsPanel } from "./components/InsightsPanel";
+import { EventCreateModal } from "./components/EventCreateModal";
+import { EventEditModal } from "./components/EventEditModal";
 import type { TimelineEvent } from "@/modules/timeline/repository";
 import type { DurationBreakdown } from "@/modules/timeline";
 
@@ -32,17 +38,27 @@ type EventWithDuration = TimelineEvent & {
 
 type Props = {
   events: EventWithDuration[];
+  defaultTab?: string;
 };
 
-export function TimelineContent({ events }: Props) {
-  const [activeTab, setActiveTab] = useState<string | null>("cards");
+export function TimelineContent({ events, defaultTab = "today" }: Props) {
+  const [activeTab, setActiveTab] = useState<string | null>(defaultTab);
   const [createOpened, setCreateOpened] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventWithDuration | null>(null);
   const [localEvents, setLocalEvents] = useState<EventWithDuration[]>(events);
 
+  const handleRefresh = useCallback(async () => {
+    try {
+      const res = await fetch("/api/timeline");
+      if (res.ok) {
+        const data = await res.json();
+        setLocalEvents(data);
+      }
+    } catch {}
+  }, []);
+
   const handleCreated = useCallback((event: unknown) => {
     setLocalEvents((prev) => [event as EventWithDuration, ...prev]);
-    setCreateOpened(false);
   }, []);
 
   const handleUpdated = useCallback((updated: unknown) => {
@@ -63,26 +79,30 @@ export function TimelineContent({ events }: Props) {
 
   return (
     <>
-      <Stack gap="lg">
+      <Stack gap="md">
         <Group justify="space-between" align="center">
           <Title order={2}>Life Timeline</Title>
           <Button
-            leftSection={<IconPlus size={18} />}
+            leftSection={<IconTimelineEvent size={18} />}
             onClick={() => setCreateOpened(true)}
+            variant="light"
+            size="sm"
           >
             New Event
           </Button>
         </Group>
 
+        <QuickAdd onCreated={handleRefresh} />
+
         <Tabs value={activeTab} onChange={setActiveTab}>
           <Tabs.List>
+            <Tabs.Tab value="today" leftSection={<IconSun size={16} />}>
+              Today
+            </Tabs.Tab>
             <Tabs.Tab value="cards" leftSection={<IconCards size={16} />}>
               Cards
             </Tabs.Tab>
-            <Tabs.Tab
-              value="timeline"
-              leftSection={<IconTimelineEvent size={16} />}
-            >
+            <Tabs.Tab value="timeline" leftSection={<IconTimelineEvent size={16} />}>
               Timeline
             </Tabs.Tab>
             <Tabs.Tab value="calendar" leftSection={<IconCalendar size={16} />}>
@@ -93,16 +113,21 @@ export function TimelineContent({ events }: Props) {
             </Tabs.Tab>
           </Tabs.List>
 
+          <Tabs.Panel value="today" pt="md">
+            <TodayView
+              events={localEvents}
+              onEdit={(event) => setEditingEvent(event as EventWithDuration)}
+              onDeleted={handleDeleted}
+              onRefresh={handleRefresh}
+            />
+          </Tabs.Panel>
+
           <Tabs.Panel value="cards" pt="md">
             <Stack gap="sm">
               {localEvents.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                  <IconTimelineEvent
-                    size={48}
-                    stroke={1.5}
-                    className="mb-4 opacity-40"
-                  />
-                  <p className="text-sm">No events yet. Create your first one!</p>
+                  <IconTimelineEvent size={48} stroke={1.5} className="mb-4 opacity-40" />
+                  <Text size="sm">No events yet. Create your first one!</Text>
                 </div>
               )}
               {localEvents

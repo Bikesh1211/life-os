@@ -55,6 +55,16 @@ export const createEventSchema = z.object({
   color: z.string().max(7).optional(),
   icon: z.string().max(50).optional(),
   isPinned: z.boolean().optional(),
+  activityType: z.string().max(100).optional(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:mm)").optional(),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:mm)").optional(),
+  durationMinutes: z.number().int().min(0).optional(),
+  mood: z.number().int().min(1).max(5).optional(),
+  energy: z.number().int().min(1).max(5).optional(),
+  location: z.string().max(200).optional(),
+  linkedEntityId: z.string().uuid().optional(),
+  linkedEntityType: z.string().max(50).optional(),
 });
 
 export const updateEventSchema = z.object({
@@ -67,6 +77,16 @@ export const updateEventSchema = z.object({
   color: z.string().max(7).optional(),
   icon: z.string().max(50).optional(),
   isPinned: z.boolean().optional(),
+  activityType: z.string().max(100).optional(),
+  tags: z.array(z.string().max(50)).max(20).optional(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:mm)").optional(),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:mm)").optional(),
+  durationMinutes: z.number().int().min(0).optional(),
+  mood: z.number().int().min(1).max(5).optional(),
+  energy: z.number().int().min(1).max(5).optional(),
+  location: z.string().max(200).optional(),
+  linkedEntityId: z.string().uuid().optional(),
+  linkedEntityType: z.string().max(50).optional(),
 });
 
 export type CreateEventParams = z.infer<typeof createEventSchema>;
@@ -104,6 +124,16 @@ export async function createTimelineEvent(userId: string, params: CreateEventPar
     color: validated.color,
     icon: validated.icon,
     isPinned: validated.isPinned,
+    activityType: validated.activityType,
+    tags: validated.tags,
+    startTime: validated.startTime,
+    endTime: validated.endTime,
+    durationMinutes: validated.durationMinutes,
+    mood: validated.mood,
+    energy: validated.energy,
+    location: validated.location,
+    linkedEntityId: validated.linkedEntityId,
+    linkedEntityType: validated.linkedEntityType,
   };
   return createEvent(input);
 }
