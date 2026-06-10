@@ -40,6 +40,7 @@ type MusicBrainzReleaseGroup = {
   "primary-type"?: string;
   "first-release-date"?: string;
   "cover-art-archive"?: { artwork: boolean; front: boolean; back: boolean };
+  "artist-credit"?: { name: string; artist: { id: string } }[];
 };
 
 type MusicBrainzRecording = {
@@ -72,7 +73,7 @@ export async function searchArtists(query: string) {
 
 export async function searchAlbums(query: string) {
   const data = await rateLimitedFetch(
-    `${MUSICBRAINZ_BASE}/release-group/?query=release:${encodeURIComponent(query)}&fmt=json&limit=20`,
+    `${MUSICBRAINZ_BASE}/release-group/?query=release:${encodeURIComponent(query)}&fmt=json&limit=20&inc=artist-credits`,
   );
   return data as SearchResult<MusicBrainzReleaseGroup>;
 }
@@ -100,7 +101,7 @@ export async function lookupArtist(mbid: string) {
 
 export async function lookupAlbum(mbid: string) {
   const data = await rateLimitedFetch(
-    `${MUSICBRAINZ_BASE}/release-group/${mbid}?fmt=json`,
+    `${MUSICBRAINZ_BASE}/release-group/${mbid}?fmt=json&inc=artist-credits`,
   );
   return data as MusicBrainzReleaseGroup;
 }

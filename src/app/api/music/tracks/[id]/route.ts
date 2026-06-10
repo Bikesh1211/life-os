@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
 import * as repo from "@/modules/music/repository";
+import * as service from "@/modules/music/service";
 import { syncTrackFromSpotify } from "@/modules/music";
 
 export async function GET(
@@ -40,9 +41,12 @@ export async function GET(
         isStreamable: entity.isStreamable,
         popularity: null,
         isFavorited: false,
+        isInLibrary: false,
         rating: null,
         journalEntries: [],
         memories: [],
+        collections: [],
+        notes: [],
       });
     }
 
@@ -77,11 +81,33 @@ export async function GET(
       }
     }
 
-    const journalEntries = await repo.getJournalEntriesByTrack(userId, track.id);
-    const memories = await repo.getMemoriesByTrack(userId, track.id);
-    const favorite = await repo.getFavoritesByType(userId, "track");
+    const [journalEntries, memories, favorite, rating, inLibrary, notes, memorySongLinks, collections] =
+      await Promise.all([
+        repo.getJournalEntriesByTrack(userId, track.id),
+        repo.getMemoriesByTrack(userId, track.id),
+        repo.getFavoritesByType(userId, "track"),
+        repo.getRatingByEntity(userId, "track", track.id),
+        service.isInLibrary(userId, track.id),
+        repo.getNotesByEntity(userId, "track", track.id),
+        repo.getMemoriesByTrackViaSongs(userId, track.id),
+        repo.getCollectionItems(track.id).catch(() => []),
+      ]);
+
     const isFavorited = favorite.some((f) => f.entityId === track.id);
-    const rating = await repo.getRatingByEntity(userId, "track", track.id);
+
+    // Find collections containing this track
+    const collectionIds = collections.map((ci) => ci.collectionId);
+    const collectionDetails = collectionIds.length > 0
+      ? await Promise.all(collectionIds.map((cid) => repo.getCollectionById(cid, userId)))
+      : [];
+    const validCollections = collectionDetails.filter(Boolean);
+
+    // Merge direct memories + memory-song-linked memories
+    const memorySongMemoryIds = memorySongLinks.map((l) => l.memoryId);
+    const memorySongMemories = memorySongMemoryIds.length > 0
+      ? await Promise.all(memorySongMemoryIds.map((mid) => repo.getMemoryById(mid, userId)))
+      : [];
+    const allMemories = [...memories, ...memorySongMemories.filter(Boolean)];
 
     return NextResponse.json({
       id: track.id,
@@ -96,6 +122,7 @@ export async function GET(
       explicit: track.explicit,
       popularity: track.spotifyPopularity,
       isFavorited,
+      isInLibrary: inLibrary,
       rating: rating?.score ?? null,
       journalEntries: journalEntries.map((e) => ({
         id: e.id,
@@ -103,14 +130,28 @@ export async function GET(
         journalEntry: e.journalEntry,
         createdAt: e.createdAt.toISOString(),
       })),
-      memories: memories.map((m) => ({
+      memories: allMemories.map((m) => ({
         id: m.id,
+        title: m.title,
         contextText: m.contextText,
+        mood: m.mood,
+        memoryDate: m.memoryDate?.toISOString() ?? null,
         linkedEventId: m.linkedEventId,
         createdAt: m.createdAt.toISOString(),
       })),
+      collections: validCollections.map((c) => ({
+        id: c.id,
+        title: c.title,
+        description: c.description,
+      })),
+      notes: notes.map((n) => ({
+        id: n.id,
+        content: n.content,
+        createdAt: n.createdAt.toISOString(),
+      })),
     });
   } catch (error) {
+    console.error("Failed to load track:", error);
     return NextResponse.json({ error: "Failed to load track" }, { status: 500 });
   }
 }

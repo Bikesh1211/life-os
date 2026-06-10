@@ -1,51 +1,90 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
+import * as service from "@/modules/music/service";
 import * as repo from "@/modules/music/repository";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const url = new URL(request.url);
+  const limit = Math.min(Number(url.searchParams.get("limit")) || 100, 200);
+  const offset = Number(url.searchParams.get("offset")) || 0;
+
+  try {
+    const library = await service.getLibrary(userId, limit, offset);
+    const trackIds = library.map((e) => e.trackId);
+    const tracks = await Promise.all(
+      trackIds.map(async (trackId) => {
+        const track = await repo.getTrackById(trackId);
+        if (!track) return null;
+        const artist = await repo.getArtistById(track.artistId);
+        let albumCover: string | null = null;
+        let albumTitle: string | null = null;
+        if (track.albumId) {
+          const album = await repo.getAlbumById(track.albumId);
+          if (album) {
+            albumCover = album.coverArtUrl;
+            albumTitle = album.title;
+          }
+        }
+        return {
+          id: track.id,
+          title: track.title,
+          artistId: track.artistId,
+          artistName: artist?.name ?? "Unknown Artist",
+          albumId: track.albumId,
+          albumTitle,
+          albumCoverUrl: albumCover,
+          duration: track.duration,
+          addedAt: library.find((e) => e.trackId === trackId)?.addedAt.toISOString() ?? null,
+        };
+      }),
+    );
+    return NextResponse.json({ tracks: tracks.filter(Boolean), total: tracks.length });
+  } catch (error) {
+    console.error("Failed to fetch library:", error);
+    return NextResponse.json({ error: "Failed to fetch library" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const favorites = await repo.getFavorites(userId);
-    const artistIds = favorites.filter((f) => f.entityType === "artist").map((f) => f.entityId);
-    const albumIds = favorites.filter((f) => f.entityType === "album").map((f) => f.entityId);
-
-    const albums = await Promise.all(
-      albumIds.map(async (id) => {
-        const album = await repo.getAlbumById(id);
-        if (!album) return null;
-        const artist = await repo.getArtistById(album.artistId);
-        return {
-          id: album.id,
-          title: album.title,
-          subtitle: artist?.name ?? null,
-          imageUrl: album.coverArtUrl,
-          type: "album" as const,
-        };
-      }),
-    );
-
-    const artists = await Promise.all(
-      artistIds.map(async (id) => {
-        const artist = await repo.getArtistById(id);
-        if (!artist) return null;
-        return {
-          id: artist.id,
-          title: artist.name,
-          subtitle: artist.genres.slice(0, 2).join(", ") || null,
-          imageUrl: artist.imageUrl,
-          type: "artist" as const,
-        };
-      }),
-    );
-
-    return NextResponse.json({
-      albums: albums.filter(Boolean),
-      artists: artists.filter(Boolean),
-    });
+    const body = await request.json();
+    const result = await service.addToLibrary(userId, body);
+    return NextResponse.json({ success: true, entry: result });
   } catch (error) {
-    return NextResponse.json({ error: "Failed to load library" }, { status: 500 });
+    if (error instanceof Error && "issues" in error) {
+      return NextResponse.json({ error: "Validation failed" }, { status: 400 });
+    }
+    console.error("Failed to add to library:", error);
+    return NextResponse.json({ error: "Failed to add to library" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const url = new URL(request.url);
+  const trackId = url.searchParams.get("trackId");
+  const id = url.searchParams.get("id");
+
+  try {
+    if (trackId) {
+      await service.removeTrackFromLibrary(userId, trackId);
+    } else if (id) {
+      await service.removeFromLibrary(id, userId);
+    } else {
+      return NextResponse.json({ error: "Provide trackId or id query param" }, { status: 400 });
+    }
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to remove from library:", error);
+    return NextResponse.json({ error: "Failed to remove from library" }, { status: 500 });
   }
 }

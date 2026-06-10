@@ -1,5 +1,5 @@
 import { db } from "@/core/database";
-import { eq, and, isNull, desc, asc, sql, gte, lte, inArray, ne } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc, asc, sql, gte, lte, inArray, ne } from "drizzle-orm";
 import {
   musicArtists,
   musicAlbums,
@@ -13,6 +13,10 @@ import {
   musicCollectionItems,
   musicGoalConfig,
   musicNotes,
+  musicJournalSongs,
+  musicMoodEntries,
+  musicLibrary,
+  musicMemorySongs,
 } from "./schema";
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -40,6 +44,12 @@ export type CreateFavoriteInput = typeof musicFavorites.$inferInsert;
 export type CreateCollectionInput = typeof musicCollections.$inferInsert;
 export type CreateCollectionItemInput = typeof musicCollectionItems.$inferInsert;
 export type CreateGoalConfigInput = typeof musicGoalConfig.$inferInsert;
+
+export type LibraryEntry = typeof musicLibrary.$inferSelect;
+export type CreateLibraryInput = typeof musicLibrary.$inferInsert;
+
+export type MemorySong = typeof musicMemorySongs.$inferSelect;
+export type CreateMemorySongInput = typeof musicMemorySongs.$inferInsert;
 
 // ─── Artists ──────────────────────────────────────────────────────
 
@@ -665,12 +675,13 @@ export async function deleteGoalConfig(id: string, userId: string) {
 export async function getMostListenedArtists(userId: string, limit = 10) {
   return db
     .select({
-      artistId: musicListeningHistory.trackId,
+      artistId: musicTracks.artistId,
       count: sql<number>`count(*)`,
     })
     .from(musicListeningHistory)
+    .innerJoin(musicTracks, eq(musicListeningHistory.trackId, musicTracks.id))
     .where(eq(musicListeningHistory.userId, userId))
-    .groupBy(musicListeningHistory.trackId)
+    .groupBy(musicTracks.artistId)
     .orderBy(desc(sql`count(*)`))
     .limit(limit);
 }
@@ -723,6 +734,12 @@ export async function getYearlyListeningStats(userId: string, year: number) {
 export type MusicNote = typeof musicNotes.$inferSelect;
 export type CreateNoteInput = typeof musicNotes.$inferInsert;
 
+export type JournalSong = typeof musicJournalSongs.$inferSelect;
+export type CreateJournalSongInput = typeof musicJournalSongs.$inferInsert;
+
+export type MoodEntry = typeof musicMoodEntries.$inferSelect;
+export type CreateMoodEntryInput = typeof musicMoodEntries.$inferInsert;
+
 export async function createNote(input: CreateNoteInput) {
   const [note] = await db.insert(musicNotes).values(input).returning();
   return note;
@@ -740,8 +757,9 @@ export async function getNoteById(id: string, userId: string) {
   const [note] = await db
     .select()
     .from(musicNotes)
-    .where(and(eq(musicNotes.id, id), eq(musicNotes.userId, userId), isNull(musicNotes.deletedAt)));
-  return note;
+    .where(and(eq(musicNotes.id, id), eq(musicNotes.userId, userId), isNull(musicNotes.deletedAt)))
+    .limit(1);
+  return note ?? null;
 }
 
 export async function updateNote(id: string, userId: string, input: { content: string }) {
@@ -750,7 +768,7 @@ export async function updateNote(id: string, userId: string, input: { content: s
     .set({ ...input, updatedAt: new Date() })
     .where(and(eq(musicNotes.id, id), eq(musicNotes.userId, userId)))
     .returning();
-  return note;
+  return note ?? null;
 }
 
 export async function deleteNote(id: string, userId: string) {
@@ -759,5 +777,200 @@ export async function deleteNote(id: string, userId: string) {
     .set({ deletedAt: new Date() })
     .where(and(eq(musicNotes.id, id), eq(musicNotes.userId, userId)))
     .returning();
-  return note;
+  return note ?? null;
 }
+
+// ─── Journal Songs (junction) ─────────────────────────────────────
+
+export async function addSongToJournal(input: CreateJournalSongInput) {
+  const [item] = await db.insert(musicJournalSongs).values(input).returning();
+  return item;
+}
+
+export async function getJournalSongs(journalId: string) {
+  return db
+    .select()
+    .from(musicJournalSongs)
+    .where(eq(musicJournalSongs.journalId, journalId))
+    .orderBy(musicJournalSongs.position);
+}
+
+export async function removeSongFromJournal(id: string) {
+  const [item] = await db.delete(musicJournalSongs).where(eq(musicJournalSongs.id, id)).returning();
+  return item ?? null;
+}
+
+// ─── Mood Entries ─────────────────────────────────────────────────
+
+export async function createMoodEntry(input: CreateMoodEntryInput) {
+  const [entry] = await db.insert(musicMoodEntries).values(input).returning();
+  return entry;
+}
+
+export async function getMoodEntries(
+  userId: string,
+  options?: { dateFrom?: Date; dateTo?: Date; limit?: number; offset?: number },
+) {
+  const conditions: ReturnType<typeof eq>[] = [eq(musicMoodEntries.userId, userId)];
+  if (options?.dateFrom) conditions.push(gte(musicMoodEntries.date, options.dateFrom));
+  if (options?.dateTo) conditions.push(lte(musicMoodEntries.date, options.dateTo));
+
+  return db
+    .select()
+    .from(musicMoodEntries)
+    .where(and(...conditions))
+    .orderBy(desc(musicMoodEntries.date))
+    .limit(options?.limit ?? 50)
+    .offset(options?.offset ?? 0);
+}
+
+export async function getMoodAnalytics(userId: string, days = 90) {
+  const since = new Date();
+  since.setDate(since.getDate() - days);
+
+  return db
+    .select({
+      mood: musicMoodEntries.mood,
+      count: sql<number>`count(*)`,
+    })
+    .from(musicMoodEntries)
+    .where(and(eq(musicMoodEntries.userId, userId), gte(musicMoodEntries.date, since)))
+    .groupBy(musicMoodEntries.mood)
+    .orderBy(sql`count(*) desc`);
+}
+
+// ─── Enhanced Memories ────────────────────────────────────────────
+
+export async function updateMemory(
+  id: string,
+  userId: string,
+  input: Partial<CreateMemoryInput>,
+) {
+  const [memory] = await db
+    .update(musicMemories)
+    .set({ ...input, updatedAt: new Date() })
+    .where(and(eq(musicMemories.id, id), eq(musicMemories.userId, userId)))
+    .returning();
+  return memory;
+}
+
+export async function getMemoriesByDateRange(
+  userId: string,
+  dateFrom: Date,
+  dateTo: Date,
+) {
+  return db
+    .select()
+    .from(musicMemories)
+    .where(
+      and(
+        eq(musicMemories.userId, userId),
+        gte(musicMemories.memoryDate, dateFrom),
+        lte(musicMemories.memoryDate, dateTo),
+      ),
+    )
+    .orderBy(desc(musicMemories.memoryDate));
+}
+
+export async function getMemoriesByMood(userId: string, mood: string) {
+  return db
+    .select()
+    .from(musicMemories)
+    .where(and(eq(musicMemories.userId, userId), eq(musicMemories.mood, mood)))
+    .orderBy(desc(musicMemories.createdAt));
+}
+
+export async function getMemoriesOnThisDay(userId: string, month: number, day: number) {
+  return db
+    .select()
+    .from(musicMemories)
+    .where(
+      and(
+        eq(musicMemories.userId, userId),
+        sql`EXTRACT(MONTH FROM ${musicMemories.memoryDate}) = ${month}`,
+        sql`EXTRACT(DAY FROM ${musicMemories.memoryDate}) = ${day}`,
+        isNotNull(musicMemories.memoryDate),
+      ),
+    )
+    .orderBy(desc(musicMemories.createdAt));
+}
+
+// ─── Library ────────────────────────────────────────────────────────
+
+export async function addToLibrary(input: CreateLibraryInput) {
+  const [entry] = await db.insert(musicLibrary).values(input).returning();
+  return entry;
+}
+
+export async function getLibrary(userId: string, limit = 100, offset = 0) {
+  return db
+    .select()
+    .from(musicLibrary)
+    .where(eq(musicLibrary.userId, userId))
+    .orderBy(desc(musicLibrary.addedAt))
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function removeFromLibrary(id: string, userId: string) {
+  const [entry] = await db
+    .delete(musicLibrary)
+    .where(and(eq(musicLibrary.id, id), eq(musicLibrary.userId, userId)))
+    .returning();
+  return entry ?? null;
+}
+
+export async function removeTrackFromLibrary(userId: string, trackId: string) {
+  const [entry] = await db
+    .delete(musicLibrary)
+    .where(and(eq(musicLibrary.userId, userId), eq(musicLibrary.trackId, trackId)))
+    .returning();
+  return entry ?? null;
+}
+
+export async function isInLibrary(userId: string, trackId: string) {
+  const [entry] = await db
+    .select()
+    .from(musicLibrary)
+    .where(and(eq(musicLibrary.userId, userId), eq(musicLibrary.trackId, trackId)))
+    .limit(1);
+  return !!entry;
+}
+
+export async function getLibraryTrackIds(userId: string) {
+  const rows = await db
+    .select({ trackId: musicLibrary.trackId })
+    .from(musicLibrary)
+    .where(eq(musicLibrary.userId, userId));
+  return rows.map((r) => r.trackId);
+}
+
+// ─── Memory Songs (junction) ────────────────────────────────────────
+
+export async function addSongToMemory(input: CreateMemorySongInput) {
+  const [item] = await db.insert(musicMemorySongs).values(input).returning();
+  return item;
+}
+
+export async function getMemorySongs(memoryId: string) {
+  return db
+    .select()
+    .from(musicMemorySongs)
+    .where(eq(musicMemorySongs.memoryId, memoryId))
+    .orderBy(musicMemorySongs.position);
+}
+
+export async function removeSongFromMemory(id: string) {
+  const [item] = await db.delete(musicMemorySongs).where(eq(musicMemorySongs.id, id)).returning();
+  return item ?? null;
+}
+
+export async function getMemoriesByTrackViaSongs(userId: string, trackId: string) {
+  return db
+    .select({ memoryId: musicMemorySongs.memoryId })
+    .from(musicMemorySongs)
+    .innerJoin(musicMemories, eq(musicMemorySongs.memoryId, musicMemories.id))
+    .where(and(eq(musicMemories.userId, userId), eq(musicMemorySongs.trackId, trackId)));
+}
+
+
