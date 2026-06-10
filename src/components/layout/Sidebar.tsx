@@ -319,7 +319,7 @@ function CollapsedParentItem({
               boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
             }}
           >
-            <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            <div className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">
               {item.label}
             </div>
             {item.children?.map((child) => {
@@ -411,7 +411,7 @@ function GroupSection({
       <div>
         {group.label !== "Favorites" && (
           <div className="px-3 pb-1 pt-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">
               {group.label}
             </span>
           </div>
@@ -455,10 +455,10 @@ function GroupSection({
           className={cn(
             "flex-shrink-0 transition-transform duration-200",
             open && "rotate-90",
-            "text-gray-400 dark:text-gray-500",
+            "text-gray-500 dark:text-gray-400",
           )}
         />
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+        <span className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300 cursor-pointer">
           {group.label}
         </span>
       </button>
