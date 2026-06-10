@@ -58,6 +58,11 @@ export function CommandPalette() {
       searchProps={{
         leftSection: <IconSearch size={18} />,
         placeholder: "Search pages...",
+        rightSection: (
+          <kbd className="flex items-center gap-px px-1.5 py-0.5 text-[9px] font-medium rounded border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-400 dark:text-gray-500 leading-none">
+            <span className="text-[8px]">⌘</span>K
+          </kbd>
+        ),
       }}
       nothingFound="No results found"
       maxHeight={600}
