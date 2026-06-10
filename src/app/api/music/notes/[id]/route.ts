@@ -28,6 +28,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const body = await request.json();
     const parsed = updateNoteSchema.parse(body);
     const note = await updateNote(id, userId, parsed);
+    if (!note) return NextResponse.json({ error: "Note not found" }, { status: 404 });
     return NextResponse.json(note);
   } catch (error) {
     if (error instanceof Error && "issues" in error) {
@@ -44,7 +45,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const { id } = await params;
 
   try {
-    await deleteNote(id, userId);
+    const note = await deleteNote(id, userId);
+    if (!note) return NextResponse.json({ error: "Note not found" }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Failed to delete note" }, { status: 500 });

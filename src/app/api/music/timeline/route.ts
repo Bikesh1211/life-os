@@ -9,7 +9,6 @@ import {
   musicFavorites,
   musicTracks,
   musicArtists,
-  musicAlbums,
 } from "@/modules/music";
 
 export async function GET() {

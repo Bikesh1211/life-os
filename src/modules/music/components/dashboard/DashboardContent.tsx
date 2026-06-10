@@ -10,6 +10,10 @@ import { RecentlyPlayed } from "./RecentlyPlayed";
 import { Obsessions } from "./Obsessions";
 import { MusicMemories } from "./MusicMemories";
 import { GoalsProgress } from "./GoalsProgress";
+import { MemoryRewind } from "../memory/MemoryRewind";
+import { MoodWidget } from "../mood/MoodWidget";
+import { useState } from "react";
+import { MoodEntryModal } from "../mood/MoodEntryModal";
 
 type DashboardData = {
   stats: {
@@ -49,6 +53,7 @@ type DashboardData = {
 
 export function MusicDashboard() {
   const queryClient = useQueryClient();
+  const [showMoodModal, setShowMoodModal] = useState(false);
 
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["music-dashboard"],
@@ -56,6 +61,15 @@ export function MusicDashboard() {
       const res = await fetch("/api/music/dashboard");
       if (!res.ok) throw new Error("Failed to load dashboard");
       return res.json();
+    },
+  });
+
+  const { data: moodData } = useQuery({
+    queryKey: ["music-mood-dash"],
+    queryFn: async () => {
+      const res = await fetch("/api/music/mood?limit=5");
+      if (!res.ok) throw new Error("Failed to load mood");
+      return res.json() as Promise<{ entries: any[]; analytics: any[] }>;
     },
   });
 
@@ -130,8 +144,15 @@ export function MusicDashboard() {
         <RecentlyPlayed albums={data.recentlyPlayed} />
         <Obsessions items={data.obsessions} />
         <MusicMemories memories={data.memories} />
+        <MemoryRewind />
+        <MoodWidget
+          entries={moodData?.entries ?? []}
+          onAddClick={() => setShowMoodModal(true)}
+        />
         <GoalsProgress goals={data.goals} />
       </div>
+
+      <MoodEntryModal opened={showMoodModal} onClose={() => setShowMoodModal(false)} />
     </MusicContainer>
   );
 }

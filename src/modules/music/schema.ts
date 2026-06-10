@@ -85,14 +85,39 @@ export const musicJournal = pgTable("music_journal", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const musicJournalSongs = pgTable("music_journal_songs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  journalId: uuid("journal_id").references(() => musicJournal.id, { onDelete: "cascade" }).notNull(),
+  trackId: uuid("track_id").references(() => musicTracks.id),
+  albumId: uuid("album_id").references(() => musicAlbums.id),
+  artistId: uuid("artist_id").references(() => musicArtists.id),
+  position: integer("position").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const musicMoodEntries = pgTable("music_mood_entries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  mood: text("mood").notNull(),
+  note: text("note"),
+  date: timestamp("date", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const musicMemories = pgTable("music_memories", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id").notNull(),
   trackId: uuid("track_id").references(() => musicTracks.id),
+  albumId: uuid("album_id").references(() => musicAlbums.id),
   artistId: uuid("artist_id").references(() => musicArtists.id),
+  title: text("title"),
   contextText: text("context_text").notNull(),
-  linkedEventId: text("linked_event_id"), // optional link to timeline event
+  mood: text("mood"),
+  photoUrls: text("photo_urls").array().default([]),
+  memoryDate: timestamp("memory_date", { withTimezone: true }),
+  linkedEventId: text("linked_event_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const musicRatings = pgTable("music_ratings", {
@@ -130,8 +155,24 @@ export const musicCollections = pgTable("music_collections", {
 export const musicCollectionItems = pgTable("music_collection_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   collectionId: uuid("collection_id").references(() => musicCollections.id, { onDelete: "cascade" }).notNull(),
-  entityType: text("entity_type").notNull(), // "track", "album", "artist"
+  entityType: text("entity_type").notNull(), // "track", "album", "artist", "memory"
   entityId: text("entity_id").notNull(),
+  position: integer("position").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const musicLibrary = pgTable("music_library", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  trackId: uuid("track_id").references(() => musicTracks.id).notNull(),
+  addedAt: timestamp("added_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const musicMemorySongs = pgTable("music_memory_songs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  memoryId: uuid("memory_id").references(() => musicMemories.id, { onDelete: "cascade" }).notNull(),
+  trackId: uuid("track_id").references(() => musicTracks.id).notNull(),
   position: integer("position").default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

@@ -18,12 +18,12 @@ const tabs: Tab[] = [
   { id: "finance", label: "Finance", href: "/finance/dashboard", icon: IconCoin },
   { id: "quick_note", label: "Quick Note", href: "/quick-note", icon: IconPencilBolt },
   { id: "profile", label: "Timeline", href: "/timeline", icon: IconTimelineEvent },
-  { id: "profile", label: "Profile", href: "/settings", icon: IconUser },
+  { id: "settings", label: "Profile", href: "/settings", icon: IconUser },
 
 ];
 
 function useActiveTab(pathname: string) {
-  return useMemo(() => {
+  return useMemo(() => {  
     for (const t of tabs) {
       if (t.href === "/" && pathname === "/") return t.id;
       if (t.href !== "/" && pathname.startsWith(t.href)) return t.id;

@@ -10,7 +10,8 @@ import { AudioPreview } from "../design-system/AudioPreview";
 import { AddToCollectionButton } from "../design-system/AddToCollectionButton";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { IconClock, IconExternalLink, IconHeart, IconHeartFilled, IconMicrophone, IconNote } from "@tabler/icons-react";
+import { IconClock, IconExternalLink, IconHeart, IconHeartFilled, IconMicrophone, IconNote, IconBooks, IconFolder } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 
 type TrackData = {
   id: string;
@@ -33,8 +34,11 @@ type TrackData = {
   isStreamable: boolean | null;
   rating: number | null;
   isFavorited: boolean;
+  isInLibrary: boolean;
   journalEntries: Array<{ id: string; mood: string | null; journalEntry: string; createdAt: string }>;
-  memories: Array<{ id: string; contextText: string; linkedEventId: string | null; createdAt: string }>;
+  memories: Array<{ id: string; title: string | null; contextText: string; mood: string | null; memoryDate: string | null; linkedEventId: string | null; createdAt: string }>;
+  collections: Array<{ id: string; title: string; description: string | null }>;
+  notes: Array<{ id: string; content: string; createdAt: string }>;
 };
 
 function formatDuration(seconds: number | null): string {
@@ -75,22 +79,42 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entityType: "track", entityId: id, content }),
       });
-      if (!res.ok) throw new Error("Failed to save note");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to save note");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["track-notes", id] });
       setNoteInput("");
     },
+    onError: (err) => {
+      notifications.show({
+        title: "Failed to save note",
+        message: err instanceof Error ? err.message : "An error occurred",
+        color: "red",
+      });
+    },
   });
 
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
       const res = await fetch(`/api/music/notes/${noteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete note");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to delete note");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["track-notes", id] });
+    },
+    onError: (err) => {
+      notifications.show({
+        title: "Failed to delete note",
+        message: err instanceof Error ? err.message : "An error occurred",
+        color: "red",
+      });
     },
   });
 
@@ -222,6 +246,13 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
 
           <AddToCollectionButton entityType="track" entityId={data.id} />
 
+          {data.isInLibrary && (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-green-500/20 px-3 py-1 text-sm text-green-400 backdrop-blur-sm">
+              <IconBooks size={14} />
+              In Library
+            </div>
+          )}
+
           {data.albumViewUrl && (
             <Link
               href={data.albumViewUrl}
@@ -254,6 +285,29 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
               <p className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">{data.albumTitle}</p>
             </div>
           </Link>
+        )}
+
+        {data.collections.length > 0 && (
+          <section className="mb-8">
+            <SectionHeading title="Collections" />
+            <div className="mt-3 space-y-2">
+              {data.collections.map((col) => (
+                <Link
+                  key={col.id}
+                  href={`/music/collections/${col.id}`}
+                  className="flex items-center gap-3 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]"
+                >
+                  <IconFolder size={18} className="shrink-0 text-[var(--mantine-color-dimmed,#5c5f66)]" />
+                  <div>
+                    <p className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">{col.title}</p>
+                    {col.description && (
+                      <p className="text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">{col.description}</p>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
         )}
 
         <div className="grid gap-8 lg:grid-cols-2">
