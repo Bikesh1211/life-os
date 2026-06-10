@@ -98,6 +98,21 @@ A computed chronological view at `/music/timeline` joining music memories, liste
 
 *Avoid*: Playlist (prefer Collection instead), Scrobble (prefer Listening History), Rating Score (redundant — just Rating), Memory vs Journal (Memories are lightweight links to life events; Journal is active reflection)
 
+**Notes** (plugin):
+The quick capture notes plugin at `src/modules/notes/`. Route is `/notes`. Feature ID is `notes`. Owns all note-taking data — notes, tags, categories. Sub-routes: Notes list (`/notes`). Design goal: Apple Notes meets Google Keep — simple, beautiful, extremely fast. Prioritises quick capture over rich editing.
+
+**Note**:
+A single quick-capture entry owned by a User. Contains `title`, `content` (plain text with markdown-like formatting), `category` (fixed text), `tags` (text array of tag names), `isPinned`, `isArchived`, `priority` (low/medium/high), optional `reminderDate`, and automatic `createdAt`/`updatedAt` timestamps. Soft-deleted via `deletedAt`. Pinned notes always sort first. Archived notes are hidden from the default list view. Every note is scoped to a `userId`.
+
+**Note Tag**:
+A user-defined tag with a `name` and `color` stored in the `note_tags` table. Tags are lightweight — no hierarchy, no descriptions. The same tag name can exist for different users (scoped by `userId`). Tags appear as coloured badges on note cards and can be used to filter the list.
+
+**Note Category**:
+A fixed set of values on a Note: `personal`, `work`, `study`, `ideas`, `journal`. Validated by Zod, not a database enum — allows adding new categories without migrations. Displayed as a coloured badge on note cards.
+
+**Quick Capture**:
+The primary creation UX — a floating action button (bottom-right) or `Ctrl+Shift+N`/`Cmd+Shift+N` opens a modal with title auto-focused. Type and save in seconds. The modal has progressive category selection and tag picking.
+
 **Knowledge Vault** (plugin):
 The personal knowledge management plugin at `src/modules/knowledge/`. Route is `/knowledge`. Feature ID is `knowledge`. Owns all knowledge capture data — entries, subjects, relationships, tags. Sub-routes: Overview (`/knowledge`), Library (`/knowledge/library`), Timeline (`/knowledge/timeline`), Analytics (`/knowledge/analytics`).
 
@@ -150,3 +165,8 @@ A date-grouped view within Knowledge Vault showing entries by `dateLearned`. Eve
 **Domain expert**: Correct. Each user creates their own flat list of subjects. No global subject table. Scoped to `userId` like everything else.
 **Dev**: What about the Notes plugin — same thing?
 **Domain expert**: Different thing. Notes is a quick scratchpad. Knowledge Vault is structured learning with mastery tracking, review cycles, and a knowledge graph. They're separate plugins but entries across them can be linked.
+
+**Dev**: I need to add a new category to Notes. Where do I change it?
+**Domain expert**: In `src/modules/notes/service.ts`. Categories are validated by Zod — add it to the `categories` const array. No migration needed since categories are text columns.
+**Dev**: And tags?
+**Domain expert**: Tags live in the `note_tags` table. User-defined, scoped to `userId`. Notes reference them by name via the text array column `tags`. The `note_tags` table only stores name + color for display.
