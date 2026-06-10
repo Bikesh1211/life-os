@@ -7,8 +7,6 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   IconChevronRight,
-  IconStar,
-  IconStarFilled,
   IconArrowBarToRight,
 } from "@tabler/icons-react";
 import { type NavItem } from "@/core/navigation";
@@ -71,18 +69,15 @@ type NavItemLinkProps = {
   item: NavItem;
   depth?: number;
   collapsed?: boolean;
-  onFavorite?: (id: string) => void;
-  isFavorited?: boolean;
 };
 
 function NavItemLink({
   item,
   depth = 0,
   collapsed = false,
-  onFavorite,
-  isFavorited: fav,
 }: NavItemLinkProps) {
   const pathname = usePathname();
+  const { closeMobile } = useAppShell();
   const isActive =
     pathname === item.route || pathname.startsWith(item.route + "/");
   const Icon = item.icon;
@@ -92,6 +87,7 @@ function NavItemLink({
       <div className="group relative flex items-center justify-center px-1">
         <Link
           href={item.route}
+          onClick={closeMobile}
           className={cn(
             "flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150",
             isActive
@@ -118,6 +114,7 @@ function NavItemLink({
     <div className={cn("group relative flex items-center", depth > 0 && "pl-8")}>
       <Link
         href={item.route}
+        onClick={closeMobile}
         className={cn(
           "flex flex-1 items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-all duration-150",
           "text-sm font-medium",
@@ -139,24 +136,6 @@ function NavItemLink({
         </div>
         <span className="truncate leading-none">{item.label}</span>
       </Link>
-      {onFavorite && (
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onFavorite(item.featureId);
-          }}
-          className={cn(
-            "flex-shrink-0 rounded p-0.5 transition-all duration-150 mr-1",
-            fav
-              ? "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-              : "opacity-0 group-hover:opacity-100 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400",
-          )}
-          title={fav ? "Remove from favorites" : "Add to favorites"}
-        >
-          {fav ? <IconStarFilled size={12} /> : <IconStar size={12} />}
-        </button>
-      )}
     </div>
   );
 }
@@ -166,15 +145,11 @@ function NavItemLink({
 type NavItemParentProps = {
   item: NavItem;
   collapsed?: boolean;
-  onFavorite?: (id: string) => void;
-  isFavorited?: (id: string) => boolean;
 };
 
 function NavItemParent({
   item,
   collapsed = false,
-  onFavorite,
-  isFavorited,
 }: NavItemParentProps) {
   const pathname = usePathname();
   const hasActiveChild =
@@ -189,8 +164,6 @@ function NavItemParent({
       <CollapsedParentItem
         item={item}
         hasActiveChild={hasActiveChild}
-        onFavorite={onFavorite}
-        isFavorited={isFavorited}
       />
     );
   }
@@ -232,8 +205,6 @@ function NavItemParent({
                   key={child.featureId}
                   item={child}
                   depth={1}
-                  onFavorite={onFavorite}
-                  isFavorited={isFavorited?.(child.featureId)}
                 />
               ))}
             </div>
@@ -249,13 +220,9 @@ function NavItemParent({
 function CollapsedParentItem({
   item,
   hasActiveChild,
-  onFavorite,
-  isFavorited,
 }: {
   item: NavItem;
   hasActiveChild: boolean;
-  onFavorite?: (id: string) => void;
-  isFavorited?: (id: string) => boolean;
 }) {
   const pathname = usePathname();
   const [subOpen, setSubOpen] = useState(false);
@@ -356,15 +323,11 @@ function CollapsedParentItem({
 type GroupSectionProps = {
   group: { label: string; items: NavItem[] };
   collapsed?: boolean;
-  onFavorite?: (id: string) => void;
-  isFavorited?: (id: string) => boolean;
 };
 
 function GroupSection({
   group,
   collapsed = false,
-  onFavorite,
-  isFavorited,
 }: GroupSectionProps) {
   const isSpecial = group.label === "System" || group.label === "Favorites";
   const pathname = usePathname();
@@ -388,16 +351,12 @@ function GroupSection({
               key={item.featureId}
               item={item}
               collapsed
-              onFavorite={onFavorite}
-              isFavorited={isFavorited}
             />
           ) : (
             <NavItemLink
               key={item.featureId}
               item={item}
               collapsed
-              onFavorite={onFavorite}
-              isFavorited={isFavorited?.(item.featureId)}
             />
           ),
         )}
@@ -422,15 +381,11 @@ function GroupSection({
               <NavItemParent
                 key={item.featureId}
                 item={item}
-                onFavorite={onFavorite}
-                isFavorited={isFavorited}
               />
             ) : (
               <NavItemLink
                 key={item.featureId}
                 item={item}
-                onFavorite={onFavorite}
-                isFavorited={isFavorited?.(item.featureId)}
               />
             )
           )}
@@ -478,15 +433,11 @@ function GroupSection({
                   <NavItemParent
                     key={item.featureId}
                     item={item}
-                    onFavorite={onFavorite}
-                    isFavorited={isFavorited}
                   />
                 ) : (
                   <NavItemLink
                     key={item.featureId}
                     item={item}
-                    onFavorite={onFavorite}
-                    isFavorited={isFavorited?.(item.featureId)}
                   />
                 ),
               )}
@@ -505,8 +456,6 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
   const {
     loaded: favLoaded,
     getFavoriteItems,
-    toggleFavorite,
-    isFavorited,
   } = useSidebarFavorites();
 
   const groups = loaded ? getVisibleGroups() : [];
@@ -541,8 +490,6 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
               key={group.label}
               group={group}
               collapsed={collapsed}
-              onFavorite={toggleFavorite}
-              isFavorited={isFavorited}
             />
           ),
         )}

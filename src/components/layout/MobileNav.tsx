@@ -14,7 +14,7 @@ interface Tab {
 }
 
 const tabs: Tab[] = [
-  { id: "dashboard", label: "Home", href: "/dashboard", icon: IconHome2 },
+  { id: "dashboard", label: "Home", href: "/", icon: IconHome2 },
   { id: "quick_note", label: "Quick Note", href: "/quick-note", icon: IconPencilBolt },
   { id: "finance", label: "Finance", href: "/finance/dashboard", icon: IconCoin },
   { id: "profile", label: "Profile", href: "/settings", icon: IconUser },
