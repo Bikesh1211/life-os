@@ -9,14 +9,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: {
-    default: "Life OS",
-    template: "%s · Life OS",
+    default: "Focus Linq",
+    template: "%s · Focus Linq",
   },
   description: "Your personal life management platform",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "Life OS",
+    title: "Focus Linq",
     statusBarStyle: "black-translucent",
   },
   formatDetection: {
@@ -41,7 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <ColorSchemeScript />
+        <ColorSchemeScript defaultColorScheme="auto" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

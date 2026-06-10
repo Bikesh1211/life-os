@@ -8,6 +8,18 @@ export const theme: MantineThemeOverride = createTheme({
     '"SF Mono", "Fira Code", "JetBrains Mono", "Fira Mono", Menlo, Monaco, monospace',
   defaultRadius: "md",
   colors: {
+    gray: [
+      "#f8f9fa",
+      "#f0f2f5",
+      "#e4e7ec",
+      "#d0d4dc",
+      "#a8aeb8",
+      "#7e8490",
+      "#5c6270",
+      "#3a3f4a",
+      "#282c35",
+      "#181b21",
+    ],
     dark: [
       "#C1C2C5",
       "#A6A7AB",
@@ -22,11 +34,11 @@ export const theme: MantineThemeOverride = createTheme({
     ],
   },
   shadows: {
-    xs: "0 1px 2px rgba(0, 0, 0, 0.05)",
-    sm: "0 1px 3px rgba(0, 0, 0, 0.1)",
-    md: "0 4px 6px rgba(0, 0, 0, 0.1)",
-    lg: "0 10px 15px rgba(0, 0, 0, 0.1)",
-    xl: "0 20px 25px rgba(0, 0, 0, 0.15)",
+    xs: "0 1px 2px rgba(0, 0, 0, 0.04)",
+    sm: "0 1px 3px rgba(0, 0, 0, 0.06)",
+    md: "0 4px 8px rgba(0, 0, 0, 0.06)",
+    lg: "0 10px 20px rgba(0, 0, 0, 0.06)",
+    xl: "0 20px 30px rgba(0, 0, 0, 0.08)",
   },
   components: {
     Paper: {

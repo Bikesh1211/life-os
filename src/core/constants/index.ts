@@ -1,4 +1,4 @@
-export const APP_NAME = "Life OS";
+export const APP_NAME = "Focus Linq";
 
 export const ROUTES = {
   SIGN_IN: "/sign-in",
