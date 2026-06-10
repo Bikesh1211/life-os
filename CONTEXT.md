@@ -150,3 +150,43 @@ A date-grouped view within Knowledge Vault showing entries by `dateLearned`. Eve
 **Domain expert**: Correct. Each user creates their own flat list of subjects. No global subject table. Scoped to `userId` like everything else.
 **Dev**: What about the Notes plugin — same thing?
 **Domain expert**: Different thing. Notes is a quick scratchpad. Knowledge Vault is structured learning with mastery tracking, review cycles, and a knowledge graph. They're separate plugins but entries across them can be linked.
+
+## Debugging & Diagnosis
+
+**Feedback Loop**:
+A fast, deterministic, agent-runnable pass/fail signal for a bug. The core discipline for hard bugs: build the loop first, then everything else (bisection, hypothesis testing, instrumentation) falls into place. A 2-second deterministic loop is a debugging superpower.
+
+**Reproduction**:
+Running the feedback loop to confirm the bug matches what the user reported — not a different failure nearby. Must be reproducible across multiple runs before proceeding.
+
+**Hypothesis**:
+A falsifiable prediction about root cause. Format: "If <X> is the cause, then <changing Y> will make the bug disappear / <changing Z> will make it worse." Always generate 3-5 ranked hypotheses before testing any.
+
+**Instrumentation**:
+Targeted probes (logs, breakpoints, measurements) mapped to specific hypotheses. Change one variable at a time. Tag every debug log with a unique prefix (`[DEBUG-XXXX]`) for easy cleanup.
+
+**Regression Test**:
+A test written at the correct seam — one that exercises the real bug pattern as it occurs at the call site. Written before the fix (watch it fail, apply fix, watch it pass). If no correct seam exists, that's an architecture finding.
+
+**Seam**:
+The right abstraction boundary for a regression test. A test at the wrong seam gives false confidence. If the only available seam is too shallow, the architecture is preventing the bug from being locked down.
+
+## Architecture Principles
+
+**Module Boundary**:
+A module (`src/modules/{feature}/`) owns its routes, schema, service layer, and components. No module imports from another module's `components/` directory. Cross-module access goes through service layers, never direct DB or component imports.
+
+**Page-Content split**:
+Route pages (`page.tsx`) are thin — they fetch data and delegate to a `Content.tsx` component that handles composition. Content components are Server Components unless interactivity demands `'use client'`.
+
+**Client isolation**:
+`'use client'` goes on leaf-level interactive components (buttons, inputs, dropdowns), never on layouts or page wrappers. Server Components wrap Client Components, not the reverse.
+
+**SOLID in Next.js**:
+Single Responsibility → one file, one concern. Open/Closed → accept `children`/`slot` instead of hardcoding. Interface Segregation → small focused prop interfaces. Dependency Inversion → services depend on interfaces.
+
+**Anti-patterns**:
+- 40+ files in `src/components/` with no subdirectories
+- Pages >200 lines doing both fetching and rendering
+- `'use client'` on layouts wrapping everything
+- Shared types in `src/types/` mirroring the DB — colocate with modules instead
