@@ -368,7 +368,7 @@ export const navigation: NavGroup[] = [
       },
       {
         label: "Finance",
-        route: "/finance",
+        route: "/finance/dashboard",
         description: "Financial overview and management",
         icon: IconCoin,
         featureId: "expenses",

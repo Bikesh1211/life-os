@@ -1,13 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Spotlight } from "@mantine/spotlight";
+import { Spotlight, spotlight } from "@mantine/spotlight";
 import { IconSearch } from "@tabler/icons-react";
 import { navigation } from "@/core/navigation";
 
 export function CommandPalette() {
   const router = useRouter();
+
+  useEffect(() => {
+    const handler = () => spotlight.open();
+    document.addEventListener("opencode-spotlight", handler);
+    return () => document.removeEventListener("opencode-spotlight", handler);
+  }, []);
 
   const actions = useMemo(() => {
     const result: Array<{
