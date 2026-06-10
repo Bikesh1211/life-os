@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   IconChevronRight,
   IconArrowBarToRight,
+  IconStar,
+  IconStarFilled,
 } from "@tabler/icons-react";
 import { type NavItem } from "@/core/navigation";
 import { cn } from "@/core/utils";
@@ -69,12 +71,18 @@ type NavItemLinkProps = {
   item: NavItem;
   depth?: number;
   collapsed?: boolean;
+  onFavorite?: (id: string) => void;
+  isFavorited?: boolean;
+  isDefault?: boolean;
 };
 
 function NavItemLink({
   item,
   depth = 0,
   collapsed = false,
+  onFavorite,
+  isFavorited: fav,
+  isDefault,
 }: NavItemLinkProps) {
   const pathname = usePathname();
   const { closeMobile } = useAppShell();
@@ -136,6 +144,24 @@ function NavItemLink({
         </div>
         <span className="truncate leading-none">{item.label}</span>
       </Link>
+      {onFavorite && !isDefault && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onFavorite(item.featureId);
+          }}
+          className={cn(
+            "flex-shrink-0 rounded p-0.5 transition-all duration-150 mr-1",
+            fav
+              ? "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+              : "opacity-0 group-hover:opacity-100 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400",
+          )}
+          title={fav ? "Remove from favorites" : "Add to favorites"}
+        >
+          {fav ? <IconStarFilled size={12} /> : <IconStar size={12} />}
+        </button>
+      )}
     </div>
   );
 }
@@ -145,11 +171,15 @@ function NavItemLink({
 type NavItemParentProps = {
   item: NavItem;
   collapsed?: boolean;
+  onFavorite?: (id: string) => void;
+  isFavorited?: (id: string) => boolean;
 };
 
 function NavItemParent({
   item,
   collapsed = false,
+  onFavorite,
+  isFavorited,
 }: NavItemParentProps) {
   const pathname = usePathname();
   const hasActiveChild =
@@ -164,6 +194,8 @@ function NavItemParent({
       <CollapsedParentItem
         item={item}
         hasActiveChild={hasActiveChild}
+        onFavorite={onFavorite}
+        isFavorited={isFavorited}
       />
     );
   }
@@ -205,6 +237,8 @@ function NavItemParent({
                   key={child.featureId}
                   item={child}
                   depth={1}
+                  onFavorite={onFavorite}
+                  isFavorited={isFavorited?.(child.featureId)}
                 />
               ))}
             </div>
@@ -220,9 +254,13 @@ function NavItemParent({
 function CollapsedParentItem({
   item,
   hasActiveChild,
+  onFavorite,
+  isFavorited,
 }: {
   item: NavItem;
   hasActiveChild: boolean;
+  onFavorite?: (id: string) => void;
+  isFavorited?: (id: string) => boolean;
 }) {
   const pathname = usePathname();
   const [subOpen, setSubOpen] = useState(false);
@@ -323,11 +361,17 @@ function CollapsedParentItem({
 type GroupSectionProps = {
   group: { label: string; items: NavItem[] };
   collapsed?: boolean;
+  onFavorite?: (id: string) => void;
+  isFavorited?: (id: string) => boolean;
+  isDefault?: (id: string) => boolean;
 };
 
 function GroupSection({
   group,
   collapsed = false,
+  onFavorite,
+  isFavorited,
+  isDefault,
 }: GroupSectionProps) {
   const isSpecial = group.label === "System" || group.label === "Favorites";
   const pathname = usePathname();
@@ -351,12 +395,17 @@ function GroupSection({
               key={item.featureId}
               item={item}
               collapsed
+              onFavorite={onFavorite}
+              isFavorited={isFavorited}
             />
           ) : (
             <NavItemLink
               key={item.featureId}
               item={item}
               collapsed
+              onFavorite={onFavorite}
+              isFavorited={isFavorited?.(item.featureId)}
+              isDefault={isDefault?.(item.featureId)}
             />
           ),
         )}
@@ -381,11 +430,16 @@ function GroupSection({
               <NavItemParent
                 key={item.featureId}
                 item={item}
+                onFavorite={onFavorite}
+                isFavorited={isFavorited}
               />
             ) : (
               <NavItemLink
                 key={item.featureId}
                 item={item}
+                onFavorite={onFavorite}
+                isFavorited={isFavorited?.(item.featureId)}
+                isDefault={isDefault?.(item.featureId)}
               />
             )
           )}
@@ -433,11 +487,16 @@ function GroupSection({
                   <NavItemParent
                     key={item.featureId}
                     item={item}
+                    onFavorite={onFavorite}
+                    isFavorited={isFavorited}
                   />
                 ) : (
                   <NavItemLink
                     key={item.featureId}
                     item={item}
+                    onFavorite={onFavorite}
+                    isFavorited={isFavorited?.(item.featureId)}
+                    isDefault={isDefault?.(item.featureId)}
                   />
                 ),
               )}
@@ -455,32 +514,47 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
   const { loaded, getVisibleGroups } = useSidebarVisibility();
   const {
     loaded: favLoaded,
-    getFavoriteItems,
+    getDefaultFavoriteItems,
+    getCustomFavoriteItems,
+    toggleFavorite,
+    isFavorited,
+    isDefault,
   } = useSidebarFavorites();
 
   const groups = loaded ? getVisibleGroups() : [];
-  const favItems = favLoaded ? getFavoriteItems() : [];
+  const defaultItems = favLoaded ? getDefaultFavoriteItems() : [];
+  const customItems = favLoaded ? getCustomFavoriteItems() : [];
+  const hasFavorites = defaultItems.length > 0 || customItems.length > 0;
 
   return (
     <div className="flex h-full flex-col sd-content">
       {showBrand && <Brand collapsed={collapsed} />}
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-1.5 pb-2 scrollbar-thin">
-        {favItems.length > 0 && (
+        {hasFavorites && (
           <div className="mb-0.5">
             <div className="space-y-0.5">
-              {favItems.map((item) => (
+              {defaultItems.map((item) => (
                 <NavItemLink
                   key={item.featureId}
                   item={item}
                   collapsed={collapsed}
                 />
               ))}
+              {customItems.map((item) => (
+                <NavItemLink
+                  key={item.featureId}
+                  item={item}
+                  collapsed={collapsed}
+                  onFavorite={toggleFavorite}
+                  isFavorited={isFavorited(item.featureId)}
+                />
+              ))}
             </div>
           </div>
         )}
 
-        {favItems.length > 0 && !collapsed && (
+        {hasFavorites && !collapsed && (
           <div className="h-px bg-gray-100 dark:bg-white/5 mx-2 my-1.5" />
         )}
 
@@ -490,6 +564,9 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
               key={group.label}
               group={group}
               collapsed={collapsed}
+              onFavorite={toggleFavorite}
+              isFavorited={isFavorited}
+              isDefault={isDefault}
             />
           ),
         )}
