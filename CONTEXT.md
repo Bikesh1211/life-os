@@ -80,6 +80,43 @@ A computed chronological view at `/music/timeline` joining music memories, liste
 
 *Avoid*: Playlist (prefer Collection instead), Scrobble (prefer Listening History), Rating Score (redundant — just Rating), Memory vs Journal (Memories are lightweight links to life events; Journal is active reflection)
 
+**Knowledge Vault** (plugin):
+The personal knowledge management plugin at `src/modules/knowledge/`. Route is `/knowledge`. Feature ID is `knowledge`. Owns all knowledge capture data — entries, subjects, relationships, tags. Sub-routes: Overview (`/knowledge`), Library (`/knowledge/library`), Timeline (`/knowledge/timeline`), Analytics (`/knowledge/analytics`).
+
+**Knowledge Entry**:
+A logged learning event owned by a User. Contains title, subject, summary, detailed notes (markdown), key takeaways, examples, resources, tags, difficulty, source, mastery level, confidence score, time spent, and review status. Every entry is scoped to a `userId`.
+
+**Subject**:
+A user-defined flat taxonomy label on a Knowledge Entry. Each User creates their own subjects (e.g. "Technology", "Career", "Personal Growth"). One entry has exactly one subject.
+*Avoid*: Category (reserved for Timeline Events)
+
+**Subcategory**:
+An optional freeform text label on a Knowledge Entry, providing additional refinement within the Subject. Not a taxonomy level — purely descriptive.
+
+**Tag**:
+A cross-cutting keyword label on a Knowledge Entry. Many tags per entry, spanning multiple subjects. Used for search and implicit relationships.
+
+**Learning Source**:
+A user-extensible classification of where knowledge was acquired. Defaults: Course, Book, Article, Video, Podcast, Documentation, Work Experience, Personal Experiment, Other.
+
+**Difficulty Level**:
+A fixed enum on Knowledge Entries: `beginner`, `intermediate`, `advanced`.
+
+**Mastery Level**:
+A 1–10 numeric score on a Knowledge Entry indicating how well the user knows the content. Higher = more competent.
+
+**Confidence Score**:
+A 1–10 numeric score on a Knowledge Entry indicating how sure the user is that their understanding is correct. Distinct from Mastery (competence vs certainty).
+
+**Review Status**:
+A fixed enum on Knowledge Entries: `not_reviewed`, `reviewing`, `mastered`. `mastered` is terminal — the entry stops appearing in review queues. Next review date is computed on-read from `lastReviewedAt` and `masteryLevel`.
+
+**Knowledge Relationship**:
+A typed, directed link between two Knowledge Entries. Stored in a junction table with a `relationshipType` indicating how they relate (e.g. `related_to`, `prerequisite`, `builds_on`, `references`). Forms the knowledge graph.
+
+**Knowledge Timeline**:
+A date-grouped view within Knowledge Vault showing entries by `dateLearned`. Every Knowledge Entry automatically creates a Timeline Event in the Life Timeline plugin upon creation.
+
 ## Example dialogue
 
 **Dev**: I need to add a priority field to Tasks. Where's the schema?
@@ -88,3 +125,10 @@ A computed chronological view at `/music/timeline` joining music memories, liste
 **Domain expert**: Habits queries Tasks through the Tasks service layer, never directly. Tasks exposes a `getTaskPriority(taskId)` method.
 **Dev**: What if I need to add a new Plugin?
 **Domain expert**: Create a directory in `src/modules/`, register your routes with the core, and own your schema. Done.
+
+**Dev**: I'm building Knowledge Vault. When a user creates a knowledge entry, should it appear on the Life Timeline?
+**Domain expert**: Yes. The Knowledge Vault service layer calls the Timeline service to create a Timeline Event. Knowledge Vault never writes to `timeline_events` directly — it uses the service layer.
+**Dev**: And subjects are user-defined — no shared taxonomy?
+**Domain expert**: Correct. Each user creates their own flat list of subjects. No global subject table. Scoped to `userId` like everything else.
+**Dev**: What about the Notes plugin — same thing?
+**Domain expert**: Different thing. Notes is a quick scratchpad. Knowledge Vault is structured learning with mastery tracking, review cycles, and a knowledge graph. They're separate plugins but entries across them can be linked.
