@@ -65,7 +65,7 @@ export function Header() {
           </ActionIcon>
           {/* <Link href="/dashboard" className="no-underline">
             <Text size="sm" fw={700} className="text-gray-900 dark:text-white">
-              Life OS
+              Focus Linq
             </Text>
           </Link> */}
           {breadcrumb && (

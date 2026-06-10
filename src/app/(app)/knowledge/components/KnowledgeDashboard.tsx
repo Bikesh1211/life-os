@@ -8,6 +8,7 @@ import {
   SimpleGrid,
   Paper,
   Text,
+  Badge,
   RingProgress,
 } from "@mantine/core";
 import {
@@ -17,12 +18,15 @@ import {
   IconCalendarMonth,
   IconClock,
   IconStar,
+  IconSun,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import dayjs from "dayjs";
 import type { KnowledgeEntry } from "@/modules/knowledge";
 
 type DashboardStats = {
   total: number;
+  learnedToday: number;
   learnedThisWeek: number;
   learnedThisMonth: number;
   totalHours: number;
@@ -36,6 +40,10 @@ type Props = {
 };
 
 export function KnowledgeDashboard({ entries, stats }: Props) {
+  const todayEntries = entries.filter((e) =>
+    dayjs(e.dateLearned).isAfter(dayjs().startOf("day")),
+  );
+
   return (
     <Stack gap="lg">
       <Group justify="space-between" align="center">
@@ -49,13 +57,22 @@ export function KnowledgeDashboard({ entries, stats }: Props) {
         </Button>
       </Group>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }}>
+      <SimpleGrid cols={{ base: 1, sm: 2, md: 5 }}>
         <Paper withBorder p="md" radius="md">
           <Group>
             <IconBooks size={28} stroke={1.5} />
             <div>
               <Text size="xs" c="dimmed">Total Entries</Text>
               <Text size="xl" fw={700}>{stats.total}</Text>
+            </div>
+          </Group>
+        </Paper>
+        <Paper withBorder p="md" radius="md">
+          <Group>
+            <IconSun size={28} stroke={1.5} />
+            <div>
+              <Text size="xs" c="dimmed">Today</Text>
+              <Text size="xl" fw={700}>{stats.learnedToday}</Text>
             </div>
           </Group>
         </Paper>
@@ -87,6 +104,52 @@ export function KnowledgeDashboard({ entries, stats }: Props) {
           </Group>
         </Paper>
       </SimpleGrid>
+
+      {todayEntries.length > 0 && (
+        <Paper withBorder p="md" radius="md">
+          <Group justify="space-between" mb="md">
+            <Title order={4}>
+              <Group gap="xs">
+                <IconSun size={20} />
+                <span>Today's Learning</span>
+              </Group>
+            </Title>
+            <Button
+              component={Link}
+              href="/knowledge/timeline"
+              variant="subtle"
+              size="sm"
+            >
+              View Timeline
+            </Button>
+          </Group>
+          <Stack gap="xs">
+            {todayEntries.map((entry) => (
+              <Paper
+                key={entry.id}
+                component={Link}
+                href={`/knowledge/${entry.id}`}
+                p="sm"
+                withBorder
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
+                <Group justify="space-between">
+                  <Group gap="xs">
+                    <Text fw={500}>{entry.title}</Text>
+                    <Badge size="sm" variant="light">{entry.subject}</Badge>
+                    <Badge size="sm" color="gray" variant="outline">M:{entry.masteryLevel}/10</Badge>
+                  </Group>
+                  {entry.summary && (
+                    <Text size="xs" c="dimmed" lineClamp={1} style={{ maxWidth: 300 }}>
+                      {entry.summary}
+                    </Text>
+                  )}
+                </Group>
+              </Paper>
+            ))}
+          </Stack>
+        </Paper>
+      )}
 
       <SimpleGrid cols={{ base: 1, md: 2 }}>
         <Paper withBorder p="md" radius="md">
