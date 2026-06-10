@@ -41,12 +41,30 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const parsed = createMemorySchema.parse(body);
+
+    // Transform frontend field names to schema names
+    const mapped = {
+      title: body.title,
+      contextText: body.context ?? body.contextText,
+      mood: body.mood,
+      memoryDate: body.memoryDate
+        ? body.memoryDate.includes("T")
+          ? body.memoryDate
+          : `${body.memoryDate}T00:00:00Z`
+        : undefined,
+      trackId: body.trackId,
+      albumId: body.albumId,
+      artistId: body.artistId,
+      photoUrls: body.photoUrls,
+      linkedEventId: body.linkedEventId,
+    };
+
+    const parsed = createMemorySchema.parse(mapped);
     const memory = await createMemory(userId, parsed);
     return NextResponse.json(memory, { status: 201 });
   } catch (error) {
     if (error instanceof Error && "issues" in error) {
-      return NextResponse.json({ error: "Validation failed" }, { status: 400 });
+      return NextResponse.json({ error: "Validation failed", issues: error.issues }, { status: 400 });
     }
     return NextResponse.json({ error: "Failed to create memory" }, { status: 500 });
   }

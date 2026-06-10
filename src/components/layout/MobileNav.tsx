@@ -18,7 +18,7 @@ const tabs: Tab[] = [
   { id: "finance", label: "Finance", href: "/finance/dashboard", icon: IconCoin },
   { id: "quick_note", label: "Quick Note", href: "/quick-note", icon: IconPencilBolt },
   { id: "profile", label: "Timeline", href: "/timeline", icon: IconTimelineEvent },
-  { id: "profile", label: "Profile", href: "/settings", icon: IconUser },
+  { id: "settings", label: "Profile", href: "/settings", icon: IconUser },
 
 ];
 
