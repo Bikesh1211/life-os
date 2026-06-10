@@ -22,7 +22,7 @@ A person who authenticates with Clerk and owns their data. `userId` is the Clerk
 A financial institution account or wallet owned by a User. Examples: bank account, credit card, cash wallet, UPI, PayPal. Not a user identity concept — distinct from the Clerk-based User model. Every Financial Account is scoped to a `userId`. Managed by the Expenses plugin.
 
 **Timeline Event**:
-A life event with a date. Can be past (birth, started career) or future (vacation, deadline). Past/future is computed from `eventDate`, never stored. Every event is scoped to a `userId`.
+A life event or daily activity with a date. Can be past (birth, started career, ate lunch) or future (vacation, deadline). Past/future is computed from `eventDate`, never stored. Daily activities may have `startTime`/`endTime` (HH:mm). Milestone events have a single `eventDate` with no time fields. Every event is scoped to a `userId`.
 
 **Category**:
 A fixed enum on timeline events: `personal`, `career`, `education`, `health`, `finance`, `travel`, `relationships`, `business`, `entertainment`, `custom`.
@@ -34,7 +34,25 @@ A fixed enum on timeline events: `critical`, `high`, `medium`, `low`.
 A fixed enum on timeline events: `none`, `daily`, `weekly`, `monthly`, `yearly`. Defines how the event repeats after its initial `eventDate`. For past events with recurring, the "next occurrence" is computed on-the-fly by adding the recurrence period from `eventDate` until a future date is reached. No instance rows are stored.
 
 **Life Timeline** (aka "Timeline"):
-The plugin at `src/modules/timeline/`. Database table is `timeline_events`. Route is `/timeline`. Feature ID is `timeline`. This is the user-facing name "Life Timeline" internally shortened to `timeline`.
+The plugin at `src/modules/timeline/`. A unified daily activity tracker and life milestone manager. Lets users record everything they do throughout the day (eating, walking, working, shopping, sleeping) and also track notable life events (birthdays, anniversaries, deadlines, vacations). Database table is `timeline_events`. Route group is `/timeline/*`. Feature ID is `timeline`. Sub-routes: Today (`/timeline/today`), Feed (`/timeline/feed`), Calendar (`/timeline/calendar`), Categories (`/timeline/categories`), Analytics (`/timeline/analytics`), Memories (`/timeline/memories`), Settings (`/timeline/settings`).
+
+**Activity Entry**:
+A timeline entry representing something the user did. Has a `title`, `activityType` (e.g. "Walking", "Coding", "Breakfast"), `category` (fixed enum), optional `startTime`/`endTime` (HH:mm), computed `durationMinutes`, `tags`, `mood` (1-5), `energy` (1-5), and `location` (freeform). Every entry is scoped to a `userId`.
+
+**Activity Type**:
+A freeform text label describing the specific activity within a category. System provides suggestions (e.g. Food → Breakfast, Lunch, Dinner, Snacks, Coffee) but users can type anything. Stored in `activityType` column on `timeline_events`.
+
+**Quick Add**:
+The primary creation UX — an inline input at the top of the Today view. Type natural language like "Ate Chowmein" or "Walked 2km" and press Enter to create an entry in seconds. Category is auto-inferred from keywords. Optional fields (time, mood, energy, location) are progressive disclosure below the input.
+
+**Milestone**:
+A notable life event within the Life Timeline (not a separate concept). Distinguished from daily activities by `importance` (`critical`/`high`) and the absence of time fields. The old Milestones route (`/milestones`) is absorbed into Timeline as a filter view.
+
+**Activity Category**:
+A fixed enum on timeline events defining the high-level domain: `personal`, `career`, `education`, `health`, `finance`, `travel`, `relationships`, `business`, `entertainment`, `custom`. For daily activities, each category has suggested `activityType` values. Milestones use the same enum.
+
+**Daily Summary**:
+A computed-on-read aggregation of a day's activities showing activity count, total tracked time, and top categories. No stored table — derived from querying entries for the date.
 
 **Expenses** (plugin):
 The personal finance tracker plugin at `src/modules/expenses/`. Owns all financial data — transactions, budgets, financial accounts, subscriptions, and analytics. Route group is `/finance/*`. Feature ID is `expenses`. Sub-routes: Overview (`/finance`), Transactions (`/finance/transactions`), Budgets (`/finance/budgets`), Accounts (`/finance/accounts`), Subscriptions (`/finance/subscriptions`), Analytics (`/finance/analytics`).
@@ -115,7 +133,7 @@ A fixed enum on Knowledge Entries: `not_reviewed`, `reviewing`, `mastered`. `mas
 A typed, directed link between two Knowledge Entries. Stored in a junction table with a `relationshipType` indicating how they relate (e.g. `related_to`, `prerequisite`, `builds_on`, `references`). Forms the knowledge graph.
 
 **Knowledge Timeline**:
-A date-grouped view within Knowledge Vault showing entries by `dateLearned`. Every Knowledge Entry automatically creates a Timeline Event in the Life Timeline plugin upon creation.
+A date-grouped view within Knowledge Vault showing entries by `dateLearned`. Every Knowledge Entry automatically creates a Timeline Event in the Life Timeline plugin upon creation. Knowledge Vault calls the Timeline service layer — it never writes to `timeline_events` directly.
 
 ## Example dialogue
 

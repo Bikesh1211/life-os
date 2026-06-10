@@ -16,6 +16,16 @@ export type CreateTimelineEventInput = {
   color?: string;
   icon?: string;
   isPinned?: boolean;
+  activityType?: string;
+  tags?: string[];
+  startTime?: string;
+  endTime?: string;
+  durationMinutes?: number;
+  mood?: number;
+  energy?: number;
+  location?: string;
+  linkedEntityId?: string;
+  linkedEntityType?: string;
 };
 
 export type UpdateTimelineEventInput = Partial<Omit<CreateTimelineEventInput, "userId">>;
@@ -36,6 +46,16 @@ export async function createEvent(input: CreateTimelineEventInput) {
       color: input.color,
       icon: input.icon,
       isPinned: input.isPinned ?? false,
+      activityType: input.activityType,
+      tags: input.tags,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      durationMinutes: input.durationMinutes,
+      mood: input.mood,
+      energy: input.energy,
+      location: input.location,
+      linkedEntityId: input.linkedEntityId,
+      linkedEntityType: input.linkedEntityType,
     })
     .returning();
   return event;

@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, boolean, integer, pgEnum } from "drizzle-orm/pg-core";
 
 export const categoryEnum = pgEnum("timeline_category", [
   "personal",
@@ -40,6 +40,21 @@ export const timelineEvents = pgTable("timeline_events", {
   color: text("color"),
   icon: text("icon"),
   isPinned: boolean("is_pinned").default(false).notNull(),
+
+  // ── Activity tracking fields (optional, for daily activities) ──
+  activityType: text("activity_type"),
+  tags: text("tags").array(),
+  startTime: text("start_time"),
+  endTime: text("end_time"),
+  durationMinutes: integer("duration_minutes"),
+  mood: integer("mood"),
+  energy: integer("energy"),
+  location: text("location"),
+
+  // ── Cross-plugin linking ──
+  linkedEntityId: text("linked_entity_id"),
+  linkedEntityType: text("linked_entity_type"),
+
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),

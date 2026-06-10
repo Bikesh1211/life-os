@@ -60,6 +60,8 @@ import {
   IconLogout,
   IconCompass,
   IconSearch,
+  IconSun,
+  IconTags,
 } from "@tabler/icons-react";
 
 export type NavItem = {
@@ -490,16 +492,60 @@ export const navigation: NavGroup[] = [
       {
         label: "Timeline",
         route: "/timeline",
-        description: "Life timeline",
+        description: "Daily activity tracking & life timeline",
         icon: IconTimelineEvent,
         featureId: "timeline",
-      },
-      {
-        label: "Milestones",
-        route: "/milestones",
-        description: "Key milestones",
-        icon: IconFlag,
-        featureId: "milestones",
+        children: [
+          {
+            label: "Today",
+            route: "/timeline/today",
+            description: "Today's activities",
+            icon: IconSun,
+            featureId: "timeline_today",
+          },
+          {
+            label: "Feed",
+            route: "/timeline/feed",
+            description: "Activity history",
+            icon: IconTimelineEvent,
+            featureId: "timeline_feed",
+          },
+          {
+            label: "Calendar",
+            route: "/timeline/calendar",
+            description: "Calendar view",
+            icon: IconCalendar,
+            featureId: "timeline_calendar",
+          },
+          {
+            label: "Categories",
+            route: "/timeline/categories",
+            description: "Browse by category",
+            icon: IconTags,
+            featureId: "timeline_categories",
+          },
+          {
+            label: "Analytics",
+            route: "/timeline/analytics",
+            description: "Activity insights",
+            icon: IconChartBar,
+            featureId: "timeline_analytics",
+          },
+          {
+            label: "Memories",
+            route: "/timeline/memories",
+            description: "Past dates",
+            icon: IconHeart,
+            featureId: "timeline_memories",
+          },
+          {
+            label: "Settings",
+            route: "/timeline/settings",
+            description: "Timeline preferences",
+            icon: IconSettings,
+            featureId: "timeline_settings",
+          },
+        ],
       },
     ],
   },
