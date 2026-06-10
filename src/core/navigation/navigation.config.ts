@@ -239,6 +239,13 @@ export const navigation: NavGroup[] = [
             icon: IconGraph,
             featureId: "graph_view",
           },
+          {
+            label: "Knowledge Vault",
+            route: "/knowledge",
+            description: "Capture & organize learning",
+            icon: IconSchool,
+            featureId: "knowledge",
+          },
         ],
       },
       {

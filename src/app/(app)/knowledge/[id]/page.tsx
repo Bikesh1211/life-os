@@ -1,0 +1,23 @@
+import { auth } from "@clerk/nextjs/server";
+import { getKnowledgeEntry, getEntryLinks } from "@/modules/knowledge";
+import { notFound } from "next/navigation";
+import { EntryDetail } from "../components/EntryDetail";
+
+export const dynamic = "force-dynamic";
+
+type Props = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function KnowledgeEntryPage({ params }: Props) {
+  const { userId } = await auth();
+  const { id } = await params;
+  const [entry, links] = await Promise.all([
+    getKnowledgeEntry(id, userId!),
+    getEntryLinks(id, userId!),
+  ]);
+
+  if (!entry) notFound();
+
+  return <EntryDetail entry={entry} links={links} />;
+}
