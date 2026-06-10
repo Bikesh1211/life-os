@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Stack,
   Title,
@@ -16,9 +17,7 @@ import {
   IconTimelineEvent,
   IconCalendar,
   IconChartBar,
-  IconTags,
-  IconHeart,
-  IconSettings,
+  IconPin,
 } from "@tabler/icons-react";
 import { QuickAdd } from "./components/QuickAdd";
 import { TodayView } from "./components/TodayView";
@@ -42,10 +41,29 @@ type Props = {
 };
 
 export function TimelineContent({ events, defaultTab = "today" }: Props) {
-  const [activeTab, setActiveTab] = useState<string | null>(defaultTab);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string | null>(
+    searchParams.get("tab") ?? defaultTab,
+  );
   const [createOpened, setCreateOpened] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventWithDuration | null>(null);
   const [localEvents, setLocalEvents] = useState<EventWithDuration[]>(events);
+
+  const handleTabChange = useCallback(
+    (value: string | null) => {
+      setActiveTab(value);
+      const params = new URLSearchParams(searchParams.toString());
+      if (value && value !== "today") {
+        params.set("tab", value);
+      } else {
+        params.delete("tab");
+      }
+      const qs = params.toString();
+      router.replace(`/timeline${qs ? `?${qs}` : ""}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   const handleRefresh = useCallback(async () => {
     try {
@@ -94,7 +112,7 @@ export function TimelineContent({ events, defaultTab = "today" }: Props) {
 
         <QuickAdd onCreated={handleRefresh} />
 
-        <Tabs value={activeTab} onChange={setActiveTab}>
+        <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List>
             <Tabs.Tab value="today" leftSection={<IconSun size={16} />}>
               Today
@@ -107,6 +125,9 @@ export function TimelineContent({ events, defaultTab = "today" }: Props) {
             </Tabs.Tab>
             <Tabs.Tab value="calendar" leftSection={<IconCalendar size={16} />}>
               Calendar
+            </Tabs.Tab>
+            <Tabs.Tab value="pinned" leftSection={<IconPin size={16} />}>
+              Pinned
             </Tabs.Tab>
             <Tabs.Tab value="insights" leftSection={<IconChartBar size={16} />}>
               Insights
@@ -159,6 +180,32 @@ export function TimelineContent({ events, defaultTab = "today" }: Props) {
 
           <Tabs.Panel value="calendar" pt="md">
             <CalendarView events={localEvents} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="pinned" pt="md">
+            <Stack gap="sm">
+              {localEvents.filter((e) => e.isPinned).length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                  <IconPin size={48} stroke={1.5} className="mb-4 opacity-40" />
+                  <Text size="sm">No pinned events. Pin an event to see it here.</Text>
+                </div>
+              )}
+              {localEvents
+                .filter((e) => e.isPinned)
+                .sort((a, b) => {
+                  const aDate = a.nextOccurrence ?? a.eventDate;
+                  const bDate = b.nextOccurrence ?? b.eventDate;
+                  return new Date(bDate).getTime() - new Date(aDate).getTime();
+                })
+                .map((event) => (
+                  <EventCard
+                    key={event.id}
+                    event={event}
+                    onEdit={() => setEditingEvent(event)}
+                    onDeleted={handleDeleted}
+                  />
+                ))}
+            </Stack>
           </Tabs.Panel>
 
           <Tabs.Panel value="insights" pt="md">
