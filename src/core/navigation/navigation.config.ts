@@ -100,8 +100,8 @@ export const navigation: NavGroup[] = [
     label: "Operations",
     items: [
       {
-        label: "Dashboard",
-        route: "/dashboard",
+        label: "Home",
+        route: "/",
         description: "Overview of your life",
         icon: IconLayoutDashboard,
         featureId: "dashboard",

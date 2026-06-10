@@ -7,9 +7,9 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   IconChevronRight,
+  IconArrowBarToRight,
   IconStar,
   IconStarFilled,
-  IconArrowBarToRight,
 } from "@tabler/icons-react";
 import { type NavItem } from "@/core/navigation";
 import { cn } from "@/core/utils";
@@ -23,14 +23,19 @@ const SIDEBAR_COLLAPSED_W = 64;
 /* ── Collapse toggle button ── */
 
 function CollapseBtn() {
-  const { toggleCollapsed } = useAppShell();
+  const { collapsed, toggleCollapsed } = useAppShell();
   return (
     <button
       onClick={toggleCollapsed}
       className="flex items-center justify-center h-9 w-9 mx-auto rounded-lg transition-all duration-150 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5"
-      title="Expand sidebar"
+      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
-      <IconArrowBarToRight size={16} />
+      <motion.div
+        animate={{ rotate: collapsed ? 0 : 180 }}
+        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      >
+        <IconArrowBarToRight size={16} />
+      </motion.div>
     </button>
   );
 }
@@ -39,28 +44,31 @@ function CollapseBtn() {
 
 function Brand({ collapsed }: { collapsed: boolean }) {
   const { toggleCollapsed } = useAppShell();
-  return collapsed ? (
+  return (
     <button
       onClick={toggleCollapsed}
-      className="cursor-pointer flex items-center justify-center h-14 border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors w-full"
-      title="Expand sidebar"
+      className={cn(
+        "cursor-pointer flex items-center h-14 w-full border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors",
+        collapsed ? "justify-center" : "gap-2.5 px-4 text-left",
+      )}
+      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-sm">
-        L
+      L
       </div>
-    </button>
-  ) : (
-    <button
-      onClick={toggleCollapsed}
-      className="cursor-pointer flex items-center gap-2.5 px-4 h-14 w-full border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors text-left"
-      title="Collapse sidebar"
-    >
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-sm">
-        L
-      </div>
-      <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-        Focus Linq
-      </span>
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.span
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -6 }}
+            transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+            className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white"
+          >
+            Focus Linq
+          </motion.span>
+        )}
+      </AnimatePresence>
     </button>
   );
 }
@@ -73,6 +81,7 @@ type NavItemLinkProps = {
   collapsed?: boolean;
   onFavorite?: (id: string) => void;
   isFavorited?: boolean;
+  isDefault?: boolean;
 };
 
 function NavItemLink({
@@ -81,8 +90,10 @@ function NavItemLink({
   collapsed = false,
   onFavorite,
   isFavorited: fav,
+  isDefault,
 }: NavItemLinkProps) {
   const pathname = usePathname();
+  const { closeMobile } = useAppShell();
   const isActive =
     pathname === item.route || pathname.startsWith(item.route + "/");
   const Icon = item.icon;
@@ -92,6 +103,7 @@ function NavItemLink({
       <div className="group relative flex items-center justify-center px-1">
         <Link
           href={item.route}
+          onClick={closeMobile}
           className={cn(
             "flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150",
             isActive
@@ -118,6 +130,7 @@ function NavItemLink({
     <div className={cn("group relative flex items-center", depth > 0 && "pl-8")}>
       <Link
         href={item.route}
+        onClick={closeMobile}
         className={cn(
           "flex flex-1 items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-all duration-150",
           "text-sm font-medium",
@@ -139,7 +152,7 @@ function NavItemLink({
         </div>
         <span className="truncate leading-none">{item.label}</span>
       </Link>
-      {onFavorite && (
+      {onFavorite && !isDefault && (
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -358,6 +371,7 @@ type GroupSectionProps = {
   collapsed?: boolean;
   onFavorite?: (id: string) => void;
   isFavorited?: (id: string) => boolean;
+  isDefault?: (id: string) => boolean;
 };
 
 function GroupSection({
@@ -365,6 +379,7 @@ function GroupSection({
   collapsed = false,
   onFavorite,
   isFavorited,
+  isDefault,
 }: GroupSectionProps) {
   const isSpecial = group.label === "System" || group.label === "Favorites";
   const pathname = usePathname();
@@ -398,6 +413,7 @@ function GroupSection({
               collapsed
               onFavorite={onFavorite}
               isFavorited={isFavorited?.(item.featureId)}
+              isDefault={isDefault?.(item.featureId)}
             />
           ),
         )}
@@ -431,6 +447,7 @@ function GroupSection({
                 item={item}
                 onFavorite={onFavorite}
                 isFavorited={isFavorited?.(item.featureId)}
+                isDefault={isDefault?.(item.featureId)}
               />
             )
           )}
@@ -487,6 +504,7 @@ function GroupSection({
                     item={item}
                     onFavorite={onFavorite}
                     isFavorited={isFavorited?.(item.featureId)}
+                    isDefault={isDefault?.(item.featureId)}
                   />
                 ),
               )}
@@ -504,55 +522,77 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
   const { loaded, getVisibleGroups } = useSidebarVisibility();
   const {
     loaded: favLoaded,
-    getFavoriteItems,
+    getDefaultFavoriteItems,
+    getCustomFavoriteItems,
     toggleFavorite,
     isFavorited,
+    isDefault,
   } = useSidebarFavorites();
 
   const groups = loaded ? getVisibleGroups() : [];
-  const favItems = favLoaded ? getFavoriteItems() : [];
+  const defaultItems = favLoaded ? getDefaultFavoriteItems() : [];
+  const customItems = favLoaded ? getCustomFavoriteItems() : [];
+  const hasFavorites = defaultItems.length > 0 || customItems.length > 0;
 
   return (
     <div className="flex h-full flex-col sd-content">
       {showBrand && <Brand collapsed={collapsed} />}
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-1.5 pb-2 scrollbar-thin">
-        {favItems.length > 0 && (
-          <div className="mb-0.5">
-            <div className="space-y-0.5">
-              {favItems.map((item) => (
-                <NavItemLink
-                  key={item.featureId}
-                  item={item}
-                  collapsed={collapsed}
-                />
-              ))}
+      <AnimatePresence mode="popLayout">
+        <motion.div
+          key={collapsed ? "collapsed" : "expanded"}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          layout
+          className="flex-1 overflow-y-auto overflow-x-hidden px-1.5 pb-2 scrollbar-thin"
+        >
+          {hasFavorites && (
+            <div className="mb-0.5">
+              <div className="space-y-0.5">
+                {defaultItems.map((item) => (
+                  <NavItemLink
+                    key={item.featureId}
+                    item={item}
+                    collapsed={collapsed}
+                  />
+                ))}
+                {customItems.map((item) => (
+                  <NavItemLink
+                    key={item.featureId}
+                    item={item}
+                    collapsed={collapsed}
+                    onFavorite={toggleFavorite}
+                    isFavorited={isFavorited(item.featureId)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {favItems.length > 0 && !collapsed && (
-          <div className="h-px bg-gray-100 dark:bg-white/5 mx-2 my-1.5" />
-        )}
+          {hasFavorites && !collapsed && (
+            <div className="h-px bg-gray-100 dark:bg-white/5 mx-2 my-1.5" />
+          )}
 
-        {groups.map((group) =>
-          group.label === "Favorites" ? null : (
-            <GroupSection
-              key={group.label}
-              group={group}
-              collapsed={collapsed}
-              onFavorite={toggleFavorite}
-              isFavorited={isFavorited}
-            />
-          ),
-        )}
+          {groups.map((group) =>
+            group.label === "Favorites" ? null : (
+              <GroupSection
+                key={group.label}
+                group={group}
+                collapsed={collapsed}
+                onFavorite={toggleFavorite}
+                isFavorited={isFavorited}
+                isDefault={isDefault}
+              />
+            ),
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="border-t border-gray-100 dark:border-white/5 py-1">
+        <CollapseBtn />
       </div>
-
-      {collapsed && (
-        <div className="border-t border-gray-100 dark:border-white/5 py-1">
-          <CollapseBtn />
-        </div>
-      )}
     </div>
   );
 }

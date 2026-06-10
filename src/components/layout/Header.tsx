@@ -66,11 +66,6 @@ export function Header() {
           <ActionIcon variant="subtle" size="lg" onClick={toggle} aria-label="Toggle sidebar" className="hidden sm:inline-flex">
             <IconMenu2 size={20} />
           </ActionIcon>
-          {/* <Link href="/dashboard" className="no-underline">
-            <Text size="sm" fw={700} className="text-gray-900 dark:text-white">
-              Focus Linq
-            </Text>
-          </Link> */}
           {breadcrumb && (
             <>
               {/* <Text size="sm" c="dimmed" className="mx-1 select-none">

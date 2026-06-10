@@ -4,22 +4,25 @@ import { useState, useEffect, useCallback } from "react";
 import { findNavItemByFeatureId, type NavItem } from "@/core/navigation";
 
 const STORAGE_KEY = "life-os:sidebar-favorites";
-const DEFAULT_FAVORITES = ["dashboard", "quick_note", "timeline", "calendar"];
+
+export const DEFAULT_FAVORITES = [
+  "dashboard",
+  "quick_note",
+  "expenses",
+  "timeline",
+  "journal",
+  "habits",
+];
 
 export function useSidebarFavorites() {
-  const [favorites, setFavorites] = useState<string[]>([]);
+  const [customFavorites, setCustomFavorites] = useState<string[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        setFavorites(JSON.parse(raw));
-      } else {
-        setFavorites(DEFAULT_FAVORITES);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_FAVORITES));
-      }
+      if (raw) setCustomFavorites(JSON.parse(raw));
     } catch {}
     setLoaded(true);
   }, []);
@@ -33,10 +36,13 @@ export function useSidebarFavorites() {
       })
       .then((data) => {
         if (data.favorites) {
-          setFavorites((prev) => {
-            if (JSON.stringify(prev) === JSON.stringify(data.favorites)) return prev;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data.favorites));
-            return data.favorites;
+          const nonDefaults = data.favorites.filter(
+            (id: string) => !DEFAULT_FAVORITES.includes(id),
+          );
+          setCustomFavorites((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(nonDefaults)) return prev;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(nonDefaults));
+            return nonDefaults;
           });
         }
       })
@@ -49,14 +55,27 @@ export function useSidebarFavorites() {
       fetch("/api/sidebar/preferences", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ favorites }),
+        body: JSON.stringify({ favorites: customFavorites }),
       }).catch(() => {});
     }, 300);
     return () => clearTimeout(timer);
-  }, [favorites, loaded]);
+  }, [customFavorites, loaded]);
+
+  const getDefaultFavoriteItems = useCallback((): NavItem[] => {
+    return DEFAULT_FAVORITES.map((id) => findNavItemByFeatureId(id)).filter(
+      (item): item is NavItem => item !== undefined,
+    );
+  }, []);
+
+  const getCustomFavoriteItems = useCallback((): NavItem[] => {
+    return customFavorites
+      .map((id) => findNavItemByFeatureId(id))
+      .filter((item): item is NavItem => item !== undefined);
+  }, [customFavorites]);
 
   const toggleFavorite = useCallback((featureId: string) => {
-    setFavorites((prev) => {
+    if (DEFAULT_FAVORITES.includes(featureId)) return;
+    setCustomFavorites((prev) => {
       const next = prev.includes(featureId)
         ? prev.filter((id) => id !== featureId)
         : [...prev, featureId];
@@ -66,15 +85,22 @@ export function useSidebarFavorites() {
   }, []);
 
   const isFavorited = useCallback(
-    (featureId: string) => favorites.includes(featureId),
-    [favorites],
+    (featureId: string) => customFavorites.includes(featureId),
+    [customFavorites],
   );
 
-  const getFavoriteItems = useCallback((): NavItem[] => {
-    return favorites
-      .map((id) => findNavItemByFeatureId(id))
-      .filter((item): item is NavItem => item !== undefined);
-  }, [favorites]);
+  const isDefault = useCallback(
+    (featureId: string) => DEFAULT_FAVORITES.includes(featureId),
+    [],
+  );
 
-  return { favorites, loaded, toggleFavorite, isFavorited, getFavoriteItems };
+  return {
+    loaded,
+    getDefaultFavoriteItems,
+    getCustomFavoriteItems,
+    toggleFavorite,
+    isFavorited,
+    isDefault,
+    customFavorites,
+  };
 }

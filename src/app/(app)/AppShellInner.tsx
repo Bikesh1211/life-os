@@ -32,7 +32,7 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
           <div className="h-full flex flex-col py-4">
             <div className="flex items-center gap-2.5 px-4 py-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-[10px] font-bold text-white">
-                L
+                F
               </div>
               <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
                 Focus Linq
