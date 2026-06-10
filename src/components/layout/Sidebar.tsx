@@ -149,7 +149,7 @@ function NavItemLink({
           className={cn(
             "flex-shrink-0 rounded p-0.5 transition-all duration-150 mr-1",
             fav
-              ? "text-amber-400 hover:text-amber-500"
+              ? "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               : "opacity-0 group-hover:opacity-100 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400",
           )}
           title={fav ? "Remove from favorites" : "Add to favorites"}
