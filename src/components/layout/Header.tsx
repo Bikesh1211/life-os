@@ -5,6 +5,7 @@ import {
   ActionIcon,
   Text,
   useMantineColorScheme,
+  useComputedColorScheme,
   Menu,
   Avatar,
   AppShellHeader,
@@ -14,6 +15,7 @@ import { useUser, useClerk } from "@clerk/nextjs";
 import {
   IconSun,
   IconMoon,
+  IconBrightnessHalf,
   IconBell,
   IconLogout,
   IconSettings,
@@ -47,7 +49,8 @@ export function Header() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
+  const { colorScheme, setColorScheme, clearColorScheme } = useMantineColorScheme();
+  const computedColorScheme = useComputedColorScheme();
   const { user } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
@@ -100,14 +103,28 @@ export function Header() {
             </ActionIcon>
           </Tooltip>
 
-          <Tooltip label={colorScheme === "dark" ? "Light mode" : "Dark mode"}>
-            <ActionIcon variant="subtle" size="lg" onClick={() => toggleColorScheme()}>
+          <Tooltip label={colorScheme === "light" ? "Dark mode" : colorScheme === "dark" ? "System mode" : "Light mode"}>
+            <ActionIcon
+              variant="subtle"
+              size="lg"
+              onClick={() => {
+                if (colorScheme === "light") {
+                  setColorScheme("dark");
+                } else if (colorScheme === "dark") {
+                  clearColorScheme();
+                } else {
+                  setColorScheme("light");
+                }
+              }}
+            >
               {!mounted ? (
                 <IconSun size={20} />
               ) : colorScheme === "dark" ? (
-                <IconSun size={20} />
-              ) : (
                 <IconMoon size={20} />
+              ) : colorScheme === "auto" ? (
+                <IconBrightnessHalf size={20} />
+              ) : (
+                <IconSun size={20} />
               )}
             </ActionIcon>
           </Tooltip>

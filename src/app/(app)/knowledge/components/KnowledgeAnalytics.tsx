@@ -9,6 +9,7 @@ import {
   Text,
   Group,
   Badge,
+  useComputedColorScheme,
 } from "@mantine/core";
 import type { KnowledgeEntry } from "@/modules/knowledge";
 
@@ -61,6 +62,9 @@ export function KnowledgeAnalytics({ entries, stats }: Props) {
     return Object.entries(counts).sort(([, a], [, b]) => b - a);
   }, [entries]);
 
+  const computedColorScheme = useComputedColorScheme();
+  const isDark = computedColorScheme === "dark";
+
   return (
     <Stack gap="lg">
       <Title order={2}>Analytics</Title>
@@ -111,7 +115,7 @@ export function KnowledgeAnalytics({ entries, stats }: Props) {
                       <div
                         style={{
                           height: 4,
-                          background: "var(--mantine-color-gray-2)",
+                          background: isDark ? "var(--mantine-color-dark-4)" : "var(--mantine-color-gray-1)",
                           borderRadius: 2,
                           overflow: "hidden",
                         }}
@@ -120,7 +124,7 @@ export function KnowledgeAnalytics({ entries, stats }: Props) {
                           style={{
                             width: `${pct}%`,
                             height: "100%",
-                            background: "var(--mantine-color-blue-5)",
+                            background: "var(--mantine-primary-color-5)",
                             borderRadius: 2,
                           }}
                         />
