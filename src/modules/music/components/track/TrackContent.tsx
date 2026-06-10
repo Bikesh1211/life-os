@@ -11,6 +11,7 @@ import { AddToCollectionButton } from "../design-system/AddToCollectionButton";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { IconClock, IconExternalLink, IconHeart, IconHeartFilled, IconMicrophone, IconNote } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
 
 type TrackData = {
   id: string;
@@ -75,22 +76,42 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entityType: "track", entityId: id, content }),
       });
-      if (!res.ok) throw new Error("Failed to save note");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to save note");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["track-notes", id] });
       setNoteInput("");
     },
+    onError: (err) => {
+      notifications.show({
+        title: "Failed to save note",
+        message: err instanceof Error ? err.message : "An error occurred",
+        color: "red",
+      });
+    },
   });
 
   const deleteNoteMutation = useMutation({
     mutationFn: async (noteId: string) => {
       const res = await fetch(`/api/music/notes/${noteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete note");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to delete note");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["track-notes", id] });
+    },
+    onError: (err) => {
+      notifications.show({
+        title: "Failed to delete note",
+        message: err instanceof Error ? err.message : "An error occurred",
+        color: "red",
+      });
     },
   });
 

@@ -23,7 +23,7 @@ const tabs: Tab[] = [
 ];
 
 function useActiveTab(pathname: string) {
-  return useMemo(() => {
+  return useMemo(() => {  
     for (const t of tabs) {
       if (t.href === "/" && pathname === "/") return t.id;
       if (t.href !== "/" && pathname.startsWith(t.href)) return t.id;
