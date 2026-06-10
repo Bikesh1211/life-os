@@ -22,6 +22,7 @@ body {
 
 .sd-content {
   user-select: none;
+  overflow: hidden;
 }
 
 /* Scrollbar */

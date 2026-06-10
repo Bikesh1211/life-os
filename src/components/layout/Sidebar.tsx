@@ -23,14 +23,19 @@ const SIDEBAR_COLLAPSED_W = 64;
 /* ── Collapse toggle button ── */
 
 function CollapseBtn() {
-  const { toggleCollapsed } = useAppShell();
+  const { collapsed, toggleCollapsed } = useAppShell();
   return (
     <button
       onClick={toggleCollapsed}
       className="flex items-center justify-center h-9 w-9 mx-auto rounded-lg transition-all duration-150 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5"
-      title="Expand sidebar"
+      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
-      <IconArrowBarToRight size={16} />
+      <motion.div
+        animate={{ rotate: collapsed ? 0 : 180 }}
+        transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+      >
+        <IconArrowBarToRight size={16} />
+      </motion.div>
     </button>
   );
 }
@@ -39,28 +44,31 @@ function CollapseBtn() {
 
 function Brand({ collapsed }: { collapsed: boolean }) {
   const { toggleCollapsed } = useAppShell();
-  return collapsed ? (
+  return (
     <button
       onClick={toggleCollapsed}
-      className="cursor-pointer flex items-center justify-center h-14 border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors w-full"
-      title="Expand sidebar"
+      className={cn(
+        "cursor-pointer flex items-center h-14 w-full border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors",
+        collapsed ? "justify-center" : "gap-2.5 px-4 text-left",
+      )}
+      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-sm">
-        L
+      L
       </div>
-    </button>
-  ) : (
-    <button
-      onClick={toggleCollapsed}
-      className="cursor-pointer flex items-center gap-2.5 px-4 h-14 w-full border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors text-left"
-      title="Collapse sidebar"
-    >
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-sm">
-        L
-      </div>
-      <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-        Focus Linq
-      </span>
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.span
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -6 }}
+            transition={{ duration: 0.15, ease: [0.4, 0, 0.2, 1] }}
+            className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white"
+          >
+            Focus Linq
+          </motion.span>
+        )}
+      </AnimatePresence>
     </button>
   );
 }
@@ -530,53 +538,61 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
     <div className="flex h-full flex-col sd-content">
       {showBrand && <Brand collapsed={collapsed} />}
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-1.5 pb-2 scrollbar-thin">
-        {hasFavorites && (
-          <div className="mb-0.5">
-            <div className="space-y-0.5">
-              {defaultItems.map((item) => (
-                <NavItemLink
-                  key={item.featureId}
-                  item={item}
-                  collapsed={collapsed}
-                />
-              ))}
-              {customItems.map((item) => (
-                <NavItemLink
-                  key={item.featureId}
-                  item={item}
-                  collapsed={collapsed}
-                  onFavorite={toggleFavorite}
-                  isFavorited={isFavorited(item.featureId)}
-                />
-              ))}
+      <AnimatePresence mode="popLayout">
+        <motion.div
+          key={collapsed ? "collapsed" : "expanded"}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          layout
+          className="flex-1 overflow-y-auto overflow-x-hidden px-1.5 pb-2 scrollbar-thin"
+        >
+          {hasFavorites && (
+            <div className="mb-0.5">
+              <div className="space-y-0.5">
+                {defaultItems.map((item) => (
+                  <NavItemLink
+                    key={item.featureId}
+                    item={item}
+                    collapsed={collapsed}
+                  />
+                ))}
+                {customItems.map((item) => (
+                  <NavItemLink
+                    key={item.featureId}
+                    item={item}
+                    collapsed={collapsed}
+                    onFavorite={toggleFavorite}
+                    isFavorited={isFavorited(item.featureId)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {hasFavorites && !collapsed && (
-          <div className="h-px bg-gray-100 dark:bg-white/5 mx-2 my-1.5" />
-        )}
+          {hasFavorites && !collapsed && (
+            <div className="h-px bg-gray-100 dark:bg-white/5 mx-2 my-1.5" />
+          )}
 
-        {groups.map((group) =>
-          group.label === "Favorites" ? null : (
-            <GroupSection
-              key={group.label}
-              group={group}
-              collapsed={collapsed}
-              onFavorite={toggleFavorite}
-              isFavorited={isFavorited}
-              isDefault={isDefault}
-            />
-          ),
-        )}
+          {groups.map((group) =>
+            group.label === "Favorites" ? null : (
+              <GroupSection
+                key={group.label}
+                group={group}
+                collapsed={collapsed}
+                onFavorite={toggleFavorite}
+                isFavorited={isFavorited}
+                isDefault={isDefault}
+              />
+            ),
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="border-t border-gray-100 dark:border-white/5 py-1">
+        <CollapseBtn />
       </div>
-
-      {collapsed && (
-        <div className="border-t border-gray-100 dark:border-white/5 py-1">
-          <CollapseBtn />
-        </div>
-      )}
     </div>
   );
 }
