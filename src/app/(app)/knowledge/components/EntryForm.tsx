@@ -13,7 +13,7 @@ import {
   Button,
   TagsInput,
 } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
+import { showSuccess, showError } from "@/core/notifications";
 import type { KnowledgeEntry } from "@/modules/knowledge";
 
 type Props = {
@@ -93,19 +93,14 @@ export function EntryForm({ subjects, initialData }: Props) {
       if (!res.ok) throw new Error("Failed to save");
 
       const data = await res.json();
-      notifications.show({
-        title: isEditing ? "Updated" : "Created",
-        message: `"${data.title}" has been ${isEditing ? "updated" : "created"} successfully.`,
-        color: "green",
-      });
+      showSuccess(
+        `"${data.title}" has been ${isEditing ? "updated" : "created"} successfully.`,
+        isEditing ? "Updated" : "Created",
+      );
       router.push(`/knowledge/${data.id}`);
       router.refresh();
     } catch (error) {
-      notifications.show({
-        title: "Error",
-        message: "Failed to save entry",
-        color: "red",
-      });
+      showError("Failed to save entry");
     } finally {
       setLoading(false);
     }

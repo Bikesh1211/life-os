@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Modal, TextInput } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
+import { showSuccess, showError } from "@/core/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
 
 type JournalEditorProps = {
@@ -41,18 +41,10 @@ export function JournalEditor({
     try {
       const res = await fetch(`/api/journal/${entryId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
-      notifications.show({
-        title: "Deleted",
-        message: `"${initialTitle}" has been deleted.`,
-        color: "red",
-      });
+      showSuccess(`"${initialTitle}" has been deleted.`, "Deleted");
       router.push("/journal");
     } catch {
-      notifications.show({
-        title: "Error",
-        message: "Failed to delete entry",
-        color: "red",
-      });
+      showError("Failed to delete entry");
     } finally {
       setDeleteLoading(false);
       setDeleteModalOpen(false);
@@ -71,22 +63,14 @@ export function JournalEditor({
       });
       if (!res.ok) throw new Error("Failed to save");
       const data = await res.json();
-      notifications.show({
-        title: entryId ? "Updated" : "Created",
-        message: `"${title}" saved successfully.`,
-        color: "green",
-      });
+      showSuccess(`"${title}" saved successfully.`, entryId ? "Updated" : "Created");
       if (!entryId) {
         router.replace(`/journal/${data.id}`);
       } else {
         router.refresh();
       }
     } catch {
-      notifications.show({
-        title: "Error",
-        message: "Failed to save entry",
-        color: "red",
-      });
+      showError("Failed to save entry");
     } finally {
       setLoading(false);
     }

@@ -15,7 +15,7 @@ import {
   Menu,
   SimpleGrid,
 } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
+import { showSuccess, showError } from "@/core/notifications";
 import {
   IconEdit,
   IconTrash,
@@ -58,19 +58,11 @@ export function EntryDetail({ entry, links }: Props) {
     setDeleting(true);
     try {
       await fetch(`/api/knowledge/${entry.id}`, { method: "DELETE" });
-      notifications.show({
-        title: "Deleted",
-        message: "Entry has been deleted",
-        color: "red",
-      });
+      showSuccess("Entry has been deleted", "Deleted");
       router.push("/knowledge");
       router.refresh();
     } catch {
-      notifications.show({
-        title: "Error",
-        message: "Failed to delete entry",
-        color: "red",
-      });
+      showError("Failed to delete entry");
     } finally {
       setDeleting(false);
     }
@@ -83,21 +75,13 @@ export function EntryDetail({ entry, links }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entryId: entry.id, action }),
       });
-      notifications.show({
-        title: "Reviewed",
-        message:
-          action === "mastered"
-            ? "Marked as mastered"
-            : "Entry reviewed successfully",
-        color: "green",
-      });
+      showSuccess(
+        action === "mastered" ? "Marked as mastered" : "Entry reviewed successfully",
+        "Reviewed",
+      );
       router.refresh();
     } catch {
-      notifications.show({
-        title: "Error",
-        message: "Failed to record review",
-        color: "red",
-      });
+      showError("Failed to record review");
     }
   };
 
