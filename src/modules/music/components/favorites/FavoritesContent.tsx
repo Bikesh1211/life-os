@@ -15,13 +15,8 @@ type Favorite = {
   entityType: string;
   entityId: string;
   createdAt: string;
-};
-
-type TrackDetail = {
-  id: string;
-  title: string;
-  artistName: string;
-  albumCoverUrl: string | null;
+  entityName: string | null;
+  imageUrl: string | null;
 };
 
 export function FavoritesContent() {
@@ -93,8 +88,9 @@ export function FavoritesContent() {
     >
       <Link href={`/music/${fav.entityType === "track" ? "song" : fav.entityType === "artist" ? "artists" : "albums"}/${fav.entityId}`}>
         <MusicCard
-          title={fav.entityId}
-          subtitle={fav.entityType}
+          title={fav.entityName ?? fav.entityId}
+          subtitle={fav.entityType === "track" ? "Song" : fav.entityType === "artist" ? "Artist" : "Album"}
+          imageUrl={fav.imageUrl}
           aspectRatio={fav.entityType === "artist" ? "square" : "portrait"}
         />
       </Link>
