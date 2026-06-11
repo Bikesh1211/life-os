@@ -39,7 +39,7 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <SidebarContent showBrand={false} />
+              <SidebarContent showBrand={false} showBottomCollapse={false} />
             </div>
           </div>
         </MobileDrawer>
