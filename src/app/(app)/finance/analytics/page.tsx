@@ -130,67 +130,79 @@ export default function AnalyticsPage() {
         </SimpleGrid>
 
         <SimpleGrid cols={{ base: 1, lg: 2 }}>
-          <Card padding="lg" radius="lg">
+          <Card padding="lg" radius="lg" style={{ overflow: "visible" }}>
             <Text fw={600} mb="md">
               Spending Distribution
             </Text>
-            <div style={{ height: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    dataKey="value"
-                    nameKey="name"
-                  >
-                    {pieData.map((entry, i) => (
-                      <Cell key={entry.name} fill={entry.color ?? COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--mantine-color-dark-7)",
-                      border: "1px solid var(--mantine-color-dark-4)",
-                      borderRadius: 8,
-                    }}
-                    formatter={(value) => [`₹${Number(value).toLocaleString()}`, ""]}
-                  />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+            {pieData.length === 0 || pieData.every((d) => d.value === 0) ? (
+              <Text c="dimmed" ta="center" py={80}>
+                No spending data yet
+              </Text>
+            ) : (
+              <div style={{ height: 300, width: "100%" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      dataKey="value"
+                      nameKey="name"
+                    >
+                      {pieData.map((entry, i) => (
+                        <Cell key={entry.name} fill={entry.color ?? COLORS[i % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "var(--mantine-color-dark-7)",
+                        border: "1px solid var(--mantine-color-dark-4)",
+                        borderRadius: 8,
+                      }}
+                      formatter={(value) => [`₹${Number(value).toLocaleString()}`, ""]}
+                    />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
 
-          <Card padding="lg" radius="lg">
+          <Card padding="lg" radius="lg" style={{ overflow: "visible" }}>
             <Text fw={600} mb="md">
               Spending Trend
             </Text>
-            <div style={{ height: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={timelineData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--mantine-color-dark-4)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "var(--mantine-color-dark-7)",
-                      border: "1px solid var(--mantine-color-dark-4)",
-                      borderRadius: 8,
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="amount"
-                    stroke="var(--mantine-color-blue-6)"
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {timelineData.length === 0 ? (
+              <Text c="dimmed" ta="center" py={80}>
+                No spending data yet
+              </Text>
+            ) : (
+              <div style={{ height: 300, width: "100%" }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={timelineData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--mantine-color-dark-4)" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "var(--mantine-color-dark-7)",
+                        border: "1px solid var(--mantine-color-dark-4)",
+                        borderRadius: 8,
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="amount"
+                      stroke="var(--mantine-color-blue-6)"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </Card>
         </SimpleGrid>
 

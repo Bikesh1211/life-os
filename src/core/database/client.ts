@@ -9,6 +9,7 @@ import * as timelineSchema from "@/modules/timeline/schema";
 import * as expensesSchema from "@/modules/expenses/schema";
 import * as musicSchema from "@/modules/music/schema";
 import * as knowledgeSchema from "@/modules/knowledge/schema";
+import * as wardrobeSchema from "@/modules/wardrobe/schema";
 import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -33,6 +34,7 @@ export const db = drizzle(queryClient, {
     ...expensesSchema,
     ...musicSchema,
      ...knowledgeSchema,
+     ...wardrobeSchema,
      sidebarPreferences,
     },
   });
