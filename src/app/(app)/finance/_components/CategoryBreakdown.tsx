@@ -30,7 +30,7 @@ function getIcon(iconName: string | null): TablerIcon {
 
 export function CategoryBreakdown({ data, totalSpending }: CategoryBreakdownProps) {
   return (
-    <Card padding="lg" radius="lg">
+    <Card padding="lg" radius="lg" h="100%">
       <Stack gap="md">
         <Text fw={600} size="lg">
           Spending by Category
