@@ -10,6 +10,8 @@ import * as expensesSchema from "@/modules/expenses/schema";
 import * as musicSchema from "@/modules/music/schema";
 import * as knowledgeSchema from "@/modules/knowledge/schema";
 import * as wardrobeSchema from "@/modules/wardrobe/schema";
+import { coreTags, coreTaggings } from "@/core/tags/schema";
+import * as techGearSchema from "@/modules/tech-gear/schema";
 import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -34,7 +36,10 @@ export const db = drizzle(queryClient, {
     ...expensesSchema,
     ...musicSchema,
      ...knowledgeSchema,
-     ...wardrobeSchema,
+      ...wardrobeSchema,
+      ...techGearSchema,
+      coreTags,
+      coreTaggings,
      sidebarPreferences,
     },
   });

@@ -174,6 +174,32 @@ A date-grouped view within Knowledge Vault showing entries by `dateLearned`. Eve
 **Dev**: What about the Notes plugin — same thing?
 **Domain expert**: Different thing. Notes is a quick scratchpad. Knowledge Vault is structured learning with mastery tracking, review cycles, and a knowledge graph. They're separate plugins but entries across them can be linked.
 
+**Tech Gear** (plugin):
+The personal tech inventory plugin at `src/modules/tech-gear/`. Route is `/inventory/tech-gear`. Feature ID is `tech_gear`. Owns technology asset tracking — laptops, phones, components, cables, software licenses, and more. Sub-routes: Dashboard (`/inventory/tech-gear`), Items (`/inventory/tech-gear/items`), Setups (`/inventory/tech-gear/setups`).
+
+**Tech Item**:
+A technology asset owned or used by a User. Every item has a `category` (fixed enum), `brand`, `model`, optional `serialNumber`, `warrantyExpiry`, `warrantyProvider`, `ownershipStatus` (owned/sold/lost/loaned-out/borrowed), `condition` (new/excellent/good/fair/broken/repairing), `color`, `location`, and a JSONB `specifications` column for category-specific attributes (CPU, RAM, storage, cable length, connector type, etc.). Loan tracking fields (`loanedTo`, `loanDate`, `expectedReturnDate`) live on the item row, null when not loaned.
+
+**Tech Setup**:
+A user-curated grouping of Tech Items, analogous to Wardrobe Outfits. Stored in `tech_setups` with items linked via `tech_setup_items` junction table. Example: "Workstation" groups a laptop, monitor, keyboard, mouse.
+
+**Tech Maintenance Log**:
+A record of a repair or service event on a Tech Item. Stored in `tech_maintenance_log` with `itemId`, `date`, `description`, `cost`, `provider`, `notes`. Multiple log entries per item.
+
+**Category** (Tech Gear):
+A fixed enum on Tech Items: `laptops`, `phones`, `tablets`, `headphones-audio`, `cameras`, `wearables`, `monitors`, `keyboards`, `mice`, `networking`, `smart-home`, `gaming`, `storage`, `components`, `cables-adapters`, `software-licenses`, `accessories`, `other`. Validated by Zod, not a database enum.
+
+**Ownership Status**:
+A fixed enum on Tech Items: `owned`, `sold`, `lost`, `loaned-out`, `borrowed`. Default `owned`.
+
+**Condition** (Tech Gear):
+A fixed enum on Tech Items: `new`, `excellent`, `good`, `fair`, `broken`, `repairing`. Default `good`.
+
+**Tag** (Core):
+A cross-entity tag managed by the core module at `src/core/tags/`. Tags are stored in `core_tags` (id, userId, name, color) and linked via `core_taggings` (tagId, entityId, entityType). Polymorphic — any plugin can tag its entities without owning its own tags table.
+
+*Avoid*: Playlist (always use Collection instead for Music), Inventory Item (use Tech Item for tech, Clothing Item for wardrobe)
+
 **Dev**: I need to add a new category to Notes. Where do I change it?
 **Domain expert**: In `src/modules/notes/service.ts`. Categories are validated by Zod — add it to the `categories` const array. No migration needed since categories are text columns.
 **Dev**: And tags?
