@@ -23,6 +23,7 @@ export function MetricCard({ label, value, subtitle, icon: Icon, color, trend }:
       <Card
         padding="lg"
         radius="lg"
+        h="100%"
         className="backdrop-blur-xl"
         style={{
           background: `linear-gradient(135deg, ${color}15 0%, ${color}08 100%)`,
