@@ -51,6 +51,34 @@ export type CreateLibraryInput = typeof musicLibrary.$inferInsert;
 export type MemorySong = typeof musicMemorySongs.$inferSelect;
 export type CreateMemorySongInput = typeof musicMemorySongs.$inferInsert;
 
+// ─── Batch entity fetching ─────────────────────────────────────────
+
+export async function getArtistsByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  return db.select().from(musicArtists).where(inArray(musicArtists.id, ids));
+}
+
+export async function getAlbumsByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  return db.select().from(musicAlbums).where(inArray(musicAlbums.id, ids));
+}
+
+export async function getTracksByIds(ids: string[]) {
+  if (ids.length === 0) return [];
+  return db
+    .select({
+      id: musicTracks.id,
+      title: musicTracks.title,
+      albumId: musicTracks.albumId,
+      artistId: musicTracks.artistId,
+      albumCoverArtUrl: musicAlbums.coverArtUrl,
+      albumTitle: musicAlbums.title,
+    })
+    .from(musicTracks)
+    .leftJoin(musicAlbums, eq(musicTracks.albumId, musicAlbums.id))
+    .where(inArray(musicTracks.id, ids));
+}
+
 // ─── Artists ──────────────────────────────────────────────────────
 
 export async function createArtist(input: CreateArtistInput) {

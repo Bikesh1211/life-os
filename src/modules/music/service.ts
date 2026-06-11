@@ -513,7 +513,47 @@ export async function addFavorite(userId: string, params: CreateFavoriteParams) 
 }
 
 export async function getFavorites(userId: string) {
-  return repo.getFavorites(userId);
+  const favorites = await repo.getFavorites(userId);
+  if (favorites.length === 0) return [];
+
+  const trackIds = favorites.filter((f) => f.entityType === "track").map((f) => f.entityId);
+  const albumIds = favorites.filter((f) => f.entityType === "album").map((f) => f.entityId);
+  const artistIds = favorites.filter((f) => f.entityType === "artist").map((f) => f.entityId);
+
+  const [tracks, albums, artists] = await Promise.all([
+    trackIds.length > 0 ? repo.getTracksByIds(trackIds) : [],
+    albumIds.length > 0 ? repo.getAlbumsByIds(albumIds) : [],
+    artistIds.length > 0 ? repo.getArtistsByIds(artistIds) : [],
+  ]);
+
+  const trackMap = new Map(tracks.map((t) => [t.id, t]));
+  const albumMap = new Map(albums.map((a) => [a.id, a]));
+  const artistMap = new Map(artists.map((a) => [a.id, a]));
+
+  return favorites.map((fav) => {
+    let entityName: string | null = null;
+    let imageUrl: string | null = null;
+
+    if (fav.entityType === "track") {
+      const track = trackMap.get(fav.entityId);
+      entityName = track?.title ?? null;
+      imageUrl = track?.albumCoverArtUrl ?? null;
+    } else if (fav.entityType === "album") {
+      const album = albumMap.get(fav.entityId);
+      entityName = album?.title ?? null;
+      imageUrl = album?.coverArtUrl ?? null;
+    } else if (fav.entityType === "artist") {
+      const artist = artistMap.get(fav.entityId);
+      entityName = artist?.name ?? null;
+      imageUrl = artist?.imageUrl ?? null;
+    }
+
+    return {
+      ...fav,
+      entityName,
+      imageUrl,
+    };
+  });
 }
 
 export async function removeFavorite(userId: string, entityType: string, entityId: string) {
