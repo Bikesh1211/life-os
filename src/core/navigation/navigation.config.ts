@@ -55,9 +55,6 @@ import {
   IconEye,
   IconScale,
   IconShieldLock,
-  IconSettings,
-  IconArchive,
-  IconLogout,
   IconCompass,
   IconSearch,
   IconSun,
@@ -574,30 +571,4 @@ export const navigation: NavGroup[] = [
     ],
   },
 
-  {
-    label: "System",
-    items: [
-      {
-        label: "Settings",
-        route: "/settings",
-        description: "App settings",
-        icon: IconSettings,
-        featureId: "settings",
-      },
-      {
-        label: "Archive",
-        route: "/archive",
-        description: "Archived items",
-        icon: IconArchive,
-        featureId: "archive",
-      },
-      {
-        label: "Logout",
-        route: "/logout",
-        description: "Sign out",
-        icon: IconLogout,
-        featureId: "logout",
-      },
-    ],
-  },
 ];
