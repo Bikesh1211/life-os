@@ -11,6 +11,9 @@ import {
   IconStar,
   IconStarFilled,
   IconSearch,
+  IconSettings,
+  IconArchive,
+  IconLogout,
 } from "@tabler/icons-react";
 import { type NavItem } from "@/core/navigation";
 import { cn } from "@/core/utils";
@@ -38,6 +41,27 @@ function CollapseBtn() {
         <IconArrowBarToRight size={15} strokeWidth={1.5} />
       </motion.div>
     </button>
+  );
+}
+
+/* ── Bottom icon button ── */
+
+function BottomIconBtn({ href, icon: Icon, title }: { href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; title: string }) {
+  const pathname = usePathname();
+  const isActive = pathname === href || pathname.startsWith(href + "/");
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center justify-center h-8 w-8 rounded-lg transition-all duration-200",
+        isActive
+          ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+          : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] active:scale-95",
+      )}
+      title={title}
+    >
+      <Icon size={15} strokeWidth={1.5} />
+    </Link>
   );
 }
 
@@ -619,7 +643,13 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
       </AnimatePresence>
 
       <div className="border-t border-gray-100/80 dark:border-white/[0.06] py-1.5">
-        <CollapseBtn />
+        <div className="flex items-center justify-center gap-1">
+          <BottomIconBtn href="/settings" icon={IconSettings} title="Settings" />
+          <BottomIconBtn href="/archive" icon={IconArchive} title="Archive" />
+          <div className="w-px h-5 bg-gray-200 dark:bg-white/[0.08]" />
+          <BottomIconBtn href="/logout" icon={IconLogout} title="Logout" />
+          <CollapseBtn />
+        </div>
       </div>
     </div>
   );

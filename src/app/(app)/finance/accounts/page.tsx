@@ -29,10 +29,12 @@ import {
   IconTrendingUp,
   IconPlus,
   IconDotsVertical,
-  IconTrash,
+  IconEdit,
+  IconCashPlus,
 } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import { ACCOUNT_TYPES } from "@/modules/expenses/constants";
+import { EditAccountModal } from "./EditAccountModal";
 
 type Account = {
   id: string;
@@ -66,6 +68,7 @@ const accountColors: Record<string, string> = {
 export default function AccountsPage() {
   const [opened, { open, close }] = useDisclosure(false);
   const [loading, setLoading] = useState(false);
+  const [editAccount, setEditAccount] = useState<Account | null>(null);
   const queryClient = useQueryClient();
 
   const { data: accounts, isLoading } = useQuery<Account[]>({
@@ -167,15 +170,24 @@ export default function AccountsPage() {
                           </Text>
                         </div>
                       </Group>
-                      <Menu shadow="md" width={150}>
+                      <Menu shadow="md" width={180}>
                         <Menu.Target>
                           <ActionIcon variant="subtle" size="sm">
                             <IconDotsVertical size={16} />
                           </ActionIcon>
                         </Menu.Target>
                         <Menu.Dropdown>
-                          <Menu.Item leftSection={<IconTrash size={14} />} color="red">
-                            Delete
+                          <Menu.Item
+                            leftSection={<IconEdit size={14} />}
+                            onClick={() => setEditAccount(account)}
+                          >
+                            Edit
+                          </Menu.Item>
+                          <Menu.Item
+                            leftSection={<IconCashPlus size={14} />}
+                            onClick={() => setEditAccount(account)}
+                          >
+                            Add Income
                           </Menu.Item>
                         </Menu.Dropdown>
                       </Menu>
@@ -232,6 +244,12 @@ export default function AccountsPage() {
           </Stack>
         </form>
       </Modal>
+
+      <EditAccountModal
+        account={editAccount}
+        opened={!!editAccount}
+        onClose={() => setEditAccount(null)}
+      />
     </Container>
   );
 }

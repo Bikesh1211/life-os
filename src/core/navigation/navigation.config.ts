@@ -55,9 +55,6 @@ import {
   IconEye,
   IconScale,
   IconShieldLock,
-  IconSettings,
-  IconArchive,
-  IconLogout,
   IconCompass,
   IconSearch,
   IconSun,
@@ -117,7 +114,7 @@ export const navigation: NavGroup[] = [
     items: [
       {
         label: "Quick Notes",
-        route: "/quick-note",
+        route: "/notes",
         description: "Capture ideas fast",
         icon: IconPencilBolt,
         featureId: "quick_note",
@@ -376,54 +373,10 @@ export const navigation: NavGroup[] = [
     items: [
       {
         label: "Finance",
-        route: "/finance",
+        route: "/finance/dashboard",
         description: "Financial overview and management",
         icon: IconCoin,
         featureId: "finance",
-        children: [
-          {
-            label: "Dashboard",
-            route: "/finance/dashboard",
-            description: "Finance dashboard",
-            icon: IconCoin,
-            featureId: "finance_dashboard",
-          },
-          {
-            label: "Transactions",
-            route: "/finance/transactions",
-            description: "All transactions",
-            icon: IconArrowsLeftRight,
-            featureId: "transactions",
-          },
-          {
-            label: "Budgets",
-            route: "/finance/budgets",
-            description: "Budget tracking",
-            icon: IconPigMoney,
-            featureId: "budgets",
-          },
-          {
-            label: "Accounts",
-            route: "/finance/accounts",
-            description: "Financial accounts",
-            icon: IconWallet,
-            featureId: "accounts",
-          },
-          {
-            label: "Subscriptions",
-            route: "/finance/subscriptions",
-            description: "Manage subscriptions",
-            icon: IconRepeat,
-            featureId: "subscriptions",
-          },
-          {
-            label: "Analytics",
-            route: "/finance/analytics",
-            description: "Spending insights",
-            icon: IconReportAnalytics,
-            featureId: "finance_analytics",
-          },
-        ],
       },
       {
         label: "Inventory",
@@ -618,30 +571,4 @@ export const navigation: NavGroup[] = [
     ],
   },
 
-  {
-    label: "System",
-    items: [
-      {
-        label: "Settings",
-        route: "/settings",
-        description: "App settings",
-        icon: IconSettings,
-        featureId: "settings",
-      },
-      {
-        label: "Archive",
-        route: "/archive",
-        description: "Archived items",
-        icon: IconArchive,
-        featureId: "archive",
-      },
-      {
-        label: "Logout",
-        route: "/logout",
-        description: "Sign out",
-        icon: IconLogout,
-        featureId: "logout",
-      },
-    ],
-  },
 ];
