@@ -551,7 +551,7 @@ function GroupSection({
 
 /* ── Main sidebar content ── */
 
-export function SidebarContent({ collapsed = false, showBrand = true }: { collapsed?: boolean; showBrand?: boolean }) {
+export function SidebarContent({ collapsed = false, showBrand = true, showBottomCollapse = true }: { collapsed?: boolean; showBrand?: boolean; showBottomCollapse?: boolean }) {
   const { loaded, getVisibleGroups } = useSidebarVisibility();
   const {
     loaded: favLoaded,
@@ -642,13 +642,13 @@ export function SidebarContent({ collapsed = false, showBrand = true }: { collap
         </motion.div>
       </AnimatePresence>
 
-      <div className="border-t border-gray-100/80 dark:border-white/[0.06] py-1.5">
-        <div className="flex items-center justify-center gap-1">
+      <div className="border-t border-gray-100/80 dark:border-white/[0.06] px-3 py-2">
+        <div className="flex items-center justify-center gap-1.5">
           <BottomIconBtn href="/settings" icon={IconSettings} title="Settings" />
           <BottomIconBtn href="/archive" icon={IconArchive} title="Archive" />
-          <div className="w-px h-5 bg-gray-200 dark:bg-white/[0.08]" />
+          <div className="w-px h-5 bg-gray-200/70 dark:bg-white/[0.08]" />
           <BottomIconBtn href="/logout" icon={IconLogout} title="Logout" />
-          <CollapseBtn />
+          {showBottomCollapse && <CollapseBtn />}
         </div>
       </div>
     </div>
