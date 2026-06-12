@@ -31,7 +31,6 @@ import {
   IconTool,
   IconShoppingCart,
   IconCoin,
-  IconChartBar,
   IconArrowsLeftRight,
   IconRepeat,
   IconWallet,
@@ -59,8 +58,6 @@ import {
   IconSearch,
   IconSun,
   IconTags,
-  IconPlaylist,
-  IconPhotoHeart,
 } from "@tabler/icons-react";
 
 export type NavItem = {
@@ -299,64 +296,6 @@ export const navigation: NavGroup[] = [
         description: "Music memories & discovery",
         icon: IconMusic,
         featureId: "music",
-        children: [
-          {
-            label: "Discover",
-            route: "/music/discover",
-            description: "Discover new music",
-            icon: IconCompass,
-            featureId: "music_discover",
-          },
-          {
-            label: "Library",
-            route: "/music/library",
-            description: "Your saved music",
-            icon: IconBooks,
-            featureId: "music_library",
-          },
-          {
-            label: "Collections",
-            route: "/music/collections",
-            description: "Your collections",
-            icon: IconPlaylist,
-            featureId: "music_playlists",
-          },
-          {
-            label: "Favorites",
-            route: "/music/favorites",
-            description: "Favorite songs & artists",
-            icon: IconHeart,
-            featureId: "music_favorites",
-          },
-          {
-            label: "Memories",
-            route: "/music/memories",
-            description: "Song memories",
-            icon: IconPhotoHeart,
-            featureId: "music_memories",
-          },
-          {
-            label: "Journal",
-            route: "/music/journal",
-            description: "Music journal",
-            icon: IconBook,
-            featureId: "music_journal",
-          },
-          {
-            label: "History",
-            route: "/music/history",
-            description: "Listening history",
-            icon: IconRepeat,
-            featureId: "music_history",
-          },
-          {
-            label: "Analytics",
-            route: "/music/analytics",
-            description: "Listening insights",
-            icon: IconChartBar,
-            featureId: "music_analytics",
-          },
-        ],
       },
       {
         label: "Discovery Feed",
@@ -570,5 +509,4 @@ export const navigation: NavGroup[] = [
       },
     ],
   },
-
 ];

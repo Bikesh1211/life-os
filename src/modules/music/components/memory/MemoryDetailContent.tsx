@@ -29,10 +29,9 @@ type MemoryData = {
   linkedEventId: string | null;
   createdAt: string;
   songs: Array<{
-    id: string;
-    memoryId: string;
     trackId: string;
-    position: number;
+    trackName: string | null;
+    trackImageUrl: string | null;
   }>;
 };
 
@@ -54,7 +53,10 @@ export function MemoryDetailContent({ idPromise }: { idPromise: Promise<{ id: st
         <div className="h-48 animate-pulse rounded-2xl bg-[var(--mantine-color-dark-6,#1a1b1e)]" />
         <div className="mt-8 space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-xl bg-[var(--mantine-color-dark-6,#1a1b1e)]" />
+            <div
+              key={i}
+              className="h-24 animate-pulse rounded-xl bg-[var(--mantine-color-dark-6,#1a1b1e)]"
+            />
           ))}
         </div>
       </MusicContainer>
@@ -131,7 +133,7 @@ export function MemoryDetailContent({ idPromise }: { idPromise: Promise<{ id: st
           <div className="mt-3 space-y-2">
             {memory.songs.map((song, i) => (
               <motion.div
-                key={song.id}
+                key={song.trackId}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
@@ -140,10 +142,25 @@ export function MemoryDetailContent({ idPromise }: { idPromise: Promise<{ id: st
                   href={`/music/song/${song.trackId}`}
                   className="flex items-center gap-3 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]"
                 >
-                  <IconMusic size={18} className="shrink-0 text-[var(--mantine-color-dimmed,#5c5f66)]" />
-                  <span className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">
-                    Track linked to this memory
-                  </span>
+                  {song.trackImageUrl ? (
+                    <img
+                      src={song.trackImageUrl}
+                      alt={song.trackName ?? "Track"}
+                      className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--mantine-color-dark-5,#25262b)]">
+                      <IconMusic size={20} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-[var(--mantine-color-text,#c1c2c5)]">
+                      {song.trackName ?? "Unknown Track"}
+                    </p>
+                    <p className="truncate text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">
+                      View track details
+                    </p>
+                  </div>
                 </Link>
               </motion.div>
             ))}

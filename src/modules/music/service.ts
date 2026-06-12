@@ -31,12 +31,12 @@ export const createJournalSchema = z.object({
 export const updateJournalSchema = createJournalSchema.partial();
 
 export const createMemorySchema = z.object({
-  trackId: z.string().uuid().optional(),
-  albumId: z.string().uuid().optional(),
-  artistId: z.string().uuid().optional(),
+  trackId: z.string().optional(),
+  albumId: z.string().optional(),
+  artistId: z.string().optional(),
   title: z.string().max(200).optional(),
   contextText: z.string().min(1).max(5000),
-  mood: z.string().max(50).optional(),
+  mood: z.string().max(50).nullable().optional(),
   photoUrls: z.array(z.string().max(2000)).max(10).optional(),
   memoryDate: z.string().datetime().optional(),
   linkedEventId: z.string().optional(),
@@ -45,7 +45,7 @@ export const createMemorySchema = z.object({
 export const updateMemorySchema = createMemorySchema.partial();
 
 export const addMemorySongSchema = z.object({
-  trackId: z.string().uuid(),
+  trackId: z.string().min(1),
   position: z.number().int().min(0).optional(),
 });
 
@@ -371,7 +371,11 @@ export async function deleteMemory(id: string, userId: string) {
 
 // ─── Memory Songs ────────────────────────────────────────────────
 
-export async function addSongToMemory(userId: string, memoryId: string, params: AddMemorySongParams) {
+export async function addSongToMemory(
+  userId: string,
+  memoryId: string,
+  params: AddMemorySongParams,
+) {
   const validated = addMemorySongSchema.parse(params);
   const memory = await repo.getMemoryById(memoryId, userId);
   if (!memory) throw new Error("Memory not found");
@@ -424,7 +428,11 @@ export async function getLibraryTrackIds(userId: string) {
 
 // ─── Journal Songs ────────────────────────────────────────────────
 
-export async function addSongToJournal(userId: string, journalId: string, params: AddJournalSongParams) {
+export async function addSongToJournal(
+  userId: string,
+  journalId: string,
+  params: AddJournalSongParams,
+) {
   const validated = addJournalSongSchema.parse(params);
   return repo.addSongToJournal({
     journalId,
@@ -512,13 +520,23 @@ export async function addFavorite(userId: string, params: CreateFavoriteParams) 
   return repo.getFavoritesByType(userId, validated.entityType);
 }
 
+import { lookupItunesEntity } from "./itunes";
+
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getFavorites(userId: string) {
   const favorites = await repo.getFavorites(userId);
   if (favorites.length === 0) return [];
 
-  const trackIds = favorites.filter((f) => f.entityType === "track").map((f) => f.entityId);
-  const albumIds = favorites.filter((f) => f.entityType === "album").map((f) => f.entityId);
-  const artistIds = favorites.filter((f) => f.entityType === "artist").map((f) => f.entityId);
+  const trackIds = favorites
+    .filter((f) => f.entityType === "track" && uuidRegex.test(f.entityId))
+    .map((f) => f.entityId);
+  const albumIds = favorites
+    .filter((f) => f.entityType === "album" && uuidRegex.test(f.entityId))
+    .map((f) => f.entityId);
+  const artistIds = favorites
+    .filter((f) => f.entityType === "artist" && uuidRegex.test(f.entityId))
+    .map((f) => f.entityId);
 
   const [tracks, albums, artists] = await Promise.all([
     trackIds.length > 0 ? repo.getTracksByIds(trackIds) : [],
@@ -529,6 +547,23 @@ export async function getFavorites(userId: string) {
   const trackMap = new Map(tracks.map((t) => [t.id, t]));
   const albumMap = new Map(albums.map((a) => [a.id, a]));
   const artistMap = new Map(artists.map((a) => [a.id, a]));
+
+  const itunesFavorites = favorites.filter(
+    (f) => !uuidRegex.test(f.entityId) && f.entityId.startsWith("itunes-"),
+  );
+  const itunesResults = new Map<string, { entityName: string | null; imageUrl: string | null }>();
+  if (itunesFavorites.length > 0) {
+    const itunesIds = [...new Set(itunesFavorites.map((f) => f.entityId.replace("itunes-", "")))];
+    const results = await Promise.allSettled(itunesIds.map((id) => lookupItunesEntity(id)));
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value) {
+        itunesResults.set(result.value.id, {
+          entityName: result.value.title ?? null,
+          imageUrl: result.value.imageUrl ?? null,
+        });
+      }
+    }
+  }
 
   return favorites.map((fav) => {
     let entityName: string | null = null;
@@ -546,6 +581,14 @@ export async function getFavorites(userId: string) {
       const artist = artistMap.get(fav.entityId);
       entityName = artist?.name ?? null;
       imageUrl = artist?.imageUrl ?? null;
+    }
+
+    if (!entityName && !imageUrl) {
+      const itunes = itunesResults.get(fav.entityId);
+      if (itunes) {
+        entityName ??= itunes.entityName;
+        imageUrl ??= itunes.imageUrl;
+      }
     }
 
     return {

@@ -107,9 +107,9 @@ export const musicMoodEntries = pgTable("music_mood_entries", {
 export const musicMemories = pgTable("music_memories", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id").notNull(),
-  trackId: uuid("track_id").references(() => musicTracks.id),
-  albumId: uuid("album_id").references(() => musicAlbums.id),
-  artistId: uuid("artist_id").references(() => musicArtists.id),
+  trackId: text("track_id"),
+  albumId: text("album_id"),
+  artistId: text("artist_id"),
   title: text("title"),
   contextText: text("context_text").notNull(),
   mood: text("mood"),
@@ -172,7 +172,7 @@ export const musicLibrary = pgTable("music_library", {
 export const musicMemorySongs = pgTable("music_memory_songs", {
   id: uuid("id").defaultRandom().primaryKey(),
   memoryId: uuid("memory_id").references(() => musicMemories.id, { onDelete: "cascade" }).notNull(),
-  trackId: uuid("track_id").references(() => musicTracks.id).notNull(),
+  trackId: text("track_id").notNull(),
   position: integer("position").default(0).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
