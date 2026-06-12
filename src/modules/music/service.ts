@@ -520,6 +520,8 @@ export async function addFavorite(userId: string, params: CreateFavoriteParams) 
   return repo.getFavoritesByType(userId, validated.entityType);
 }
 
+import { lookupItunesEntity } from "./itunes";
+
 const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function getFavorites(userId: string) {
@@ -546,6 +548,23 @@ export async function getFavorites(userId: string) {
   const albumMap = new Map(albums.map((a) => [a.id, a]));
   const artistMap = new Map(artists.map((a) => [a.id, a]));
 
+  const itunesFavorites = favorites.filter(
+    (f) => !uuidRegex.test(f.entityId) && f.entityId.startsWith("itunes-"),
+  );
+  const itunesResults = new Map<string, { entityName: string | null; imageUrl: string | null }>();
+  if (itunesFavorites.length > 0) {
+    const itunesIds = [...new Set(itunesFavorites.map((f) => f.entityId.replace("itunes-", "")))];
+    const results = await Promise.allSettled(itunesIds.map((id) => lookupItunesEntity(id)));
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value) {
+        itunesResults.set(result.value.id, {
+          entityName: result.value.title ?? null,
+          imageUrl: result.value.imageUrl ?? null,
+        });
+      }
+    }
+  }
+
   return favorites.map((fav) => {
     let entityName: string | null = null;
     let imageUrl: string | null = null;
@@ -562,6 +581,14 @@ export async function getFavorites(userId: string) {
       const artist = artistMap.get(fav.entityId);
       entityName = artist?.name ?? null;
       imageUrl = artist?.imageUrl ?? null;
+    }
+
+    if (!entityName && !imageUrl) {
+      const itunes = itunesResults.get(fav.entityId);
+      if (itunes) {
+        entityName ??= itunes.entityName;
+        imageUrl ??= itunes.imageUrl;
+      }
     }
 
     return {
