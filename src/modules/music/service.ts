@@ -371,7 +371,11 @@ export async function deleteMemory(id: string, userId: string) {
 
 // ─── Memory Songs ────────────────────────────────────────────────
 
-export async function addSongToMemory(userId: string, memoryId: string, params: AddMemorySongParams) {
+export async function addSongToMemory(
+  userId: string,
+  memoryId: string,
+  params: AddMemorySongParams,
+) {
   const validated = addMemorySongSchema.parse(params);
   const memory = await repo.getMemoryById(memoryId, userId);
   if (!memory) throw new Error("Memory not found");
@@ -424,7 +428,11 @@ export async function getLibraryTrackIds(userId: string) {
 
 // ─── Journal Songs ────────────────────────────────────────────────
 
-export async function addSongToJournal(userId: string, journalId: string, params: AddJournalSongParams) {
+export async function addSongToJournal(
+  userId: string,
+  journalId: string,
+  params: AddJournalSongParams,
+) {
   const validated = addJournalSongSchema.parse(params);
   return repo.addSongToJournal({
     journalId,
@@ -512,13 +520,21 @@ export async function addFavorite(userId: string, params: CreateFavoriteParams) 
   return repo.getFavoritesByType(userId, validated.entityType);
 }
 
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getFavorites(userId: string) {
   const favorites = await repo.getFavorites(userId);
   if (favorites.length === 0) return [];
 
-  const trackIds = favorites.filter((f) => f.entityType === "track").map((f) => f.entityId);
-  const albumIds = favorites.filter((f) => f.entityType === "album").map((f) => f.entityId);
-  const artistIds = favorites.filter((f) => f.entityType === "artist").map((f) => f.entityId);
+  const trackIds = favorites
+    .filter((f) => f.entityType === "track" && uuidRegex.test(f.entityId))
+    .map((f) => f.entityId);
+  const albumIds = favorites
+    .filter((f) => f.entityType === "album" && uuidRegex.test(f.entityId))
+    .map((f) => f.entityId);
+  const artistIds = favorites
+    .filter((f) => f.entityType === "artist" && uuidRegex.test(f.entityId))
+    .map((f) => f.entityId);
 
   const [tracks, albums, artists] = await Promise.all([
     trackIds.length > 0 ? repo.getTracksByIds(trackIds) : [],
