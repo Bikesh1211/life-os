@@ -31,12 +31,12 @@ export const createJournalSchema = z.object({
 export const updateJournalSchema = createJournalSchema.partial();
 
 export const createMemorySchema = z.object({
-  trackId: z.string().uuid().optional(),
-  albumId: z.string().uuid().optional(),
-  artistId: z.string().uuid().optional(),
+  trackId: z.string().optional(),
+  albumId: z.string().optional(),
+  artistId: z.string().optional(),
   title: z.string().max(200).optional(),
   contextText: z.string().min(1).max(5000),
-  mood: z.string().max(50).optional(),
+  mood: z.string().max(50).nullable().optional(),
   photoUrls: z.array(z.string().max(2000)).max(10).optional(),
   memoryDate: z.string().datetime().optional(),
   linkedEventId: z.string().optional(),
@@ -45,7 +45,7 @@ export const createMemorySchema = z.object({
 export const updateMemorySchema = createMemorySchema.partial();
 
 export const addMemorySongSchema = z.object({
-  trackId: z.string().uuid(),
+  trackId: z.string().min(1),
   position: z.number().int().min(0).optional(),
 });
 

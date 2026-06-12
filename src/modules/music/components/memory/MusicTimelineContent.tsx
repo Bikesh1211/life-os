@@ -77,7 +77,10 @@ export function MusicTimelineContent() {
       {isLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-xl bg-[var(--mantine-color-dark-6,#1a1b1e)]" />
+            <div
+              key={i}
+              className="h-24 animate-pulse rounded-xl bg-[var(--mantine-color-dark-6,#1a1b1e)]"
+            />
           ))}
         </div>
       ) : memories.length === 0 ? (
@@ -112,8 +115,7 @@ export function MusicTimelineContent() {
                 mood: editingMemory.mood ?? null,
                 memoryDate: editingMemory.memoryDate?.split("T")[0] ?? "",
                 location: editingMemory.location ?? "",
-                trackName: editingMemory.trackName ?? "",
-                artistName: editingMemory.artistName ?? "",
+                trackId: editingMemory.trackId ?? undefined,
               }
             : undefined
         }
