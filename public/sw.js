@@ -4,7 +4,7 @@ const CACHE = "life-os-v1";
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE).then((cache) => {
-      return cache.addAll(["/", "/dashboard", "/offline"]);
+      return cache.addAll(["/"]);
     }),
   );
   self.skipWaiting();
@@ -32,7 +32,7 @@ self.addEventListener("fetch", (event) => {
       })
       .catch(() => {
         return caches.match(event.request).then((cached) => {
-          return cached ?? caches.match("/offline");
+          return cached;
         });
       }),
   );
