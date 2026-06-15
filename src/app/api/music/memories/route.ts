@@ -1,8 +1,61 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 
-import { createMemory, getMemories, getMemoriesByMood, getMemoriesByDateRange, createMemorySchema } from "@/modules/music";
-import { getMemoriesOnThisDay } from "@/modules/music/repository";
+import {
+  createMemory,
+  getMemories,
+  getMemoriesByMood,
+  getMemoriesByDateRange,
+  createMemorySchema,
+} from "@/modules/music";
+import { lookupItunesEntity } from "@/modules/music/itunes";
+import * as repo from "@/modules/music/repository";
+
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function hydrateTrack(
+  trackId: string,
+): Promise<{ trackId: string; trackName: string | null; artistName: string | null; trackImageUrl: string | null }> {
+  let trackName: string | null = null;
+  let artistName: string | null = null;
+  let trackImageUrl: string | null = null;
+
+  if (uuidRegex.test(trackId)) {
+    const track = await repo.getTrackById(trackId);
+    if (track) {
+      trackName = track.title;
+      if (track.artistId) {
+        const artist = await repo.getArtistById(track.artistId);
+        artistName = artist?.name ?? null;
+      }
+      if (track.albumId) {
+        const album = await repo.getAlbumById(track.albumId);
+        trackImageUrl = album?.coverArtUrl ?? null;
+      }
+    }
+  } else if (trackId.startsWith("itunes-")) {
+    const entity = await lookupItunesEntity(trackId.replace("itunes-", ""));
+    if (entity) {
+      trackName = entity.title;
+      artistName = entity.artistName ?? null;
+      trackImageUrl = entity.imageUrl;
+    }
+  }
+
+  return { trackId, trackName, artistName, trackImageUrl };
+}
+
+async function hydrateMemories(memories: Array<{ trackId: string | null }>) {
+  return Promise.all(
+    memories.map(async (memory) => {
+      let track = null;
+      if (memory.trackId) {
+        track = await hydrateTrack(memory.trackId);
+      }
+      return { ...memory, track };
+    }),
+  );
+}
 
 export async function GET(request: Request) {
   const { userId } = await auth();
@@ -15,21 +68,19 @@ export async function GET(request: Request) {
   const onThisDay = searchParams.get("onThisDay");
 
   try {
+    let memories;
     if (onThisDay === "true") {
       const now = new Date();
-      const memories = await getMemoriesOnThisDay(userId, now.getMonth() + 1, now.getDate());
-      return NextResponse.json(memories);
+      memories = await repo.getMemoriesOnThisDay(userId, now.getMonth() + 1, now.getDate());
+    } else if (mood) {
+      memories = await getMemoriesByMood(userId, mood);
+    } else if (dateFrom && dateTo) {
+      memories = await getMemoriesByDateRange(userId, new Date(dateFrom), new Date(dateTo));
+    } else {
+      memories = await getMemories(userId);
     }
-    if (mood) {
-      const memories = await getMemoriesByMood(userId, mood);
-      return NextResponse.json(memories);
-    }
-    if (dateFrom && dateTo) {
-      const memories = await getMemoriesByDateRange(userId, new Date(dateFrom), new Date(dateTo));
-      return NextResponse.json(memories);
-    }
-    const memories = await getMemories(userId);
-    return NextResponse.json(memories);
+    const hydrated = await hydrateMemories(memories);
+    return NextResponse.json(hydrated);
   } catch {
     return NextResponse.json({ error: "Failed to fetch memories" }, { status: 500 });
   }

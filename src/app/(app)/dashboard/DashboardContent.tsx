@@ -25,6 +25,14 @@ import Link from "next/link";
 import dayjs from "dayjs";
 import type { KnowledgeEntry } from "@/modules/knowledge";
 
+type HabitSummary = {
+  totalHabits: number;
+  completedToday: number;
+  pendingToday: number;
+  currentStreak: number;
+  longestStreak: number;
+};
+
 type DashboardContentProps = {
   userId: string;
   taskSummary: {
@@ -34,12 +42,14 @@ type DashboardContentProps = {
     done: number;
   };
   knowledgeEntries: KnowledgeEntry[];
+  habitSummary: HabitSummary;
 };
 
 export function DashboardContent({
   userId,
   taskSummary,
   knowledgeEntries,
+  habitSummary,
 }: DashboardContentProps) {
   const todayEntries = knowledgeEntries.filter((e) =>
     dayjs(e.dateLearned).isAfter(dayjs().startOf("day")),
@@ -94,10 +104,13 @@ export function DashboardContent({
                 Habits
               </Text>
               <Text fw={700} size="xl">
-                —
+                {habitSummary.totalHabits}
               </Text>
             </div>
           </Group>
+          <Text size="xs" c="dimmed" mt="sm">
+            {habitSummary.completedToday} done today · {habitSummary.pendingToday} pending · {habitSummary.currentStreak}d streak
+          </Text>
         </Paper>
 
         <Paper withBorder p="md" radius="md">

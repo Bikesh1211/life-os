@@ -15,7 +15,6 @@ import {
   IconPhoto,
   IconMusic,
 } from "@tabler/icons-react";
-import { MemoryCard } from "./MemoryCard";
 
 type MemoryData = {
   id: string;

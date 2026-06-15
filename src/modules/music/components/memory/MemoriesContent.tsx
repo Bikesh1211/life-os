@@ -5,12 +5,17 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
-import { SectionHeading } from "../design-system/SectionHeading";
 import { MemoryCard } from "./MemoryCard";
 import { MemoryCreateModal } from "./MemoryCreateModal";
 import { IconPlus } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
-import Link from "next/link";
+
+type MemoryTrack = {
+  trackId: string;
+  trackName: string | null;
+  artistName: string | null;
+  trackImageUrl: string | null;
+};
 
 type Memory = {
   id: string;
@@ -21,6 +26,7 @@ type Memory = {
   memoryDate: string | null;
   location: string | null;
   createdAt: string;
+  track: MemoryTrack | null;
 };
 
 export function MemoriesContent() {
@@ -110,8 +116,10 @@ export function MemoriesContent() {
                 photoUrls={memory.photoUrls}
                 memoryDate={memory.memoryDate}
                 location={memory.location}
-                trackName={null}
-                artistName={null}
+                trackName={memory.track?.trackName ?? null}
+                artistName={memory.track?.artistName ?? null}
+                trackImageUrl={memory.track?.trackImageUrl ?? null}
+                trackId={memory.track?.trackId ?? null}
                 linkedEventTitle={null}
                 onDelete={() => deleteMutation.mutate(memory.id)}
               />
