@@ -95,7 +95,7 @@ export const navigation: NavGroup[] = [
   },
 
   {
-    label: "Home",
+    label: "Overview",
     items: [
       {
         label: "Dashboard",
