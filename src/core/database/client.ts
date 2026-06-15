@@ -10,6 +10,7 @@ import * as expensesSchema from "@/modules/expenses/schema";
 import * as musicSchema from "@/modules/music/schema";
 import * as knowledgeSchema from "@/modules/knowledge/schema";
 import * as wardrobeSchema from "@/modules/wardrobe/schema";
+import * as routinesSchema from "@/modules/routines/schema";
 import { coreTags, coreTaggings } from "@/core/tags/schema";
 import * as techGearSchema from "@/modules/tech-gear/schema";
 import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
@@ -36,8 +37,9 @@ export const db = drizzle(queryClient, {
     ...expensesSchema,
     ...musicSchema,
      ...knowledgeSchema,
-      ...wardrobeSchema,
-      ...techGearSchema,
+     ...wardrobeSchema,
+       ...routinesSchema,
+       ...techGearSchema,
       coreTags,
       coreTaggings,
      sidebarPreferences,

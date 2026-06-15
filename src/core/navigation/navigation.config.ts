@@ -131,6 +131,22 @@ export const navigation: NavGroup[] = [
         featureId: "calendar",
       },
       {
+        label: "Routines",
+        route: "/routines",
+        description: "Daily schedules & routines",
+        icon: IconRepeat,
+        featureId: "routines",
+        children: [
+          {
+            label: "Templates",
+            route: "/routines/templates",
+            description: "Routine templates",
+            icon: IconRepeat,
+            featureId: "routines_templates",
+          },
+        ],
+      },
+      {
         label: "Timeline",
         route: "/timeline",
         description: "Life timeline & activity history",
