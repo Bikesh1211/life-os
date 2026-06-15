@@ -10,3 +10,6 @@ next-env.d.ts
 drizzle/meta/
 *.db
 *.db-journal
+
+# clerk configuration (can include secrets)
+/.clerk/

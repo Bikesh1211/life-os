@@ -6,11 +6,14 @@ const isPublicRoute = createRouteMatcher([
   "/api(.*)",
 ]);
 
-export const proxy = clerkMiddleware(async (auth, req) => {
-  if (!isPublicRoute(req)) {
-    await auth.protect();
-  }
-});
+export const proxy = clerkMiddleware(
+  async (auth, req) => {
+    if (!isPublicRoute(req)) {
+      await auth.protect();
+    }
+  },
+  { signInUrl: "/sign-in" },
+);
 
 export const config = {
   matcher: [

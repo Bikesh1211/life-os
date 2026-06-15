@@ -1,9 +1,14 @@
 "use client";
 
-import { SignUp } from "@clerk/nextjs";
+import dynamic from "next/dynamic";
 import { dark } from "@clerk/themes";
 import { motion } from "framer-motion";
 import { useMantineColorScheme } from "@mantine/core";
+
+const ClerkSignUp = dynamic(
+  () => import("@clerk/nextjs").then((mod) => mod.SignUp),
+  { ssr: false },
+);
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -73,7 +78,7 @@ export default function SignUpPage() {
 
       {/* ── Auth Card ── */}
       <motion.div variants={cardVariants} className="w-full max-w-md shrink-0">
-        <SignUp
+        <ClerkSignUp
           appearance={{
             baseTheme: isDark ? dark : undefined,
             variables: {
