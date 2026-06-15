@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { IconMusic, IconHeart, IconCalendar, IconMapPin } from "@tabler/icons-react";
+import Link from "next/link";
 
 type MemoryCardProps = {
   id: string;
@@ -13,6 +14,7 @@ type MemoryCardProps = {
   location: string | null;
   trackName: string | null;
   artistName: string | null;
+  trackImageUrl?: string | null;
   linkedEventTitle: string | null;
   delay?: number;
   onEdit?: (id: string) => void;
@@ -29,12 +31,14 @@ export function MemoryCard({
   location,
   trackName,
   artistName,
+  trackImageUrl,
   linkedEventTitle,
   delay = 0,
   onEdit,
   onDelete,
 }: MemoryCardProps) {
   return (
+    <Link href={`/music/memories/${id}`} className="block no-underline">
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
@@ -82,9 +86,18 @@ export function MemoryCard({
 
         <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">
           {trackName && (
-            <span className="flex items-center gap-1">
-              <IconMusic size={12} />
-              {trackName}{artistName ? ` · ${artistName}` : ""}
+            <span className="flex items-center gap-1.5">
+              {trackImageUrl ? (
+                <img
+                  src={trackImageUrl}
+                  alt=""
+                  className="h-5 w-5 rounded object-cover"
+                />
+              ) : (
+                <IconMusic size={14} className="shrink-0" />
+              )}
+              <span className="truncate max-w-[180px]">{trackName}</span>
+              {artistName && <span className="shrink-0">· {artistName}</span>}
             </span>
           )}
           {memoryDate && (
@@ -115,7 +128,7 @@ export function MemoryCard({
           <div className="mt-3 flex gap-2 border-t border-[var(--mantine-color-dark-4,#2e2f33)] pt-3 opacity-0 transition-opacity group-hover:opacity-100">
             {onEdit && (
               <button
-                onClick={() => onEdit(id)}
+                onClick={(e) => { e.preventDefault(); onEdit(id); }}
                 className="text-xs text-[var(--mantine-color-dimmed,#5c5f66)] transition-colors hover:text-white"
               >
                 Edit
@@ -123,7 +136,7 @@ export function MemoryCard({
             )}
             {onDelete && (
               <button
-                onClick={() => onDelete(id)}
+                onClick={(e) => { e.preventDefault(); onDelete(id); }}
                 className="text-xs text-red-400 transition-colors hover:text-red-300"
               >
                 Delete
@@ -133,5 +146,6 @@ export function MemoryCard({
         )}
       </div>
     </motion.div>
+    </Link>
   );
 }
