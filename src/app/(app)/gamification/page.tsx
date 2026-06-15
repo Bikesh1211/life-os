@@ -64,7 +64,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <Paper withBorder p="md" radius="md">
+  <Paper withBorder p="md" radius="md">
       <Group gap="sm">
         <div
           className="flex h-12 w-12 items-center justify-center rounded-xl"
@@ -143,10 +143,10 @@ export default function GamificationPage() {
 
   if (profileLoading) {
     return (
-      <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
-        <div className="mb-8 h-8 w-48 animate-pulse rounded bg-[var(--mantine-color-dark-6)]" />
+      <Stack gap="lg">
+        <div className="h-8 w-48 animate-pulse rounded bg-[var(--mantine-color-dark-6)]" />
         <div className="h-32 animate-pulse rounded-xl bg-[var(--mantine-color-dark-6)]" />
-        <div className="mt-6 grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
@@ -154,12 +154,12 @@ export default function GamificationPage() {
             />
           ))}
         </div>
-      </div>
+      </Stack>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+    <Stack gap="lg">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
         <div className="mb-8">
           <Group justify="apart">
@@ -441,6 +441,6 @@ export default function GamificationPage() {
           </Tabs.Panel>
         </Tabs>
       </motion.div>
-    </div>
+    </Stack>
   );
 }
