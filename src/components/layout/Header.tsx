@@ -19,6 +19,7 @@ import {
   IconBell,
   IconLogout,
   IconSettings,
+  IconUser,
   IconMenu2,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
@@ -146,6 +147,12 @@ export function Header() {
                 </Text>
               </div>
               <Menu.Divider />
+              <Menu.Item
+                leftSection={<IconUser size={16} />}
+                onClick={() => router.push("/profile")}
+              >
+                Profile
+              </Menu.Item>
               <Menu.Item
                 leftSection={<IconSettings size={16} />}
                 onClick={() => router.push("/settings")}

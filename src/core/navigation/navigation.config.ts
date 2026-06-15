@@ -1,7 +1,6 @@
 import type { TablerIcon } from "@tabler/icons-react";
 import {
   IconLayoutDashboard,
-  IconUser,
   IconTrophy,
   IconPencilBolt,
   IconRss,
@@ -104,13 +103,6 @@ export const navigation: NavGroup[] = [
         description: "Overview of your life",
         icon: IconLayoutDashboard,
         featureId: "dashboard",
-      },
-      {
-        label: "Profile",
-        route: "/profile",
-        description: "Your profile, stats & achievements",
-        icon: IconUser,
-        featureId: "profile",
       },
       {
         label: "Gamification",
