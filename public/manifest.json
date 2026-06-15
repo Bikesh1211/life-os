@@ -2,7 +2,7 @@
   "name": "Focus Linq",
   "short_name": "Focus Linq",
   "description": "Your personal life management platform",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#101113",

@@ -27,8 +27,9 @@ import {
   IconDownload,
   IconTrash,
   IconDotsVertical,
-  IconEye,
+  IconEdit,
 } from "@tabler/icons-react";
+import { EditTransactionModal } from "./EditTransactionModal";
 
 type Transaction = {
   id: string;
@@ -46,6 +47,7 @@ type Transaction = {
 export default function TransactionsPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
   const limit = 50;
 
   const { data, isLoading } = useQuery<Transaction[]>({
@@ -55,6 +57,29 @@ export default function TransactionsPage() {
         `/api/expenses/transactions?search=${search}&limit=${limit}&offset=${(page - 1) * limit}`,
       ).then((r) => r.json()),
   });
+
+  const { data: categories } = useQuery({
+    queryKey: ["expenses", "categories"],
+    queryFn: () =>
+      fetch("/api/expenses/overview")
+        .then((r) => r.json())
+        .then((d) => d.categories ?? []),
+  });
+
+  const { data: accounts } = useQuery({
+    queryKey: ["expenses", "accounts"],
+    queryFn: () => fetch("/api/expenses/accounts").then((r) => r.json()),
+  });
+
+  const categoryOptions = (categories ?? []).map((c: { id: string; name: string }) => ({
+    value: c.id,
+    label: c.name,
+  }));
+
+  const accountOptions = (accounts ?? []).map((a: { id: string; name: string }) => ({
+    value: a.id,
+    label: a.name,
+  }));
 
   return (
     <Container size="xl">
@@ -135,6 +160,9 @@ export default function TransactionsPage() {
                         {Number(tx.amount).toLocaleString()}
                       </Text>
                     </Group>
+                    <Text size="xs" c="dimmed" lineClamp={1} mb={4}>
+                      {tx.description ?? "—"}
+                    </Text>
                     <Group gap="xs">
                       <Text size="xs" c="dimmed">
                         {dayjs(tx.transactionDate).format("MMM D, YYYY")}
@@ -166,10 +194,10 @@ export default function TransactionsPage() {
                 <Table.Tr>
                   <Table.Th>Date</Table.Th>
                   <Table.Th>Merchant</Table.Th>
+                  <Table.Th>Description</Table.Th>
                   <Table.Th>Category</Table.Th>
                   <Table.Th>Amount</Table.Th>
                   <Table.Th>Payment Method</Table.Th>
-                  <Table.Th>Account</Table.Th>
                   <Table.Th>Actions</Table.Th>
                 </Table.Tr>
               </Table.Thead>
@@ -211,6 +239,11 @@ export default function TransactionsPage() {
                         </Group>
                       </Table.Td>
                       <Table.Td>
+                        <Text size="sm" c="dimmed" lineClamp={1} maw={200}>
+                          {tx.description ?? "—"}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
                         <Text size="sm" c="dimmed">
                           {tx.categoryId ? "—" : "Uncategorized"}
                         </Text>
@@ -231,11 +264,6 @@ export default function TransactionsPage() {
                         </Text>
                       </Table.Td>
                       <Table.Td>
-                        <Text size="sm" c="dimmed">
-                          {tx.accountId ? "—" : "—"}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
                         <Menu shadow="md" width={150}>
                           <Menu.Target>
                             <ActionIcon variant="subtle" size="sm">
@@ -243,8 +271,11 @@ export default function TransactionsPage() {
                             </ActionIcon>
                           </Menu.Target>
                           <Menu.Dropdown>
-                            <Menu.Item leftSection={<IconEye size={14} />}>
-                              View
+                            <Menu.Item
+                              leftSection={<IconEdit size={14} />}
+                              onClick={() => setEditTransaction(tx)}
+                            >
+                              Edit
                             </Menu.Item>
                             <Menu.Item
                               leftSection={<IconTrash size={14} />}
@@ -267,6 +298,14 @@ export default function TransactionsPage() {
           </Group>
         </Card>
       </Stack>
+
+      <EditTransactionModal
+        transaction={editTransaction}
+        opened={!!editTransaction}
+        onClose={() => setEditTransaction(null)}
+        categories={categoryOptions}
+        accounts={accountOptions}
+      />
     </Container>
   );
 }

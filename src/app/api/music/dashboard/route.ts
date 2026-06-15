@@ -9,6 +9,7 @@ import {
   musicArtists,
   musicMemories,
   musicGoalConfig,
+  calculateStreak,
 } from "@/modules/music";
 
 export async function GET() {
@@ -139,30 +140,6 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json({ error: "Failed to load dashboard" }, { status: 500 });
   }
-}
-
-function calculateStreak(dates: string[]) {
-  if (dates.length === 0) return { days: 0, longest: 0 };
-  const sorted = [...new Set(dates)].sort().reverse();
-  let currentStreak = 1;
-  let longestStreak = 1;
-  let tempStreak = 1;
-
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = new Date(sorted[i - 1]);
-    const curr = new Date(sorted[i]);
-    const diff = (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24);
-    if (Math.abs(diff - 1) < 0.1) {
-      tempStreak++;
-      longestStreak = Math.max(longestStreak, tempStreak);
-    } else if (diff === 0) {
-      continue;
-    } else {
-      break;
-    }
-  }
-  currentStreak = tempStreak;
-  return { days: currentStreak, longest: longestStreak };
 }
 
 function capitalize(s: string) {

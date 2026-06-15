@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { IconMenu2, IconHome2, IconPencilBolt, IconUser, IconCoin } from "@tabler/icons-react";
+import { IconTimelineEvent, IconHome2, IconPencilBolt, IconUser, IconCoin } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 
@@ -14,14 +14,16 @@ interface Tab {
 }
 
 const tabs: Tab[] = [
-  { id: "dashboard", label: "Home", href: "/dashboard", icon: IconHome2 },
-  { id: "quick_note", label: "Quick Note", href: "/quick-note", icon: IconPencilBolt },
+  { id: "dashboard", label: "Home", href: "/", icon: IconHome2 },
   { id: "finance", label: "Finance", href: "/finance/dashboard", icon: IconCoin },
-  { id: "profile", label: "Profile", href: "/settings", icon: IconUser },
+  { id: "quick_note", label: "Quick Note", href: "/quick-note", icon: IconPencilBolt },
+  { id: "profile", label: "Timeline", href: "/timeline", icon: IconTimelineEvent },
+  { id: "settings", label: "Profile", href: "/settings", icon: IconUser },
+
 ];
 
 function useActiveTab(pathname: string) {
-  return useMemo(() => {
+  return useMemo(() => {  
     for (const t of tabs) {
       if (t.href === "/" && pathname === "/") return t.id;
       if (t.href !== "/" && pathname.startsWith(t.href)) return t.id;
@@ -44,14 +46,14 @@ export function MobileNav() {
     <nav className="mobile-nav" role="tablist" aria-label="Main navigation">
       <div className="mobile-nav-inner">
         <div className="mobile-nav-grid">
-          <motion.button
+          {/* <motion.button
             onClick={toggleMobile}
             className="mobile-nav-btn"
             whileTap={{ scale: 0.92 }}
             aria-label="Open navigation menu"
           >
             <IconMenu2 size={22} strokeWidth={1.75} />
-          </motion.button>
+          </motion.button> */}
 
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;

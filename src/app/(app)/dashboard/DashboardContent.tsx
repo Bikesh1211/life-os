@@ -19,11 +19,22 @@ import {
   IconBook,
   IconTimelineEvent,
   IconNotes,
+  IconRepeat,
   IconArrowRight,
 } from "@tabler/icons-react";
+import { TodayRoutineWidget } from "@/modules/routines/components/TodayRoutineWidget";
 import Link from "next/link";
 import dayjs from "dayjs";
+import { APP_NAME } from "@/core/constants";
 import type { KnowledgeEntry } from "@/modules/knowledge";
+
+type HabitSummary = {
+  totalHabits: number;
+  completedToday: number;
+  pendingToday: number;
+  currentStreak: number;
+  longestStreak: number;
+};
 
 type DashboardContentProps = {
   userId: string;
@@ -34,12 +45,14 @@ type DashboardContentProps = {
     done: number;
   };
   knowledgeEntries: KnowledgeEntry[];
+  habitSummary: HabitSummary;
 };
 
 export function DashboardContent({
   userId,
   taskSummary,
   knowledgeEntries,
+  habitSummary,
 }: DashboardContentProps) {
   const todayEntries = knowledgeEntries.filter((e) =>
     dayjs(e.dateLearned).isAfter(dayjs().startOf("day")),
@@ -60,7 +73,7 @@ export function DashboardContent({
       <div>
         <Title order={2}>Dashboard</Title>
         <Text c="dimmed" size="sm">
-          Welcome to Focus Linq
+          Welcome to {APP_NAME}
         </Text>
       </div>
 
@@ -94,10 +107,13 @@ export function DashboardContent({
                 Habits
               </Text>
               <Text fw={700} size="xl">
-                —
+                {habitSummary.totalHabits}
               </Text>
             </div>
           </Group>
+          <Text size="xs" c="dimmed" mt="sm">
+            {habitSummary.completedToday} done today · {habitSummary.pendingToday} pending · {habitSummary.currentStreak}d streak
+          </Text>
         </Paper>
 
         <Paper withBorder p="md" radius="md">
@@ -132,6 +148,8 @@ export function DashboardContent({
           </Group>
         </Paper>
       </SimpleGrid>
+
+      <TodayRoutineWidget />
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
         <Paper withBorder p="md" radius="md">

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { MusicCard } from "../design-system/MusicCard";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
-import { IconSearch, IconX, IconMusic, IconTrendingUp, IconSparkles, IconHeart } from "@tabler/icons-react";
+import { IconSearch, IconX, IconMusic, IconTrendingUp, IconSparkles, IconHeart, IconBooks, IconPhotoHeart, IconArticle, IconMoodHeart } from "@tabler/icons-react";
 import Link from "next/link";
 
 type SearchResult = {
@@ -108,6 +108,23 @@ export function MusicHome() {
       return res.json() as Promise<SearchResponse>;
     },
     enabled: query.length > 0,
+  });
+
+  // Dashboard overview (stat cards, recent content)
+  const { data: dashboardData } = useQuery({
+    queryKey: ["music-dashboard"],
+    queryFn: async () => {
+      const res = await fetch("/api/music/dashboard");
+      if (!res.ok) return {};
+      return res.json() as Promise<{
+        recentlyPlayed?: Array<{ id: string; trackId: string; title: string; coverArtUrl: string | null; artistName: string; listenedAt: string }>;
+        recentMemories?: Array<{ id: string; title: string | null; contextText: string; createdAt: string }>;
+        totalListeningHours?: number;
+        currentStreak?: number;
+        longestStreak?: number;
+      }>;
+    },
+    enabled: !query.trim(),
   });
 
   // Explore
@@ -320,11 +337,123 @@ export function MusicHome() {
         ) : null}
       </AnimatePresence>
 
-      {/* Explore Feed (shown when not searching) */}
+      {/* Overview Dashboard (shown when not searching) */}
       {showExplore && (
         <div className="space-y-8">
+          {/* Stat Cards */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4">
+              <p className="text-2xl font-bold text-[var(--mantine-color-text,#c1c2c5)]">
+                {Math.round(dashboardData?.totalListeningHours ?? 0)}
+              </p>
+              <p className="text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Hours Listened</p>
+            </div>
+            <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4">
+              <p className="text-2xl font-bold text-[var(--mantine-color-text,#c1c2c5)]">
+                {dashboardData?.currentStreak ?? 0}
+              </p>
+              <p className="text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Day Streak</p>
+            </div>
+            <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4">
+              <p className="text-2xl font-bold text-[var(--mantine-color-text,#c1c2c5)]">
+                {dashboardData?.longestStreak ?? 0}
+              </p>
+              <p className="text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Longest Streak</p>
+            </div>
+            <Link href="/music/mood" className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]">
+              <div className="flex items-center gap-2">
+                <IconMoodHeart size={20} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
+                <p className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">Mood</p>
+              </div>
+              <p className="mt-1 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Track your mood</p>
+            </Link>
+            <Link href="/music/library" className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]">
+              <div className="flex items-center gap-2">
+                <IconBooks size={20} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
+                <p className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">Library</p>
+              </div>
+              <p className="mt-1 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Your saved songs</p>
+            </Link>
+            <Link href="/music/memories" className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]">
+              <div className="flex items-center gap-2">
+                <IconPhotoHeart size={20} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
+                <p className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">Memories</p>
+              </div>
+              <p className="mt-1 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Music-connected moments</p>
+            </Link>
+            <Link href="/music/journal" className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]">
+              <div className="flex items-center gap-2">
+                <IconArticle size={20} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
+                <p className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">Journal</p>
+              </div>
+              <p className="mt-1 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Music journal entries</p>
+            </Link>
+          </div>
+
+          {/* Recently Played */}
+          {dashboardData?.recentlyPlayed && dashboardData.recentlyPlayed.length > 0 && (
+            <section>
+              <div className="mb-4 flex items-center gap-2">
+                <IconMusic size={18} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
+                <h2 className="text-lg font-bold text-[var(--mantine-color-text,#c1c2c5)]">Recently Played</h2>
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {dashboardData.recentlyPlayed.map((item, i) => (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    className="w-40 shrink-0"
+                  >
+                    <Link href={`/music/song/${item.trackId}`}>
+                      <div className="aspect-square overflow-hidden rounded-xl bg-[var(--mantine-color-dark-6,#1a1b1e)]">
+                        {item.coverArtUrl ? (
+                          <img src={item.coverArtUrl} alt={item.title} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-[var(--mantine-color-dimmed,#5c5f66)]">No Art</div>
+                        )}
+                      </div>
+                      <p className="mt-2 truncate text-sm font-medium text-[var(--mantine-color-text,#c1c2c5)]">{item.title}</p>
+                      <p className="truncate text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">{item.artistName}</p>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Recent Memories */}
+          {dashboardData?.recentMemories && dashboardData.recentMemories.length > 0 && (
+            <section>
+              <div className="mb-4 flex items-center gap-2">
+                <IconPhotoHeart size={18} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
+                <h2 className="text-lg font-bold text-[var(--mantine-color-text,#c1c2c5)]">Recent Memories</h2>
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {dashboardData.recentMemories.map((mem, i) => (
+                  <motion.div
+                    key={mem.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    className="w-60 shrink-0"
+                  >
+                    <Link href={`/music/memories/${mem.id}`}>
+                      <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]">
+                        <p className="font-medium text-[var(--mantine-color-text,#c1c2c5)]">{mem.title || "Memory"}</p>
+                        <p className="mt-1 line-clamp-2 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">{mem.contextText}</p>
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Explore / Discovery Feed */}
           {!newReleases.length && !trending.length && !recommendations.length ? (
-            <div className="pt-8">
+            <div className="pt-4">
               <MusicEmptyState
                 title="Discover music"
                 description="Search for your favorite artists, albums, or tracks to get started."
@@ -366,7 +495,7 @@ export function MusicHome() {
                 title="Recommended"
                 icon={<IconSparkles size={18} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />}
                 items={recommendations}
-                href={(id) => `/music/tracks/${id}`}
+                href={(id) => `/music/song/${id}`}
                 renderItem={(item: TrackItem) => (
                   <MusicCard
                     imageUrl={item.imageUrl}

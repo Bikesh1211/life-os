@@ -1,13 +1,42 @@
-import { pgTable, text, uuid, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, date, pgEnum } from "drizzle-orm/pg-core";
+
+export const habitCategoryEnum = pgEnum("habit_category", [
+  "health",
+  "fitness",
+  "reading",
+  "learning",
+  "productivity",
+  "mindfulness",
+  "finance",
+  "social",
+  "creative",
+]);
+
+export const habitFrequencyEnum = pgEnum("habit_frequency", [
+  "daily",
+  "weekly",
+  "monthly",
+] as const);
 
 export const habits = pgTable("habits", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id").notNull(),
   title: text("title").notNull(),
   description: text("description"),
-  frequency: text("frequency").default("daily").notNull(),
-  streak: integer("streak").default(0).notNull(),
+  category: habitCategoryEnum("category"),
+  frequency: habitFrequencyEnum("frequency").default("daily").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
+});
+
+export const habitCompletions = pgTable("habit_completions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  habitId: uuid("habit_id")
+    .notNull()
+    .references(() => habits.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull(),
+  completedDate: date("completed_date").notNull(),
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });

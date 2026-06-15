@@ -29,8 +29,8 @@ export function SpendingTimeline({ data }: SpendingTimelineProps) {
   const filteredData = data.slice(-Number(range));
 
   return (
-    <Card padding="lg" radius="lg">
-      <Stack gap="md">
+    <Card padding="lg" radius="lg" h="100%">
+      <Stack gap="md" h="100%">
         <Group justify="space-between">
           <Text fw={600} size="lg">
             Spending Timeline
@@ -43,7 +43,7 @@ export function SpendingTimeline({ data }: SpendingTimelineProps) {
           />
         </Group>
 
-        <div style={{ height: 280 }}>
+        <div style={{ flex: 1, minHeight: 200 }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={filteredData}>
               <defs>

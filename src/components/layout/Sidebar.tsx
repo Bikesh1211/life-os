@@ -7,12 +7,17 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   IconChevronRight,
+  IconArrowBarToRight,
   IconStar,
   IconStarFilled,
-  IconArrowBarToRight,
+  IconSearch,
+  IconSettings,
+  IconArchive,
+  IconLogout,
 } from "@tabler/icons-react";
 import { type NavItem } from "@/core/navigation";
 import { cn } from "@/core/utils";
+import { APP_NAME } from "@/core/constants";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 import { useSidebarVisibility } from "@/core/sidebar-visibility";
 import { useSidebarFavorites } from "@/core/sidebar-favorites";
@@ -23,15 +28,41 @@ const SIDEBAR_COLLAPSED_W = 64;
 /* ── Collapse toggle button ── */
 
 function CollapseBtn() {
-  const { toggleCollapsed } = useAppShell();
+  const { collapsed, toggleCollapsed } = useAppShell();
   return (
     <button
       onClick={toggleCollapsed}
-      className="flex items-center justify-center h-9 w-9 mx-auto rounded-lg transition-all duration-150 text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5"
-      title="Expand sidebar"
+      className="flex items-center justify-center h-8 w-8 mx-auto rounded-lg transition-all duration-200 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] active:scale-95"
+      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
-      <IconArrowBarToRight size={16} />
+      <motion.div
+        animate={{ rotate: collapsed ? 0 : 180 }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+      >
+        <IconArrowBarToRight size={15} strokeWidth={1.5} />
+      </motion.div>
     </button>
+  );
+}
+
+/* ── Bottom icon button ── */
+
+function BottomIconBtn({ href, icon: Icon, title }: { href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; title: string }) {
+  const pathname = usePathname();
+  const isActive = pathname === href || pathname.startsWith(href + "/");
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex items-center justify-center h-8 w-8 rounded-lg transition-all duration-200",
+        isActive
+          ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+          : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] active:scale-95",
+      )}
+      title={title}
+    >
+      <Icon size={15} strokeWidth={1.5} />
+    </Link>
   );
 }
 
@@ -39,28 +70,35 @@ function CollapseBtn() {
 
 function Brand({ collapsed }: { collapsed: boolean }) {
   const { toggleCollapsed } = useAppShell();
-  return collapsed ? (
+  return (
     <button
       onClick={toggleCollapsed}
-      className="cursor-pointer flex items-center justify-center h-14 border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors w-full"
-      title="Expand sidebar"
+      className={cn(
+        "cursor-pointer flex items-center flex-shrink-0 transition-colors",
+        collapsed
+          ? "justify-center h-14 w-full"
+          : "gap-3 h-14 w-full px-4 text-left border-b border-gray-100/80 dark:border-white/[0.06] hover:bg-gray-50/50 dark:hover:bg-white/[0.02]",
+      )}
+      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-sm">
-        L
+      <div className="sd-brand-logo flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-xs font-bold text-white shadow-sm shadow-blue-500/20 dark:shadow-blue-500/10 ring-1 ring-white/10 dark:ring-white/5">
+        {APP_NAME.charAt(0)}
       </div>
-    </button>
-  ) : (
-    <button
-      onClick={toggleCollapsed}
-      className="cursor-pointer flex items-center gap-2.5 px-4 h-14 w-full border-b border-gray-100 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors text-left"
-      title="Collapse sidebar"
-    >
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-xs font-bold text-white shadow-sm">
-        L
-      </div>
-      <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-        Focus Linq
-      </span>
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.div
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -8 }}
+            transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+            className="flex flex-col items-start leading-tight"
+          >
+            <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
+              {APP_NAME}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </button>
   );
 }
@@ -73,6 +111,7 @@ type NavItemLinkProps = {
   collapsed?: boolean;
   onFavorite?: (id: string) => void;
   isFavorited?: boolean;
+  isDefault?: boolean;
 };
 
 function NavItemLink({
@@ -81,8 +120,10 @@ function NavItemLink({
   collapsed = false,
   onFavorite,
   isFavorited: fav,
+  isDefault,
 }: NavItemLinkProps) {
   const pathname = usePathname();
+  const { closeMobile } = useAppShell();
   const isActive =
     pathname === item.route || pathname.startsWith(item.route + "/");
   const Icon = item.icon;
@@ -92,6 +133,7 @@ function NavItemLink({
       <div className="group relative flex items-center justify-center px-1">
         <Link
           href={item.route}
+          onClick={closeMobile}
           className={cn(
             "flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-150",
             isActive
@@ -115,31 +157,32 @@ function NavItemLink({
   }
 
   return (
-    <div className={cn("group relative flex items-center", depth > 0 && "pl-8")}>
+    <div className={cn("group relative flex items-center", depth > 0 && "pl-7")}>
       <Link
         href={item.route}
+        onClick={closeMobile}
         className={cn(
-          "flex flex-1 items-center gap-2.5 rounded-md px-2.5 py-1.5 transition-all duration-150",
-          "text-sm font-medium",
+          "flex flex-1 items-center gap-2.5 rounded-lg px-2.5 py-1.5 transition-all duration-150",
+          "text-sm",
           depth > 0 && "text-xs",
           isActive
-            ? "sd-nav-active text-blue-700 dark:text-blue-300"
-            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200",
+            ? "sd-nav-active font-semibold text-blue-700 dark:text-blue-300"
+            : "font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200",
         )}
       >
         <div
           className={cn(
-            "flex-shrink-0",
+            "flex-shrink-0 flex items-center justify-center",
             isActive
-              ? "text-blue-600 dark:text-blue-400"
+              ? "sd-nav-active-icon"
               : "text-gray-400 dark:text-gray-500",
           )}
         >
-          <Icon size={depth > 0 ? 14 : NAV_ICON_SIZE} />
+          <Icon size={depth > 0 ? 14 : NAV_ICON_SIZE} strokeWidth={isActive ? 2.5 : 1.75} />
         </div>
-        <span className="truncate leading-none">{item.label}</span>
+        <span className="truncate leading-snug">{item.label}</span>
       </Link>
-      {onFavorite && (
+      {onFavorite && !isDefault && (
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -149,7 +192,7 @@ function NavItemLink({
           className={cn(
             "flex-shrink-0 rounded p-0.5 transition-all duration-150 mr-1",
             fav
-              ? "text-amber-400 hover:text-amber-500"
+              ? "text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
               : "opacity-0 group-hover:opacity-100 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400",
           )}
           title={fav ? "Remove from favorites" : "Add to favorites"}
@@ -200,16 +243,20 @@ function NavItemParent({
       <button
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm font-medium transition-all duration-150",
-          "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200",
+          "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition-all duration-150",
+          "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.04] hover:text-gray-900 dark:hover:text-gray-200",
         )}
       >
-        <div className="flex-shrink-0 text-gray-400 dark:text-gray-500">
-          <Icon size={NAV_ICON_SIZE} />
+        <div className={cn(
+          "flex-shrink-0 flex items-center justify-center",
+          hasActiveChild ? "sd-nav-active-icon" : "text-gray-400 dark:text-gray-500",
+        )}>
+          <Icon size={NAV_ICON_SIZE} strokeWidth={1.75} />
         </div>
         <span className="flex-1 truncate text-left">{item.label}</span>
         <IconChevronRight
           size={12}
+          strokeWidth={1.5}
           className={cn(
             "flex-shrink-0 transition-transform duration-200 text-gray-400 dark:text-gray-500",
             open && "rotate-90",
@@ -319,7 +366,7 @@ function CollapsedParentItem({
               boxShadow: "0 8px 32px rgba(0,0,0,0.15)",
             }}
           >
-            <div className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+            <div className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-300">
               {item.label}
             </div>
             {item.children?.map((child) => {
@@ -358,6 +405,7 @@ type GroupSectionProps = {
   collapsed?: boolean;
   onFavorite?: (id: string) => void;
   isFavorited?: (id: string) => boolean;
+  isDefault?: (id: string) => boolean;
 };
 
 function GroupSection({
@@ -365,6 +413,7 @@ function GroupSection({
   collapsed = false,
   onFavorite,
   isFavorited,
+  isDefault,
 }: GroupSectionProps) {
   const isSpecial = group.label === "System" || group.label === "Favorites";
   const pathname = usePathname();
@@ -398,6 +447,7 @@ function GroupSection({
               collapsed
               onFavorite={onFavorite}
               isFavorited={isFavorited?.(item.featureId)}
+              isDefault={isDefault?.(item.featureId)}
             />
           ),
         )}
@@ -410,10 +460,8 @@ function GroupSection({
     return (
       <div>
         {group.label !== "Favorites" && (
-          <div className="px-3 pb-1 pt-1">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-              {group.label}
-            </span>
+          <div className="px-3 pb-0.5 pt-1">
+            <span className="sd-group-label">{group.label}</span>
           </div>
         )}
         <div className="space-y-0.5">
@@ -431,6 +479,7 @@ function GroupSection({
                 item={item}
                 onFavorite={onFavorite}
                 isFavorited={isFavorited?.(item.featureId)}
+                isDefault={isDefault?.(item.featureId)}
               />
             )
           )}
@@ -441,26 +490,25 @@ function GroupSection({
 
   return (
     <div>
-      <div className="px-3 pt-3 pb-1">
+      <div className="px-3 pt-3 pb-0.5">
         <div className="flex items-center gap-2">
-          <div className="h-px flex-1 bg-gray-100 dark:bg-white/5" />
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200/60 dark:via-white/[0.06] to-transparent" />
         </div>
       </div>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center gap-1.5 px-3 py-1 text-left transition-colors group"
+        className="flex w-full items-center gap-1.5 px-3 py-0.5 text-left transition-colors group hover:opacity-80"
       >
         <IconChevronRight
           size={9}
+          strokeWidth={1.5}
           className={cn(
             "flex-shrink-0 transition-transform duration-200",
             open && "rotate-90",
             "text-gray-400 dark:text-gray-500",
           )}
         />
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-          {group.label}
-        </span>
+        <span className="sd-group-label cursor-pointer">{group.label}</span>
       </button>
       <AnimatePresence initial={false}>
         {open && (
@@ -487,6 +535,7 @@ function GroupSection({
                     item={item}
                     onFavorite={onFavorite}
                     isFavorited={isFavorited?.(item.featureId)}
+                    isDefault={isDefault?.(item.featureId)}
                   />
                 ),
               )}
@@ -500,59 +549,106 @@ function GroupSection({
 
 /* ── Main sidebar content ── */
 
-export function SidebarContent({ collapsed = false, showBrand = true }: { collapsed?: boolean; showBrand?: boolean }) {
+export function SidebarContent({ collapsed = false, showBrand = true, showBottomCollapse = true }: { collapsed?: boolean; showBrand?: boolean; showBottomCollapse?: boolean }) {
   const { loaded, getVisibleGroups } = useSidebarVisibility();
   const {
     loaded: favLoaded,
-    getFavoriteItems,
+    getDefaultFavoriteItems,
+    getCustomFavoriteItems,
     toggleFavorite,
     isFavorited,
+    isDefault,
   } = useSidebarFavorites();
 
   const groups = loaded ? getVisibleGroups() : [];
-  const favItems = favLoaded ? getFavoriteItems() : [];
+  const defaultItems = favLoaded ? getDefaultFavoriteItems() : [];
+  const customItems = favLoaded ? getCustomFavoriteItems() : [];
+  const hasFavorites = defaultItems.length > 0 || customItems.length > 0;
+
+  const openSpotlight = useCallback(() => {
+    document.dispatchEvent(new CustomEvent("opencode-spotlight"));
+  }, []);
 
   return (
     <div className="flex h-full flex-col sd-content">
       {showBrand && <Brand collapsed={collapsed} />}
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-1.5 pb-2 scrollbar-thin">
-        {favItems.length > 0 && (
-          <div className="mb-0.5">
-            <div className="space-y-0.5">
-              {favItems.map((item) => (
-                <NavItemLink
-                  key={item.featureId}
-                  item={item}
-                  collapsed={collapsed}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {favItems.length > 0 && !collapsed && (
-          <div className="h-px bg-gray-100 dark:bg-white/5 mx-2 my-1.5" />
-        )}
-
-        {groups.map((group) =>
-          group.label === "Favorites" ? null : (
-            <GroupSection
-              key={group.label}
-              group={group}
-              collapsed={collapsed}
-              onFavorite={toggleFavorite}
-              isFavorited={isFavorited}
-            />
-          ),
-        )}
-      </div>
-
-      {collapsed && (
-        <div className="border-t border-gray-100 dark:border-white/5 py-1">
-          <CollapseBtn />
+      {!collapsed && (
+        <div className="px-3 pt-2 pb-1.5">
+          <button
+            onClick={openSpotlight}
+            className="flex items-center gap-2 w-full rounded-lg border border-gray-200/70 dark:border-white/[0.08] bg-gray-50/60 dark:bg-white/[0.03] px-3 py-2 text-sm text-gray-400 dark:text-gray-500 transition-all duration-150 hover:border-gray-300 dark:hover:border-white/[0.15] hover:bg-gray-100/60 dark:hover:bg-white/[0.06] cursor-text active:scale-[0.99]"
+          >
+            <IconSearch size={15} strokeWidth={1.5} className="flex-shrink-0" />
+            <span className="flex-1 text-left text-xs">Search...</span>
+            <kbd className="flex-shrink-0 hidden sm:inline-flex items-center gap-px px-1.5 py-0.5 text-[9px] font-medium rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] text-gray-400 dark:text-gray-500 leading-none">
+              <span className="text-[8px]">⌘</span>K
+            </kbd>
+          </button>
         </div>
       )}
+
+      <AnimatePresence mode="popLayout">
+        <motion.div
+          key={collapsed ? "collapsed" : "expanded"}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.12 }}
+          layout
+          className="flex-1 overflow-y-auto overflow-x-hidden px-1.5 pb-2 scrollbar-thin"
+        >
+          {hasFavorites && (
+            <div className="mb-0.5">
+              <div className="space-y-0.5">
+                {defaultItems.map((item) => (
+                  <NavItemLink
+                    key={item.featureId}
+                    item={item}
+                    collapsed={collapsed}
+                  />
+                ))}
+                {customItems.map((item) => (
+                  <NavItemLink
+                    key={item.featureId}
+                    item={item}
+                    collapsed={collapsed}
+                    onFavorite={toggleFavorite}
+                    isFavorited={isFavorited(item.featureId)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {hasFavorites && !collapsed && (
+            <div className="h-px bg-gradient-to-r from-transparent via-gray-200/60 dark:via-white/[0.06] to-transparent mx-2 my-1.5" />
+          )}
+
+          {groups.map((group) =>
+            group.label === "Favorites" ? null : (
+              <GroupSection
+                key={group.label}
+                group={group}
+                collapsed={collapsed}
+                onFavorite={toggleFavorite}
+                isFavorited={isFavorited}
+                isDefault={isDefault}
+              />
+            ),
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      <div className="border-t border-gray-100/80 dark:border-white/[0.06] px-3 py-2">
+        <div className="flex items-center justify-center gap-1.5">
+          <BottomIconBtn href="/settings" icon={IconSettings} title="Settings" />
+          <BottomIconBtn href="/archive" icon={IconArchive} title="Archive" />
+          <div className="w-px h-5 bg-gray-200/70 dark:bg-white/[0.08]" />
+          <BottomIconBtn href="/logout" icon={IconLogout} title="Logout" />
+          {showBottomCollapse && <CollapseBtn />}
+        </div>
+      </div>
     </div>
   );
 }

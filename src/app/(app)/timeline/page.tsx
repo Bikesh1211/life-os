@@ -4,8 +4,13 @@ import { TimelineContent } from "./TimelineContent";
 
 export const dynamic = "force-dynamic";
 
-export default async function TimelinePage() {
+type Props = {
+  searchParams: Promise<{ tab?: string }>;
+};
+
+export default async function TimelinePage({ searchParams }: Props) {
   const { userId } = await auth();
   const events = await getTimelineEvents(userId!);
-  return <TimelineContent events={events} />;
+  const { tab } = await searchParams;
+  return <TimelineContent events={events} defaultTab={tab ?? "today"} />;
 }

@@ -22,20 +22,22 @@ body {
 
 .sd-content {
   user-select: none;
+  overflow: hidden;
 }
 
 /* Scrollbar */
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
+  transition: scrollbar-color 0.3s ease;
 }
 
 .scrollbar-thin:hover {
-  scrollbar-color: var(--mantine-color-gray-4) transparent;
+  scrollbar-color: var(--mantine-color-gray-3) transparent;
 }
 
 [data-mantine-color-scheme="dark"] .scrollbar-thin:hover {
-  scrollbar-color: var(--mantine-color-dark-4) transparent;
+  scrollbar-color: var(--mantine-color-dark-3) transparent;
 }
 
 .scrollbar-thin::-webkit-scrollbar {
@@ -49,35 +51,103 @@ body {
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background: transparent;
   border-radius: 4px;
+  transition: background 0.3s ease;
 }
 
 .scrollbar-thin:hover::-webkit-scrollbar-thumb {
-  background: var(--mantine-color-gray-4);
+  background: var(--mantine-color-gray-3);
 }
 
 [data-mantine-color-scheme="dark"] .scrollbar-thin:hover::-webkit-scrollbar-thumb {
-  background: var(--mantine-color-dark-4);
+  background: var(--mantine-color-dark-3);
 }
 
-/* Active nav item highlight */
+/* Premium nav item styles */
+.sd-nav-item {
+  position: relative;
+  border-radius: 8px;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sd-nav-item:hover {
+  background: var(--mantine-color-gray-0);
+}
+
+[data-mantine-color-scheme="dark"] .sd-nav-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Active nav item — refined pill with glow */
 .sd-nav-active {
   position: relative;
   background: rgba(59, 130, 246, 0.08);
+  font-weight: 600 !important;
+}
+
+[data-mantine-color-scheme="dark"] .sd-nav-active {
+  background: rgba(59, 130, 246, 0.12);
 }
 
 .sd-nav-active::before {
   content: "";
   position: absolute;
   left: 0;
-  top: 4px;
-  bottom: 4px;
-  width: 2.5px;
-  border-radius: 0 3px 3px 0;
-  background: #3b82f6;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, #3b82f6, #60a5fa);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.3);
 }
 
-[data-mantine-color-scheme="dark"] .sd-nav-active {
-  background: rgba(59, 130, 246, 0.12);
+[data-mantine-color-scheme="dark"] .sd-nav-active::before {
+  background: linear-gradient(180deg, #60a5fa, #93c5fd);
+  box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
+}
+
+/* Active icon color refinement */
+.sd-nav-active-icon {
+  color: #3b82f6;
+}
+
+[data-mantine-color-scheme="dark"] .sd-nav-active-icon {
+  color: #60a5fa;
+}
+
+/* Group label styling */
+.sd-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mantine-color-gray-5);
+  padding: 0 12px;
+  transition: color 0.2s ease;
+}
+
+[data-mantine-color-scheme="dark"] .sd-group-label {
+  color: var(--mantine-color-dark-2);
+}
+
+/* Brand logo glow */
+.sd-brand-logo {
+  position: relative;
+  isolation: isolate;
+}
+
+.sd-brand-logo::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 12px;
+  background: radial-gradient(circle at center, rgba(59, 130, 246, 0.15), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.sd-brand-logo:hover::after {
+  opacity: 1;
 }
 
 /* ── Premium Auth Layout ── */

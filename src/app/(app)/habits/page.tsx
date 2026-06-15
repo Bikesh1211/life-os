@@ -1,12 +1,5 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconRepeat } from "@tabler/icons-react";
+import { AnalyticsPage } from "@/modules/habits/components/analytics/AnalyticsPage";
 
 export default function HabitsPage() {
-  return (
-    <FeaturePlaceholder
-      title="Habits"
-      description="Track your daily habits and streaks"
-      icon={IconRepeat}
-    />
-  );
+  return <AnalyticsPage />;
 }

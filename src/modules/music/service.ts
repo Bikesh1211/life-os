@@ -31,10 +31,39 @@ export const createJournalSchema = z.object({
 export const updateJournalSchema = createJournalSchema.partial();
 
 export const createMemorySchema = z.object({
-  trackId: z.string().uuid().optional(),
-  artistId: z.string().uuid().optional(),
+  trackId: z.string().optional(),
+  albumId: z.string().optional(),
+  artistId: z.string().optional(),
+  title: z.string().max(200).optional(),
   contextText: z.string().min(1).max(5000),
+  mood: z.string().max(50).nullable().optional(),
+  photoUrls: z.array(z.string().max(2000)).max(10).optional(),
+  memoryDate: z.string().datetime().optional(),
   linkedEventId: z.string().optional(),
+});
+
+export const updateMemorySchema = createMemorySchema.partial();
+
+export const addMemorySongSchema = z.object({
+  trackId: z.string().min(1),
+  position: z.number().int().min(0).optional(),
+});
+
+export const addToLibrarySchema = z.object({
+  trackId: z.string().uuid(),
+});
+
+export const addJournalSongSchema = z.object({
+  trackId: z.string().uuid().optional(),
+  albumId: z.string().uuid().optional(),
+  artistId: z.string().uuid().optional(),
+  position: z.number().int().min(0).optional(),
+});
+
+export const createMoodEntrySchema = z.object({
+  mood: z.string().min(1).max(50),
+  note: z.string().max(1000).optional(),
+  date: z.string().datetime().optional(),
 });
 
 export const createRatingSchema = z.object({
@@ -64,7 +93,7 @@ export const createCollectionSchema = z.object({
 export const updateCollectionSchema = createCollectionSchema.partial();
 
 export const addCollectionItemSchema = z.object({
-  entityType: z.enum(["track", "album", "artist"]),
+  entityType: z.enum(["track", "album", "artist", "memory"]),
   entityId: z.string().min(1).max(200),
   position: z.number().int().min(0).optional(),
 });
@@ -91,8 +120,13 @@ export type CreateFavoriteParams = z.infer<typeof createFavoriteSchema>;
 export type CreateCollectionParams = z.infer<typeof createCollectionSchema>;
 export type UpdateCollectionParams = z.infer<typeof updateCollectionSchema>;
 export type AddCollectionItemParams = z.infer<typeof addCollectionItemSchema>;
+export type UpdateMemoryParams = z.infer<typeof updateMemorySchema>;
+export type AddJournalSongParams = z.infer<typeof addJournalSongSchema>;
+export type CreateMoodEntryParams = z.infer<typeof createMoodEntrySchema>;
+export type AddMemorySongParams = z.infer<typeof addMemorySongSchema>;
+export type AddToLibraryParams = z.infer<typeof addToLibrarySchema>;
 export const createNoteSchema = z.object({
-  entityType: z.enum(["track", "album", "artist"]),
+  entityType: z.enum(["track", "album", "artist", "memory"]),
   entityId: z.string().min(1).max(200),
   content: z.string().min(1).max(10000),
 });
@@ -129,11 +163,16 @@ async function syncAlbum(mbid: string) {
   if (existing) return existing;
 
   const mbAlbum = await mb.lookupAlbum(mbid);
-  const coverArtUrl = await getCoverArtUrl(mbid);
 
+  const artistCredit = mbAlbum["artist-credit"]?.[0];
+  if (!artistCredit) return null;
+
+  const artist = await syncArtist(artistCredit.artist.id);
+
+  const coverArtUrl = await getCoverArtUrl(mbid).catch(() => null);
   return repo.createAlbum({
     musicBrainzId: mbAlbum.id,
-    artistId: "", // will be set by caller
+    artistId: artist.id,
     title: mbAlbum.title,
     releaseDate: mbAlbum["first-release-date"] ? new Date(mbAlbum["first-release-date"]) : null,
     coverArtUrl,
@@ -174,10 +213,16 @@ export async function searchAlbums(query: string) {
       const existing = await repo.getAlbumByMusicBrainzId(r.entity.id);
       if (existing) return existing;
 
+      const artistCredit = r.entity["artist-credit"]?.[0];
+      if (!artistCredit) return null;
+
+      const artist = await tryMusicBrainz(() => syncArtist(artistCredit.artist.id));
+      if (!artist) return null;
+
       const coverArtUrl = await getCoverArtUrl(r.entity.id).catch(() => null);
       return repo.createAlbum({
         musicBrainzId: r.entity.id,
-        artistId: "",
+        artistId: artist.id,
         title: r.entity.title,
         releaseDate: r.entity["first-release-date"]
           ? new Date(r.entity["first-release-date"])
@@ -187,7 +232,7 @@ export async function searchAlbums(query: string) {
       });
     }),
   );
-  return albums;
+  return albums.filter(Boolean);
 }
 
 export async function searchTracks(query: string) {
@@ -278,9 +323,29 @@ export async function createMemory(userId: string, params: CreateMemoryParams) {
   return repo.createMemory({
     userId,
     trackId: validated.trackId ?? null,
+    albumId: validated.albumId ?? null,
     artistId: validated.artistId ?? null,
+    title: validated.title ?? null,
     contextText: validated.contextText,
+    mood: validated.mood ?? null,
+    photoUrls: validated.photoUrls ?? [],
+    memoryDate: validated.memoryDate ? new Date(validated.memoryDate) : null,
     linkedEventId: validated.linkedEventId ?? null,
+  });
+}
+
+export async function updateMemory(id: string, userId: string, params: UpdateMemoryParams) {
+  const validated = updateMemorySchema.parse(params);
+  return repo.updateMemory(id, userId, {
+    ...(validated.title !== undefined && { title: validated.title }),
+    ...(validated.contextText !== undefined && { contextText: validated.contextText }),
+    ...(validated.mood !== undefined && { mood: validated.mood }),
+    ...(validated.photoUrls !== undefined && { photoUrls: validated.photoUrls }),
+    ...(validated.memoryDate !== undefined && { memoryDate: new Date(validated.memoryDate) }),
+    ...(validated.trackId !== undefined && { trackId: validated.trackId }),
+    ...(validated.albumId !== undefined && { albumId: validated.albumId }),
+    ...(validated.artistId !== undefined && { artistId: validated.artistId }),
+    ...(validated.linkedEventId !== undefined && { linkedEventId: validated.linkedEventId }),
   });
 }
 
@@ -288,8 +353,130 @@ export async function getMemories(userId: string, limit = 50, offset = 0) {
   return repo.getMemories(userId, limit, offset);
 }
 
+export async function getMemoryById(id: string, userId: string) {
+  return repo.getMemoryById(id, userId);
+}
+
+export async function getMemoriesByMood(userId: string, mood: string) {
+  return repo.getMemoriesByMood(userId, mood);
+}
+
+export async function getMemoriesByDateRange(userId: string, dateFrom: Date, dateTo: Date) {
+  return repo.getMemoriesByDateRange(userId, dateFrom, dateTo);
+}
+
 export async function deleteMemory(id: string, userId: string) {
   return repo.deleteMemory(id, userId);
+}
+
+// ─── Memory Songs ────────────────────────────────────────────────
+
+export async function addSongToMemory(
+  userId: string,
+  memoryId: string,
+  params: AddMemorySongParams,
+) {
+  const validated = addMemorySongSchema.parse(params);
+  const memory = await repo.getMemoryById(memoryId, userId);
+  if (!memory) throw new Error("Memory not found");
+  return repo.addSongToMemory({
+    memoryId,
+    trackId: validated.trackId,
+    position: validated.position ?? 0,
+  });
+}
+
+export async function getMemorySongs(memoryId: string) {
+  return repo.getMemorySongs(memoryId);
+}
+
+export async function removeSongFromMemory(id: string) {
+  return repo.removeSongFromMemory(id);
+}
+
+// ─── Library ─────────────────────────────────────────────────────────
+
+export async function addToLibrary(userId: string, params: AddToLibraryParams) {
+  const validated = addToLibrarySchema.parse(params);
+  const exists = await repo.isInLibrary(userId, validated.trackId);
+  if (exists) return null;
+  return repo.addToLibrary({
+    userId,
+    trackId: validated.trackId,
+  });
+}
+
+export async function getLibrary(userId: string, limit = 100, offset = 0) {
+  return repo.getLibrary(userId, limit, offset);
+}
+
+export async function removeFromLibrary(id: string, userId: string) {
+  return repo.removeFromLibrary(id, userId);
+}
+
+export async function removeTrackFromLibrary(userId: string, trackId: string) {
+  return repo.removeTrackFromLibrary(userId, trackId);
+}
+
+export async function isInLibrary(userId: string, trackId: string) {
+  return repo.isInLibrary(userId, trackId);
+}
+
+export async function getLibraryTrackIds(userId: string) {
+  return repo.getLibraryTrackIds(userId);
+}
+
+// ─── Journal Songs ────────────────────────────────────────────────
+
+export async function addSongToJournal(
+  userId: string,
+  journalId: string,
+  params: AddJournalSongParams,
+) {
+  const validated = addJournalSongSchema.parse(params);
+  return repo.addSongToJournal({
+    journalId,
+    trackId: validated.trackId ?? null,
+    albumId: validated.albumId ?? null,
+    artistId: validated.artistId ?? null,
+    position: validated.position ?? 0,
+  });
+}
+
+export async function getJournalSongs(journalId: string) {
+  return repo.getJournalSongs(journalId);
+}
+
+export async function removeSongFromJournal(id: string) {
+  return repo.removeSongFromJournal(id);
+}
+
+// ─── Mood Entries ─────────────────────────────────────────────────
+
+export async function createMoodEntry(userId: string, params: CreateMoodEntryParams) {
+  const validated = createMoodEntrySchema.parse(params);
+  return repo.createMoodEntry({
+    userId,
+    mood: validated.mood,
+    note: validated.note ?? null,
+    date: validated.date ? new Date(validated.date) : new Date(),
+  });
+}
+
+export async function getMoodEntries(
+  userId: string,
+  options?: { dateFrom?: string; dateTo?: string; limit?: number; offset?: number },
+) {
+  return repo.getMoodEntries(userId, {
+    dateFrom: options?.dateFrom ? new Date(options.dateFrom) : undefined,
+    dateTo: options?.dateTo ? new Date(options.dateTo) : undefined,
+    limit: options?.limit,
+    offset: options?.offset,
+  });
+}
+
+export async function getMoodAnalytics(userId: string, days = 90) {
+  return repo.getMoodAnalytics(userId, days);
 }
 
 // ─── Ratings ──────────────────────────────────────────────────────
@@ -333,8 +520,83 @@ export async function addFavorite(userId: string, params: CreateFavoriteParams) 
   return repo.getFavoritesByType(userId, validated.entityType);
 }
 
+import { lookupItunesEntity } from "./itunes";
+
+const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function getFavorites(userId: string) {
-  return repo.getFavorites(userId);
+  const favorites = await repo.getFavorites(userId);
+  if (favorites.length === 0) return [];
+
+  const trackIds = favorites
+    .filter((f) => f.entityType === "track" && uuidRegex.test(f.entityId))
+    .map((f) => f.entityId);
+  const albumIds = favorites
+    .filter((f) => f.entityType === "album" && uuidRegex.test(f.entityId))
+    .map((f) => f.entityId);
+  const artistIds = favorites
+    .filter((f) => f.entityType === "artist" && uuidRegex.test(f.entityId))
+    .map((f) => f.entityId);
+
+  const [tracks, albums, artists] = await Promise.all([
+    trackIds.length > 0 ? repo.getTracksByIds(trackIds) : [],
+    albumIds.length > 0 ? repo.getAlbumsByIds(albumIds) : [],
+    artistIds.length > 0 ? repo.getArtistsByIds(artistIds) : [],
+  ]);
+
+  const trackMap = new Map(tracks.map((t) => [t.id, t]));
+  const albumMap = new Map(albums.map((a) => [a.id, a]));
+  const artistMap = new Map(artists.map((a) => [a.id, a]));
+
+  const itunesFavorites = favorites.filter(
+    (f) => !uuidRegex.test(f.entityId) && f.entityId.startsWith("itunes-"),
+  );
+  const itunesResults = new Map<string, { entityName: string | null; imageUrl: string | null }>();
+  if (itunesFavorites.length > 0) {
+    const itunesIds = [...new Set(itunesFavorites.map((f) => f.entityId.replace("itunes-", "")))];
+    const results = await Promise.allSettled(itunesIds.map((id) => lookupItunesEntity(id)));
+    for (const result of results) {
+      if (result.status === "fulfilled" && result.value) {
+        itunesResults.set(result.value.id, {
+          entityName: result.value.title ?? null,
+          imageUrl: result.value.imageUrl ?? null,
+        });
+      }
+    }
+  }
+
+  return favorites.map((fav) => {
+    let entityName: string | null = null;
+    let imageUrl: string | null = null;
+
+    if (fav.entityType === "track") {
+      const track = trackMap.get(fav.entityId);
+      entityName = track?.title ?? null;
+      imageUrl = track?.albumCoverArtUrl ?? null;
+    } else if (fav.entityType === "album") {
+      const album = albumMap.get(fav.entityId);
+      entityName = album?.title ?? null;
+      imageUrl = album?.coverArtUrl ?? null;
+    } else if (fav.entityType === "artist") {
+      const artist = artistMap.get(fav.entityId);
+      entityName = artist?.name ?? null;
+      imageUrl = artist?.imageUrl ?? null;
+    }
+
+    if (!entityName && !imageUrl) {
+      const itunes = itunesResults.get(fav.entityId);
+      if (itunes) {
+        entityName ??= itunes.entityName;
+        imageUrl ??= itunes.imageUrl;
+      }
+    }
+
+    return {
+      ...fav,
+      entityName,
+      imageUrl,
+    };
+  });
 }
 
 export async function removeFavorite(userId: string, entityType: string, entityId: string) {
@@ -597,7 +859,7 @@ export async function getAnalytics(userId: string) {
   };
 }
 
-function calculateStreak(dates: string[]) {
+export function calculateStreak(dates: string[]) {
   if (dates.length === 0) return { days: 0, longest: 0 };
 
   const sorted = [...new Set(dates)].sort().reverse();
@@ -608,18 +870,17 @@ function calculateStreak(dates: string[]) {
   for (let i = 1; i < sorted.length; i++) {
     const prev = new Date(sorted[i - 1]);
     const curr = new Date(sorted[i]);
-    const diff = (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24);
+    const diff = Math.round((prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (Math.abs(diff - 1) < 0.1) {
+    if (diff === 1) {
       tempStreak++;
+    } else if (diff > 1) {
       longestStreak = Math.max(longestStreak, tempStreak);
-    } else if (diff === 0) {
-      continue;
-    } else {
-      break;
+      tempStreak = 1;
     }
   }
 
+  longestStreak = Math.max(longestStreak, tempStreak);
   currentStreak = tempStreak;
   return { days: currentStreak, longest: longestStreak };
 }

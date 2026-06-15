@@ -1,14 +1,13 @@
 "use client";
 
-import { useCallback, useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
 import { Text, Loader } from "@mantine/core";
 import { JournalEditor } from "../components/JournalEditor";
 import type { JournalEntry } from "@/modules/journal";
 
 export default function EditJournalEntryPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [entry, setEntry] = useState<JournalEntry | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -21,18 +20,6 @@ export default function EditJournalEntryPage() {
       })
       .catch(() => setLoading(false));
   }, [id]);
-
-  const handleSave = useCallback(
-    async (data: { title: string; content: string; mood?: string; tags?: string[]; reflectionScore?: number }) => {
-      const res = await fetch(`/api/journal/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to save");
-    },
-    [id],
-  );
 
   if (loading) {
     return (
@@ -55,10 +42,6 @@ export default function EditJournalEntryPage() {
       entryId={id}
       initialTitle={entry.title}
       initialContent={entry.content ?? ""}
-      initialMood={entry.mood ?? undefined}
-      initialTags={entry.tags ?? []}
-      initialScore={entry.reflectionScore ?? 5}
-      onSave={handleSave}
     />
   );
 }

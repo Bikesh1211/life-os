@@ -2,6 +2,7 @@
 
 import { AppShell, AppShellMain } from "@mantine/core";
 import { Sidebar, SidebarContent, Header, MobileDrawer, MobileNav } from "@/components/layout";
+import { APP_NAME } from "@/core/constants";
 import { useAppShell } from "./AppShellProvider";
 
 export function AppShellInner({ children }: { children: React.ReactNode }) {
@@ -32,14 +33,14 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
           <div className="h-full flex flex-col py-4">
             <div className="flex items-center gap-2.5 px-4 py-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-[10px] font-bold text-white">
-                L
+                {APP_NAME.charAt(0)}
               </div>
               <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-                Focus Linq
+                {APP_NAME}
               </span>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <SidebarContent showBrand={false} />
+              <SidebarContent showBrand={false} showBottomCollapse={false} />
             </div>
           </div>
         </MobileDrawer>

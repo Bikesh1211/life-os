@@ -32,6 +32,37 @@ export function useSidebarVisibility() {
     setLoaded(true);
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    fetch("/api/sidebar/preferences")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch");
+        return res.json();
+      })
+      .then((data) => {
+        if (data.visibility) {
+          setState((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(data.visibility)) return prev;
+            saveVisibility(data.visibility);
+            return data.visibility;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const timer = setTimeout(() => {
+      fetch("/api/sidebar/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visibility: state }),
+      }).catch(() => {});
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [state, loaded]);
+
   const toggleGroup = useCallback((groupLabel: string) => {
     setState((prev) => {
       const hidden = prev.hiddenGroups.includes(groupLabel)

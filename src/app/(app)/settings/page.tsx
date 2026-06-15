@@ -44,8 +44,10 @@ function ItemList({ items, hiddenItems, toggleItem, groupHidden }: { items: NavI
 }
 
 function SidebarFavoritesSection() {
-  const { favorites, toggleFavorite, getFavoriteItems } = useSidebarFavorites();
-  const items = getFavoriteItems();
+  const { getDefaultFavoriteItems, getCustomFavoriteItems, toggleFavorite } =
+    useSidebarFavorites();
+  const defaultItems = getDefaultFavoriteItems();
+  const customItems = getCustomFavoriteItems();
 
   return (
     <Paper withBorder p="lg" radius="md">
@@ -53,35 +55,41 @@ function SidebarFavoritesSection() {
         Sidebar Favorites
       </Text>
       <Text size="sm" c="dimmed" mb="md">
-        Your starred items appear in a Favorites section at the top of the sidebar. Click the star on any nav item to add or remove it.
+        Default favorites always appear at the top. Star any nav item in the sidebar to add your own favorites below.
       </Text>
-      {items.length === 0 ? (
-        <Text size="sm" c="dimmed">
-          No favorites yet. Star items from the sidebar to add them here.
-        </Text>
-      ) : (
-        <Stack gap="xs">
-          {items.map((item) => (
-            <div key={item.featureId} className="flex items-center gap-3 rounded-lg px-3 py-1.5">
-              <div className="text-gray-500">
-                <item.icon size={16} />
-              </div>
-              <Text size="sm" className="flex-1">
-                {item.label}
-              </Text>
-              <Text
-                component="button"
-                size="xs"
-                c="red"
-                className="cursor-pointer bg-transparent border-0"
-                onClick={() => toggleFavorite(item.featureId)}
-              >
-                Remove
-              </Text>
+      <Stack gap="xs">
+        {defaultItems.map((item) => (
+          <div key={item.featureId} className="flex items-center gap-3 rounded-lg px-3 py-1.5">
+            <div className="text-gray-500">
+              <item.icon size={16} />
             </div>
-          ))}
-        </Stack>
-      )}
+            <Text size="sm" className="flex-1">
+              {item.label}
+            </Text>
+            <Text size="xs" c="dimmed">Default</Text>
+          </div>
+        ))}
+        {customItems.length > 0 && <div className="h-px bg-gray-100 dark:bg-white/5 mx-2 my-1" />}
+        {customItems.map((item) => (
+          <div key={item.featureId} className="flex items-center gap-3 rounded-lg px-3 py-1.5">
+            <div className="text-gray-500">
+              <item.icon size={16} />
+            </div>
+            <Text size="sm" className="flex-1">
+              {item.label}
+            </Text>
+            <Text
+              component="button"
+              size="xs"
+              c="red"
+              className="cursor-pointer bg-transparent border-0"
+              onClick={() => toggleFavorite(item.featureId)}
+            >
+              Remove
+            </Text>
+          </div>
+        ))}
+      </Stack>
     </Paper>
   );
 }

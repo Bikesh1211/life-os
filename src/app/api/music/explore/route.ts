@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ section: "new-releases", items: albums });
     }
 
-    const topAlbums = await getExploreAlbums(12);
+    const topAlbums = await getExploreAlbums(12).catch(() => []);
 
     return NextResponse.json({
       newReleases: topAlbums,
@@ -23,10 +23,10 @@ export async function GET(request: Request) {
       recommendations: [],
     });
   } catch (error) {
-    return NextResponse.json({
-      newReleases: [],
-      trending: [],
-      recommendations: [],
-    });
+    console.error("[music-explore]", error);
+    return NextResponse.json(
+      { newReleases: [], trending: [], recommendations: [], error: "Failed to fetch explore data" },
+      { status: 500 },
+    );
   }
 }

@@ -1,167 +1,108 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Textarea, Group, Text, ActionIcon, Tooltip, Paper, Box } from "@mantine/core";
-import { IconArrowLeft, IconCheck, IconLoader2, IconCloudOff, IconCalendar } from "@tabler/icons-react";
-import { MoodSelector } from "./MoodSelector";
-import { TagInput } from "./TagInput";
-import { ReflectionScoreMeter } from "./ReflectionScoreMeter";
-import { useAutoSave } from "../hooks/useAutoSave";
-import { computeReadingTime } from "@/modules/journal/utils";
+import { Button } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
+import { IconArrowLeft } from "@tabler/icons-react";
 
 type JournalEditorProps = {
   initialTitle?: string;
   initialContent?: string;
-  initialMood?: string;
-  initialTags?: string[];
-  initialScore?: number;
-  initialEventDate?: string;
   entryId?: string;
-  onSave: (data: {
-    title: string;
-    content: string;
-    mood?: string;
-    tags?: string[];
-    reflectionScore?: number;
-    eventDate?: string;
-  }) => Promise<void>;
 };
 
 export function JournalEditor({
   initialTitle = "",
   initialContent = "",
-  initialMood,
-  initialTags = [],
-  initialScore,
-  initialEventDate,
   entryId,
-  onSave,
 }: JournalEditorProps) {
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
-  const [mood, setMood] = useState(initialMood ?? "");
-  const [tags, setTags] = useState<string[]>(initialTags);
-  const [score, setScore] = useState(initialScore ?? 5);
-  const [eventDate, setEventDate] = useState(initialEventDate ?? "");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const doSave = useCallback(async () => {
-    await onSave({
-      title,
-      content,
-      mood: mood || undefined,
-      tags: tags.length > 0 ? tags : undefined,
-      reflectionScore: score,
-      eventDate: eventDate || undefined,
+  function handleContentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setContent(e.currentTarget.value);
+    const el = e.currentTarget;
+    requestAnimationFrame(() => {
+      el.style.height = "auto";
+      el.style.height = el.scrollHeight + "px";
     });
-  }, [title, content, mood, tags, score, eventDate, onSave]);
-
-  const { status, scheduleSave, saveNow } = useAutoSave({ onSave: doSave, debounceMs: 2000 });
-
-  useEffect(() => {
-    if (!entryId) saveNow();
-  }, []);
-
-  useEffect(() => {
-    scheduleSave();
-  }, [title, content, mood, tags, score, eventDate]);
-
-  function handleBack() {
-    saveNow().then(() => router.push("/journal"));
   }
 
-  const saveIndicator = {
-    idle: null,
-    saving: { icon: IconLoader2, text: "Saving...", className: "text-blue-500" },
-    saved: { icon: IconCheck, text: "Saved", className: "text-green-500" },
-    error: { icon: IconCloudOff, text: "Save failed", className: "text-red-500" },
-  }[status];
+  const handleSave = useCallback(async () => {
+    setLoading(true);
+    try {
+      const url = entryId ? `/api/journal/${entryId}` : "/api/journal";
+      const method = entryId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, content }),
+      });
+      if (!res.ok) throw new Error("Failed to save");
+      const data = await res.json();
+      notifications.show({
+        title: entryId ? "Updated" : "Created",
+        message: `"${title}" saved successfully.`,
+        color: "green",
+      });
+      if (!entryId) {
+        router.replace(`/journal/${data.id}`);
+      } else {
+        router.refresh();
+      }
+    } catch {
+      notifications.show({
+        title: "Error",
+        message: "Failed to save entry",
+        color: "red",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [title, content, entryId, router]);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-4">
-      <Group justify="space-between" mb="md" className="flex-shrink-0">
-        <Group gap={4}>
-          <Tooltip label="Back to journal">
-            <ActionIcon variant="subtle" size="lg" onClick={handleBack}>
-              <IconArrowLeft size={20} />
-            </ActionIcon>
-          </Tooltip>
-          <Text size="sm" c="dimmed" className="hidden sm:block">
-            Journal
-          </Text>
-        </Group>
-
-        <Group gap="xs">
-          {saveIndicator && (
-            <Group gap={4}>
-              <saveIndicator.icon size={14} className={saveIndicator.className} />
-              <Text size="xs" className={saveIndicator.className}>
-                {saveIndicator.text}
-              </Text>
-            </Group>
-          )}
-          {content && (
-            <Text size="xs" c="dimmed">
-              {computeReadingTime(content)} min read
-            </Text>
-          )}
-        </Group>
-      </Group>
-
-      <Paper withBorder p="md" className="flex-shrink-0">
-        <MoodSelector value={mood} onChange={setMood} size="sm" />
-      </Paper>
-
-      <div className="mt-4 flex-shrink-0">
-        <TagInput value={tags} onChange={setTags} />
+      <div className="mb-4 flex items-center justify-between flex-shrink-0">
+        <button
+          onClick={() => router.push("/journal")}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+        >
+          <IconArrowLeft size={16} />
+          Back
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          className="cursor-pointer rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? "Saving..." : entryId ? "Update" : "Save"}
+        </button>
       </div>
 
-      <div className="mt-4 mb-4 flex-shrink-0">
-        <ReflectionScoreMeter value={score} onChange={setScore} />
-      </div>
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.currentTarget.value)}
+        placeholder="Title"
+        className="w-full border-0 bg-transparent text-2xl font-bold outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
+        autoFocus
+      />
 
-      <Paper withBorder p="sm" className="mb-4 flex-shrink-0">
-        <Group gap="sm">
-          <IconCalendar size={18} className="text-gray-400" />
-          <Text size="sm" c="dimmed" className="whitespace-nowrap">
-            Event date:
-          </Text>
-          <input
-            type="date"
-            value={eventDate}
-            onChange={(e) => setEventDate(e.currentTarget.value)}
-            className="flex-1 rounded border border-gray-200 bg-transparent px-2 py-1 text-sm dark:border-gray-700"
-          />
-          <Text size="xs" c="dimmed">
-            {eventDate ? "(leave empty for today's entry)" : "Today's entry"}
-          </Text>
-        </Group>
-      </Paper>
+      <div className="my-3 h-px bg-gray-200 dark:bg-gray-700" />
 
-      <Box className="flex-1 min-h-0">
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.currentTarget.value)}
-          placeholder="What's on your mind?"
-          className="w-full border-0 bg-transparent text-2xl font-bold outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
-          autoFocus
-        />
-
-        <div className="mt-2 h-px bg-gray-200 dark:bg-gray-700" />
-
-        <Textarea
-          value={content}
-          onChange={(e) => setContent(e.currentTarget.value)}
-          placeholder="Write your thoughts..."
-          minRows={15}
-          autosize
-          variant="unstyled"
-          className="mt-4"
-          styles={{ input: { fontSize: "var(--mantine-font-size-md)", lineHeight: 1.8 } }}
-        />
-      </Box>
+      <textarea
+        ref={textareaRef}
+        value={content}
+        onChange={handleContentChange}
+        placeholder="Write your thoughts..."
+        className="w-full flex-1 resize-none border-0 bg-transparent text-base leading-relaxed outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
+        style={{ minHeight: "360px" }}
+      />
     </div>
   );
 }

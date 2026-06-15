@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/core/database";
 import { eq, sql, count, desc } from "drizzle-orm";
-import { musicJournal } from "@/modules/music";
+import { musicJournal, calculateStreak } from "@/modules/music";
 import * as repo from "@/modules/music/repository";
 
 export async function GET() {
@@ -45,11 +45,8 @@ export async function GET() {
       topArtists: await Promise.all(
         (topArtists ?? []).map(async (a: any) => {
           if (a.artistId) {
-            const track = await repo.getTrackById(a.artistId);
-            if (track) {
-              const artist = await repo.getArtistById(track.artistId);
-              return { name: artist?.name ?? "Unknown", count: Number(a.count) ?? 0 };
-            }
+            const artist = await repo.getArtistById(a.artistId);
+            return { name: artist?.name ?? "Unknown", count: Number(a.count) ?? 0 };
           }
           return { name: "Unknown", count: Number(a.count) ?? 0 };
         }),
@@ -66,26 +63,4 @@ export async function GET() {
   }
 }
 
-function calculateStreak(dates: string[]) {
-  if (dates.length === 0) return { days: 0, longest: 0 };
-  const sorted = [...new Set(dates)].sort().reverse();
-  let currentStreak = 1;
-  let longestStreak = 1;
-  let tempStreak = 1;
 
-  for (let i = 1; i < sorted.length; i++) {
-    const prev = new Date(sorted[i - 1]);
-    const curr = new Date(sorted[i]);
-    const diff = (prev.getTime() - curr.getTime()) / (1000 * 60 * 60 * 24);
-    if (Math.abs(diff - 1) < 0.1) {
-      tempStreak++;
-      longestStreak = Math.max(longestStreak, tempStreak);
-    } else if (diff === 0) {
-      continue;
-    } else {
-      break;
-    }
-  }
-  currentStreak = tempStreak;
-  return { days: currentStreak, longest: longestStreak };
-}

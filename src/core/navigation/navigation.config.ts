@@ -1,6 +1,7 @@
 import type { TablerIcon } from "@tabler/icons-react";
 import {
   IconLayoutDashboard,
+  IconTrophy,
   IconPencilBolt,
   IconRss,
   IconChecklist,
@@ -31,7 +32,6 @@ import {
   IconTool,
   IconShoppingCart,
   IconCoin,
-  IconChartBar,
   IconArrowsLeftRight,
   IconRepeat,
   IconWallet,
@@ -55,11 +55,10 @@ import {
   IconEye,
   IconScale,
   IconShieldLock,
-  IconSettings,
-  IconArchive,
-  IconLogout,
   IconCompass,
   IconSearch,
+  IconSun,
+  IconTags,
 } from "@tabler/icons-react";
 
 export type NavItem = {
@@ -94,19 +93,33 @@ export const navigation: NavGroup[] = [
     label: "Favorites",
     items: [],
   },
+
   {
-    label: "Operations",
+    label: "Overview",
     items: [
       {
         label: "Dashboard",
-        route: "/dashboard",
+        route: "/",
         description: "Overview of your life",
         icon: IconLayoutDashboard,
         featureId: "dashboard",
       },
       {
-        label: "Quick Note",
-        route: "/quick-note",
+        label: "Gamification",
+        route: "/gamification",
+        description: "XP, levels, achievements & badges",
+        icon: IconTrophy,
+        featureId: "gamification",
+      },
+    ],
+  },
+
+  {
+    label: "Daily Life",
+    items: [
+      {
+        label: "Quick Notes",
+        route: "/notes",
         description: "Capture ideas fast",
         icon: IconPencilBolt,
         featureId: "quick_note",
@@ -119,11 +132,25 @@ export const navigation: NavGroup[] = [
         featureId: "journal",
       },
       {
-        label: "Discovery Feed",
-        route: "/discovery-feed",
-        description: "Explore and discover",
-        icon: IconRss,
-        featureId: "discovery_feed",
+        label: "Calendar",
+        route: "/calendar",
+        description: "Your schedule",
+        icon: IconCalendar,
+        featureId: "calendar",
+      },
+      {
+        label: "Routines",
+        route: "/routines",
+        description: "Daily schedules & routines",
+        icon: IconRepeat,
+        featureId: "routines",
+      },
+      {
+        label: "Timeline",
+        route: "/timeline",
+        description: "Life timeline & activity history",
+        icon: IconTimelineEvent,
+        featureId: "timeline",
       },
       {
         label: "Tasks",
@@ -165,22 +192,76 @@ export const navigation: NavGroup[] = [
       {
         label: "Time",
         route: "/time",
-        description: "Time tracking",
+        description: "Time tracking & productivity",
         icon: IconClock,
         featureId: "time",
       },
-      {
-        label: "Calendar",
-        route: "/calendar",
-        description: "Your schedule",
-        icon: IconCalendar,
-        featureId: "calendar",
-      },
     ],
   },
+
   {
-    label: "Knowledge & Content",
+    label: "Knowledge & Creation",
     items: [
+      {
+        label: "Brain",
+        route: "/brain",
+        description: "Knowledge management",
+        icon: IconBrain,
+        featureId: "brain",
+        children: [
+          {
+            label: "Notes",
+            route: "/brain/notes",
+            description: "Your notes",
+            icon: IconNotes,
+            featureId: "notes",
+          },
+          {
+            label: "Ideas",
+            route: "/brain/ideas",
+            description: "Idea board",
+            icon: IconBulb,
+            featureId: "ideas",
+          },
+          {
+            label: "Graph View",
+            route: "/brain/graph-view",
+            description: "Knowledge graph",
+            icon: IconGraph,
+            featureId: "graph_view",
+          },
+          {
+            label: "Knowledge Vault",
+            route: "/brain/knowledge",
+            description: "Capture & organize learning",
+            icon: IconSchool,
+            featureId: "knowledge",
+          },
+        ],
+      },
+      {
+        label: "Learning",
+        route: "/learning",
+        description: "Learning hub",
+        icon: IconSchool,
+        featureId: "learning",
+        children: [
+          {
+            label: "Skill Matrix",
+            route: "/learning/skill-matrix",
+            description: "Track your skills",
+            icon: IconGridPattern,
+            featureId: "skill_matrix",
+          },
+          {
+            label: "Courses",
+            route: "/learning/courses",
+            description: "Your courses",
+            icon: IconBooks,
+            featureId: "courses",
+          },
+        ],
+      },
       {
         label: "Creator Studio",
         route: "/creator-studio",
@@ -212,114 +293,45 @@ export const navigation: NavGroup[] = [
         ],
       },
       {
-        label: "Brain",
-        route: "/brain",
-        description: "Knowledge management",
-        icon: IconBrain,
-        featureId: "brain",
-        children: [
-          {
-            label: "Notes",
-            route: "/notes",
-            description: "Your notes",
-            icon: IconNotes,
-            featureId: "notes",
-          },
-          {
-            label: "Ideas",
-            route: "/brain/ideas",
-            description: "Idea board",
-            icon: IconBulb,
-            featureId: "ideas",
-          },
-          {
-            label: "Graph View",
-            route: "/brain/graph-view",
-            description: "Knowledge graph",
-            icon: IconGraph,
-            featureId: "graph_view",
-          },
-          {
-            label: "Knowledge Vault",
-            route: "/knowledge",
-            description: "Capture & organize learning",
-            icon: IconSchool,
-            featureId: "knowledge",
-          },
-        ],
-      },
-      {
-        label: "Learning",
-        route: "/learning",
-        description: "Learning hub",
-        icon: IconSchool,
-        featureId: "learning",
-        children: [
-          {
-            label: "Skill Matrix",
-            route: "/learning/skill-matrix",
-            description: "Track your skills",
-            icon: IconGridPattern,
-            featureId: "skill_matrix",
-          },
-          {
-            label: "Courses",
-            route: "/learning/courses",
-            description: "Your courses",
-            icon: IconBooks,
-            featureId: "courses",
-          },
-        ],
-      },
-      {
         label: "Library",
         route: "/library",
-        description: "Your library",
+        description: "Your digital library",
         icon: IconBooks,
         featureId: "library",
       },
+    ],
+  },
+
+  {
+    label: "Media & Memories",
+    items: [
       {
         label: "Music",
         route: "/music",
-        description: "Music tracking & discovery",
+        description: "Music memories & discovery",
         icon: IconMusic,
         featureId: "music",
-        children: [
-          {
-            label: "Library",
-            route: "/music/library",
-            description: "Your saved music",
-            icon: IconBooks,
-            featureId: "music_library",
-          },
-          {
-            label: "History",
-            route: "/music/history",
-            description: "Listening history",
-            icon: IconRepeat,
-            featureId: "music_history",
-          },
-          {
-            label: "Journal",
-            route: "/music/journal",
-            description: "Music journal",
-            icon: IconBook,
-            featureId: "music_journal",
-          },
-          {
-            label: "Analytics",
-            route: "/music/analytics",
-            description: "Listening insights",
-            icon: IconChartBar,
-            featureId: "music_analytics",
-          },
-        ],
+      },
+      {
+        label: "Discovery Feed",
+        route: "/discovery-feed",
+        description: "Explore and discover",
+        icon: IconRss,
+        featureId: "discovery_feed",
       },
     ],
   },
+
   {
-    label: "Personal Assets",
+    label: "Finance & Assets",
     items: [
+      {
+        label: "Finance",
+        route: "/finance/dashboard",
+        description: "Financial overview and management",
+        icon: IconCoin,
+        featureId: "finance",
+      },
       {
         label: "Inventory",
         route: "/inventory",
@@ -364,61 +376,11 @@ export const navigation: NavGroup[] = [
         icon: IconShoppingCart,
         featureId: "purchases",
       },
-      {
-        label: "Finance",
-        route: "/finance",
-        description: "Financial overview and management",
-        icon: IconCoin,
-        featureId: "expenses",
-        children: [
-          {
-            label: "Finance",
-            route: "/finance/dashboard",
-            description: "Finance Dashboard",
-            icon: IconCoin,
-            featureId: "finance_dashboard",
-          },
-                    {
-            label: "Transactions",
-            route: "/finance/transactions",
-            description: "All transactions",
-            icon: IconArrowsLeftRight,
-            featureId: "transactions",
-          },
-          {
-            label: "Budgets",
-            route: "/finance/budgets",
-            description: "Budget tracking",
-            icon: IconPigMoney,
-            featureId: "budgets",
-          },
-          {
-            label: "Accounts",
-            route: "/finance/accounts",
-            description: "Financial accounts",
-            icon: IconWallet,
-            featureId: "accounts",
-          },
-          {
-            label: "Subscriptions",
-            route: "/finance/subscriptions",
-            description: "Manage subscriptions",
-            icon: IconRepeat,
-            featureId: "subscriptions",
-          },
-          {
-            label: "Analytics",
-            route: "/finance/analytics",
-            description: "Spending insights",
-            icon: IconReportAnalytics,
-            featureId: "analytics",
-          },
-        ],
-      },
     ],
   },
+
   {
-    label: "Wellness & Lifestyle",
+    label: "Health & Lifestyle",
     items: [
       {
         label: "Habits",
@@ -462,7 +424,7 @@ export const navigation: NavGroup[] = [
         route: "/mindset",
         description: "Mindfulness & reflection",
         icon: IconMoodHappy,
-        featureId: "mind_set",
+        featureId: "mindset",
       },
       {
         label: "Travel",
@@ -487,25 +449,19 @@ export const navigation: NavGroup[] = [
           },
         ],
       },
-      {
-        label: "Timeline",
-        route: "/timeline",
-        description: "Life timeline",
-        icon: IconTimelineEvent,
-        featureId: "timeline",
-      },
-      {
-        label: "Milestones",
-        route: "/milestones",
-        description: "Key milestones",
-        icon: IconFlag,
-        featureId: "milestones",
-      },
     ],
   },
+
   {
-    label: "Strategy & Safety",
+    label: "Life Management",
     items: [
+      {
+        label: "Goals",
+        route: "/goals",
+        description: "Your goals",
+        icon: IconTarget,
+        featureId: "goals",
+      },
       {
         label: "Strategy",
         route: "/strategy",
@@ -513,13 +469,6 @@ export const navigation: NavGroup[] = [
         icon: IconChess,
         featureId: "strategy",
         children: [
-          {
-            label: "Goals",
-            route: "/goals",
-            description: "Your goals",
-            icon: IconTarget,
-            featureId: "goals",
-          },
           {
             label: "Vision",
             route: "/strategy/vision",
@@ -572,32 +521,6 @@ export const navigation: NavGroup[] = [
         description: "Secure storage",
         icon: IconShieldLock,
         featureId: "vault",
-      },
-    ],
-  },
-  {
-    label: "System",
-    items: [
-      {
-        label: "Settings",
-        route: "/settings",
-        description: "App settings",
-        icon: IconSettings,
-        featureId: "settings",
-      },
-      {
-        label: "Archive",
-        route: "/archive",
-        description: "Archived items",
-        icon: IconArchive,
-        featureId: "archive",
-      },
-      {
-        label: "Logout",
-        route: "/logout",
-        description: "Sign out",
-        icon: IconLogout,
-        featureId: "logout",
       },
     ],
   },
