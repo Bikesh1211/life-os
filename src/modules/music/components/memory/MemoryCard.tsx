@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { IconMusic, IconHeart, IconCalendar, IconMapPin } from "@tabler/icons-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type MemoryCardProps = {
   id: string;
@@ -15,6 +16,7 @@ type MemoryCardProps = {
   trackName: string | null;
   artistName: string | null;
   trackImageUrl?: string | null;
+  trackId?: string | null;
   linkedEventTitle: string | null;
   delay?: number;
   onEdit?: (id: string) => void;
@@ -32,11 +34,13 @@ export function MemoryCard({
   trackName,
   artistName,
   trackImageUrl,
+  trackId,
   linkedEventTitle,
   delay = 0,
   onEdit,
   onDelete,
 }: MemoryCardProps) {
+  const router = useRouter();
   return (
     <Link href={`/music/memories/${id}`} className="block no-underline">
     <motion.div
@@ -85,7 +89,37 @@ export function MemoryCard({
         </p>
 
         <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">
-          {trackName && (
+          {trackName && trackId ? (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                router.push(`/music/tracks/${trackId}`);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  router.push(`/music/tracks/${trackId}`);
+                }
+              }}
+              className="flex cursor-pointer items-center gap-1.5 rounded-md transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)] hover:text-[var(--mantine-color-text,#c1c2c5)]"
+            >
+              {trackImageUrl ? (
+                <img
+                  src={trackImageUrl}
+                  alt=""
+                  className="h-5 w-5 rounded object-cover"
+                />
+              ) : (
+                <IconMusic size={14} className="shrink-0" />
+              )}
+              <span className="truncate max-w-[180px]">{trackName}</span>
+              {artistName && <span className="shrink-0">· {artistName}</span>}
+            </span>
+          ) : trackName ? (
             <span className="flex items-center gap-1.5">
               {trackImageUrl ? (
                 <img
@@ -99,7 +133,7 @@ export function MemoryCard({
               <span className="truncate max-w-[180px]">{trackName}</span>
               {artistName && <span className="shrink-0">· {artistName}</span>}
             </span>
-          )}
+          ) : null}
           {memoryDate && (
             <span className="flex items-center gap-1">
               <IconCalendar size={12} />

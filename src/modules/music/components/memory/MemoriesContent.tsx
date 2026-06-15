@@ -119,6 +119,7 @@ export function MemoriesContent() {
                 trackName={memory.track?.trackName ?? null}
                 artistName={memory.track?.artistName ?? null}
                 trackImageUrl={memory.track?.trackImageUrl ?? null}
+                trackId={memory.track?.trackId ?? null}
                 linkedEventTitle={null}
                 onDelete={() => deleteMutation.mutate(memory.id)}
               />
