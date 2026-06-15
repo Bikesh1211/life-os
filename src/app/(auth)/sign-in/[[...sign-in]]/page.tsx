@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { dark } from "@clerk/themes";
 import { motion } from "framer-motion";
 import { useMantineColorScheme } from "@mantine/core";
+import { APP_NAME, APP_TAGLINE } from "@/core/constants";
 
 const ClerkSignIn = dynamic(
   () => import("@clerk/nextjs").then((mod) => mod.SignIn),
@@ -59,10 +60,10 @@ export default function SignInPage() {
       >
         <motion.div variants={itemVariants} className="space-y-2">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-[var(--mantine-color-text)]">
-            Focus Linq
+            {APP_NAME}
           </h1>
           <p className="text-xl font-medium text-[var(--mantine-color-dimmed)]">
-            Focus Better. Achieve More.
+            {APP_TAGLINE}
           </p>
         </motion.div>
 

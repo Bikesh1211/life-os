@@ -17,6 +17,7 @@ import {
 } from "@tabler/icons-react";
 import { type NavItem } from "@/core/navigation";
 import { cn } from "@/core/utils";
+import { APP_NAME } from "@/core/constants";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 import { useSidebarVisibility } from "@/core/sidebar-visibility";
 import { useSidebarFavorites } from "@/core/sidebar-favorites";
@@ -81,7 +82,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
       title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
       <div className="sd-brand-logo flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-xs font-bold text-white shadow-sm shadow-blue-500/20 dark:shadow-blue-500/10 ring-1 ring-white/10 dark:ring-white/5">
-        L
+        {APP_NAME.charAt(0)}
       </div>
       <AnimatePresence>
         {!collapsed && (
@@ -93,10 +94,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
             className="flex flex-col items-start leading-tight"
           >
             <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-              Focus Linq
-            </span>
-            <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500 tracking-wide">
-              Life OS
+              {APP_NAME}
             </span>
           </motion.div>
         )}

@@ -1,4 +1,7 @@
-export const APP_NAME = "Focus Linq";
+export const APP_NAME = "Life OS";
+export const APP_NAME_SHORT = "Lio";
+export const APP_TAGLINE = "Focus Better. Achieve More.";
+export const APP_DESCRIPTION = "Your personal life management platform";
 
 export const ROUTES = {
   SIGN_IN: "/sign-in",
