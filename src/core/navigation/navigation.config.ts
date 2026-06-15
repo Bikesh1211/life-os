@@ -131,6 +131,13 @@ export const navigation: NavGroup[] = [
         featureId: "calendar",
       },
       {
+        label: "Routines",
+        route: "/routines",
+        description: "Daily schedules & routines",
+        icon: IconRepeat,
+        featureId: "routines",
+      },
+      {
         label: "Timeline",
         route: "/timeline",
         description: "Life timeline & activity history",

@@ -198,6 +198,30 @@ A fixed enum on Tech Items: `new`, `excellent`, `good`, `fair`, `broken`, `repai
 **Tag** (Core):
 A cross-entity tag managed by the core module at `src/core/tags/`. Tags are stored in `core_tags` (id, userId, name, color) and linked via `core_taggings` (tagId, entityId, entityType). Polymorphic — any plugin can tag its entities without owning its own tags table.
 
+**Routines** (plugin):
+The daily schedule and routine management plugin at `src/modules/routines/`. Route is `/routines/*`. Feature ID is `routines`. Owns all routine data — named routines, timed activity items, daily execution tracking, and analytics. Sub-routes: Dashboard (`/routines`), Details (`/routines/[id]`), Timeline (`/routines/[id]/timeline`), Analytics (`/routines/[id]/analytics`), Templates (`/routines/templates`).
+
+**Routine**:
+A named, structured daily schedule owned by a User. Contains a name, description, color, icon, and schedule configuration. Examples: "Morning Routine", "Student Routine", "Deep Work Routine". Every routine is scoped to a `userId`.
+
+**Routine Item**:
+A single time-blocked activity within a Routine. Has a title, `startTime` (HH:mm), optional `endTime` (HH:mm), and order. Items can be marked as optional. Items can optionally link to a Habit (`linkedHabitId`) or Task (`linkedTaskId`) for cross-plugin integration.
+
+**Routine Execution**:
+A daily tracking record for a Routine. Created on-the-fly when the user views "Today's Routine". Tracks `status` (pending/in_progress/completed/skipped/missed), actual start/end times, and `completionRate` (percentage of items completed). One execution per routine per day.
+
+**Routine Execution Item**:
+The per-item status within a Routine Execution. Each Routine Item gets its own `status` (pending/in_progress/completed/skipped) and optional actual start/end times. Enables granular tracking of which activities were done, skipped, or are currently active.
+
+**Routine Template**:
+A pre-defined routine blueprint in `routine_templates`. System-seeded (Morning, Student, Deep Work, Fitness, Evening). Users browse templates and clone them as their own Routines. Templates are reference data, not user-scoped.
+
+**Schedule Type**:
+An enum on Routines defining when the routine activates: `daily` (every day), `weekdays` (Mon-Fri), `weekends` (Sat-Sun), or `custom` (user-specified day array). A routine is "scheduled today" if the current day matches its schedule.
+
+**Routine Analytics**:
+Computed on-read metrics for Routines. Includes completion rate over time, per-routine performance, most-missed items, best/worst days, and daily trends. No stored analytics table — all derived from `routine_executions` data.
+
 *Avoid*: Playlist (always use Collection instead for Music), Inventory Item (use Tech Item for tech, Clothing Item for wardrobe)
 
 **Dev**: I need to add a new category to Notes. Where do I change it?
