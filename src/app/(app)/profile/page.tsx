@@ -98,6 +98,7 @@ export default function ProfilePage() {
             imageUrl={user.imageUrl}
             level={gamification.levelInfo.level}
             totalXp={gamification.levelInfo.totalXp}
+            progress={gamification.levelInfo.progress}
             createdAt={user.createdAt}
           />
 

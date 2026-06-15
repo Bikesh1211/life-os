@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, Group, Text, Stack, Badge } from "@mantine/core";
+import { Avatar, Group, Text, Stack, Box } from "@mantine/core";
 import { IconCalendar, IconMail, IconTrophy } from "@tabler/icons-react";
 
 type ProfileHeroProps = {
@@ -9,6 +9,7 @@ type ProfileHeroProps = {
   imageUrl: string;
   level: number;
   totalXp: number;
+  progress: number;
   createdAt: Date | null;
 };
 
@@ -18,6 +19,7 @@ export function ProfileHero({
   imageUrl,
   level,
   totalXp,
+  progress,
   createdAt,
 }: ProfileHeroProps) {
   const joinYear = createdAt?.getFullYear() ?? "—";
@@ -60,17 +62,45 @@ export function ProfileHero({
           )}
         </Stack>
 
-        <Stack gap={2} align="flex-end">
-          <Group gap="xs">
-            <IconTrophy size={16} className="text-yellow-500" />
-            <Text fw={800} size="xl" className="text-yellow-500">
-              {level}
-            </Text>
-          </Group>
-          <Badge variant="light" color="yellow" size="sm">
+        <Box
+          px="sm"
+          py={4}
+          style={{
+            background: "rgba(245,158,11,0.15)",
+            border: "1px solid rgba(245,158,11,0.25)",
+            borderRadius: 999,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <IconTrophy size={14} color="#f59e0b" />
+          <Text size="xs" c="amber.5" fw={600}>
+            Lvl {level}
+          </Text>
+          <Box
+            style={{
+              width: 60,
+              height: 4,
+              borderRadius: 2,
+              background: "rgba(255,255,255,0.1)",
+              overflow: "hidden",
+            }}
+          >
+            <Box
+              style={{
+                height: "100%",
+                width: `${progress}%`,
+                background: "#d97706",
+                borderRadius: 2,
+                transition: "width 0.5s ease",
+              }}
+            />
+          </Box>
+          <Text size="10px" c="gray.5">
             {totalXp.toLocaleString()} XP
-          </Badge>
-        </Stack>
+          </Text>
+        </Box>
       </Group>
     </div>
   );
