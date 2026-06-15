@@ -1,4 +1,4 @@
-// Service Worker for Focus Linq (formerly Life OS)
+// Service Worker
 const CACHE = "life-os-v1";
 
 self.addEventListener("install", (event) => {

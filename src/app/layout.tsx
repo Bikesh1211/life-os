@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Providers } from "@/infrastructure/providers";
 import { ColorSchemeScript } from "@mantine/core";
+import { APP_NAME, APP_DESCRIPTION } from "@/core/constants";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/spotlight/styles.css";
@@ -10,14 +11,14 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: {
-    default: "Focus Linq",
-    template: "%s · Focus Linq",
+    default: APP_NAME,
+    template: `%s · ${APP_NAME}`,
   },
-  description: "Your personal life management platform",
-  manifest: "/manifest.json",
+  description: APP_DESCRIPTION,
+  manifest: "/manifest",
   appleWebApp: {
     capable: true,
-    title: "Focus Linq",
+    title: APP_NAME,
     statusBarStyle: "black-translucent",
   },
   formatDetection: {

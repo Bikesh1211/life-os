@@ -25,6 +25,7 @@ import {
 import { TodayRoutineWidget } from "@/modules/routines/components/TodayRoutineWidget";
 import Link from "next/link";
 import dayjs from "dayjs";
+import { APP_NAME } from "@/core/constants";
 import type { KnowledgeEntry } from "@/modules/knowledge";
 
 type HabitSummary = {
@@ -72,7 +73,7 @@ export function DashboardContent({
       <div>
         <Title order={2}>Dashboard</Title>
         <Text c="dimmed" size="sm">
-          Welcome to Focus Linq
+          Welcome to {APP_NAME}
         </Text>
       </div>
 
