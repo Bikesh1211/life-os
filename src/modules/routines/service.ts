@@ -409,9 +409,7 @@ export async function getExecutionDetails(executionId: string, userId: string) {
 
 export async function seedTemplates() {
   const existing = await repo.getTemplates();
-  if (existing.length > 0) return existing;
-
-  const seeded: Array<repo.RoutineTemplate> = [];
+  if (existing.length > 0) return getTemplates();
 
   for (const tmpl of SYSTEM_TEMPLATES) {
     const template = await repo.createTemplate({
@@ -433,10 +431,9 @@ export async function seedTemplates() {
       isOptional: item.isOptional,
     }));
     await repo.createTemplateItems(itemInputs);
-    seeded.push(template);
   }
 
-  return seeded;
+  return getTemplates();
 }
 
 export async function getTemplates() {

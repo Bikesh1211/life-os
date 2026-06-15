@@ -136,15 +136,6 @@ export const navigation: NavGroup[] = [
         description: "Daily schedules & routines",
         icon: IconRepeat,
         featureId: "routines",
-        children: [
-          {
-            label: "Templates",
-            route: "/routines/templates",
-            description: "Routine templates",
-            icon: IconRepeat,
-            featureId: "routines_templates",
-          },
-        ],
       },
       {
         label: "Timeline",
