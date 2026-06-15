@@ -19,13 +19,16 @@ import {
   IconBell,
   IconLogout,
   IconSettings,
+  IconUser,
   IconMenu2,
+  IconTrophy,
 } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { navigation } from "@/core/navigation";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
+import { useGamificationProfile } from "@/hooks/use-gamification";
 
 function useBreadcrumb() {
   const pathname = usePathname();
@@ -56,6 +59,7 @@ export function Header() {
   const router = useRouter();
   const breadcrumb = useBreadcrumb();
   const { opened, toggle, minimalChrome } = useAppShell();
+  const { data: gamification } = useGamificationProfile();
 
   if (minimalChrome) return null;
 
@@ -92,12 +96,6 @@ export function Header() {
         </Group>
 
         <Group gap="xs">
-          <Tooltip label="Notifications">
-            <ActionIcon variant="subtle" size="lg">
-              <IconBell size={20} />
-            </ActionIcon>
-          </Tooltip>
-
           <Tooltip label={colorScheme === "light" ? "Dark mode" : colorScheme === "dark" ? "System mode" : "Light mode"}>
             <ActionIcon
               variant="subtle"
@@ -124,6 +122,23 @@ export function Header() {
             </ActionIcon>
           </Tooltip>
 
+          {gamification?.levelInfo && (
+            <Tooltip label={`${gamification.levelInfo.totalXp.toLocaleString()} XP total`}>
+              <Group gap={4} className="cursor-default">
+                <IconTrophy size={16} className="text-yellow-500" />
+                <Text size="sm" fw={700} className="text-yellow-500">
+                  {gamification.levelInfo.level}
+                </Text>
+              </Group>
+            </Tooltip>
+          )}
+
+          <Tooltip label="Notifications">
+            <ActionIcon variant="subtle" size="lg">
+              <IconBell size={20} />
+            </ActionIcon>
+          </Tooltip>
+
           <Menu shadow="md" width={220} position="bottom-end" offset={6} withArrow>
             <Menu.Target>
               <ActionIcon variant="subtle" size="lg">
@@ -146,6 +161,12 @@ export function Header() {
                 </Text>
               </div>
               <Menu.Divider />
+              <Menu.Item
+                leftSection={<IconUser size={16} />}
+                onClick={() => router.push("/profile")}
+              >
+                Profile
+              </Menu.Item>
               <Menu.Item
                 leftSection={<IconSettings size={16} />}
                 onClick={() => router.push("/settings")}
