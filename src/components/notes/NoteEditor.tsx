@@ -71,9 +71,9 @@ export function NoteEditor({ note }: NoteEditorProps) {
   const { data: backlinks } = useNoteBacklinks(note.id);
 
   const [title, setTitle] = useState(note.title);
-  const [contentJson, setContentJson] = useState<unknown>(note.contentJson ?? null);
-  const [contentText, setContentText] = useState(note.content ?? "");
-  const [excerpt, setExcerpt] = useState(note.excerpt ?? "");
+  const contentJsonRef = useRef<unknown>(note.contentJson ?? null);
+  const contentTextRef = useRef(note.content ?? "");
+  const excerptRef = useRef(note.excerpt ?? "");
   const [coverImage, setCoverImage] = useState(note.coverImage ?? "");
   const [category, setCategory] = useState(note.category ?? "personal");
   const [status, setStatus] = useState(note.status ?? "draft");
@@ -91,7 +91,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
 
   const hasChanges =
     title !== note.title ||
-    contentText !== (note.content ?? "") ||
+    contentTextRef.current !== (note.content ?? "") ||
     category !== (note.category ?? "personal") ||
     status !== (note.status ?? "draft") ||
     priority !== (note.priority ?? "medium") ||
@@ -129,12 +129,11 @@ export function NoteEditor({ note }: NoteEditorProps) {
 
   const handleEditorChange = useCallback(
     (json: unknown, _html: string, text: string) => {
-      setContentJson(json);
-      setContentText(text);
+      contentJsonRef.current = json;
+      contentTextRef.current = text;
       const firstLine = text.split("\n").find((l) => l.trim()) ?? "";
-      const newExcerpt = firstLine.length > 200 ? firstLine.slice(0, 200) + "..." : firstLine;
-      setExcerpt(newExcerpt);
-      queueSave({ contentJson: json, content: text, excerpt: newExcerpt });
+      excerptRef.current = firstLine.length > 200 ? firstLine.slice(0, 200) + "..." : firstLine;
+      queueSave({ contentJson: json, content: text, excerpt: excerptRef.current });
     },
     [queueSave],
   );
@@ -144,9 +143,9 @@ export function NoteEditor({ note }: NoteEditorProps) {
     if (!hasChanges && !dirty) return;
     await doSave({
       title,
-      content: contentText,
-      contentJson,
-      excerpt,
+      content: contentTextRef.current,
+      contentJson: contentJsonRef.current,
+      excerpt: excerptRef.current,
       coverImage: coverImage || null,
       category,
       status,
@@ -155,8 +154,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
       isPinned,
     });
   }, [
-    title, contentText, contentJson, excerpt, coverImage,
-    category, status, priority, folderId, isPinned,
+    title, coverImage, category, status, priority, folderId, isPinned,
     hasChanges, dirty, doSave,
   ]);
 
@@ -409,7 +407,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
           {/* Editor */}
           <div className="border border-[var(--mantine-color-dark-5)] rounded-lg overflow-hidden">
             <Editor
-              content={contentJson ?? textToEditorContent(note.content)}
+              content={contentJsonRef.current ?? textToEditorContent(note.content)}
               onChange={handleEditorChange}
               placeholder="Start writing..."
             />

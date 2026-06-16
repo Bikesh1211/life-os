@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useMemo } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
-import { Text } from "@mantine/core";
 import { EditorToolbar } from "./EditorToolbar";
 import { createExtensions } from "./extensions";
 import { DEFAULT_PLACEHOLDER } from "./constants";
@@ -17,15 +16,18 @@ export function Editor({
   showToolbar = true,
   className,
 }: EditorProps) {
-  const extensions = createExtensions(placeholder);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  const extensions = useMemo(() => createExtensions(placeholder), [placeholder]);
 
   const editor = useEditor({
     extensions,
     editable,
+    shouldRerenderOnTransaction: false,
     content: content ?? { type: "doc", content: [{ type: "paragraph" }] },
     onUpdate: ({ editor: ed }) => {
-      if (!onChange) return;
-      onChange(ed.getJSON(), ed.getHTML(), ed.getText());
+      onChangeRef.current?.(ed.getJSON(), ed.getHTML(), ed.getText());
     },
     editorProps: {
       attributes: {
