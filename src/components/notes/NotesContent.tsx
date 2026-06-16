@@ -15,8 +15,10 @@ import {
   Modal,
   Button,
   NavLink,
+  Collapse,
   Box,
 } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import {
   IconSearch,
   IconLayoutGrid,
@@ -27,6 +29,8 @@ import {
   IconTrash,
   IconFolder,
   IconFolderPlus,
+  IconChevronDown,
+  IconChevronRight,
 } from "@tabler/icons-react";
 import { useHotkeys } from "@mantine/hooks";
 import { NoteCard } from "./NoteCard";
@@ -56,6 +60,7 @@ export function NotesContent({ initialNotes }: NotesContentProps) {
     openQuickNote,
   } = useNotesStore();
   const [folderFilter, setFolderFilter] = useState<string | null>(null);
+  const [foldersOpen, { toggle: toggleFolders }] = useDisclosure(false);
   const { data: notesData } = useNotes({
     search: search || undefined,
     category: categoryFilter === "all" ? undefined : categoryFilter ?? undefined,
@@ -81,11 +86,12 @@ export function NotesContent({ initialNotes }: NotesContentProps) {
 
   return (
     <div className="flex h-full">
-      {/* Folder Sidebar */}
+      {/* Folder Sidebar — desktop only */}
       <Paper
         withBorder={false}
-        className="hidden md:flex flex-col w-56 shrink-0 border-r border-[var(--mantine-color-dark-5)]"
+        className="flex-col w-56 shrink-0 border-r border-[var(--mantine-color-dark-5)]"
         style={{ background: "var(--mantine-color-body)" }}
+        visibleFrom="md"
       >
         <div className="p-3 border-b border-[var(--mantine-color-dark-5)]">
           <Group justify="space-between">
@@ -134,19 +140,73 @@ export function NotesContent({ initialNotes }: NotesContentProps) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Stack gap="md" className="h-full p-6">
+        <Stack gap="sm" className="h-full p-3 sm:p-6">
           <Group justify="space-between">
             <Text size="xl" fw={700}>
               Notes
             </Text>
-            <Tooltip label="New Note (⌘⇧N)">
-              <ActionIcon variant="filled" size="lg" radius="md" onClick={openQuickNote}>
-                <IconPlus size={20} />
-              </ActionIcon>
-            </Tooltip>
+            <Group gap="xs">
+              <Box className="md:hidden">
+                <Tooltip label={foldersOpen ? "Hide folders" : "Show folders"}>
+                  <ActionIcon variant="subtle" size="md" onClick={toggleFolders}>
+                    {foldersOpen ? <IconChevronDown size={18} /> : <IconFolder size={18} />}
+                  </ActionIcon>
+                </Tooltip>
+              </Box>
+              <Tooltip label="New Note (⌘⇧N)">
+                <ActionIcon variant="filled" size="lg" radius="md" onClick={openQuickNote}>
+                  <IconPlus size={20} />
+                </ActionIcon>
+              </Tooltip>
+            </Group>
           </Group>
 
-          <Group gap="sm">
+          {/* Collapsible folder section — mobile only */}
+          <Box className="md:hidden">
+            <Collapse in={foldersOpen}>
+              <Paper withBorder p="xs" mb="sm" style={{ background: "var(--mantine-color-body)" }}>
+                <Group justify="space-between" mb="xs">
+                  <Text size="xs" fw={600} tt="uppercase" c="dimmed">Folders</Text>
+                  <ActionIcon
+                    variant="subtle"
+                    size="xs"
+                    onClick={() => {
+                      const name = window.prompt("Folder name:");
+                      if (name) createFolder.mutate({ name });
+                    }}
+                  >
+                    <IconFolderPlus size={14} />
+                  </ActionIcon>
+                </Group>
+                <NavLink
+                  label="All Notes"
+                  leftSection={<IconFolder size={16} />}
+                  active={!folderFilter}
+                  onClick={() => setFolderFilter(null)}
+                  styles={{ root: { borderRadius: 0 } }}
+                />
+                {(folders ?? []).map((folder: { id: string; name: string; noteCount?: number }) => (
+                  <NavLink
+                    key={folder.id}
+                    label={
+                      <Group gap={4} wrap="nowrap">
+                        <Text size="sm" lineClamp={1}>{folder.name}</Text>
+                        {folder.noteCount != null && (
+                          <Text size="xs" c="dimmed">({folder.noteCount})</Text>
+                        )}
+                      </Group>
+                    }
+                    leftSection={<IconFolder size={16} />}
+                    active={folderFilter === folder.id}
+                    onClick={() => setFolderFilter(folderFilter === folder.id ? null : folder.id)}
+                    styles={{ root: { borderRadius: 0 } }}
+                  />
+                ))}
+              </Paper>
+            </Collapse>
+          </Box>
+
+          <Group gap="xs">
             <TextInput
               placeholder="Search notes..."
               leftSection={<IconSearch size={16} />}
@@ -175,14 +235,14 @@ export function NotesContent({ initialNotes }: NotesContentProps) {
             </Tooltip>
           </Group>
 
-          <Group gap={4} wrap="wrap">
+          <Group gap={2} wrap="wrap">
             {categories.map((cat) => (
               <Paper
                 key={cat}
                 withBorder
-                px="sm"
-                py={3}
-                className={`text-sm cursor-pointer transition-colors ${
+                px={8}
+                py={2}
+                className={`text-xs sm:text-sm cursor-pointer transition-colors ${
                   categoryFilter === cat || (cat === "all" && !categoryFilter)
                     ? "bg-blue-500 text-white border-blue-500"
                     : "hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -196,14 +256,14 @@ export function NotesContent({ initialNotes }: NotesContentProps) {
           </Group>
 
           {tagDefinitions && tagDefinitions.length > 0 && (
-            <Group gap={4} wrap="wrap">
+            <Group gap={2} wrap="wrap">
               {tagDefinitions.map((tag) => (
                 <Paper
                   key={tag.id}
                   withBorder
-                  px="sm"
-                  py={3}
-                  className={`text-sm cursor-pointer transition-colors ${
+                  px={8}
+                  py={2}
+                  className={`text-xs sm:text-sm cursor-pointer transition-colors ${
                     selectedTags.includes(tag.name)
                       ? "ring-2 ring-offset-1"
                       : "hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -221,7 +281,7 @@ export function NotesContent({ initialNotes }: NotesContentProps) {
             </Group>
           )}
 
-          <ScrollArea className="flex-1 -mx-6 px-6">
+          <ScrollArea className="flex-1 -mx-3 sm:-mx-6 px-3 sm:px-6">
             {safeNotes.length === 0 ? (
               <Paper withBorder p="xl" className="text-center">
                 <Text c="dimmed">
