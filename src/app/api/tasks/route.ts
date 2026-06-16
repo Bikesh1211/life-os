@@ -17,13 +17,17 @@ export async function GET(request: Request) {
     if (priority) filters.priority = priority;
 
     const projectId = searchParams.get("projectId");
-    if (projectId) filters.projectId = projectId;
+    if (projectId && projectId !== "null") filters.projectId = projectId;
 
     const noProject = searchParams.get("noProject");
     if (noProject) filters.noProject = noProject;
 
     const parentId = searchParams.get("parentId");
-    if (parentId) filters.parentId = parentId;
+    if (parentId === "null") {
+      filters.parentId = null;
+    } else if (parentId) {
+      filters.parentId = parentId;
+    }
 
     const dueDateFrom = searchParams.get("dueDateFrom");
     if (dueDateFrom) filters.dueDateFrom = dueDateFrom;
@@ -52,6 +56,9 @@ export async function GET(request: Request) {
     const entries = await getTasks(userId, filters as any);
     return NextResponse.json(entries);
   } catch (error) {
+    if (error instanceof Error && error.name === "ZodError") {
+      return NextResponse.json({ error: "Validation failed", details: (error as any).errors ?? error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: "Failed to fetch tasks" }, { status: 500 });
   }
 }
