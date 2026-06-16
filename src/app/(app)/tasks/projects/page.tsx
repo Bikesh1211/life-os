@@ -1,12 +1,7 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconFolder } from "@tabler/icons-react";
+import { ProjectsContent } from "./ProjectsContent";
+
+export const dynamic = "force-dynamic";
 
 export default function TasksProjectsPage() {
-  return (
-    <FeaturePlaceholder
-      title="Projects"
-      description="Organize tasks into projects"
-      icon={IconFolder}
-    />
-  );
+  return <ProjectsContent />;
 }

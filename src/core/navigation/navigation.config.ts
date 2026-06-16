@@ -195,6 +195,13 @@ export const navigation: NavGroup[] = [
             featureId: "tasks_recurring",
           },
           {
+            label: "Labels",
+            route: "/tasks/labels",
+            description: "Manage task labels",
+            icon: IconTags,
+            featureId: "tasks_labels",
+          },
+          {
             label: "Focus Mode",
             route: "/tasks/focus-mode",
             description: "Deep work mode",
