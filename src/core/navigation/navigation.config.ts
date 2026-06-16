@@ -427,6 +427,13 @@ export const navigation: NavGroup[] = [
         featureId: "mindset",
       },
       {
+        label: "Wellness",
+        route: "/wellness",
+        description: "Mood, sleep, hydration & self-care",
+        icon: IconSun,
+        featureId: "wellness",
+      },
+      {
         label: "Travel",
         route: "/travel",
         description: "Travel planning",

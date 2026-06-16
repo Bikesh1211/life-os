@@ -1,0 +1,60 @@
+export {
+  wellnessMoodLogs,
+  wellnessSleepRecords,
+  wellnessHydrationEntries,
+  wellnessConfidenceCheckins,
+  wellnessHabitEnrichment,
+} from "./schema";
+
+export type {
+  WellnessMoodLog,
+  WellnessSleepRecord,
+  WellnessHydrationEntry,
+  WellnessConfidenceCheckin,
+  WellnessHabitEnrichment,
+  CreateMoodLogInput,
+  CreateSleepRecordInput,
+  CreateHydrationEntryInput,
+  CreateConfidenceCheckinInput,
+  CreateHabitEnrichmentInput,
+} from "./repository";
+
+export {
+  createMoodLog,
+  getMoodLogs,
+  createSleepRecord,
+  updateSleepRecord,
+  deleteSleepRecord,
+  getSleepRecords,
+  createHydrationEntry,
+  getHydrationEntries,
+  deleteHydrationEntry,
+  getHydrationDailyTotal,
+  upsertConfidenceCheckin,
+  getConfidenceCheckins,
+  createHabitEnrichment,
+  getHabitEnrichments,
+  updateHabitEnrichment,
+  deleteHabitEnrichment,
+  getOverdueEnrichments,
+  computeWellnessScores,
+  getWellnessInsights,
+  createMoodLogSchema,
+  createSleepRecordSchema,
+  updateSleepRecordSchema,
+  createHydrationEntrySchema,
+  createConfidenceCheckinSchema,
+  createHabitEnrichmentSchema,
+  updateHabitEnrichmentSchema,
+} from "./service";
+
+export type {
+  WellnessScores,
+  WellnessInsight,
+  CreateMoodLogParams,
+  CreateSleepRecordParams,
+  CreateHydrationEntryParams,
+  CreateConfidenceCheckinParams,
+  CreateHabitEnrichmentParams,
+  AnalyticsFilterParams,
+} from "./service";

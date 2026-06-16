@@ -216,6 +216,11 @@ const XP_VALUES = {
   achievement_bonus: 0,
   badge_bonus: 0,
   challenge_completed: 0,
+  mood_logged: 2,
+  sleep_logged: 3,
+  hydration_logged: 1,
+  confidence_checkin: 2,
+  wellness_streak_bonus: 10,
 } as const;
 
 export function getXpValue(eventType: keyof typeof XP_VALUES): number {
