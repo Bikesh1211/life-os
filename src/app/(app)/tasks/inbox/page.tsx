@@ -1,12 +1,7 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconInbox } from "@tabler/icons-react";
+import { InboxContent } from "./InboxContent";
+
+export const dynamic = "force-dynamic";
 
 export default function TasksInboxPage() {
-  return (
-    <FeaturePlaceholder
-      title="Task Inbox"
-      description="Capture new tasks"
-      icon={IconInbox}
-    />
-  );
+  return <InboxContent />;
 }

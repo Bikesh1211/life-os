@@ -1,10 +1,35 @@
-export { tasks, taskProjects } from "./schema";
 export {
-  createTaskForUser,
-  getTasksForUser,
-  getTaskForUser,
-  updateTaskForUser,
-  deleteTaskForUser,
-  getTaskSummary,
+  tasks,
+  taskProjects,
+  taskLabels,
+  taskTasksLabels,
+} from "./schema";
+
+export {
+  createTaskEntry,
+  getTask,
+  getTasks,
+  updateTaskEntry,
+  deleteTaskEntry,
+  restoreTaskEntry,
+  getTaskStats,
+  getSubtasks,
+  createTaskProject,
+  getTaskProjects,
+  getTaskProject,
+  updateTaskProject,
+  deleteTaskProject,
+  createTaskLabel,
+  getUserTaskLabels,
+  updateTaskLabel,
+  deleteTaskLabel,
 } from "./service";
-export type { CreateTaskParams } from "./service";
+
+export type {
+  CreateTaskParams,
+  UpdateTaskParams,
+  TaskFiltersParams,
+  CreateProjectParams,
+} from "./service";
+
+export type { Task, TaskProject, TaskLabel } from "./repository";
