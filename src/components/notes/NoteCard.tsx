@@ -80,11 +80,11 @@ export function NoteCard({ note, onDeleteRequest }: NoteCardProps) {
   return (
     <Card
       withBorder
-      padding="md"
+      padding="sm"
       className="group cursor-pointer transition-shadow hover:shadow-md"
       onClick={() => openEditNote(note)}
     >
-      <Stack gap="xs">
+      <Stack gap={6}>
         {/* Cover Image */}
         {note.coverImage && (
           <div className="-mx-md -mt-md mb-2 overflow-hidden rounded-t-md">
@@ -138,32 +138,37 @@ export function NoteCard({ note, onDeleteRequest }: NoteCardProps) {
         </Group>
 
         {truncated && (
-          <Text size="sm" c="dimmed" lineClamp={3}>
+          <Text size="xs" c="dimmed" lineClamp={3}>
             {truncated}
           </Text>
         )}
 
-        <Group gap={4} wrap="wrap">
-          <Badge size="sm" color={statusColors[note.status] ?? "gray"} variant="dot">
+        <Group gap={2} wrap="wrap">
+          <Badge size="xs" color={statusColors[note.status] ?? "gray"} variant="dot">
             {note.status}
           </Badge>
           <Badge
-            size="sm"
+            size="xs"
             color={categoryColors[note.category] ?? "gray"}
             variant="light"
           >
             {note.category}
           </Badge>
-          {note.tags?.map((tag) => (
+          {note.tags?.slice(0, 2).map((tag) => (
             <Badge
               key={tag}
-              size="sm"
+              size="xs"
               color={tagColors.get(tag) ?? "gray"}
               variant="outline"
             >
               {tag}
             </Badge>
           ))}
+          {(note.tags?.length ?? 0) > 2 && (
+            <Badge size="xs" color="gray" variant="outline">
+              +{note.tags!.length - 2}
+            </Badge>
+          )}
         </Group>
 
         <Group gap="xs">
