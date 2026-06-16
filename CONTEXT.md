@@ -199,16 +199,22 @@ A fixed enum on Tech Items: `new`, `excellent`, `good`, `fair`, `broken`, `repai
 A cross-entity tag managed by the core module at `src/core/tags/`. Tags are stored in `core_tags` (id, userId, name, color) and linked via `core_taggings` (tagId, entityId, entityType). Polymorphic — any plugin can tag its entities without owning its own tags table.
 
 **Routines** (plugin):
-The daily schedule and routine management plugin at `src/modules/routines/`. Route is `/routines/*`. Feature ID is `routines`. Owns all routine data — named routines, timed activity items, daily execution tracking, and analytics. Sub-routes: Dashboard (`/routines`), Details (`/routines/[id]`), Timeline (`/routines/[id]/timeline`), Analytics (`/routines/[id]/analytics`), Templates (`/routines/templates`).
+The daily schedule, routine management, and daily planning plugin at `src/modules/routines/`. Route groups are `/routines/*` (routine management) and `/calendar` (daily planner). Feature ID is `routines`. Owns all routine data — named routines, timed activity items, daily execution tracking, ad-hoc schedule items, and analytics. Sub-routes: Calendar/Planner (`/calendar`), Dashboard (`/routines`), Details (`/routines/[id]`), Timeline (`/routines/[id]/timeline`), Analytics (`/routines/[id]/analytics`), Templates (`/routines/templates`).
 
 **Routine**:
-A named, structured daily schedule owned by a User. Contains a name, description, color, icon, and schedule configuration. Examples: "Morning Routine", "Student Routine", "Deep Work Routine". Every routine is scoped to a `userId`.
+A named, structured daily schedule owned by a User. Contains a name, description, color, icon, and schedule configuration. Examples: "Morning Routine", "Work Routine", "Evening Routine". Every routine is scoped to a `userId`. Routines are the recurring/reusable unit; ad-hoc items are one-off.
 
 **Routine Item**:
-A single time-blocked activity within a Routine. Has a title, `startTime` (HH:mm), optional `endTime` (HH:mm), and order. Items can be marked as optional. Items can optionally link to a Habit (`linkedHabitId`) or Task (`linkedTaskId`) for cross-plugin integration.
+A single time-blocked activity. Can belong to a Routine (`routineId` set, `date` null) or be an ad-hoc item (`routineId` null, `date` set). Has `title`, `startTime` (HH:mm), optional `endTime` (HH:mm), `order`, `category` (reuses Timeline's `timeline_category` enum), `priority` (low/medium/high, nullable), optional `location`, and `isOptional`. Ad-hoc items additionally have a `date` (YYYY-MM-DD) and `status` (pending/in_progress/completed/skipped). Items can link to a Habit (`linkedHabitId`) or Task (`linkedTaskId`). Overlapping time blocks within the same day are prevented at the application level.
+
+**Ad-hoc Item**:
+A routine_item with `routineId IS NULL` and `date` set. Belongs directly to a User (via `userId` on the row) for a specific date. Does not repeat. Created via the Quick Add bar or by clicking a time slot on the calendar. Contrast with Routine Items which derive their date from the parent Routine's schedule.
+
+**Daily Plan**:
+The unified view at `/calendar` showing all items for a selected day: routine items from routines scheduled that day plus ad-hoc items with that date. Supports Grid (hourly calendar with drag-and-drop via `@dnd-kit`) and Agenda (grouped chronological list by morning/afternoon/evening) display modes. A metrics header at the top shows total planned hours, completion rate, and completed count.
 
 **Routine Execution**:
-A daily tracking record for a Routine. Created on-the-fly when the user views "Today's Routine". Tracks `status` (pending/in_progress/completed/skipped/missed), actual start/end times, and `completionRate` (percentage of items completed). One execution per routine per day.
+A daily tracking record for a Routine. Created on-the-fly when the user views the calendar. Tracks `status` (pending/in_progress/completed/skipped/missed), actual start/end times, and `completionRate` (percentage of items completed). One execution per routine per day. Ad-hoc items bypass executions — their status lives directly on the routine_item row.
 
 **Routine Execution Item**:
 The per-item status within a Routine Execution. Each Routine Item gets its own `status` (pending/in_progress/completed/skipped) and optional actual start/end times. Enables granular tracking of which activities were done, skipped, or are currently active.
@@ -217,10 +223,12 @@ The per-item status within a Routine Execution. Each Routine Item gets its own `
 A pre-defined routine blueprint in `routine_templates`. System-seeded (Morning, Student, Deep Work, Fitness, Evening). Users browse templates and clone them as their own Routines. Templates are reference data, not user-scoped.
 
 **Schedule Type**:
-An enum on Routines defining when the routine activates: `daily` (every day), `weekdays` (Mon-Fri), `weekends` (Sat-Sun), or `custom` (user-specified day array). A routine is "scheduled today" if the current day matches its schedule.
+An enum on Routines defining when the routine activates: `daily` (every day), `weekdays` (Mon-Fri), `weekends` (Sat-Sun), or `custom` (user-specified day array). A routine is "scheduled today" if the current day matches its schedule. Recurrence lives at the Routine level — there is no per-item recurrence. For a single recurring activity, create a single-item Routine.
 
 **Routine Analytics**:
-Computed on-read metrics for Routines. Includes completion rate over time, per-routine performance, most-missed items, best/worst days, and daily trends. No stored analytics table — all derived from `routine_executions` data.
+Computed on-read metrics for Routines. Includes completion rate over time, per-routine performance, most-missed items, best/worst days, and daily trends. No stored analytics table — all derived from `routine_executions` data. The daily calendar also shows a compact productivity header (total planned hours, completed count, completion rate) computed from both routine execution items and ad-hoc items.
+
+*Avoid*: Overlap between Daily Planner and Timeline — Planner is future intention (what you plan to do), Timeline is past recording (what you actually did). Task status instead of routine_item status for task-linked items.
 
 *Avoid*: Playlist (always use Collection instead for Music), Inventory Item (use Tech Item for tech, Clothing Item for wardrobe)
 

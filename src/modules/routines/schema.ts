@@ -39,14 +39,19 @@ export const routines = pgTable("routines", {
 export const routineItems = pgTable("routine_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   routineId: uuid("routine_id")
-    .notNull()
     .references(() => routines.id, { onDelete: "cascade" }),
+  userId: text("user_id"),
   title: text("title").notNull(),
   description: text("description"),
   startTime: text("start_time").notNull(),
   endTime: text("end_time"),
   order: integer("order").notNull().default(0),
   isOptional: boolean("is_optional").default(false).notNull(),
+  category: text("category"),
+  priority: text("priority"),
+  location: text("location"),
+  date: text("date"),
+  status: routineItemStatusEnum("status"),
   linkedHabitId: text("linked_habit_id"),
   linkedTaskId: text("linked_task_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

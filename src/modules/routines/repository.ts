@@ -1,5 +1,5 @@
 import { db } from "@/core/database";
-import { and, eq, asc, count, gte, lte, sql, inArray } from "drizzle-orm";
+import { and, eq, asc, count, gte, lte, sql, inArray, or, isNull, not } from "drizzle-orm";
 import {
   routines,
   routineItems,
@@ -22,6 +22,8 @@ export type CreateExecutionInput = typeof routineExecutions.$inferInsert;
 export type CreateExecutionItemInput = typeof routineExecutionItems.$inferInsert;
 export type CreateTemplateInput = typeof routineTemplates.$inferInsert;
 export type CreateTemplateItemInput = typeof routineTemplateItems.$inferInsert;
+
+export type DayMetrics = Awaited<ReturnType<typeof getDayMetrics>>;
 
 // ── Routines ──
 
@@ -203,7 +205,7 @@ export async function getExecutionItems(executionId: string) {
     .orderBy(asc(routineExecutionItems.createdAt));
 
   const itemIds = items.map((i) => i.routineItemId);
-  if (itemIds.length === 0) return items;
+  if (itemIds.length === 0) return items.map((ei) => ({ ...ei, routineItem: null }));
 
   const itemRows = await db
     .select()
@@ -260,7 +262,200 @@ export async function getExecutionItemCountByStatus(
     .then((r) => Number(r[0]?.count ?? 0));
 }
 
-// ── Templates ──
+// ── Day Plan / Ad-hoc Items ──
+
+export async function getAdhocItemsForDate(userId: string, date: string) {
+  return db
+    .select()
+    .from(routineItems)
+    .where(
+      and(
+        isNull(routineItems.routineId),
+        eq(routineItems.userId, userId),
+        eq(routineItems.date, date),
+      ),
+    )
+    .orderBy(asc(routineItems.startTime));
+}
+
+export async function getExecutionsForDateWithItems(userId: string, date: string) {
+  const executionList = await db
+    .select()
+    .from(routineExecutions)
+    .where(
+      and(
+        eq(routineExecutions.userId, userId),
+        eq(routineExecutions.date, date),
+      ),
+    )
+    .orderBy(asc(routineExecutions.createdAt));
+
+  if (executionList.length === 0) return [];
+
+  const executionIds = executionList.map((e) => e.id);
+  const allExecutionItems = await db
+    .select()
+    .from(routineExecutionItems)
+    .where(inArray(routineExecutionItems.executionId, executionIds))
+    .orderBy(asc(routineExecutionItems.createdAt));
+
+  const itemIds = [...new Set(allExecutionItems.map((ei) => ei.routineItemId))];
+  const itemRows = itemIds.length > 0
+    ? await db.select().from(routineItems).where(inArray(routineItems.id, itemIds))
+    : [];
+
+  const itemMap = new Map(itemRows.map((r) => [r.id, r]));
+  const executionMap = new Map(executionList.map((e) => [e.id, e]));
+
+  const itemsByExecution = new Map<string, typeof allExecutionItems>();
+  for (const ei of allExecutionItems) {
+    const existing = itemsByExecution.get(ei.executionId) ?? [];
+    existing.push(ei);
+    itemsByExecution.set(ei.executionId, existing);
+  }
+
+  return executionList.map((execution) => {
+    const executionItems = (itemsByExecution.get(execution.id) ?? []).map((ei) => ({
+      ...ei,
+      routineItem: itemMap.get(ei.routineItemId) ?? null,
+    }));
+    return { execution, executionItems };
+  });
+}
+
+export async function getRoutineItemsForDate(routineId: string) {
+  return db
+    .select()
+    .from(routineItems)
+    .where(eq(routineItems.routineId, routineId))
+    .orderBy(asc(routineItems.startTime));
+}
+
+export async function checkTimeOverlap(params: {
+  startTime: string;
+  endTime?: string | null;
+  date?: string | null;
+  routineId?: string | null;
+  excludeItemId?: string;
+}) {
+  const { startTime, endTime, date, routineId, excludeItemId } = params;
+
+  const conditions: ReturnType<typeof and>[] = [];
+
+  if (routineId) {
+    conditions.push(eq(routineItems.routineId, routineId));
+  }
+  if (date) {
+    conditions.push(eq(routineItems.date, date));
+  }
+  if (excludeItemId) {
+    conditions.push(not(eq(routineItems.id, excludeItemId)));
+  }
+
+  if (endTime) {
+    conditions.push(
+      or(
+        and(
+          gte(routineItems.startTime, startTime),
+          lte(routineItems.startTime, endTime),
+        ),
+        and(
+          gte(routineItems.startTime, startTime),
+          isNull(routineItems.endTime),
+        ),
+      ),
+    );
+  } else {
+    conditions.push(eq(routineItems.startTime, startTime));
+  }
+
+  return db
+    .select({ id: routineItems.id })
+    .from(routineItems)
+    .where(and(...conditions))
+    .then((r) => r.length > 0);
+}
+
+export async function getDayMetrics(userId: string, date: string) {
+  const [executions, adhocItems] = await Promise.all([
+    db
+      .select()
+      .from(routineExecutions)
+      .where(
+        and(
+          eq(routineExecutions.userId, userId),
+          eq(routineExecutions.date, date),
+        ),
+      ),
+    db
+      .select()
+      .from(routineItems)
+      .where(
+        and(
+          isNull(routineItems.routineId),
+          eq(routineItems.userId, userId),
+          eq(routineItems.date, date),
+        ),
+      ),
+  ]);
+
+  let totalItems = 0;
+  let completedItems = 0;
+
+  const executionIds = executions.map((e) => e.id);
+  if (executionIds.length > 0) {
+    const stats = await db
+      .select({
+        total: count(routineExecutionItems.id),
+        completed:
+          sql`COUNT(CASE WHEN ${routineExecutionItems.status} = 'completed' THEN 1 END)`.as<number>(),
+      })
+      .from(routineExecutionItems)
+      .where(inArray(routineExecutionItems.executionId, executionIds));
+
+    totalItems += Number(stats[0]?.total ?? 0);
+    completedItems += Number(stats[0]?.completed ?? 0);
+  }
+
+  if (adhocItems.length > 0) {
+    totalItems += adhocItems.length;
+    completedItems += adhocItems.filter((i) => i.status === "completed").length;
+  }
+
+  const plannedHours = calculateTotalPlannedHours(executions, adhocItems);
+
+  return {
+    totalItems,
+    completedItems,
+    plannedHours,
+    completionRate: totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0,
+  };
+}
+
+function calculateTotalPlannedHours(
+  executions: Array<{ plannedStart: string | null; plannedEnd: string | null }>,
+  adhocItems: Array<{ startTime: string; endTime: string | null }>,
+) {
+  let totalMinutes = 0;
+
+  for (const exec of executions) {
+    if (exec.plannedStart && exec.plannedEnd) {
+      const [sh, sm] = exec.plannedStart.split(":").map(Number);
+      const [eh, em] = exec.plannedEnd.split(":").map(Number);
+      totalMinutes += eh * 60 + em - (sh * 60 + sm);
+    }
+  }
+
+  for (const item of adhocItems) {
+    if (item.startTime && item.endTime) {
+      const [sh, sm] = item.startTime.split(":").map(Number);
+      const [eh, em] = item.endTime.split(":").map(Number);
+      totalMinutes += eh * 60 + em - (sh * 60 + sm);
+    }
+  }
+
+  return Math.round((totalMinutes / 60) * 10) / 10;
+}
 
 export async function getTemplates() {
   return db.select().from(routineTemplates).orderBy(asc(routineTemplates.createdAt));

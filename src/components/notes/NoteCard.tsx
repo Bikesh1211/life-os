@@ -1,13 +1,15 @@
 "use client";
 
-import { Card, Text, Group, Badge, ActionIcon, Menu, Stack } from "@mantine/core";
+import { Card, Text, Group, Badge, ActionIcon, Menu, Stack, Image } from "@mantine/core";
 import {
   IconPin,
   IconPinFilled,
   IconArchive,
+  IconArchiveOff,
   IconTrash,
   IconDots,
   IconClock,
+  IconStarFilled,
 } from "@tabler/icons-react";
 import type { Note } from "@/modules/notes";
 import { useUpdateNote, useNoteTags } from "@/hooks/use-notes";
@@ -25,6 +27,12 @@ const priorityColors: Record<string, string> = {
   low: "gray",
   medium: "blue",
   high: "red",
+};
+
+const statusColors: Record<string, string> = {
+  draft: "gray",
+  published: "green",
+  archived: "orange",
 };
 
 function stripMarkdown(text: string): string {
@@ -66,7 +74,7 @@ export function NoteCard({ note, onDeleteRequest }: NoteCardProps) {
   const { data: tagDefinitions } = useNoteTags();
 
   const tagColors = new Map((tagDefinitions ?? []).map((t) => [t.name, t.color]));
-  const preview = stripMarkdown(note.content ?? "");
+  const preview = stripMarkdown(note.excerpt ?? note.content ?? "");
   const truncated = preview.length > 150 ? preview.slice(0, 150) + "..." : preview;
 
   return (
@@ -77,9 +85,22 @@ export function NoteCard({ note, onDeleteRequest }: NoteCardProps) {
       onClick={() => openEditNote(note)}
     >
       <Stack gap="xs">
+        {/* Cover Image */}
+        {note.coverImage && (
+          <div className="-mx-md -mt-md mb-2 overflow-hidden rounded-t-md">
+            <Image
+              src={note.coverImage}
+              alt=""
+              height={120}
+              className="object-cover"
+              fallbackSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect fill='%23333' width='40' height='40'/%3E%3C/svg%3E"
+            />
+          </div>
+        )}
+
         <Group justify="space-between" wrap="nowrap">
           <Group gap={6} wrap="nowrap" style={{ minWidth: 0, flex: 1 }}>
-            {note.isPinned && <IconPinFilled size={14} className="text-amber-500 shrink-0" />}
+            {note.isPinned && <IconStarFilled size={14} className="text-amber-500 shrink-0" />}
             <Text fw={600} lineClamp={1} style={{ flex: 1 }}>
               {note.title}
             </Text>
@@ -99,10 +120,10 @@ export function NoteCard({ note, onDeleteRequest }: NoteCardProps) {
                 {note.isPinned ? "Unpin" : "Pin"}
               </Menu.Item>
               <Menu.Item
-                leftSection={<IconArchive size={14} />}
-                onClick={() => updateNote.mutate({ id: note.id, isArchived: !note.isArchived })}
+                leftSection={note.status === "archived" ? <IconArchiveOff size={14} /> : <IconArchive size={14} />}
+                onClick={() => updateNote.mutate({ id: note.id, status: note.status === "archived" ? "published" : "archived" })}
               >
-                Archive
+                {note.status === "archived" ? "Restore" : "Archive"}
               </Menu.Item>
               <Menu.Item
                 leftSection={<IconTrash size={14} />}
@@ -123,6 +144,9 @@ export function NoteCard({ note, onDeleteRequest }: NoteCardProps) {
         )}
 
         <Group gap={4} wrap="wrap">
+          <Badge size="sm" color={statusColors[note.status] ?? "gray"} variant="dot">
+            {note.status}
+          </Badge>
           <Badge
             size="sm"
             color={categoryColors[note.category] ?? "gray"}
