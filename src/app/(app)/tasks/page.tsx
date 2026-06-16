@@ -1,10 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
-import { getTasksForUser } from "@/modules/tasks";
+import { getTaskStats } from "@/modules/tasks";
 import { TasksContent } from "./TasksContent";
+
+export const dynamic = "force-dynamic";
 
 export default async function TasksPage() {
   const { userId } = await auth();
-  const tasks = await getTasksForUser(userId!);
+  const taskSummary = await getTaskStats(userId!);
 
-  return <TasksContent tasks={tasks} />;
+  return <TasksContent taskSummary={taskSummary} />;
 }

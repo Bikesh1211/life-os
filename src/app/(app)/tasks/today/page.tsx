@@ -1,12 +1,7 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconCalendarDue } from "@tabler/icons-react";
+import { TodayContent } from "./TodayContent";
+
+export const dynamic = "force-dynamic";
 
 export default function TasksTodayPage() {
-  return (
-    <FeaturePlaceholder
-      title="Today's Tasks"
-      description="What needs to be done today"
-      icon={IconCalendarDue}
-    />
-  );
+  return <TodayContent />;
 }

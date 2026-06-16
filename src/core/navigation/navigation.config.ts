@@ -181,6 +181,20 @@ export const navigation: NavGroup[] = [
             featureId: "tasks_projects",
           },
           {
+            label: "Upcoming",
+            route: "/tasks/upcoming",
+            description: "Upcoming tasks",
+            icon: IconCalendarDue,
+            featureId: "tasks_upcoming",
+          },
+          {
+            label: "Recurring",
+            route: "/tasks/recurring",
+            description: "Recurring tasks",
+            icon: IconRepeat,
+            featureId: "tasks_recurring",
+          },
+          {
             label: "Focus Mode",
             route: "/tasks/focus-mode",
             description: "Deep work mode",
