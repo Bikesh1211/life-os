@@ -9,6 +9,8 @@ import { SectionHeading } from "../design-system/SectionHeading";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { IconArrowLeft, IconTrash, IconEdit, IconPlus } from "@tabler/icons-react";
 import Link from "next/link";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 
 type CollectionItem = {
   id: string;
@@ -121,12 +123,12 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
               className="w-full rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3 text-xl font-bold text-[var(--mantine-color-text,#c1c2c5)] outline-none"
               placeholder="Collection name"
             />
-            <textarea
-              value={editDesc}
-              onChange={(e) => setEditDesc(e.target.value)}
-              rows={2}
-              className="w-full rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3 text-sm text-[var(--mantine-color-text,#c1c2c5)] outline-none resize-none"
+            <Editor
+              content={textToEditorContent(editDesc)}
+              onChange={(_json, _html, text) => setEditDesc(text)}
               placeholder="Description (optional)"
+              minHeight="80px"
+              showToolbar={false}
             />
             <div className="flex gap-2">
               <button

@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Modal,
   TextInput,
-  Textarea,
   Select,
   Group,
   Button,
@@ -14,7 +13,6 @@ import {
   Text,
   SimpleGrid,
   Switch,
-  ActionIcon,
   Tooltip,
   rem,
 } from "@mantine/core";
@@ -34,6 +32,8 @@ import {
 } from "@tabler/icons-react";
 import type { TablerIcon } from "@tabler/icons-react";
 import dayjs from "dayjs";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 
 const categoryOptions = [
   { value: "personal", label: "Personal" },
@@ -191,12 +191,12 @@ export function EventCreateModal({ opened, onClose, onCreated }: Props) {
           data-autofocus
         />
 
-        <Textarea
-          label="Description"
+        <Editor
+          content={textToEditorContent(description)}
+          onChange={(_json, _html, text) => setDescription(text)}
           placeholder="Add details..."
-          value={description}
-          onChange={(e) => setDescription(e.currentTarget.value)}
-          rows={2}
+          minHeight="80px"
+          showToolbar={false}
         />
 
         <DatePickerInput

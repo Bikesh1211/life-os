@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card, Text, Group, Stack, SimpleGrid, Title, Button, Badge,
-  Skeleton, Center, ActionIcon, Menu, Modal, TextInput, Textarea, MultiSelect,
+  Skeleton, Center, ActionIcon, Menu, Modal, TextInput, MultiSelect,
 } from "@mantine/core";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus, IconComponents, IconEdit, IconTrash, IconDotsVertical, IconDeviceLaptop } from "@tabler/icons-react";
 
@@ -99,7 +101,14 @@ export default function TechSetupsPage() {
       <Modal opened={opened} onClose={close} title={editSetup ? "Edit Setup" : "Create Setup"} size="lg">
         <Stack gap="sm">
           <TextInput label="Name" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-          <Textarea label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+          <Text size="sm" fw={500}>Description</Text>
+          <Editor
+            content={textToEditorContent(form.description)}
+            onChange={(_json, _html, text) => setForm({ ...form, description: text })}
+            placeholder="Description"
+            minHeight="80px"
+            showToolbar={false}
+          />
           <MultiSelect label="Items" data={items.map(i => ({ value: i.id, label: `${i.name}${i.brand ? ` (${i.brand})` : ""}` }))}
             value={form.itemIds} onChange={v => setForm({ ...form, itemIds: v })} searchable clearable />
           <Group justify="flex-end" mt="md">

@@ -8,7 +8,6 @@ import {
   Button,
   Group,
   Stack,
-  Textarea,
   Switch,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
@@ -16,6 +15,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { PAYMENT_METHODS, TRANSACTION_TYPES } from "@/modules/expenses/constants";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 
 type Transaction = {
   id: string;
@@ -196,12 +197,12 @@ export function EditTransactionModal({
             {...form.getInputProps("paymentMethod")}
           />
 
-          <Textarea
-            label="Description"
+          <Editor
+            content={textToEditorContent(form.getValues().description)}
+            onChange={(_json, _html, text) => form.setFieldValue("description", text)}
             placeholder="Optional description"
-            rows={2}
-            key={form.key("description")}
-            {...form.getInputProps("description")}
+            minHeight="80px"
+            showToolbar={false}
           />
 
           <Switch

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import {
   Modal,
   TextInput,
-  Textarea,
   Select,
   Group,
   Button,
@@ -34,6 +33,8 @@ import type { TablerIcon } from "@tabler/icons-react";
 import type { TimelineEvent } from "@/modules/timeline/repository";
 import type { DurationBreakdown } from "@/modules/timeline";
 import dayjs from "dayjs";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 
 const categoryOptions = [
   { value: "personal", label: "Personal" },
@@ -212,11 +213,12 @@ export function EventEditModal({
           data-autofocus
         />
 
-        <Textarea
-          label="Description"
-          value={description}
-          onChange={(e) => setDescription(e.currentTarget.value)}
-          rows={2}
+        <Editor
+          content={textToEditorContent(description)}
+          onChange={(_json, _html, text) => setDescription(text)}
+          placeholder="Description"
+          minHeight="80px"
+          showToolbar={false}
         />
 
         <DatePickerInput

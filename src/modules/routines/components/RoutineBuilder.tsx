@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   Stack,
   TextInput,
-  Textarea,
   Group,
   Button,
   Select,
@@ -14,6 +13,8 @@ import {
   Text,
   ColorInput,
 } from "@mantine/core";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { IconTrash, IconGripVertical, IconPlus } from "@tabler/icons-react";
 import { useCreateRoutine } from "@/hooks/use-routines";
 
@@ -123,12 +124,13 @@ export function RoutineBuilder({ onSuccess, onCancel }: RoutineBuilderProps) {
         required
       />
 
-      <Textarea
-        label="Description"
+      <Text size="sm" fw={500}>Description</Text>
+      <Editor
+        content={textToEditorContent(description)}
+        onChange={(_json, _html, text) => setDescription(text)}
         placeholder="What is this routine for?"
-        value={description}
-        onChange={(e) => setDescription(e.currentTarget.value)}
-        rows={2}
+        minHeight="80px"
+        showToolbar={false}
       />
 
       <Group grow>

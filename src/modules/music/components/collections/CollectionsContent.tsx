@@ -7,6 +7,8 @@ import { MusicContainer } from "../design-system/MusicContainer";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { IconFolder, IconPlus } from "@tabler/icons-react";
 import Link from "next/link";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 
 type Collection = {
   id: string;
@@ -101,12 +103,12 @@ export function CollectionsContent() {
             placeholder="Collection name"
             className="mb-3 w-full rounded-lg border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] p-2.5 text-sm text-[var(--mantine-color-text,#c1c2c5)] outline-none focus:border-blue-500/50"
           />
-          <textarea
-            value={createDesc}
-            onChange={(e) => setCreateDesc(e.target.value)}
+          <Editor
+            content={textToEditorContent(createDesc)}
+            onChange={(_json, _html, text) => setCreateDesc(text)}
             placeholder="Description (optional)"
-            rows={2}
-            className="mb-3 w-full rounded-lg border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] p-2.5 text-sm text-[var(--mantine-color-text,#c1c2c5)] outline-none resize-none focus:border-blue-500/50"
+            minHeight="80px"
+            showToolbar={false}
           />
           <div className="flex gap-2">
             <button

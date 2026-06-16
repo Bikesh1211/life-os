@@ -13,7 +13,6 @@ import {
   Select,
   Paper,
   Button,
-  Textarea,
   Menu,
   ScrollArea,
   Divider,
@@ -39,7 +38,8 @@ import {
   IconPhoto,
 } from "@tabler/icons-react";
 import type { Note } from "@/modules/notes";
-import { TipTapEditor } from "@/modules/notes/components/TipTapEditor";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useUpdateNote, useDeleteNote, useNoteLinks, useNoteBacklinks, useCreateNoteLink, useDeleteNoteLink, useNoteFolders } from "@/hooks/use-notes";
 
 const categoryColors: Record<string, string> = {
@@ -297,17 +297,15 @@ export function NoteEditor({ note }: NoteEditorProps) {
           )}
           {!coverImage && showCoverInput && (
             <div className="mb-4">
-              <Textarea
-                placeholder="Paste cover image URL..."
-                value={coverImage}
-                onChange={(e) => {
-                  setCoverImage(e.currentTarget.value);
-                  if (e.currentTarget.value) queueSave({ coverImage: e.currentTarget.value });
+              <Editor
+                content={textToEditorContent(coverImage)}
+                onChange={(_json, _html, text) => {
+                  setCoverImage(text);
+                  if (text) queueSave({ coverImage: text });
                 }}
-                size="xs"
-                autosize
-                minRows={1}
-                maxRows={2}
+                placeholder="Paste cover image URL..."
+                minHeight="40px"
+                showToolbar={false}
               />
             </div>
           )}
@@ -408,10 +406,10 @@ export function NoteEditor({ note }: NoteEditorProps) {
             </Tooltip>
           </Group>
 
-          {/* TipTap Editor */}
+          {/* Editor */}
           <div className="border border-[var(--mantine-color-dark-5)] rounded-lg overflow-hidden">
-            <TipTapEditor
-              content={contentJson ?? { type: "doc", content: [{ type: "paragraph" }] }}
+            <Editor
+              content={contentJson ?? textToEditorContent(note.content)}
               onChange={handleEditorChange}
               placeholder="Start writing..."
             />
@@ -493,12 +491,12 @@ export function NoteEditor({ note }: NoteEditorProps) {
         size="sm"
         centered
       >
-        <Textarea
+        <Editor
+          content={textToEditorContent(linkNoteId)}
+          onChange={(_json, _html, text) => setLinkNoteId(text)}
           placeholder="Enter note ID to link..."
-          value={linkNoteId}
-          onChange={(e) => setLinkNoteId(e.currentTarget.value)}
-          autosize
-          minRows={2}
+          minHeight="60px"
+          showToolbar={false}
         />
         <Group justify="flex-end" mt="md">
           <Button variant="default" onClick={() => setShowLinkModal(false)}>

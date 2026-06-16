@@ -14,11 +14,12 @@ import {
   Switch,
   Modal,
   TextInput,
-  Textarea,
   ColorInput,
   Select,
   SimpleGrid,
 } from "@mantine/core";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { notifications } from "@mantine/notifications";
 import {
   IconArrowLeft,
@@ -240,7 +241,14 @@ export default function RoutineDetailPage() {
         ) : (
           <Stack gap="md">
             <TextInput label="Name" value={name} onChange={(e) => setName(e.currentTarget.value)} />
-            <Textarea label="Description" value={description} onChange={(e) => setDescription(e.currentTarget.value)} />
+            <Text size="sm" fw={500}>Description</Text>
+            <Editor
+              content={textToEditorContent(description)}
+              onChange={(_json, _html, text) => setDescription(text)}
+              placeholder="Description"
+              minHeight="80px"
+              showToolbar={false}
+            />
             <SimpleGrid cols={2}>
               <ColorInput label="Color" value={color} onChange={setColor} />
               <Select label="Schedule" data={SCHEDULE_OPTIONS} value={scheduleType} onChange={(v) => v && setScheduleType(v)} />
