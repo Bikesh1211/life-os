@@ -150,13 +150,13 @@ export function NoteViewModal({ note, onClose }: NoteViewModalProps) {
                 {note.isPinned ? <IconPinFilled size={16} /> : <IconPin size={16} />}
               </ActionIcon>
             </Tooltip>
-            <Tooltip label={note.isArchived ? "Unarchive" : "Archive"}>
+            <Tooltip label={note.status === "archived" ? "Unarchive" : "Archive"}>
               <ActionIcon
                 variant="subtle"
                 color="gray"
-                onClick={() => updateNote.mutate({ id: note.id, isArchived: !note.isArchived }, { onSuccess: onClose })}
+                onClick={() => updateNote.mutate({ id: note.id, status: note.status === "archived" ? "published" : "archived" }, { onSuccess: onClose })}
               >
-                {note.isArchived ? <IconArchiveOff size={16} /> : <IconArchive size={16} />}
+                {note.status === "archived" ? <IconArchiveOff size={16} /> : <IconArchive size={16} />}
               </ActionIcon>
             </Tooltip>
             <Tooltip label="Delete">
