@@ -98,9 +98,16 @@ export const navigation: NavGroup[] = [
     label: "Overview",
     items: [
       {
-        label: "Dashboard",
+        label: "Home",
         route: "/",
-        description: "Overview of your life",
+        description: "Your personal home page",
+        icon: IconStar,
+        featureId: "home",
+      },
+      {
+        label: "Dashboard",
+        route: "/dashboard",
+        description: "Analytics & productivity overview",
         icon: IconLayoutDashboard,
         featureId: "dashboard",
       },

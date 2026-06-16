@@ -6,7 +6,8 @@ export const APP_DESCRIPTION = "Your personal life management platform";
 export const ROUTES = {
   SIGN_IN: "/sign-in",
   SIGN_UP: "/sign-up",
-  DASHBOARD: "/",
+  HOME: "/",
+  DASHBOARD: "/dashboard",
 } as const;
 
 export const PAGINATION = {
