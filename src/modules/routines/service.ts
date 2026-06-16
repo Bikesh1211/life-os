@@ -42,6 +42,15 @@ export const updateRoutineSchema = z.object({
   customDays: z.array(z.string()).optional(),
 });
 
+export const categoryEnum = z.enum([
+  "personal", "career", "education", "health", "finance",
+  "travel", "relationships", "business", "entertainment", "custom",
+]);
+
+export const priorityEnum = z.enum(["low", "medium", "high"]);
+
+export const itemStatusEnum = z.enum(["pending", "in_progress", "completed", "skipped"]);
+
 export const createRoutineItemSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   description: z.string().max(2000).optional(),
@@ -49,11 +58,31 @@ export const createRoutineItemSchema = z.object({
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:mm)").optional(),
   order: z.number().int().min(0),
   isOptional: z.boolean().default(false),
+  category: categoryEnum.optional(),
+  priority: priorityEnum.optional(),
+  location: z.string().max(200).optional(),
   linkedHabitId: z.string().optional(),
   linkedTaskId: z.string().optional(),
 });
 
 export const updateRoutineItemSchema = createRoutineItemSchema.partial();
+
+export const createAdhocItemSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200),
+  description: z.string().max(2000).optional(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:mm)"),
+  endTime: z.string().regex(/^\d{2}:\d{2}$/, "Invalid time format (HH:mm)").optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (YYYY-MM-DD)"),
+  category: categoryEnum.optional(),
+  priority: priorityEnum.optional(),
+  location: z.string().max(200).optional(),
+});
+
+export const updateAdhocItemSchema = createAdhocItemSchema.partial();
+
+export const updateItemStatusSchema = z.object({
+  status: itemStatusEnum,
+});
 
 export const reorderItemsSchema = z.object({
   items: z.array(
@@ -72,6 +101,8 @@ export const analyticsFilterSchema = z.object({
 export type CreateRoutineParams = z.infer<typeof createRoutineSchema>;
 export type UpdateRoutineParams = z.infer<typeof updateRoutineSchema>;
 export type CreateRoutineItemParams = z.infer<typeof createRoutineItemSchema>;
+export type CreateAdhocItemParams = z.infer<typeof createAdhocItemSchema>;
+export type UpdateAdhocItemParams = z.infer<typeof updateAdhocItemSchema>;
 export type AnalyticsFilterParams = z.infer<typeof analyticsFilterSchema>;
 
 // ── Helpers ──
@@ -574,4 +605,264 @@ export async function getRoutineAnalytics(routineId: string, userId: string, par
     avgItemCompletionRate: avgCompletionRate,
     dailyData,
   };
+}
+
+// ── Day Plan ──
+
+export type DayPlanItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  startTime: string;
+  endTime: string | null;
+  category: string | null;
+  priority: string | null;
+  location: string | null;
+  isOptional: boolean;
+  status: string | null;
+  linkedHabitId: string | null;
+  linkedTaskId: string | null;
+  order: number;
+  source: "routine" | "adhoc";
+  routineId: string | null;
+  routineName: string | null;
+  routineColor: string | null;
+  executionId: string | null;
+  executionItemId: string | null;
+};
+
+export async function getDayPlan(userId: string, date: string): Promise<{
+  items: DayPlanItem[];
+  metrics: repo.DayMetrics;
+}> {
+  const [activeRoutines, adhocItems, metrics] = await Promise.all([
+    repo.getActiveRoutines(userId),
+    repo.getAdhocItemsForDate(userId, date),
+    repo.getDayMetrics(userId, date),
+  ]);
+
+  const scheduled = activeRoutines.filter((r) => isScheduledForDate(r, date));
+
+  const routineItemsPromises = scheduled.map(async (routine) => {
+    const items = await repo.getRoutineItemsForDate(routine.id);
+    let execution = await repo.getExecutionByRoutineAndDate(routine.id, date);
+
+    if (!execution) {
+      const firstItem = items[0];
+      const lastItem = items[items.length - 1];
+      execution = await repo.createExecution({
+        routineId: routine.id,
+        userId,
+        date,
+        plannedStart: firstItem?.startTime ?? null,
+        plannedEnd: lastItem?.endTime ?? null,
+        status: "pending",
+        completionRate: 0,
+      });
+
+      const executionItems = items.map((item) => ({
+        executionId: execution!.id,
+        routineItemId: item.id,
+        plannedStart: item.startTime,
+        plannedEnd: item.endTime ?? null,
+        status: "pending" as const,
+      }));
+      await repo.createExecutionItems(executionItems);
+    }
+
+    const executionItems = await repo.getExecutionItems(execution.id);
+    return { routine, items, execution, executionItems };
+  });
+
+  const routineResults = await Promise.all(routineItemsPromises);
+
+  const routineDayItems: DayPlanItem[] = routineResults.flatMap(({ routine, execution, executionItems }) =>
+    executionItems.map((ei) => {
+      const item = ei.routineItem;
+      return {
+        id: ei.id,
+        title: item?.title ?? "",
+        description: item?.description ?? null,
+        startTime: item?.startTime ?? ei.plannedStart ?? "",
+        endTime: item?.endTime ?? ei.plannedEnd ?? null,
+        category: item?.category ?? null,
+        priority: item?.priority ?? null,
+        location: item?.location ?? null,
+        isOptional: item?.isOptional ?? false,
+        status: ei.status,
+        linkedHabitId: item?.linkedHabitId ?? null,
+        linkedTaskId: item?.linkedTaskId ?? null,
+        order: item?.order ?? 0,
+        source: "routine" as const,
+        routineId: routine.id,
+        routineName: routine.name,
+        routineColor: routine.color,
+        executionId: execution.id,
+        executionItemId: ei.id,
+      };
+    }),
+  );
+
+  const adhocDayItems: DayPlanItem[] = adhocItems.map((item) => ({
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    startTime: item.startTime,
+    endTime: item.endTime,
+    category: item.category,
+    priority: item.priority,
+    location: item.location,
+    isOptional: item.isOptional,
+    status: item.status,
+    linkedHabitId: item.linkedHabitId,
+    linkedTaskId: item.linkedTaskId,
+    order: item.order,
+    source: "adhoc" as const,
+    routineId: null,
+    routineName: null,
+    routineColor: null,
+    executionId: null,
+    executionItemId: null,
+  }));
+
+  const items = [...routineDayItems, ...adhocDayItems].sort((a, b) => {
+    if (a.startTime < b.startTime) return -1;
+    if (a.startTime > b.startTime) return 1;
+    return a.order - b.order;
+  });
+
+  return { items, metrics };
+}
+
+// ── Ad-hoc Items ──
+
+export async function createAdhocItem(userId: string, params: CreateAdhocItemParams) {
+  const validated = createAdhocItemSchema.parse(params);
+
+  const overlap = await repo.checkTimeOverlap({
+    startTime: validated.startTime,
+    endTime: validated.endTime,
+    date: validated.date,
+  });
+
+  if (overlap) {
+    throw new Error("Time slot overlaps with an existing item");
+  }
+
+  return repo.createRoutineItem({
+    userId,
+    title: validated.title,
+    description: validated.description ?? null,
+    startTime: validated.startTime,
+    endTime: validated.endTime ?? null,
+    date: validated.date,
+    category: validated.category ?? null,
+    priority: validated.priority ?? null,
+    location: validated.location ?? null,
+    order: 0,
+    isOptional: false,
+    status: "pending",
+    linkedHabitId: null,
+    linkedTaskId: null,
+  });
+}
+
+export async function updateAdhocItem(itemId: string, userId: string, params: UpdateAdhocItemParams) {
+  const item = await repo.getRoutineItemById(itemId);
+  if (!item || item.routineId !== null) return null;
+  if (item.userId !== userId) return null;
+
+  const validated = updateAdhocItemSchema.parse(params);
+
+  const startTime = validated.startTime ?? item.startTime;
+  const endTime = validated.endTime ?? item.endTime;
+  const date = validated.date ?? item.date;
+
+  if (date) {
+    const overlap = await repo.checkTimeOverlap({
+      startTime,
+      endTime,
+      date,
+      excludeItemId: itemId,
+    });
+
+    if (overlap) {
+      throw new Error("Time slot overlaps with an existing item");
+    }
+  }
+
+  const updateData: Record<string, string | null> = {};
+  if (validated.title !== undefined) updateData.title = validated.title;
+  if (validated.description !== undefined) updateData.description = validated.description ?? null;
+  if (validated.startTime !== undefined) updateData.startTime = validated.startTime;
+  if (validated.endTime !== undefined) updateData.endTime = validated.endTime ?? null;
+  if (validated.date !== undefined) updateData.date = validated.date ?? null;
+  if (validated.category !== undefined) updateData.category = validated.category ?? null;
+  if (validated.priority !== undefined) updateData.priority = validated.priority ?? null;
+  if (validated.location !== undefined) updateData.location = validated.location ?? null;
+
+  return repo.updateRoutineItem(itemId, updateData);
+}
+
+export async function deleteAdhocItem(itemId: string, userId: string) {
+  const item = await repo.getRoutineItemById(itemId);
+  if (!item || item.routineId !== null) return null;
+  if (item.userId !== userId) return null;
+
+  return repo.deleteRoutineItem(itemId);
+}
+
+// ── Item Status ──
+
+export async function updateItemStatus(
+  itemId: string,
+  userId: string,
+  status: "pending" | "in_progress" | "completed" | "skipped",
+) {
+  const validated = updateItemStatusSchema.parse({ status });
+
+  const item = await repo.getRoutineItemById(itemId);
+  if (!item) return null;
+
+  if (item.routineId !== null) {
+    const executionItem = await repo.getExecutionItemById(itemId);
+    if (!executionItem) return null;
+
+    const now = dayjs().format("HH:mm");
+    const updateData: Record<string, string> = { status: validated.status };
+
+    if (validated.status === "in_progress") {
+      updateData.actualStart = now;
+    } else if (validated.status === "completed") {
+      updateData.actualEnd = now;
+    }
+
+    await repo.updateExecutionItem(itemId, updateData);
+
+    if (validated.status === "completed" || validated.status === "skipped") {
+      const execution = await repo.getExecution(executionItem.executionId, userId);
+      if (execution) {
+        const [completedCount, totalCount] = await Promise.all([
+          repo.getExecutionItemCountByStatus(execution.id, "completed"),
+          repo.getExecutionItemCountByStatus(execution.id, "pending"),
+        ]);
+        const totalItems = completedCount + totalCount;
+        const completionRate = totalItems > 0
+          ? Math.round((completedCount / totalItems) * 100)
+          : 0;
+        const execStatus = completionRate === 100 ? "completed" : "in_progress";
+        await repo.updateExecution(execution.id, { status: execStatus, completionRate });
+      }
+    }
+
+    return repo.getExecutionItemById(itemId);
+  }
+
+  return repo.updateRoutineItem(itemId, { status: validated.status });
+}
+
+// ── Day Metrics ──
+
+export async function getDayMetrics(userId: string, date: string) {
+  return repo.getDayMetrics(userId, date);
 }
