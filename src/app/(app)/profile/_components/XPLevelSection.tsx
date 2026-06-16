@@ -21,22 +21,24 @@ export function XPLevelSection({
     <Paper withBorder p="lg" radius="md" className="relative overflow-hidden">
       <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-to-br from-yellow-500/8 to-orange-500/5 blur-2xl" />
 
-      <Group gap="xl" wrap="nowrap" className="relative z-10">
-        <RingProgress
-          size={140}
-          thickness={14}
-          sections={[{ value: levelInfo.progress, color: "yellow" }]}
-          label={
-            <Stack gap={0} align="center">
-              <Text fw={900} size="28" className="text-yellow-500" style={{ lineHeight: 1 }}>
-                {levelInfo.level}
-              </Text>
-              <Text size="xs" c="dimmed">
-                Level
-              </Text>
-            </Stack>
-          }
-        />
+      <Stack gap="md" className="relative z-10 sm:flex-row sm:items-start">
+        <div className="flex justify-center sm:block">
+          <RingProgress
+            size={120}
+            thickness={12}
+            sections={[{ value: levelInfo.progress, color: "yellow" }]}
+            label={
+              <Stack gap={0} align="center">
+                <Text fw={900} size="24" className="text-yellow-500" style={{ lineHeight: 1 }}>
+                  {levelInfo.level}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Level
+                </Text>
+              </Stack>
+            }
+          />
+        </div>
 
         <Stack gap={6} style={{ flex: 1 }}>
           <Group gap="xs">
@@ -64,7 +66,7 @@ export function XPLevelSection({
               : "Ready to level up!"}
           </Text>
 
-          <Group gap="md" mt="xs">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 mt-1">
             <Group gap="xs">
               <IconFlame size={16} className={currentStreak > 0 ? "text-orange-500" : "text-[var(--mantine-color-dimmed)]"} />
               <Stack gap={0}>
@@ -100,10 +102,10 @@ export function XPLevelSection({
                 </Text>
               </Stack>
             </Group>
-          </Group>
+          </div>
         </Stack>
 
-        <Stack gap={4} align="flex-end" className="hidden sm:flex">
+        <Stack gap={4} className="hidden sm:flex">
           {Array.from({ length: Math.min(levelInfo.level, 5) }).map((_, i) => (
             <Badge
               key={i}
@@ -116,7 +118,7 @@ export function XPLevelSection({
             </Badge>
           ))}
         </Stack>
-      </Group>
+      </Stack>
     </Paper>
   );
 }

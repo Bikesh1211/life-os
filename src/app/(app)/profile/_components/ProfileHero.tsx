@@ -29,7 +29,7 @@ export function ProfileHero({
       <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br from-yellow-500/10 to-orange-500/5 blur-3xl" />
       <div className="absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-gradient-to-tr from-blue-500/10 to-cyan-500/5 blur-3xl" />
 
-      <Group gap="md" wrap="nowrap" className="relative z-10">
+      <Group gap="md" wrap="wrap" className="relative z-10">
         <Avatar
           src={imageUrl}
           alt={fullName ?? "User"}
@@ -38,7 +38,7 @@ export function ProfileHero({
           className="ring-2 ring-yellow-500/30"
         />
 
-        <Stack gap={2} style={{ flex: 1 }}>
+        <Stack gap={2} style={{ flex: 1, minWidth: 160 }}>
           <Text fw={700} size="lg" className="text-[var(--mantine-color-text)]">
             {fullName ?? "User"}
           </Text>
@@ -65,6 +65,7 @@ export function ProfileHero({
         <Box
           px="sm"
           py={4}
+          className="w-full sm:w-auto"
           style={{
             background: "rgba(245,158,11,0.15)",
             border: "1px solid rgba(245,158,11,0.25)",
@@ -72,6 +73,7 @@ export function ProfileHero({
             display: "inline-flex",
             alignItems: "center",
             gap: 6,
+            justifyContent: "center",
           }}
         >
           <IconTrophy size={14} color="#f59e0b" />
