@@ -1,30 +1,24 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Modal,
   TextInput,
-  Textarea,
   Select,
   MultiSelect,
   Group,
   Button,
-  ActionIcon,
   Tooltip,
   Stack,
   Text,
+  ActionIcon,
 } from "@mantine/core";
 import {
-  IconBold,
-  IconItalic,
-  IconList,
-  IconListCheck,
-  IconCode,
-  IconLink,
-  IconHeading,
   IconDeviceFloppy,
   IconTrash,
 } from "@tabler/icons-react";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useCreateNote, useUpdateNote, useDeleteNote, useNoteTags } from "@/hooks/use-notes";
 import { useNotesStore } from "@/stores/notes-store";
 
@@ -52,31 +46,32 @@ export function QuickNoteModal() {
   const deleteNote = useDeleteNote();
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
+  const [title, setTitle] = useState("");
+  const [contentJson, setContentJson] = useState<unknown>(null);
+  const [contentText, setContentText] = useState("");
   const [category, setCategory] = useState<string>("personal");
   const [tags, setTags] = useState<string[]>([]);
   const [priority, setPriority] = useState<string>("medium");
-
-  const titleRef = useRef<HTMLInputElement>(null);
-  const contentRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     const timer = setTimeout(() => {
       if (editingNote) {
-        if (titleRef.current) titleRef.current.value = editingNote.title;
-        if (contentRef.current) contentRef.current.value = editingNote.content ?? "";
+        setTitle(editingNote.title);
+        setContentJson(textToEditorContent(editingNote.content));
+        setContentText(editingNote.content ?? "");
         setCategory(editingNote.category);
         setTags(editingNote.tags);
         setPriority(editingNote.priority);
       }
-      titleRef.current?.focus();
     }, 50);
     return () => clearTimeout(timer);
   }, [isOpen, editingNote]);
 
   const handleClose = useCallback(() => {
-    if (titleRef.current) titleRef.current.value = "";
-    if (contentRef.current) contentRef.current.value = "";
+    setTitle("");
+    setContentJson(null);
+    setContentText("");
     setCategory("personal");
     setTags([]);
     setPriority("medium");
@@ -84,35 +79,19 @@ export function QuickNoteModal() {
   }, [closeQuickNote]);
 
   const handleSave = useCallback(() => {
-    const title = titleRef.current?.value.trim() || "Untitled";
-    const content = contentRef.current?.value ?? "";
+    const titleVal = title.trim() || "Untitled";
     if (editingNote) {
       updateNote.mutate(
-        { id: editingNote.id, title, content, category, tags, priority },
+        { id: editingNote.id, title: titleVal, content: contentText, category, tags, priority },
         { onSuccess: handleClose },
       );
     } else {
       createNote.mutate(
-        { title, content, category, tags, priority },
+        { title: titleVal, content: contentText, category, tags, priority },
         { onSuccess: handleClose },
       );
     }
-  }, [createNote, updateNote, editingNote, handleClose, category, tags, priority]);
-
-  const insertFormatting = useCallback((before: string, after: string) => {
-    const textarea = contentRef.current;
-    if (!textarea) return;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const selected = textarea.value.substring(start, end);
-    textarea.value =
-      textarea.value.substring(0, start) + before + selected + after + textarea.value.substring(end);
-    textarea.dispatchEvent(new Event("input", { bubbles: true }));
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + before.length, start + before.length + selected.length);
-    }, 0);
-  }, []);
+  }, [createNote, updateNote, editingNote, handleClose, category, tags, priority, title, contentText]);
 
   const tagData = useMemo(
     () => (availableTags ?? []).map((t) => ({ value: t.name, label: t.name })),
@@ -135,9 +114,9 @@ export function QuickNoteModal() {
     >
       <Stack gap={0}>
         <TextInput
-          ref={titleRef}
           placeholder="Title"
-          defaultValue=""
+          value={title}
+          onChange={(e) => setTitle(e.currentTarget.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();
           }}
@@ -154,62 +133,17 @@ export function QuickNoteModal() {
           }}
         />
 
-        <Group gap={4} px="lg" pb="sm">
-          <Tooltip label="Heading">
-            <ActionIcon variant="subtle" size="sm" color="gray" onClick={() => insertFormatting("### ", "\n")}>
-              <IconHeading size={14} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Bold">
-            <ActionIcon variant="subtle" size="sm" color="gray" onClick={() => insertFormatting("**", "**")}>
-              <IconBold size={14} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Italic">
-            <ActionIcon variant="subtle" size="sm" color="gray" onClick={() => insertFormatting("*", "*")}>
-              <IconItalic size={14} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Bullet list">
-            <ActionIcon variant="subtle" size="sm" color="gray" onClick={() => insertFormatting("\n- ", "")}>
-              <IconList size={14} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Checklist">
-            <ActionIcon variant="subtle" size="sm" color="gray" onClick={() => insertFormatting("\n- [ ] ", "")}>
-              <IconListCheck size={14} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Code">
-            <ActionIcon variant="subtle" size="sm" color="gray" onClick={() => insertFormatting("`", "`")}>
-              <IconCode size={14} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label="Link">
-            <ActionIcon variant="subtle" size="sm" color="gray" onClick={() => insertFormatting("[", "](url)")}>
-              <IconLink size={14} />
-            </ActionIcon>
-          </Tooltip>
-        </Group>
-
-        <Textarea
-          ref={contentRef}
-          placeholder="Start writing..."
-          defaultValue=""
-          minRows={8}
-          maxRows={16}
-          autosize
-          variant="unstyled"
-          px="lg"
-          pb="md"
-          styles={{
-            input: {
-              fontFamily: "var(--mantine-font-family)",
-              lineHeight: 1.7,
-              "&::placeholder": { color: "var(--mantine-color-gray-5)" },
-            },
-          }}
-        />
+        <div className="px-3 sm:px-4">
+          <Editor
+            content={contentJson ?? textToEditorContent("")}
+            onChange={(json, _html, text) => {
+              setContentJson(json);
+              setContentText(text);
+            }}
+            placeholder="Start writing..."
+            minHeight="150px"
+          />
+        </div>
 
         <Group
           px="lg"

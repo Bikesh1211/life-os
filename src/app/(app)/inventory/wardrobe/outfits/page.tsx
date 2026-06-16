@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card, Text, Group, Stack, SimpleGrid, Title, Button, Badge,
-  Skeleton, Center, ActionIcon, Menu, Modal, TextInput, Textarea, Select, MultiSelect,
+  Skeleton, Center, ActionIcon, Menu, Modal, TextInput, Select, MultiSelect,
 } from "@mantine/core";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconPlus, IconPalette, IconEdit, IconTrash, IconHeart, IconHeartFilled,
@@ -155,7 +157,14 @@ export default function WardrobeOutfitsPage() {
       <Modal opened={opened} onClose={close} title={editOutfit ? "Edit Outfit" : "Create Outfit"} size="lg">
         <Stack gap="sm">
           <TextInput label="Name" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-          <Textarea label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+          <Text size="sm" fw={500}>Description</Text>
+          <Editor
+            content={textToEditorContent(form.description)}
+            onChange={(_json, _html, text) => setForm({ ...form, description: text })}
+            placeholder="Description"
+            minHeight="80px"
+            showToolbar={false}
+          />
           <Group grow>
             <Select label="Occasion" data={OCCASIONS.map(o => ({ value: o, label: o.charAt(0).toUpperCase() + o.slice(1) }))}
               value={form.occasion} onChange={v => setForm({ ...form, occasion: v })} clearable searchable />

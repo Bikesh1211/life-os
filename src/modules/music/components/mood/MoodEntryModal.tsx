@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Modal, Textarea, Button, Group } from "@mantine/core";
+import { Modal, Button, Group, Text } from "@mantine/core";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const moods = [
@@ -87,13 +89,13 @@ export function MoodEntryModal({ opened, onClose }: MoodEntryModalProps) {
           </div>
         </div>
 
-        <Textarea
-          label="Note (optional)"
+        <Text size="sm" fw={500}>Note (optional)</Text>
+        <Editor
+          content={textToEditorContent(note)}
+          onChange={(_json, _html, text) => setNote(text)}
           placeholder="What are you listening to?"
-          value={note}
-          onChange={(e) => setNote(e.currentTarget.value)}
-          minRows={2}
-          autosize
+          minHeight="80px"
+          showToolbar={false}
         />
 
         <Group justify="flex-end">

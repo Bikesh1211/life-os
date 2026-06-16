@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Modal, TextInput, Select, Stack, Group, Button, Textarea, NumberInput, Switch, SegmentedControl } from "@mantine/core";
+import { Modal, TextInput, Select, Stack, Group, Button, NumberInput, Switch, Text } from "@mantine/core";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { CLOTHING_CATEGORIES, CLOTHING_SUBCATEGORIES, COLORS, SIZES, CONDITIONS, SEASONS } from "@/modules/wardrobe/constants";
 
 interface ItemFormData {
@@ -74,7 +76,14 @@ export default function ItemFormModal({
     <Modal opened={opened} onClose={onClose} title={item ? "Edit Item" : "Add New Item"} size="lg">
       <Stack gap="sm">
         <TextInput label="Name" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
-        <Textarea label="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+        <Text size="sm" fw={500}>Description</Text>
+        <Editor
+          content={textToEditorContent(form.description)}
+          onChange={(_json, _html, text) => setForm({ ...form, description: text })}
+          placeholder="Description"
+          minHeight="80px"
+          showToolbar={false}
+        />
 
         <Group grow>
           <Select label="Category" required data={CLOTHING_CATEGORIES.map(c => ({ value: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))}
@@ -107,7 +116,14 @@ export default function ItemFormModal({
           <TextInput label="Current Value ($)" value={form.currentValue} onChange={e => setForm({ ...form, currentValue: e.target.value })} />
         </Group>
 
-        <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+        <Text size="sm" fw={500}>Notes</Text>
+        <Editor
+          content={textToEditorContent(form.notes)}
+          onChange={(_json, _html, text) => setForm({ ...form, notes: text })}
+          placeholder="Notes"
+          minHeight="80px"
+          showToolbar={false}
+        />
 
         <Switch label="Mark as Favorite" checked={form.isFavorite} onChange={e => setForm({ ...form, isFavorite: e.target.checked })} />
 

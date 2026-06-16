@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Stack,
   Title,
+  Text,
   TextInput,
-  Textarea,
   Select,
   NumberInput,
   Group,
@@ -14,6 +14,8 @@ import {
   TagsInput,
 } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import type { KnowledgeEntry } from "@/modules/knowledge";
 
 type Props = {
@@ -45,6 +47,15 @@ export function EntryForm({ subjects, initialData }: Props) {
   const [loading, setLoading] = useState(false);
   const [tags, setTags] = useState<string[]>(initialData?.tags ?? []);
 
+  const [summaryText, setSummaryText] = useState(initialData?.summary ?? "");
+  const [detailedNotesText, setDetailedNotesText] = useState(initialData?.detailedNotes ?? "");
+  const [keyTakeawaysText, setKeyTakeawaysText] = useState(initialData?.keyTakeaways ?? "");
+  const [examplesText, setExamplesText] = useState(initialData?.examples ?? "");
+  const [resourcesText, setResourcesText] = useState(initialData?.resources ?? "");
+  const [nextActionsText, setNextActionsText] = useState(initialData?.nextActions ?? "");
+
+  const formRef = useRef<HTMLFormElement>(null);
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -57,11 +68,11 @@ export function EntryForm({ subjects, initialData }: Props) {
       dateLearned: new Date(
         form.get("dateLearned") as string,
       ).toISOString(),
-      summary: (form.get("summary") as string) || undefined,
-      detailedNotes: (form.get("detailedNotes") as string) || undefined,
-      keyTakeaways: (form.get("keyTakeaways") as string) || undefined,
-      examples: (form.get("examples") as string) || undefined,
-      resources: (form.get("resources") as string) || undefined,
+      summary: summaryText || undefined,
+      detailedNotes: detailedNotesText || undefined,
+      keyTakeaways: keyTakeawaysText || undefined,
+      examples: examplesText || undefined,
+      resources: resourcesText || undefined,
       tags: tags.length > 0 ? tags : undefined,
       difficultyLevel: form.get("difficultyLevel") || undefined,
       learningSource: form.get("learningSource") || undefined,
@@ -75,7 +86,7 @@ export function EntryForm({ subjects, initialData }: Props) {
       timeSpent: form.get("timeSpent")
         ? Number(form.get("timeSpent"))
         : undefined,
-      nextActions: (form.get("nextActions") as string) || undefined,
+      nextActions: nextActionsText || undefined,
     };
 
     try {
@@ -155,46 +166,59 @@ export function EntryForm({ subjects, initialData }: Props) {
           }
         />
 
-        <Textarea
-          name="summary"
-          label="Summary"
-          minRows={2}
-          maxRows={4}
-          defaultValue={initialData?.summary ?? ""}
-        />
+        <div>
+          <Text size="sm" fw={500} mb={4}>Summary</Text>
+          <Editor
+            content={textToEditorContent(initialData?.summary)}
+            onChange={(_json, _html, text) => setSummaryText(text)}
+            placeholder="Summary"
+            minHeight="80px"
+            showToolbar={false}
+          />
+        </div>
 
-        <Textarea
-          name="detailedNotes"
-          label="Detailed Notes (Markdown)"
-          minRows={6}
-          maxRows={20}
-          autosize
-          defaultValue={initialData?.detailedNotes ?? ""}
-        />
+        <div>
+          <Text size="sm" fw={500} mb={4}>Detailed Notes</Text>
+          <Editor
+            content={textToEditorContent(initialData?.detailedNotes)}
+            onChange={(_json, _html, text) => setDetailedNotesText(text)}
+            placeholder="Write your detailed notes..."
+            minHeight="200px"
+          />
+        </div>
 
-        <Textarea
-          name="keyTakeaways"
-          label="Key Takeaways"
-          minRows={3}
-          maxRows={6}
-          defaultValue={initialData?.keyTakeaways ?? ""}
-        />
+        <div>
+          <Text size="sm" fw={500} mb={4}>Key Takeaways</Text>
+          <Editor
+            content={textToEditorContent(initialData?.keyTakeaways)}
+            onChange={(_json, _html, text) => setKeyTakeawaysText(text)}
+            placeholder="Key takeaways"
+            minHeight="100px"
+            showToolbar={false}
+          />
+        </div>
 
-        <Textarea
-          name="examples"
-          label="Examples"
-          minRows={3}
-          maxRows={6}
-          defaultValue={initialData?.examples ?? ""}
-        />
+        <div>
+          <Text size="sm" fw={500} mb={4}>Examples</Text>
+          <Editor
+            content={textToEditorContent(initialData?.examples)}
+            onChange={(_json, _html, text) => setExamplesText(text)}
+            placeholder="Examples"
+            minHeight="100px"
+            showToolbar={false}
+          />
+        </div>
 
-        <Textarea
-          name="resources"
-          label="Resources / References"
-          minRows={2}
-          maxRows={4}
-          defaultValue={initialData?.resources ?? ""}
-        />
+        <div>
+          <Text size="sm" fw={500} mb={4}>Resources / References</Text>
+          <Editor
+            content={textToEditorContent(initialData?.resources)}
+            onChange={(_json, _html, text) => setResourcesText(text)}
+            placeholder="Resources"
+            minHeight="80px"
+            showToolbar={false}
+          />
+        </div>
 
         <TagsInput
           label="Tags"
@@ -250,13 +274,16 @@ export function EntryForm({ subjects, initialData }: Props) {
           />
         </Group>
 
-        <Textarea
-          name="nextActions"
-          label="Next Actions"
-          minRows={2}
-          maxRows={4}
-          defaultValue={initialData?.nextActions ?? ""}
-        />
+        <div>
+          <Text size="sm" fw={500} mb={4}>Next Actions</Text>
+          <Editor
+            content={textToEditorContent(initialData?.nextActions)}
+            onChange={(_json, _html, text) => setNextActionsText(text)}
+            placeholder="Next actions"
+            minHeight="80px"
+            showToolbar={false}
+          />
+        </div>
 
         <Group justify="flex-end">
           <Button

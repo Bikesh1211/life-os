@@ -12,6 +12,8 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { IconClock, IconExternalLink, IconHeart, IconHeartFilled, IconMicrophone, IconNote, IconBooks, IconFolder } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 
 type TrackData = {
   id: string;
@@ -369,13 +371,15 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
         <div className="mt-8">
           <SectionHeading title="Notes" />
           <div className="mb-4 flex gap-3">
-            <textarea
-              value={noteInput}
-              onChange={(e) => setNoteInput(e.target.value)}
-              placeholder="Write a note about this track..."
-              rows={2}
-              className="flex-1 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3 text-sm text-[var(--mantine-color-text,#c1c2c5)] placeholder-[var(--mantine-color-dimmed,#5c5f66)] outline-none resize-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
-            />
+            <div className="flex-1">
+              <Editor
+                content={textToEditorContent(noteInput)}
+                onChange={(_json, _html, text) => setNoteInput(text)}
+                placeholder="Write a note about this track..."
+                minHeight="80px"
+                showToolbar={false}
+              />
+            </div>
             <button
               onClick={handleSaveNote}
               disabled={savingNote || !noteInput.trim()}

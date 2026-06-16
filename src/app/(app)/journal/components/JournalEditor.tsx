@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconArrowLeft } from "@tabler/icons-react";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 
 type JournalEditorProps = {
   initialTitle?: string;
@@ -20,17 +22,8 @@ export function JournalEditor({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState(initialTitle);
-  const [content, setContent] = useState(initialContent);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  function handleContentChange(e: React.ChangeEvent<HTMLTextAreaElement>) {
-    setContent(e.currentTarget.value);
-    const el = e.currentTarget;
-    requestAnimationFrame(() => {
-      el.style.height = "auto";
-      el.style.height = el.scrollHeight + "px";
-    });
-  }
+  const [contentJson, setContentJson] = useState<unknown>(textToEditorContent(initialContent));
+  const [contentText, setContentText] = useState(initialContent);
 
   const handleSave = useCallback(async () => {
     setLoading(true);
@@ -40,7 +33,7 @@ export function JournalEditor({
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, content }),
+        body: JSON.stringify({ title, content: contentText }),
       });
       if (!res.ok) throw new Error("Failed to save");
       const data = await res.json();
@@ -63,7 +56,7 @@ export function JournalEditor({
     } finally {
       setLoading(false);
     }
-  }, [title, content, entryId, router]);
+  }, [title, contentText, entryId, router]);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col px-4 py-4">
@@ -95,14 +88,17 @@ export function JournalEditor({
 
       <div className="my-3 h-px bg-gray-200 dark:bg-gray-700" />
 
-      <textarea
-        ref={textareaRef}
-        value={content}
-        onChange={handleContentChange}
-        placeholder="Write your thoughts..."
-        className="w-full flex-1 resize-none border-0 bg-transparent text-base leading-relaxed outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
-        style={{ minHeight: "360px" }}
-      />
+      <div className="flex-1 overflow-y-auto">
+        <Editor
+          content={contentJson}
+          onChange={(json, _html, text) => {
+            setContentJson(json);
+            setContentText(text);
+          }}
+          placeholder="Write your thoughts..."
+          minHeight="360px"
+        />
+      </div>
     </div>
   );
 }

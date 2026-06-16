@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Modal, TextInput, Select, Stack, Group, Button, Textarea, Switch, JsonInput } from "@mantine/core";
+import { Modal, TextInput, Select, Stack, Group, Button, Switch, JsonInput, Text } from "@mantine/core";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { TECH_CATEGORIES, OWNERSHIP_STATUSES, CONDITIONS } from "@/modules/tech-gear/constants";
 
 interface FormData {
@@ -81,7 +83,14 @@ export default function ItemFormModal({
         {form.ownershipStatus === "loaned-out" && (
           <TextInput label="Loaned To" value={form.loanedTo} onChange={e => setForm({ ...form, loanedTo: e.target.value })} />
         )}
-        <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+        <Text size="sm" fw={500}>Notes</Text>
+        <Editor
+          content={textToEditorContent(form.notes)}
+          onChange={(_json, _html, text) => setForm({ ...form, notes: text })}
+          placeholder="Notes"
+          minHeight="80px"
+          showToolbar={false}
+        />
         <Switch label="Mark as Favorite" checked={form.isFavorite} onChange={e => setForm({ ...form, isFavorite: e.target.checked })} />
         <Group justify="flex-end" mt="md">
           <Button variant="subtle" onClick={onClose}>Cancel</Button>

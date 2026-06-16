@@ -14,7 +14,6 @@ import {
   Tooltip,
   Modal,
   TextInput,
-  Textarea,
   Select,
   NumberInput,
   Divider,

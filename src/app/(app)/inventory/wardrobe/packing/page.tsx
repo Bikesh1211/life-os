@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react";
 import {
   Card, Text, Group, Stack, SimpleGrid, Title, Button, Badge,
-  TextInput, Textarea, Modal, Checkbox, Skeleton, Center, ActionIcon, Menu,
+  TextInput, Modal, Checkbox, Skeleton, Center, ActionIcon, Menu,
 } from "@mantine/core";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus, IconBackpack, IconEdit, IconTrash, IconDotsVertical, IconCheck, IconPlane } from "@tabler/icons-react";
 
@@ -90,7 +92,14 @@ export default function WardrobePackingPage() {
             <TextInput label="Start Date" type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} />
             <TextInput label="End Date" type="date" value={form.endDate} onChange={e => setForm({ ...form, endDate: e.target.value })} />
           </Group>
-          <Textarea label="Notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
+          <Text size="sm" fw={500}>Notes</Text>
+          <Editor
+            content={textToEditorContent(form.notes)}
+            onChange={(_json, _html, text) => setForm({ ...form, notes: text })}
+            placeholder="Notes"
+            minHeight="80px"
+            showToolbar={false}
+          />
           <Button mt="md">Create List</Button>
         </Stack>
       </Modal>

@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { IconPlus } from "@tabler/icons-react";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 
 type JournalEntry = {
   id: string;
@@ -93,12 +95,12 @@ export function JournalContent() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4"
         >
-          <textarea
-            value={entry}
-            onChange={(e) => setEntry(e.target.value)}
+          <Editor
+            content={textToEditorContent(entry)}
+            onChange={(_json, _html, text) => setEntry(text)}
             placeholder="What are you listening to? How does it make you feel?"
-            rows={4}
-            className="w-full resize-none bg-transparent text-sm text-[var(--mantine-color-text,#c1c2c5)] placeholder-[var(--mantine-color-dimmed,#5c5f66)] outline-none"
+            minHeight="120px"
+            showToolbar={false}
           />
           <div className="mt-3 flex items-center gap-3">
             <input

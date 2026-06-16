@@ -8,13 +8,14 @@ import {
   Button,
   Group,
   Stack,
-  Textarea,
   Switch,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { PAYMENT_METHODS } from "@/modules/expenses/constants";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 
 type QuickAddModalProps = {
   opened: boolean;
@@ -152,12 +153,12 @@ export function QuickAddModal({
             {...form.getInputProps("description")}
           />
 
-          <Textarea
-            label="Notes"
+          <Editor
+            content={textToEditorContent(form.getValues().notes)}
+            onChange={(_json, _html, text) => form.setFieldValue("notes", text)}
             placeholder="Add notes..."
-            rows={2}
-            key={form.key("notes")}
-            {...form.getInputProps("notes")}
+            minHeight="80px"
+            showToolbar={false}
           />
 
           <Switch

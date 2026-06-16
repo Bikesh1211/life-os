@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   Card, Text, Group, Stack, SimpleGrid, Title, Button, TextInput, Select,
   Badge, ActionIcon, Menu, Skeleton, Center, SegmentedControl, Chip,
-  Modal, Switch, Textarea, NumberInput,
+  Modal, Switch, NumberInput,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {

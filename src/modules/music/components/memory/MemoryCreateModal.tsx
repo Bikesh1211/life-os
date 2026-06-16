@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Modal, TextInput, Textarea, Group, Button, Loader, Popover } from "@mantine/core";
+import { Modal, TextInput, Group, Button, Loader, Popover, Text } from "@mantine/core";
+import { Editor } from "@/components/editor";
+import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { IconSearch, IconX, IconMusic, IconMicrophone, IconBooks } from "@tabler/icons-react";
 
@@ -173,13 +175,13 @@ export function MemoryCreateModal({ opened, onClose, initialData }: MemoryCreate
           required
         />
 
-        <Textarea
-          label="Context"
+        <Text size="sm" fw={500}>Context</Text>
+        <Editor
+          content={textToEditorContent(context)}
+          onChange={(_json, _html, text) => setContext(text)}
           placeholder="Describe this memory..."
-          value={context}
-          onChange={(e) => setContext(e.currentTarget.value)}
-          minRows={3}
-          autosize
+          minHeight="100px"
+          showToolbar={false}
         />
 
         <div>
