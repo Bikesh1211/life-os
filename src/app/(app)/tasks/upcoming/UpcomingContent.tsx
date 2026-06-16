@@ -1,27 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Stack, Title, Text, Paper, Group, ThemeIcon } from "@mantine/core";
 import { IconCalendarDue } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useTasks } from "@/modules/tasks/hooks";
 import { TaskCard } from "@/modules/tasks/components/TaskCard";
 import { TaskFormModal } from "@/modules/tasks/components/TaskFormModal";
+import { TaskFilters, type FilterValues } from "@/modules/tasks/components/TaskFilters";
+import { BulkActionBar } from "@/modules/tasks/components/BulkActionBar";
+import { useTaskKeyboardShortcuts } from "@/modules/tasks/hooks/useTaskKeyboardShortcuts";
 import type { Task } from "@/modules/tasks/repository";
 
 export function UpcomingContent() {
   const dueDateFrom = dayjs().add(1, "day").startOf("day").toISOString();
   const dueDateTo = dayjs().add(30, "day").endOf("day").toISOString();
 
-  const { data: tasks, isLoading } = useTasks({
-    dueDateFrom,
-    dueDateTo,
-    status: "active",
-    sortBy: "dueDate",
-    sortOrder: "asc",
+  const [filters, setFilters] = useState<FilterValues>({
+    search: "", status: "active", priority: "", labelIds: [],
   });
+  const queryFilters: Record<string, unknown> = {
+    dueDateFrom, dueDateTo, sortBy: "dueDate", sortOrder: "asc",
+  };
+  if (filters.search) queryFilters.search = filters.search;
+  if (filters.status) queryFilters.status = filters.status;
+  if (filters.priority) queryFilters.priority = filters.priority;
+  if (filters.labelIds.length > 0) queryFilters.labelIds = filters.labelIds;
 
+  const { data: tasks, isLoading } = useTasks(queryFilters);
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectionMode, setSelectionMode] = useState(false);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  }, []);
+
+  useTaskKeyboardShortcuts({
+    onNewTask: () => setEditTask(null),
+    onToggleSelection: () => setSelectionMode((p) => !p),
+    onEscape: () => { setSelectedIds([]); setSelectionMode(false); },
+  });
 
   const grouped = tasks?.reduce<Record<string, Task[]>>((acc, task) => {
     const key = task.dueDate ? dayjs(task.dueDate).format("YYYY-MM-DD") : "unscheduled";
@@ -42,6 +63,13 @@ export function UpcomingContent() {
         </div>
       </Group>
 
+      <TaskFilters filters={filters} onChange={setFilters} />
+
+      <BulkActionBar
+        selectedIds={selectedIds}
+        onClear={() => { setSelectedIds([]); setSelectionMode(false); }}
+      />
+
       {isLoading ? (
         <Text c="dimmed">Loading...</Text>
       ) : !tasks || tasks.length === 0 ? (
@@ -61,7 +89,14 @@ export function UpcomingContent() {
               </Text>
               <Stack gap="sm">
                 {dateTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} onEdit={setEditTask} />
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onEdit={setEditTask}
+                    selected={selectedIds.includes(task.id)}
+                    onSelect={toggleSelect}
+                    selectionMode={selectionMode}
+                  />
                 ))}
               </Stack>
             </div>

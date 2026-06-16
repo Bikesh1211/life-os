@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { notifications } from "@mantine/notifications";
 import type { Task } from "./repository";
 
 const TASKS_KEY = "tasks" as const;
@@ -82,7 +83,11 @@ export function useCreateTask() {
   return useMutation({
     mutationFn: createTask,
     onSuccess: () => {
+      notifications.show({ title: "Created", message: "Task created", color: "green" });
       queryClient.invalidateQueries({ queryKey: [TASKS_KEY] });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to create task", color: "red" });
     },
   });
 }
@@ -99,12 +104,16 @@ export function useUpdateTask() {
       );
       return { previousQueries };
     },
+    onSuccess: () => {
+      notifications.show({ title: "Updated", message: "Task updated", color: "green" });
+    },
     onError: (_err, _vars, context) => {
       if (context?.previousQueries) {
         for (const [key, data] of context.previousQueries) {
           queryClient.setQueryData(key, data);
         }
       }
+      notifications.show({ title: "Error", message: "Failed to update task", color: "red" });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [TASKS_KEY] });
@@ -117,7 +126,11 @@ export function useDeleteTask() {
   return useMutation({
     mutationFn: deleteTask,
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Task deleted", color: "red" });
       queryClient.invalidateQueries({ queryKey: [TASKS_KEY] });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to delete task", color: "red" });
     },
   });
 }
@@ -161,7 +174,11 @@ export function useCreateProject() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Created", message: "Project created", color: "green" });
       queryClient.invalidateQueries({ queryKey: [PROJECTS_KEY] });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to create project", color: "red" });
     },
   });
 }
@@ -179,7 +196,11 @@ export function useUpdateProject() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Updated", message: "Project updated", color: "green" });
       queryClient.invalidateQueries({ queryKey: [PROJECTS_KEY] });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to update project", color: "red" });
     },
   });
 }
@@ -193,7 +214,105 @@ export function useDeleteProject() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Project deleted", color: "red" });
       queryClient.invalidateQueries({ queryKey: [PROJECTS_KEY] });
+      queryClient.invalidateQueries({ queryKey: [TASKS_KEY] });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to delete project", color: "red" });
+    },
+  });
+}
+
+// ── Label Queries ──
+
+export function useLabels() {
+  return useQuery({
+    queryKey: [LABELS_KEY],
+    queryFn: async () => {
+      const res = await fetch("/api/tasks/labels");
+      if (!res.ok) throw new Error("Failed to fetch labels");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateLabel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: Record<string, unknown>) => {
+      const res = await fetch("/api/tasks/labels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to create label");
+      return res.json();
+    },
+    onSuccess: () => {
+      notifications.show({ title: "Created", message: "Label created", color: "green" });
+      queryClient.invalidateQueries({ queryKey: [LABELS_KEY] });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to create label", color: "red" });
+    },
+  });
+}
+
+export function useUpdateLabel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & Record<string, unknown>) => {
+      const res = await fetch(`/api/tasks/labels/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to update label");
+      return res.json();
+    },
+    onSuccess: () => {
+      notifications.show({ title: "Updated", message: "Label updated", color: "green" });
+      queryClient.invalidateQueries({ queryKey: [LABELS_KEY] });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to update label", color: "red" });
+    },
+  });
+}
+
+export function useDeleteLabel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/tasks/labels/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete label");
+      return res.json();
+    },
+    onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Label deleted", color: "red" });
+      queryClient.invalidateQueries({ queryKey: [LABELS_KEY] });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to delete label", color: "red" });
+    },
+  });
+}
+
+export function useSetTaskLabels() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ taskId, labelIds }: { taskId: string; labelIds: string[] }) => {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labelIds }),
+      });
+      if (!res.ok) throw new Error("Failed to set task labels");
+      return res.json();
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [TASKS_KEY] });
     },
   });

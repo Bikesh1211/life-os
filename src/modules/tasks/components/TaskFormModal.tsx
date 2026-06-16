@@ -9,10 +9,11 @@ import {
   Stack,
   Group,
   Button,
+  MultiSelect,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
-import { useCreateTask, useUpdateTask, useProjects } from "../hooks";
+import { useCreateTask, useUpdateTask, useProjects, useLabels, useTasks } from "../hooks";
 import type { Task } from "../repository";
 
 type TaskFormModalProps = {
@@ -32,6 +33,8 @@ export function TaskFormModal({
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const { data: projects } = useProjects();
+  const { data: labels } = useLabels();
+  const { data: allTasks } = useTasks({ status: "active", limit: 200 });
 
   const form = useForm({
     mode: "uncontrolled",
@@ -44,6 +47,8 @@ export function TaskFormModal({
       dueDate: task?.dueDate ? new Date(task.dueDate).toISOString().slice(0, 16) : "",
       estimatedMinutes: task?.estimatedMinutes ? String(task.estimatedMinutes) : "",
       recurrence: task?.recurrence ?? "none",
+      parentId: task?.parentId ?? "",
+      labelIds: (task as any)?.labels?.map((l: any) => l.id) ?? [],
     },
   });
 
@@ -57,6 +62,8 @@ export function TaskFormModal({
       dueDate: values.dueDate ? new Date(values.dueDate).toISOString() : null,
       estimatedMinutes: values.estimatedMinutes ? Number(values.estimatedMinutes) : null,
       recurrence: values.recurrence,
+      parentId: values.parentId || null,
+      labelIds: values.labelIds,
     };
 
     if (task) {
@@ -75,6 +82,18 @@ export function TaskFormModal({
   useEffect(() => {
     if (!opened) onClose();
   }, [opened, onClose]);
+
+  const parentOptions = (allTasks ?? [])
+    .filter((t: any) => t.id !== task?.id)
+    .map((t: any) => ({
+      value: t.id,
+      label: t.title.length > 50 ? t.title.slice(0, 50) + "..." : t.title,
+    }));
+
+  const labelOptions = (labels ?? []).map((l: any) => ({
+    value: l.id,
+    label: l.name,
+  }));
 
   return (
     <Modal
@@ -140,6 +159,26 @@ export function TaskFormModal({
             clearable
             key={form.key("projectId")}
             {...form.getInputProps("projectId")}
+          />
+
+          <Select
+            label="Parent Task (Subtask of)"
+            placeholder="None (top-level task)"
+            data={parentOptions}
+            clearable
+            searchable
+            key={form.key("parentId")}
+            {...form.getInputProps("parentId")}
+          />
+
+          <MultiSelect
+            label="Labels"
+            placeholder="Select labels"
+            data={labelOptions}
+            clearable
+            searchable
+            key={form.key("labelIds")}
+            {...form.getInputProps("labelIds")}
           />
 
           <Group gap="sm" grow>
