@@ -8,7 +8,6 @@ import { useState, type ReactNode } from "react";
 import { theme } from "@/core/design-system";
 import { ServiceWorkerRegister } from "./ServiceWorkerRegister";
 import { CommandPalette } from "@/components/CommandPalette";
-import { GlobalLoader } from "@/components/GlobalLoader";
   const localization = {
     signIn: {
       start: {
@@ -36,7 +35,6 @@ export function Providers({ children }: { children: ReactNode }) {
         <MantineProvider theme={theme} defaultColorScheme="auto">
           <Notifications />
           <ServiceWorkerRegister />
-          <GlobalLoader />
           <CommandPalette />
           {children}
         </MantineProvider>
