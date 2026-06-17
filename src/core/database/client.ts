@@ -15,6 +15,7 @@ import { coreTags, coreTaggings } from "@/core/tags/schema";
 import * as techGearSchema from "@/modules/tech-gear/schema";
 import * as gamificationSchema from "@/modules/gamification/schema";
 import * as travelSchema from "@/modules/travel/schema";
+import * as readingSchema from "@/modules/reading/schema";
 import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -43,8 +44,9 @@ export const db = drizzle(queryClient, {
        ...routinesSchema,
         ...techGearSchema,
         ...gamificationSchema,
-        ...travelSchema,
-       coreTags,
+         ...travelSchema,
+         ...readingSchema,
+        coreTags,
       coreTaggings,
      sidebarPreferences,
     },

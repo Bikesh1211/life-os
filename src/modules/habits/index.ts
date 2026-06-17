@@ -9,6 +9,7 @@ export {
   getRankings,
   getInsights,
   getSummary,
+  logCompletion,
   calculateStreak,
   analyticsFilterSchema,
 } from "./service";

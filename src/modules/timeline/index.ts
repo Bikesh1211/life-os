@@ -12,6 +12,8 @@ export {
   computeNextOccurrence,
   withComputedDuration,
 } from "./service";
+export { getStory } from "./story-service";
+export type { StoryCard, StoryDay, GetStoryParams, StoryCardSource } from "./story-service";
 export type {
   CreateEventParams,
   UpdateEventParams,

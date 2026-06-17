@@ -2,6 +2,7 @@ import { z } from "zod";
 import { cache } from "react";
 import * as repo from "./repository";
 import { awardXp } from "@/modules/gamification";
+import { createTimelineEvent } from "@/modules/timeline";
 
 // ── Constants ──
 
@@ -115,6 +116,31 @@ export async function createMoodLog(userId: string, params: CreateMoodLogParams)
   try {
     await awardXp(userId, "mood_logged", log.id, "Mood check-in logged", 2);
   } catch { }
+
+  try {
+    const avg = Math.round(
+      (log.happiness +
+        (11 - log.stress) +
+        (11 - log.anxiety) +
+        log.motivation +
+        log.energy +
+        log.confidence +
+        log.focus +
+        (11 - log.mentalFatigue)) /
+        8,
+    );
+    await createTimelineEvent(userId, {
+      title: `Mood check-in: ${avg}/10`,
+      description: validated.notes?.slice(0, 200),
+      eventDate: log.createdAt.toISOString(),
+      category: "health",
+      importance: "medium",
+      activityType: "mood_log",
+      linkedEntityId: log.id,
+      linkedEntityType: "mood",
+      mood: avg,
+    });
+  } catch {}
 
   return log;
 }

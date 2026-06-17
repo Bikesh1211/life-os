@@ -1,6 +1,7 @@
 import { z } from "zod";
 import dayjs from "dayjs";
 import * as repo from "./repository";
+import { createTimelineEvent } from "@/modules/timeline";
 
 export const analyticsFilterSchema = z.object({
   dateFrom: z.string().nullish(),
@@ -280,6 +281,37 @@ export async function getInsights(userId: string, params: AnalyticsFilterParams)
   }
 
   return insights;
+}
+
+export async function logCompletion(
+  userId: string,
+  habitId: string,
+  completedDate: string,
+  note?: string,
+) {
+  const completion = await repo.createCompletion({
+    userId,
+    habitId,
+    completedDate,
+    note,
+  });
+
+  try {
+    const habits = await repo.getHabits(userId);
+    const habit = habits.find((h) => h.id === habitId);
+    await createTimelineEvent(userId, {
+      title: `Habit: ${habit?.title ?? "Completed"}`,
+      description: note,
+      eventDate: new Date(completedDate + "T12:00:00").toISOString(),
+      category: "health",
+      importance: "low",
+      activityType: "habit",
+      linkedEntityId: completion.id,
+      linkedEntityType: "habit",
+    });
+  } catch {}
+
+  return completion;
 }
 
 export async function getSummary(userId: string) {

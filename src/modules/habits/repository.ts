@@ -25,6 +25,11 @@ export async function getHabitById(id: string, userId: string) {
     .then((r) => r[0] ?? null);
 }
 
+export async function createCompletion(input: CreateCompletionInput) {
+  const [completion] = await db.insert(habitCompletions).values(input).returning();
+  return completion;
+}
+
 export async function getCompletions(
   userId: string,
   opts: { habitId?: string; dateFrom?: string; dateTo?: string } = {},
