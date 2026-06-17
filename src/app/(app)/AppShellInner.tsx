@@ -1,7 +1,9 @@
 "use client";
 
+import { Suspense } from "react";
 import { AppShell, AppShellMain } from "@mantine/core";
 import { Sidebar, SidebarContent, Header, MobileDrawer, MobileNav } from "@/components/layout";
+import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import { APP_NAME } from "@/core/constants";
 import { useAppShell } from "./AppShellProvider";
 
@@ -11,6 +13,9 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <Suspense fallback={null}>
+        <NavigationProgress />
+      </Suspense>
       <AppShell
         padding="md"
         navbar={{

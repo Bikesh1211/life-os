@@ -21,6 +21,7 @@ import {
   deleteLabel,
   setTaskLabels,
   getTaskLabels as getTaskLabelsForTask,
+  getTaskLabelsBatch,
   type CreateTaskInput,
   type UpdateTaskInput,
   type TaskFilters,
@@ -161,14 +162,20 @@ export const getTasks = cache(async (userId: string, filters: Partial<TaskFilter
 
   const entries = await getTasksForUser(userId, dbFilters);
 
-  const tasksWithLabels = await Promise.all(
-    entries.map(async (task) => ({
-      ...task,
-      labels: await getTaskLabelsForTask(task.id),
-    })),
-  );
+  if (entries.length === 0) return [];
 
-  return tasksWithLabels;
+  const labelRows = await getTaskLabelsBatch(entries.map((t) => t.id));
+  const labelsByTaskId = new Map<string, { id: string; name: string; color: string }[]>();
+  for (const row of labelRows) {
+    const list = labelsByTaskId.get(row.taskId);
+    if (list) list.push(row);
+    else labelsByTaskId.set(row.taskId, [row]);
+  }
+
+  return entries.map((task) => ({
+    ...task,
+    labels: labelsByTaskId.get(task.id) ?? [],
+  }));
 });
 
 export async function updateTaskEntry(id: string, userId: string, params: UpdateTaskParams) {

@@ -432,3 +432,18 @@ export async function getTaskLabels(taskId: string) {
     .innerJoin(taskLabels, eq(taskTasksLabels.labelId, taskLabels.id))
     .where(eq(taskTasksLabels.taskId, taskId));
 }
+
+export async function getTaskLabelsBatch(taskIds: string[]) {
+  if (taskIds.length === 0) return [];
+  const rows = await db
+    .select({
+      taskId: taskTasksLabels.taskId,
+      id: taskLabels.id,
+      name: taskLabels.name,
+      color: taskLabels.color,
+    })
+    .from(taskTasksLabels)
+    .innerJoin(taskLabels, eq(taskTasksLabels.labelId, taskLabels.id))
+    .where(inArray(taskTasksLabels.taskId, taskIds));
+  return rows;
+}
