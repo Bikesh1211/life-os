@@ -11,6 +11,7 @@ import {
   ActionIcon,
   Tooltip,
   SimpleGrid,
+  useComputedColorScheme,
 } from "@mantine/core";
 import {
   IconMapPin,
@@ -169,6 +170,9 @@ function ActivityCard({
 }
 
 function DailySummary({ events }: { events: TimelineEvent[] }) {
+  const colorScheme = useComputedColorScheme();
+  const isDark = colorScheme === "dark";
+
   const stats = useMemo(() => {
     const total = events.length;
     let trackedMinutes = 0;
@@ -186,7 +190,7 @@ function DailySummary({ events }: { events: TimelineEvent[] }) {
   if (events.length === 0) return null;
 
   return (
-    <Paper p="sm" radius="md" bg="gray.0" className="dark:bg-gray-800">
+    <Paper p="sm" radius="md" bg={isDark ? "dark.6" : "gray.0"}>
       <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
         <Box className="text-center">
           <Text fw={700} size="xl" className="tabular-nums">
