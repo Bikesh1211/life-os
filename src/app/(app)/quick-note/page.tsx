@@ -1,12 +1,7 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconPencilBolt } from "@tabler/icons-react";
+import { QuickNoteContent } from "./QuickNoteContent";
+
+export const dynamic = "force-dynamic";
 
 export default function QuickNotePage() {
-  return (
-    <FeaturePlaceholder
-      title="Quick Note"
-      description="Capture ideas and thoughts instantly"
-      icon={IconPencilBolt}
-    />
-  );
+  return <QuickNoteContent />;
 }

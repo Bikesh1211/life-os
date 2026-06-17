@@ -1,12 +1,5 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconRoute } from "@tabler/icons-react";
+import { redirect } from "next/navigation";
 
-export default function ItinerariesPage() {
-  return (
-    <FeaturePlaceholder
-      title="Itineraries"
-      description="Plan your trips"
-      icon={IconRoute}
-    />
-  );
+export default function ItinerariesRedirect() {
+  redirect("/travel");
 }

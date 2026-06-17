@@ -1,0 +1,171 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import { IconPlus, IconBackpack, IconClock, IconCheck, IconWorld } from "@tabler/icons-react";
+import { Card, Text, Group, Badge, Button, Modal, TextInput, Textarea, Select, Stack } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
+import dayjs from "dayjs";
+
+type Trip = {
+  id: string;
+  title: string;
+  destination: string;
+  country: string | null;
+  coverImage: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  status: "planning" | "booked" | "in_progress" | "completed" | "cancelled";
+  budget: number | null;
+  currency: string;
+  travelers: number;
+  notes: string | null;
+  createdAt: string;
+};
+
+const statusConfig: Record<string, { color: string; label: string }> = {
+  planning: { color: "blue", label: "Planning" },
+  booked: { color: "indigo", label: "Booked" },
+  in_progress: { color: "green", label: "In Progress" },
+  completed: { color: "teal", label: "Completed" },
+  cancelled: { color: "gray", label: "Cancelled" },
+};
+
+function CreateTripModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
+  const [title, setTitle] = useState("");
+  const [destination, setDestination] = useState("");
+  const [country, setCountry] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  async function handleSubmit() {
+    if (!title.trim() || !destination.trim()) return;
+    await fetch("/api/travel/trips", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        destination,
+        country: country || undefined,
+        startDate: startDate ? new Date(startDate).toISOString() : null,
+        endDate: endDate ? new Date(endDate).toISOString() : null,
+      }),
+    });
+    onClose();
+    window.location.reload();
+  }
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Plan a Trip" size="md">
+      <Stack gap="sm">
+        <TextInput label="Title" placeholder="Summer in Europe" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required />
+        <TextInput label="Destination" placeholder="Paris, France" value={destination} onChange={(e) => setDestination(e.currentTarget.value)} required />
+        <TextInput label="Country" placeholder="France" value={country} onChange={(e) => setCountry(e.currentTarget.value)} />
+        <Group grow>
+          <TextInput label="Start Date" type="date" value={startDate} onChange={(e) => setStartDate(e.currentTarget.value)} />
+          <TextInput label="End Date" type="date" value={endDate} onChange={(e) => setEndDate(e.currentTarget.value)} />
+        </Group>
+        <Button fullWidth onClick={handleSubmit} mt="sm">Create Trip</Button>
+      </Stack>
+    </Modal>
+  );
+}
+
+export default function TripsPage() {
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [opened, { open, close }] = useDisclosure(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    fetch("/api/travel/trips")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setTrips)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mb-6 h-8 w-32 animate-pulse rounded bg-[var(--mantine-color-dark-6,#1a1b1e)]" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-36 animate-pulse rounded-xl bg-[var(--mantine-color-dark-6,#1a1b1e)]" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <Group justify="space-between" mb="lg">
+        <div>
+          <h2 className="text-2xl font-bold text-[var(--mantine-color-text,#c1c2c5)]">Trips</h2>
+          <Text size="sm" c="dimmed">{trips.length} trips planned</Text>
+        </div>
+        <Button leftSection={<IconPlus size={18} />} onClick={open}>New Trip</Button>
+      </Group>
+
+      <CreateTripModal opened={opened} onClose={close} />
+
+      {trips.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--mantine-color-dark-6,#1a1b1e)]">
+            <IconBackpack size={28} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
+          </div>
+          <h3 className="text-lg font-semibold">No Trips Yet</h3>
+          <p className="mt-1 text-sm text-[var(--mantine-color-dimmed,#5c5f66)]">Plan your first adventure.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {trips.map((trip, i) => (
+            <motion.div
+              key={trip.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <Card
+                shadow="sm"
+                padding="md"
+                radius="md"
+                withBorder
+                onClick={() => router.push(`/travel/trips/${trip.id}`)}
+                style={{ cursor: "pointer" }}
+              >
+                <Group justify="space-between" mb="xs">
+                  <Text fw={600} size="sm" lineClamp={1}>{trip.title}</Text>
+                  <Badge color={statusConfig[trip.status]?.color ?? "gray"} size="sm" variant="light">
+                    {statusConfig[trip.status]?.label ?? trip.status}
+                  </Badge>
+                </Group>
+                <Group gap={4} mb="sm">
+                  <IconWorld size={14} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
+                  <Text size="xs" c="dimmed">{trip.destination}</Text>
+                </Group>
+                <Group gap="xs">
+                  {trip.startDate && (
+                    <Group gap={4}>
+                      <IconClock size={12} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
+                      <Text size="xs" c="dimmed">{dayjs(trip.startDate).format("MMM D")}</Text>
+                    </Group>
+                  )}
+                  {trip.endDate && (
+                    <Text size="xs" c="dimmed">– {dayjs(trip.endDate).format("MMM D, YYYY")}</Text>
+                  )}
+                </Group>
+                {trip.budget && (
+                  <Text size="xs" c="dimmed" mt="xs">
+                    Budget: {trip.currency} ${(trip.budget / 100).toLocaleString()}
+                  </Text>
+                )}
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
