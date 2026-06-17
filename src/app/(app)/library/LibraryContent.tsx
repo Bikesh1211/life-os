@@ -252,6 +252,9 @@ function ReadingCard({
         <ActionIcon variant="subtle" size="sm" onClick={() => onToggleFavorite(item)}>
           {item.isFavorited ? <IconHeartFilled size={14} className="text-red-500" /> : <IconHeart size={14} />}
         </ActionIcon>
+        <ActionIcon variant="subtle" size="sm" color="red" onClick={() => onDelete(item.id)}>
+          <IconTrash size={14} />
+        </ActionIcon>
       </Group>
     );
   }
@@ -343,6 +346,9 @@ function ReadingCard({
         <ActionIcon variant="subtle" size="sm" onClick={() => onEdit(item)}>
           <IconEdit size={14} />
         </ActionIcon>
+        <ActionIcon variant="subtle" size="sm" color="red" onClick={() => onDelete(item.id)}>
+          <IconTrash size={14} />
+        </ActionIcon>
       </Group>
     </Card>
   );
@@ -367,6 +373,7 @@ function AddItemModal({
   const [status, setStatus] = useState<string>("want_to_read");
   const [tags, setTags] = useState("");
   const [pageCount, setPageCount] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
   const [loading, setLoading] = useState(false);
   type SearchResult = { title: string; authors: string[]; isbn: string; coverUrl?: string; pageCount?: number };
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(null);
@@ -396,6 +403,7 @@ function AddItemModal({
       if (isbn) body.isbn = isbn;
       if (url) body.url = url;
       if (pageCount) body.pageCount = parseInt(pageCount, 10);
+      if (coverUrl) body.coverUrl = coverUrl;
 
       const res = await fetch("/api/reading/items", {
         method: "POST",
@@ -413,6 +421,7 @@ function AddItemModal({
         setUrl("");
         setTags("");
         setPageCount("");
+        setCoverUrl("");
         setSearchResults(null);
         notifications.show({ title: "Added", message: `${TYPE_LABELS[type]} added to library`, color: "green" });
       }
@@ -426,6 +435,7 @@ function AddItemModal({
     setAuthors(result.authors.join(", "));
     if (result.isbn) setIsbn(result.isbn);
     if (result.pageCount) setPageCount(String(result.pageCount));
+    if (result.coverUrl) setCoverUrl(result.coverUrl);
     setSearchResults(null);
   };
 
@@ -553,6 +563,117 @@ function AddItemModal({
   );
 }
 
+// ─── Edit Item Modal ──────────────────────────────────────────────
+
+function EditItemModal({
+  item,
+  onClose,
+  onUpdated,
+}: {
+  item: ReadingItem;
+  onClose: () => void;
+  onUpdated: (item: ReadingItem) => void;
+}) {
+  const [title, setTitle] = useState(item.title);
+  const [authors, setAuthors] = useState(item.authors?.join(", ") ?? "");
+  const [status, setStatus] = useState(item.status);
+  const [pageCount, setPageCount] = useState(String(item.pageCount ?? ""));
+  const [currentPage, setCurrentPage] = useState(String(item.currentPage ?? ""));
+  const [isbn, setIsbn] = useState(item.isbn ?? "");
+  const [coverUrl, setCoverUrl] = useState(item.coverUrl ?? "");
+  const [tags, setTags] = useState(item.tags?.join(", ") ?? "");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    try {
+      const body: Record<string, unknown> = {
+        title,
+        authors: authors ? authors.split(",").map((a: string) => a.trim()) : [],
+        status,
+        tags: tags ? tags.split(",").map((t: string) => t.trim()) : [],
+      };
+      if (pageCount) body.pageCount = parseInt(pageCount, 10);
+      if (currentPage) body.currentPage = parseInt(currentPage, 10);
+      if (isbn) body.isbn = isbn;
+      if (coverUrl) body.coverUrl = coverUrl;
+
+      const res = await fetch(`/api/reading/items/${item.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        const updated = await res.json();
+        onUpdated(updated);
+        onClose();
+        notifications.show({ title: "Updated", message: "Item updated", color: "green" });
+      }
+    } catch {} finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal opened onClose={onClose} title="Edit Item" size="lg">
+      <Stack gap="sm">
+        <TextInput label="Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required />
+        <TextInput
+          label="Authors (comma separated)"
+          value={authors}
+          onChange={(e) => setAuthors(e.currentTarget.value)}
+        />
+        <TextInput
+          label="Cover URL"
+          value={coverUrl}
+          onChange={(e) => setCoverUrl(e.currentTarget.value)}
+          placeholder="https://..."
+        />
+        <TextInput
+          label="ISBN"
+          value={isbn}
+          onChange={(e) => setIsbn(e.currentTarget.value)}
+        />
+        <Group grow>
+          <TextInput
+            label="Page Count"
+            value={pageCount}
+            onChange={(e) => setPageCount(e.currentTarget.value)}
+            type="number"
+          />
+          <TextInput
+            label="Current Page"
+            value={currentPage}
+            onChange={(e) => setCurrentPage(e.currentTarget.value)}
+            type="number"
+          />
+        </Group>
+        <Select
+          label="Status"
+          value={status}
+          onChange={(v) => setStatus(v ?? "want_to_read")}
+          data={[
+            { value: "want_to_read", label: "Want to Read" },
+            { value: "reading", label: "Reading" },
+            { value: "completed", label: "Completed" },
+            { value: "on_hold", label: "On Hold" },
+            { value: "dropped", label: "Dropped" },
+          ]}
+        />
+        <TextInput
+          label="Tags (comma separated)"
+          value={tags}
+          onChange={(e) => setTags(e.currentTarget.value)}
+        />
+        <Button onClick={handleSubmit} loading={loading} fullWidth mt="sm">
+          Save Changes
+        </Button>
+      </Stack>
+    </Modal>
+  );
+}
+
 // ─── Main Library Content ─────────────────────────────────────────
 
 export function LibraryContent({ initialDashboard }: Props) {
@@ -565,6 +686,7 @@ export function LibraryContent({ initialDashboard }: Props) {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
+  const [editingItem, setEditingItem] = useState<ReadingItem | null>(null);
 
   const TAB_MAP: Record<string, { type?: string; label: string; icon: React.ReactNode }> = {
     all: { label: "All", icon: <IconBooks size={14} /> },
@@ -631,8 +753,15 @@ export function LibraryContent({ initialDashboard }: Props) {
   };
 
   const handleEdit = (item: ReadingItem) => {
-    // For v1, inline status change dropdown on the card
-    // Full edit in modal later
+    setEditingItem(item);
+  };
+
+  const handleUpdated = (updated: ReadingItem) => {
+    setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
+    if (dashboard) {
+      setDashboard((prev) => prev ? { ...prev } : prev);
+    }
+    setEditingItem(null);
   };
 
   return (
@@ -760,6 +889,9 @@ export function LibraryContent({ initialDashboard }: Props) {
       </Stack>
 
       <AddItemModal opened={addOpened} onClose={closeAdd} onCreated={handleCreated} />
+      {editingItem && (
+        <EditItemModal item={editingItem} onClose={() => setEditingItem(null)} onUpdated={handleUpdated} />
+      )}
     </div>
   );
 }
