@@ -9,15 +9,13 @@ import { theme } from "@/core/design-system";
 import { ServiceWorkerRegister } from "./ServiceWorkerRegister";
 import { PrefetchProvider } from "./PrefetchProvider";
 import { CommandPalette } from "@/components/CommandPalette";
-import { GlobalLoader } from "@/components/GlobalLoader";
-
-const localization = {
-  signIn: {
-    start: {
-      title: "Sign in",
-      subtitle: "Welcome back",
+  const localization = {
+    signIn: {
+      start: {
+        title: "Sign in",
+        subtitle: "Welcome back",
+      },
     },
-  },
 } as const;
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -42,7 +40,6 @@ export function Providers({ children }: { children: ReactNode }) {
           <MantineProvider theme={theme} defaultColorScheme="auto">
             <Notifications />
             <ServiceWorkerRegister />
-            <GlobalLoader />
             <CommandPalette />
             {children}
           </MantineProvider>
