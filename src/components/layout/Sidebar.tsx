@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { AppShellNavbar } from "@mantine/core";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
@@ -655,7 +655,7 @@ export function SidebarContent({ collapsed = false, showBrand = true, showBottom
 
 /* ── Sidebar wrapper ── */
 
-export function Sidebar() {
+export const Sidebar = memo(function Sidebar() {
   const { opened, collapsed, minimalChrome } = useAppShell();
 
   if (!opened || minimalChrome) return null;
@@ -668,4 +668,4 @@ export function Sidebar() {
       <SidebarContent collapsed={collapsed} />
     </AppShellNavbar>
   );
-}
+});

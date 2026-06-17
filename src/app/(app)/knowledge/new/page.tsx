@@ -2,7 +2,6 @@ import { auth } from "@clerk/nextjs/server";
 import { getEntrySubjects } from "@/modules/knowledge";
 import { EntryForm } from "../components/EntryForm";
 
-export const dynamic = "force-dynamic";
 
 export default async function NewKnowledgeEntryPage() {
   const { userId } = await auth();

@@ -3,8 +3,6 @@ import { getKnowledgeEntry, getEntrySubjects } from "@/modules/knowledge";
 import { notFound } from "next/navigation";
 import { EntryForm } from "../../components/EntryForm";
 
-export const dynamic = "force-dynamic";
-
 type Props = {
   params: Promise<{ id: string }>;
 };

@@ -3,7 +3,7 @@ import { createTheme, type MantineThemeOverride } from "@mantine/core";
 export const theme: MantineThemeOverride = createTheme({
   primaryColor: "blue",
   fontFamily:
-    'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    'var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   fontFamilyMonospace:
     '"SF Mono", "Fira Code", "JetBrains Mono", "Fira Mono", Menlo, Monaco, monospace',
   defaultRadius: "md",

@@ -2,7 +2,6 @@ import { auth } from "@clerk/nextjs/server";
 import { getKnowledgeEntries, getDashboardStats } from "@/modules/knowledge";
 import { KnowledgeAnalytics } from "../components/KnowledgeAnalytics";
 
-export const dynamic = "force-dynamic";
 
 export default async function KnowledgeAnalyticsPage() {
   const { userId } = await auth();
