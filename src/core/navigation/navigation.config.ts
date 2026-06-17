@@ -406,25 +406,9 @@ export const navigation: NavGroup[] = [
       {
         label: "Travel",
         route: "/travel",
-        description: "Travel planning",
+        description: "Plan, track & remember your travels",
         icon: IconPlane,
         featureId: "travel",
-        children: [
-          {
-            label: "Itineraries",
-            route: "/travel/itineraries",
-            description: "Trip plans",
-            icon: IconRoute,
-            featureId: "itineraries",
-          },
-          {
-            label: "Bucket List",
-            route: "/travel/bucket-list",
-            description: "Dream destinations",
-            icon: IconStar,
-            featureId: "bucket_list",
-          },
-        ],
       },
     ],
   },
