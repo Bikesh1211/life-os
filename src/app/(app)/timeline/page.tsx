@@ -2,7 +2,6 @@ import { auth } from "@clerk/nextjs/server";
 import { getTimelineEvents } from "@/modules/timeline";
 import { TimelineContent } from "./TimelineContent";
 
-export const dynamic = "force-dynamic";
 
 type Props = {
   searchParams: Promise<{ tab?: string }>;

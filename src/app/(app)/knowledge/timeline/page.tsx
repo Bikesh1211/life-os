@@ -2,7 +2,6 @@ import { auth } from "@clerk/nextjs/server";
 import { getKnowledgeEntries } from "@/modules/knowledge";
 import { KnowledgeTimeline } from "../components/KnowledgeTimeline";
 
-export const dynamic = "force-dynamic";
 
 export default async function KnowledgeTimelinePage() {
   const { userId } = await auth();

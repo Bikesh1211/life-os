@@ -2,8 +2,6 @@ import { auth } from "@clerk/nextjs/server";
 import { getReadingItem, getReadingAnnotations, getReadingNotes, getReadingSessions } from "@/modules/reading";
 import { ItemDetailContent } from "./ItemDetailContent";
 
-export const dynamic = "force-dynamic";
-
 type Props = { params: Promise<{ id: string }> };
 
 export default async function ItemDetailPage({ params }: Props) {
