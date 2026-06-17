@@ -14,6 +14,7 @@ import {
   type CreateJournalEntryInput,
   type JournalFilters,
 } from "./repository";
+import { createTimelineEvent } from "@/modules/timeline";
 
 const moodValues = moodEnum.enumValues;
 
@@ -59,7 +60,23 @@ export async function createJournalEntry(userId: string, params: CreateEntryPara
     isPrivate: validated.isPrivate,
     eventDate: validated.eventDate ? new Date(validated.eventDate) : undefined,
   };
-  return createEntry(input);
+  const entry = await createEntry(input);
+
+  try {
+    const eventDate = validated.eventDate ? new Date(validated.eventDate) : entry.createdAt;
+    await createTimelineEvent(userId, {
+      title: validated.title,
+      description: validated.content?.slice(0, 200),
+      eventDate: eventDate.toISOString(),
+      category: "personal",
+      importance: "medium",
+      linkedEntityId: entry.id,
+      linkedEntityType: "journal",
+      tags: validated.tags,
+    });
+  } catch {}
+
+  return entry;
 }
 
 export const getJournalEntry = cache(async (id: string, userId: string) => {

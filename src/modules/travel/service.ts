@@ -5,6 +5,7 @@ import {
   travelTrips, travelTripDays, travelWishlist, travelVisitedPlaces,
   travelJournals, travelPhotos, travelExpenses, travelRestaurants,
 } from "./schema";
+import { createTimelineEvent } from "@/modules/timeline";
 
 const isoDate = z.string().datetime().optional().nullable();
 
@@ -126,6 +127,21 @@ export const travelService = {
   async createTrip(userId: string, data: any) {
     const p = createTripSchema.parse(data);
     const [r] = await db.insert(travelTrips).values({ ...p, userId, startDate: p.startDate ? new Date(p.startDate) : null, endDate: p.endDate ? new Date(p.endDate) : null }).returning();
+
+    try {
+      const eventDate = r.startDate ?? r.endDate ?? r.createdAt;
+      await createTimelineEvent(userId, {
+        title: `Trip: ${r.title}`,
+        description: `${r.destination}${r.country ? `, ${r.country}` : ""}`,
+        eventDate: eventDate.toISOString(),
+        category: "travel",
+        importance: "high",
+        linkedEntityId: r.id,
+        linkedEntityType: "trip",
+        location: r.destination,
+      });
+    } catch {}
+
     return r;
   },
   async updateTrip(userId: string, id: string, data: any) {

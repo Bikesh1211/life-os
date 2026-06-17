@@ -18,6 +18,7 @@ import {
   IconCalendar,
   IconChartBar,
   IconPin,
+  IconHistory,
 } from "@tabler/icons-react";
 import { QuickAdd } from "./components/QuickAdd";
 import { TodayView } from "./components/TodayView";
@@ -25,6 +26,7 @@ import { EventCard } from "./components/EventCard";
 import { TimelineView } from "./components/TimelineView";
 import { CalendarView } from "./components/CalendarView";
 import { InsightsPanel } from "./components/InsightsPanel";
+import { StoryView } from "./components/StoryView";
 import { EventCreateModal } from "./components/EventCreateModal";
 import { EventEditModal } from "./components/EventEditModal";
 import type { TimelineEvent } from "@/modules/timeline/repository";
@@ -40,7 +42,7 @@ type Props = {
   defaultTab?: string;
 };
 
-export function TimelineContent({ events, defaultTab = "today" }: Props) {
+export function TimelineContent({ events, defaultTab = "story" }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
@@ -114,6 +116,9 @@ export function TimelineContent({ events, defaultTab = "today" }: Props) {
 
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List>
+            <Tabs.Tab value="story" leftSection={<IconHistory size={16} />}>
+              Story
+            </Tabs.Tab>
             <Tabs.Tab value="today" leftSection={<IconSun size={16} />}>
               Today
             </Tabs.Tab>
@@ -133,6 +138,10 @@ export function TimelineContent({ events, defaultTab = "today" }: Props) {
               Insights
             </Tabs.Tab>
           </Tabs.List>
+
+          <Tabs.Panel value="story" pt="md">
+            <StoryView onCreateClick={() => setCreateOpened(true)} />
+          </Tabs.Panel>
 
           <Tabs.Panel value="today" pt="md">
             <TodayView
