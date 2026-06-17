@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { IconArrowLeft, IconTrash, IconEdit, IconWorld, IconCalendar, IconUsers, IconCoin } from "@tabler/icons-react";
-import { Card, Text, Group, Badge, Button, ActionIcon, Stack, Loader, Center } from "@mantine/core";
+import { Card, Text, Group, Badge, Button, ActionIcon, Stack, Loader, Center, Modal, TextInput, Textarea, Select } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
 
 type Trip = {
@@ -21,11 +22,75 @@ type Trip = {
   notes: string | null;
 };
 
+function EditTripModal({ trip, opened, onClose }: { trip: Trip; opened: boolean; onClose: () => void }) {
+  const [title, setTitle] = useState(trip.title);
+  const [destination, setDestination] = useState(trip.destination);
+  const [country, setCountry] = useState(trip.country ?? "");
+  const [status, setStatus] = useState<string | null>(trip.status);
+  const [startDate, setStartDate] = useState(trip.startDate ? dayjs(trip.startDate).format("YYYY-MM-DD") : "");
+  const [endDate, setEndDate] = useState(trip.endDate ? dayjs(trip.endDate).format("YYYY-MM-DD") : "");
+  const [budget, setBudget] = useState(trip.budget ? String(trip.budget / 100) : "");
+  const [travelers, setTravelers] = useState(String(trip.travelers));
+  const [currency, setCurrency] = useState(trip.currency);
+  const [notes, setNotes] = useState(trip.notes ?? "");
+
+  async function handleSubmit() {
+    if (!title.trim() || !destination.trim()) return;
+    await fetch(`/api/travel/trips/${trip.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        destination,
+        country: country || undefined,
+        status: status || undefined,
+        startDate: startDate ? new Date(startDate).toISOString() : null,
+        endDate: endDate ? new Date(endDate).toISOString() : null,
+        budget: budget ? Math.round(Number(budget) * 100) : null,
+        travelers: travelers ? Number(travelers) : 1,
+        currency: currency || undefined,
+        notes: notes || undefined,
+      }),
+    });
+    onClose();
+    window.location.reload();
+  }
+
+  return (
+    <Modal opened={opened} onClose={onClose} title="Edit Trip" size="md">
+      <Stack gap="sm">
+        <TextInput label="Title" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required />
+        <TextInput label="Destination" value={destination} onChange={(e) => setDestination(e.currentTarget.value)} required />
+        <TextInput label="Country" value={country} onChange={(e) => setCountry(e.currentTarget.value)} />
+        <Select label="Status" data={[
+          { value: "planning", label: "Planning" },
+          { value: "booked", label: "Booked" },
+          { value: "in_progress", label: "In Progress" },
+          { value: "completed", label: "Completed" },
+          { value: "cancelled", label: "Cancelled" },
+        ]} value={status} onChange={setStatus} />
+        <Group grow>
+          <TextInput label="Start Date" type="date" value={startDate} onChange={(e) => setStartDate(e.currentTarget.value)} />
+          <TextInput label="End Date" type="date" value={endDate} onChange={(e) => setEndDate(e.currentTarget.value)} />
+        </Group>
+        <Group grow>
+          <TextInput label="Total Budget ($)" type="number" value={budget} onChange={(e) => setBudget(e.currentTarget.value)} />
+          <TextInput label="Travelers" type="number" min={1} value={travelers} onChange={(e) => setTravelers(e.currentTarget.value)} />
+        </Group>
+        <TextInput label="Currency" value={currency} onChange={(e) => setCurrency(e.currentTarget.value)} />
+        <Textarea label="Notes" value={notes} onChange={(e) => setNotes(e.currentTarget.value)} autosize minRows={2} />
+        <Button fullWidth onClick={handleSubmit} mt="sm">Save Changes</Button>
+      </Stack>
+    </Modal>
+  );
+}
+
 export default function TripDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
 
   useEffect(() => {
     if (!params.id) return;
@@ -79,7 +144,7 @@ export default function TripDetailPage() {
               </Group>
             </div>
             <Group>
-              <Button variant="light" size="sm" leftSection={<IconEdit size={16} />}>Edit</Button>
+              <Button variant="light" size="sm" leftSection={<IconEdit size={16} />} onClick={openEdit}>Edit</Button>
               <Button color="red" variant="light" size="sm" leftSection={<IconTrash size={16} />} onClick={handleDelete}>Delete</Button>
             </Group>
           </Group>
@@ -105,6 +170,9 @@ export default function TripDetailPage() {
               <Text size="xs" c="dimmed" tt="uppercase" fw={500}>Budget</Text>
             </Group>
             <Text size="sm" fw={600}>{trip.currency} ${(trip.budget / 100).toLocaleString()}</Text>
+            <Text size="xs" c="dimmed">
+              ${((trip.budget / 100) / (trip.travelers || 1)).toLocaleString()} per person
+            </Text>
           </Card>
         )}
         {trip.travelers > 0 && (
@@ -131,6 +199,8 @@ export default function TripDetailPage() {
           <Text size="sm">{trip.country}</Text>
         </Card>
       )}
+
+      <EditTripModal trip={trip} opened={editOpened} onClose={closeEdit} />
     </div>
   );
 }

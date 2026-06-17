@@ -9,12 +9,17 @@ import dayjs from "dayjs";
 
 type Expense = {
   id: string;
-  tripId: string;
+  tripId: string | null;
   category: string;
   amount: number;
   currency: string;
   description: string | null;
   date: string;
+};
+
+type Trip = {
+  id: string;
+  title: string;
 };
 
 const categoryConfig: Record<string, { color: string; label: string }> = {
@@ -31,13 +36,19 @@ const categoryConfig: Record<string, { color: string; label: string }> = {
 
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [opened, { open, close }] = useDisclosure(false);
 
   useEffect(() => {
-    fetch("/api/travel/expenses")
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setExpenses)
+    Promise.all([
+      fetch("/api/travel/expenses").then((r) => (r.ok ? r.json() : [])),
+      fetch("/api/travel/trips").then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([exp, trps]) => {
+        setExpenses(exp);
+        setTrips(trps);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -81,6 +92,7 @@ export default function ExpensesPage() {
           e.preventDefault();
           const form = e.currentTarget;
           const data = Object.fromEntries(new FormData(form));
+          const tripId = data.tripId === "" ? null : data.tripId;
           await fetch("/api/travel/expenses", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -89,7 +101,7 @@ export default function ExpensesPage() {
               amount: Math.round(Number(data.amount) * 100),
               description: data.description || undefined,
               date: data.date ? new Date(data.date as string).toISOString() : new Date().toISOString(),
-              tripId: "00000000-0000-0000-0000-000000000000",
+              tripId,
             }),
           });
           close();
@@ -99,6 +111,7 @@ export default function ExpensesPage() {
             <Select name="category" label="Category" data={Object.entries(categoryConfig).map(([k, v]) => ({ value: k, label: v.label }))} required />
             <TextInput name="amount" label="Amount" type="number" step="0.01" required />
             <TextInput name="description" label="Description" />
+            <Select name="tripId" label="Trip (optional)" data={trips.map((t) => ({ value: t.id, label: t.title }))} clearable />
             <TextInput name="date" label="Date" type="date" />
             <Button type="submit" fullWidth mt="sm">Save</Button>
           </Stack>

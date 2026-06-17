@@ -84,7 +84,7 @@ export const createPhotoSchema = z.object({
 });
 
 export const createExpenseSchema = z.object({
-  tripId: z.string().uuid(),
+  tripId: z.string().uuid().optional().nullable(),
   category: z.enum(["flights", "hotels", "food", "transportation", "shopping", "activities", "visa", "insurance", "miscellaneous"]),
   amount: z.number().int().positive(),
   currency: z.string().max(10).default("USD"),
