@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { motion } from "framer-motion";
 import {
   Stack,
   Title,
@@ -14,7 +15,6 @@ import {
   TextInput,
   SegmentedControl,
   ActionIcon,
-  Tooltip,
   Badge,
   Box,
   Card,
@@ -25,7 +25,6 @@ import {
   Skeleton,
   Center,
   Select,
-  MultiSelect,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -46,7 +45,6 @@ import {
   IconHeartFilled,
   IconTrash,
   IconEdit,
-  IconFilter,
   IconChevronRight,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
@@ -110,47 +108,47 @@ type Props = {
 
 // ─── Dashboard ────────────────────────────────────────────────────
 
-function DashboardHero({ dashboard }: { dashboard: DashboardData }) {
+function DashboardHero({ dashboard, onAdd }: { dashboard: DashboardData; onAdd: () => void }) {
   return (
-    <Paper p="lg" radius="md" className="bg-gradient-to-br from-blue-50 to-violet-50 dark:from-blue-900/20 dark:to-violet-900/20">
-      <Group justify="space-between" align="flex-start" wrap="wrap">
-        <Box>
-          <Text fw={700} size="28px">
-            Welcome back 👋
-          </Text>
-          <Text size="sm" c="dimmed" mt={4}>
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-[var(--mantine-color-text)] sm:text-4xl">
+            Library
+          </h1>
+          <p className="mt-1 text-[var(--mantine-color-dimmed)]">
             {dashboard.currentlyReadingCount > 0
               ? `You have ${dashboard.currentlyReadingCount} item${dashboard.currentlyReadingCount > 1 ? "s" : ""} in progress.`
               : "Ready to start reading?"}
-          </Text>
-        </Box>
-
-        <Group gap="xs">
+          </p>
+        </div>
           <Menu shadow="md" width={200}>
             <Menu.Target>
-              <Button leftSection={<IconPlus size={16} />} size="sm">
+              <Button leftSection={<IconPlus size={18} />}>
                 Add New
               </Button>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item leftSection={<IconBook size={16} />} onClick={() => {}}>
+              <Menu.Item leftSection={<IconBook size={16} />} onClick={onAdd}>
                 Add Book
               </Menu.Item>
-              <Menu.Item leftSection={<IconArticle size={16} />} onClick={() => {}}>
+              <Menu.Item leftSection={<IconArticle size={16} />} onClick={onAdd}>
                 Add Article
               </Menu.Item>
-              <Menu.Item leftSection={<IconFileText size={16} />} onClick={() => {}}>
+              <Menu.Item leftSection={<IconFileText size={16} />} onClick={onAdd}>
                 Add PDF
               </Menu.Item>
-              <Menu.Item leftSection={<IconFlask size={16} />} onClick={() => {}}>
+              <Menu.Item leftSection={<IconFlask size={16} />} onClick={onAdd}>
                 Add Research Paper
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
-        </Group>
-      </Group>
+      </div>
 
-      <SimpleGrid cols={{ base: 2, sm: 4, md: 8 }} spacing="sm" mt="lg">
+      <SimpleGrid cols={{ base: 2, sm: 4, md: 8 }} spacing="sm">
         <StatCard icon={IconBooks} value={dashboard.totalBooks} label="Books" />
         <StatCard icon={IconArticle} value={dashboard.totalArticles} label="Articles" />
         <StatCard icon={IconFileText} value={dashboard.totalPdfs} label="PDFs" />
@@ -160,13 +158,13 @@ function DashboardHero({ dashboard }: { dashboard: DashboardData }) {
         <StatCard icon={IconBook} value={dashboard.pagesRead} label="Pages" />
         <StatCard icon={IconEye} value={dashboard.totalQuotes} label="Quotes" />
       </SimpleGrid>
-    </Paper>
+    </motion.div>
   );
 }
 
 function StatCard({ icon: Icon, value, label }: { icon: React.ElementType; value: string | number; label: string }) {
   return (
-    <Paper p="xs" radius="md" className="text-center" bg="rgba(255,255,255,0.5)" style={{ backdropFilter: "blur(4px)" }}>
+    <Paper withBorder p="xs" radius="md" className="text-center" bg="transparent">
       <ThemeIcon variant="light" size="md" radius="xl" className="mx-auto">
         <Icon size={16} />
       </ThemeIcon>
@@ -188,7 +186,7 @@ function CurrentlyReading({ items }: { items: ReadingItem[] }) {
       <Title order={4} mb="sm">Continue Reading</Title>
       <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="sm">
         {items.slice(0, 3).map((item) => (
-          <Paper key={item.id} p="sm" radius="md" className="hover:shadow-sm transition-shadow">
+          <Paper key={item.id} p="sm" radius="md" withBorder>
             <Group gap="sm" wrap="nowrap" align="flex-start">
               {item.coverUrl && (
                 <Image
@@ -246,7 +244,7 @@ function ReadingCard({
 
   if (viewMode === "compact") {
     return (
-      <Group gap="sm" py={6} px="sm" className="hover:bg-gray-50 dark:hover:bg-gray-800 rounded-md transition-colors">
+      <Group gap="sm" py={6} px="sm" className="hover:bg-[var(--mantine-color-dark-6)] rounded-md transition-colors">
         <Badge size="sm" color={STATUS_COLORS[item.status]} variant="dot" />
         <Text size="sm" fw={500} style={{ flex: 1 }} lineClamp={1}>{item.title}</Text>
         <Text size="xs" c="dimmed" className="tabular-nums">{item.authors?.[0]}</Text>
@@ -260,7 +258,7 @@ function ReadingCard({
 
   if (viewMode === "list") {
     return (
-      <Paper p="sm" radius="md" className="hover:shadow-sm transition-shadow">
+      <Paper p="sm" radius="md" withBorder>
         <Group gap="sm" wrap="nowrap" align="flex-start">
           {item.coverUrl && (
             <Image src={item.coverUrl} alt={item.title} w={40} h={60} radius="sm" className="object-cover shrink-0" />
@@ -302,12 +300,12 @@ function ReadingCard({
   }
 
   return (
-    <Card padding="sm" radius="md" className="hover:shadow-sm transition-shadow">
+    <Card padding="sm" radius="md" withBorder>
       <Card.Section>
         {item.coverUrl ? (
           <Image src={item.coverUrl} alt={item.title} h={180} className="object-cover" />
         ) : (
-          <Center h={180} className="bg-gray-100 dark:bg-gray-800">
+            <Center h={180} className="bg-[var(--mantine-color-dark-6)]">
             <ThemeIcon variant="light" size="xl" color="gray">
               {TYPE_ICONS[item.type] ?? <IconBook size={24} />}
             </ThemeIcon>
@@ -471,7 +469,7 @@ function AddItemModal({
                       gap="sm"
                       py={4}
                       px="xs"
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer"
+                      className="hover:bg-[var(--mantine-color-dark-6)] rounded cursor-pointer"
                       onClick={() => selectSearchResult(result)}
                     >
                       <Box style={{ flex: 1 }}>
@@ -638,32 +636,14 @@ export function LibraryContent({ initialDashboard }: Props) {
   };
 
   return (
-    <>
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <Stack gap="md">
         {dashboard && (
           <>
-            <DashboardHero dashboard={dashboard} />
+            <DashboardHero dashboard={dashboard} onAdd={openAdd} />
             <CurrentlyReading items={dashboard.currentlyReading} />
           </>
         )}
-
-        {/* Quick Actions */}
-        <Paper p="sm" radius="md">
-          <Group gap="sm" wrap="wrap">
-            <Button size="sm" variant="light" leftSection={<IconBook size={14} />} onClick={openAdd}>
-              Add Book
-            </Button>
-            <Button size="sm" variant="light" leftSection={<IconArticle size={14} />} onClick={openAdd}>
-              Add Article
-            </Button>
-            <Button size="sm" variant="light" leftSection={<IconFileText size={14} />} onClick={openAdd}>
-              Add PDF
-            </Button>
-            <Button size="sm" variant="light" leftSection={<IconFlask size={14} />} onClick={openAdd}>
-              Add Research Paper
-            </Button>
-          </Group>
-        </Paper>
 
         {/* Library Tabs */}
         <Tabs value={activeTab} onChange={setActiveTab}>
@@ -780,6 +760,6 @@ export function LibraryContent({ initialDashboard }: Props) {
       </Stack>
 
       <AddItemModal opened={addOpened} onClose={closeAdd} onCreated={handleCreated} />
-    </>
+    </div>
   );
 }
