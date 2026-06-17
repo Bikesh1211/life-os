@@ -576,7 +576,7 @@ function EditItemModal({
 }) {
   const [title, setTitle] = useState(item.title);
   const [authors, setAuthors] = useState(item.authors?.join(", ") ?? "");
-  const [status, setStatus] = useState(item.status);
+  const [status, setStatus] = useState<string>(item.status);
   const [pageCount, setPageCount] = useState(String(item.pageCount ?? ""));
   const [currentPage, setCurrentPage] = useState(String(item.currentPage ?? ""));
   const [isbn, setIsbn] = useState(item.isbn ?? "");
