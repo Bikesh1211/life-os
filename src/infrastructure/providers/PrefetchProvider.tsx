@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 const PREFETCH_ROUTES = [
-  "/api/timeline/events",
+  "/api/timeline",
   "/api/notes",
   "/api/tasks",
   "/api/routines",

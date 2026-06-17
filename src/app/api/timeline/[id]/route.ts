@@ -7,7 +7,20 @@ import {
   updateEventSchema,
 } from "@/modules/timeline";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isValidUuid(id: string) {
+  return UUID_RE.test(id);
+}
+
 type Params = { params: Promise<{ id: string }> };
+
+function validateId(id: string) {
+  if (!isValidUuid(id)) {
+    return NextResponse.json({ error: "Invalid ID format" }, { status: 400 });
+  }
+  return null;
+}
 
 export async function GET(request: Request, { params }: Params) {
   const { userId } = await auth();
@@ -16,6 +29,9 @@ export async function GET(request: Request, { params }: Params) {
   }
 
   const { id } = await params;
+  const invalid = validateId(id);
+  if (invalid) return invalid;
+
   const event = await getTimelineEvent(id, userId);
   if (!event) {
     return NextResponse.json({ error: "Event not found" }, { status: 404 });
@@ -32,6 +48,9 @@ export async function PUT(request: Request, { params }: Params) {
 
   try {
     const { id } = await params;
+    const invalid = validateId(id);
+    if (invalid) return invalid;
+
     const body = await request.json();
     const parsed = updateEventSchema.parse(body);
     const event = await updateTimelineEvent(id, userId, parsed);
@@ -55,6 +74,9 @@ export async function DELETE(request: Request, { params }: Params) {
 
   try {
     const { id } = await params;
+    const invalid = validateId(id);
+    if (invalid) return invalid;
+
     const event = await deleteTimelineEvent(id, userId);
     if (!event) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 });
