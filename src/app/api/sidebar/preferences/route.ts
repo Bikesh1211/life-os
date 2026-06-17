@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import { eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
@@ -7,7 +7,7 @@ import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await getCurrentUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -32,7 +32,7 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
-  const { userId } = await auth();
+  const userId = await getCurrentUserId();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

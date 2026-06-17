@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import {
   computeWellnessScores,
   getWellnessInsights,
@@ -12,7 +12,7 @@ import { WellnessDashboard } from "./WellnessDashboard";
 export const dynamic = "force-dynamic";
 
 export default async function WellnessPage() {
-  const { userId } = await auth();
+  const userId = await getCurrentUserId();
   if (!userId) return null;
 
   const [scores, insights, recentMoods, recentSleep, recentConfidence, overdueEnrichments] =

@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import { getOutfit, updateOutfit, deleteOutfit } from "@/modules/wardrobe/service/index";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   try {
@@ -20,8 +19,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   try {
@@ -41,8 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   try {

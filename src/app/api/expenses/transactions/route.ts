@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import { NextResponse } from "next/server";
 import {
   createExpenseTransaction,
@@ -7,8 +7,7 @@ import {
 } from "@/modules/expenses/service/transactions";
 
 export async function GET(req: Request) {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   const { searchParams } = new URL(req.url);
@@ -33,8 +32,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   try {

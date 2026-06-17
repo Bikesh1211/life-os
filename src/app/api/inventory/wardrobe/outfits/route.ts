@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import { createOutfit, getOutfits } from "@/modules/wardrobe/service/index";
 
 export async function GET() {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   try {
@@ -17,8 +16,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   try {
