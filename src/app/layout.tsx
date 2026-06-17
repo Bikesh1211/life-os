@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "@/infrastructure/providers";
-import { ColorSchemeScript } from "@mantine/core";
 import { APP_NAME, APP_DESCRIPTION } from "@/core/constants";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
@@ -49,11 +48,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
       <head>
-        <ColorSchemeScript defaultColorScheme="auto" />
         <meta name="theme-color" content="#1A1B1E" media="(prefers-color-scheme: dark)" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
       </head>
       <body>
+        <script
+          id="mantine-color-scheme"
+          dangerouslySetInnerHTML={{
+            __html: `try{var c=window.localStorage.getItem("mantine-color-scheme-value");var s=c==="light"||c==="dark"||c==="auto"?c:"auto";var d=s!=="auto"?s:window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-mantine-color-scheme",d)}catch(e){}`,
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>
