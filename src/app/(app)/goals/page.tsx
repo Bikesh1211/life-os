@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { IconTarget, IconActivity, IconCheck, IconClock, IconPlus } from "@tabler/icons-react";
 import { Card, Text, Progress, Group, Badge, Button, Modal, TextInput, Textarea, Select, Stack } from "@mantine/core";
@@ -30,11 +31,19 @@ type Overview = {
 };
 
 function GoalCard({ goal }: { goal: Goal }) {
+  const router = useRouter();
   const isOverdue =
     goal.status === "active" && goal.deadline && new Date(goal.deadline) < new Date();
 
   return (
-    <Card shadow="sm" padding="md" radius="md" withBorder>
+    <Card
+      shadow="sm"
+      padding="md"
+      radius="md"
+      withBorder
+      onClick={() => router.push(`/goals/${goal.id}`)}
+      style={{ cursor: "pointer" }}
+    >
       <Group justify="space-between" mb="xs">
         <Text fw={600} size="sm" lineClamp={1}>
           {goal.title}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { IconTarget, IconActivity } from "@tabler/icons-react";
 import { Card, Text, Progress, Group, Badge } from "@mantine/core";
@@ -18,6 +19,7 @@ type Goal = {
 };
 
 export default function ActiveGoalsPage() {
+  const router = useRouter();
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -74,7 +76,15 @@ export default function ActiveGoalsPage() {
         {goals.map((goal) => {
           const isOverdue = goal.deadline && new Date(goal.deadline) < new Date();
           return (
-            <Card key={goal.id} shadow="sm" padding="md" radius="md" withBorder>
+            <Card
+              key={goal.id}
+              shadow="sm"
+              padding="md"
+              radius="md"
+              withBorder
+              onClick={() => router.push(`/goals/${goal.id}`)}
+              style={{ cursor: "pointer" }}
+            >
               <Group justify="space-between" mb="xs">
                 <Text fw={600} size="sm" lineClamp={1}>
                   {goal.title}
