@@ -8,6 +8,7 @@ import * as goalsSchema from "@/modules/goals/schema";
 import * as timelineSchema from "@/modules/timeline/schema";
 import * as expensesSchema from "@/modules/expenses/schema";
 import * as musicSchema from "@/modules/music/schema";
+import * as moviesSchema from "@/modules/movies/schema";
 import * as knowledgeSchema from "@/modules/knowledge/schema";
 import * as wardrobeSchema from "@/modules/wardrobe/schema";
 import * as routinesSchema from "@/modules/routines/schema";
@@ -40,8 +41,9 @@ export const db = drizzle(queryClient, {
     ...goalsSchema,
     ...timelineSchema,
     ...expensesSchema,
-    ...musicSchema,
-     ...knowledgeSchema,
+     ...musicSchema,
+      ...moviesSchema,
+      ...knowledgeSchema,
      ...wardrobeSchema,
        ...routinesSchema,
         ...techGearSchema,

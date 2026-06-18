@@ -40,6 +40,15 @@ body {
   scrollbar-color: var(--mantine-color-dark-3) transparent;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 4px;
 }

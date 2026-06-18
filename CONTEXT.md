@@ -106,6 +106,33 @@ A computed chronological view at `/music/timeline` joining music memories, liste
 
 *Avoid*: Scrobble (prefer Listening History), Rating Score (redundant — just Rating), Memory vs Journal (Memories are lightweight links to life events; Journal is active reflection)
 
+**Movies** (plugin):
+The movie & entertainment tracking plugin at `src/modules/movies/`. Route group is `/movies/*`. Feature ID is `movies`. Owns all movie/TV/anime data — reference media metadata (synced from TMDB), favorites, watchlist, memories, quotes, collections, ratings, and statistics. Sub-routes: 10 tabs — Dashboard (`/movies`), Discover (`/movies/discover`), Favorites (`/movies/favorites`), Watchlist (`/movies/watchlist`), Memories (`/movies/memories`), TV Shows (`/movies/tv-shows`), Anime (`/movies/anime`), Quotes (`/movies/quotes`), Collections (`/movies/collections`), Statistics (`/movies/statistics`). Tab layout uses the Music-style URL-path pattern with Mantine Tabs.
+
+**Movie Memory**:
+A personal memory linked to a movie or TV show. Stored in `movie_memories`. Contains `title`, `contextText`, `mood` (fixed emoji set), `photoUrls`, `ticketUrls`, `screenshotUrls`, `tags`, `watchDate`, `location`, `watchedWith`, and optional `linkedEventId` pointing to a Timeline event. No junction tables for additional media/people in v2 — single media per memory via `mediaId`.
+
+**Movie Favorite**:
+A bookmarked movie/TV show in `movie_favorites`. Tracks `rewatchCount`, `personalNotes`. Separate from Ratings (you can rate without favoriting).
+
+**Movie Rating**:
+A 1-10 score for any movie/TV show in `movie_ratings`. Optional review text. Separate from Favorites.
+
+**Movie Watchlist**:
+A queue + progress tracker in `movie_watchlist`. Statuses: `plan_to_watch`, `watching`, `completed`, `dropped`, `rewatching`. TV shows additionally track `currentSeason`, `currentEpisode`, `totalSeasons`, `totalEpisodes`. Serves as both the queue and TV show episode progress tracking.
+
+**Movie Quote**:
+A favorite quote from a movie/TV show in `movie_quotes`. Contains `quote`, `character`, `timestamp`, `personalMeaning`, `isFavorite`.
+
+**Movie Collection**:
+A user-curated group of movies/TV shows in `movie_collections` with items in `movie_collection_items`. Media-only (no polymorphic entities in v1). Private (scoped to userId).
+
+**TMDB**:
+The primary external metadata provider for the Movies plugin. TMDB IDs (`tmdbId`) are the canonical external identifiers for movies, TV shows, and people. The service layer caches TMDB data locally on first query (pull-on-demand pattern). Poster and backdrop artwork URLs are constructed from TMDB's image CDN at render time.
+
+**Movies Reference Data**:
+The `movies_media` table (movies + TV shows combined, anime identified by Animation genre) and `movies_people` table. Populated from TMDB on first search query. Not scoped to any user — shared reference tables. Never written by users directly; only by the TMDB sync service layer.
+
 **Notes** (plugin):
 The quick capture notes plugin at `src/modules/notes/`. Route is `/notes`. Feature ID is `notes`. Owns all note-taking data — notes, tags, categories. Sub-routes: Notes list (`/notes`). Design goal: Apple Notes meets Google Keep — simple, beautiful, extremely fast. Prioritises quick capture over rich editing.
 
