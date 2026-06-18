@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useMantineColorScheme } from "@mantine/core";
@@ -35,7 +35,7 @@ const cardVariants = {
   },
 };
 
-export default function SignInPage() {
+function SignInContent() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const { colorScheme } = useMantineColorScheme();
@@ -49,6 +49,31 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Read OAuth errors from URL (query params + hash fragment)
+  useEffect(() => {
+    const oauthError = searchParams.get("error");
+    if (oauthError) {
+      let errorMsg = `OAuth failed: ${oauthError}`;
+
+      const descFromParam = searchParams.get("error_description");
+      if (descFromParam) {
+        errorMsg = decodeURIComponent(descFromParam.replace(/\+/g, " "));
+      }
+
+      const hash = window.location.hash;
+      if (hash) {
+        const hashParams = new URLSearchParams(hash.replace("#", ""));
+        const descFromHash = hashParams.get("error_description");
+        if (descFromHash) {
+          errorMsg = decodeURIComponent(descFromHash.replace(/\+/g, " "));
+        }
+      }
+
+      setError(errorMsg);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, [searchParams]);
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -318,5 +343,13 @@ export default function SignInPage() {
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignInContent />
+    </Suspense>
   );
 }

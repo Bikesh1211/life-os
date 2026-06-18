@@ -29,6 +29,10 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#1A1B1E" },
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+  ],
   icons: {
     icon: [
       { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
@@ -47,10 +51,6 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={inter.variable}>
-      <head>
-        <meta name="theme-color" content="#1A1B1E" media="(prefers-color-scheme: dark)" />
-        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-      </head>
       <body suppressHydrationWarning>
         <script
           id="mantine-color-scheme"
