@@ -18,8 +18,6 @@ import {
 } from "@/modules/wellness";
 import { WellnessDashboard } from "./WellnessDashboard";
 
-export const dynamic = "force-dynamic";
-
 export default async function WellnessPage() {
   const userId = await getCurrentUserId();
   if (!userId) return null;

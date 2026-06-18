@@ -4,8 +4,6 @@ import { eq } from "drizzle-orm";
 import { db } from "@/core/database/client";
 import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
 
-export const dynamic = "force-dynamic";
-
 export async function GET() {
   const userId = await getCurrentUserId();
   if (!userId) {

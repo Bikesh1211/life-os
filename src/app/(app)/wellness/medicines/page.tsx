@@ -2,8 +2,6 @@ import { getCurrentUserId } from "@/core/auth";
 import { getMedicineReminders, getMedicineLogs } from "@/modules/wellness";
 import { MedicinesContent } from "./MedicinesContent";
 
-export const dynamic = "force-dynamic";
-
 export default async function MedicinesPage() {
   const userId = await getCurrentUserId();
   if (!userId) return null;
