@@ -36,7 +36,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const { id } = await params;
   const body = await request.json();
-  return NextResponse.json(await repo.updateMemory(id, userId, body));
+  const sanitized = {
+    ...body,
+    watchDate: body.watchDate ? new Date(body.watchDate) : body.watchDate,
+  };
+  return NextResponse.json(await repo.updateMemory(id, userId, sanitized));
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
