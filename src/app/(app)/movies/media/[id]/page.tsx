@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { Container, Title, Text, Badge, Group, Button, Card, Avatar, SimpleGrid, Spoiler } from "@mantine/core";
-import { IconArrowLeft, IconStar, IconClock, IconMovie, IconHeart } from "@tabler/icons-react";
+import { IconArrowLeft, IconStar, IconClock, IconMovie, IconHeart, IconListDetails } from "@tabler/icons-react";
 import Link from "next/link";
 import { MemoryCard } from "@/modules/movies/components/memories/MemoryCard";
 
@@ -12,7 +12,7 @@ export default function MediaDetailContent() {
   const params = useParams();
   const id = params?.id as string;
 
-  const { data } = useQuery({
+  const { data, refetch } = useQuery({
     queryKey: ["movie-media", id],
     queryFn: async () => {
       const res = await fetch(`/api/movies/media/${id}`);
@@ -21,6 +21,42 @@ export default function MediaDetailContent() {
     },
     enabled: !!id,
   });
+
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [watchlistLoading, setWatchlistLoading] = useState(false);
+
+  const toggleFav = async () => {
+    if (!data || favoriteLoading) return;
+    setFavoriteLoading(true);
+    try {
+      await fetch("/api/movies/favorites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaId: id }),
+      });
+      refetch();
+    } finally { setFavoriteLoading(false); }
+  };
+
+  const toggleWatchlist = async () => {
+    if (!data || watchlistLoading) return;
+    setWatchlistLoading(true);
+    try {
+      if (data.watchlistStatus) {
+        const res = await fetch("/api/movies/watchlist");
+        const list = await res.json();
+        const item = list.find((w: any) => w.mediaId === id);
+        if (item) await fetch(`/api/movies/watchlist`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: item.id }) });
+      } else {
+        await fetch("/api/movies/watchlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mediaId: id, status: "plan_to_watch" }),
+        });
+      }
+      refetch();
+    } finally { setWatchlistLoading(false); }
+  };
 
   if (!data) return <Container py="xl"><Text c="dimmed">Loading...</Text></Container>;
 
@@ -51,6 +87,28 @@ export default function MediaDetailContent() {
               {data.releaseDate && <Group gap={4}><IconClock size={14} /><Text size="sm" c="dimmed">{new Date(data.releaseDate).getFullYear()}</Text></Group>}
               {data.runtime && <Text size="sm" c="dimmed">{Math.floor(data.runtime / 60)}h {data.runtime % 60}m</Text>}
               {data.voteAverage && <Group gap={4}><IconStar size={14} color="var(--mantine-color-yellow-6)" /><Text size="sm" c="dimmed">{data.voteAverage.toFixed(1)}</Text></Group>}
+            </Group>
+            <Group gap="xs" mt="md">
+              <Button
+                size="sm"
+                variant={data.isFavorited ? "filled" : "outline"}
+                color="red"
+                leftSection={<IconHeart size={16} fill={data.isFavorited ? "currentColor" : "none"} />}
+                loading={favoriteLoading}
+                onClick={toggleFav}
+              >
+                {data.isFavorited ? "Favorited" : "Favorite"}
+              </Button>
+              <Button
+                size="sm"
+                variant={data.watchlistStatus ? "filled" : "outline"}
+                color="blue"
+                leftSection={<IconListDetails size={16} />}
+                loading={watchlistLoading}
+                onClick={toggleWatchlist}
+              >
+                {data.watchlistStatus ? data.watchlistStatus.replace(/_/g, " ") : "Add to Watchlist"}
+              </Button>
             </Group>
             {data.imdbId && (
               <Button component="a" href={`https://www.imdb.com/title/${data.imdbId}`} target="_blank" variant="outline" size="xs" mt="sm">

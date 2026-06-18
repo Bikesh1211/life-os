@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserId } from "@/core/auth";
 import { TMDB_BASE_URL, TMDB_IMAGE_BASE_URL } from "@/modules/movies/tmdb";
-import { getMediaByTmdbId, getMemoriesByMediaId } from "@/modules/movies/repository";
+import { getMediaByTmdbId, getMemoriesByMediaId, getFavoriteByMediaId, getWatchlistByMediaId } from "@/modules/movies/repository";
 
 function parseCompositeId(id: string) {
   const idx = id.lastIndexOf("-");
@@ -29,10 +29,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
     if (!mediaDetail) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-    const memories = await getMemoriesByMediaId(userId, id);
+    const [memories, fav, wl] = await Promise.all([
+      getMemoriesByMediaId(userId, id),
+      getFavoriteByMediaId(userId, id),
+      getWatchlistByMediaId(userId, id),
+    ]);
 
     return NextResponse.json({
       id, tmdbId: parsed.tmdbId, mediaType: parsed.mediaType, memories,
+      isFavorited: !!fav,
+      watchlistStatus: wl?.status ?? null,
       title: mediaDetail.title ?? mediaDetail.name ?? "",
       overview: mediaDetail.overview ?? null,
       tagline: mediaDetail.tagline ?? null,

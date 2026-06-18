@@ -61,6 +61,11 @@ export async function getFavorites(userId: string) {
   return db.select().from(movieFavorites).where(eq(movieFavorites.userId, userId)).orderBy(desc(movieFavorites.addedAt));
 }
 
+export async function getFavoriteByMediaId(userId: string, mediaId: string) {
+  const [fav] = await db.select().from(movieFavorites).where(and(eq(movieFavorites.userId, userId), eq(movieFavorites.mediaId, mediaId))).limit(1);
+  return fav ?? null;
+}
+
 export async function updateFavorite(id: string, userId: string, input: Partial<typeof movieFavorites.$inferInsert>) {
   const [fav] = await db.update(movieFavorites).set(input).where(and(eq(movieFavorites.id, id), eq(movieFavorites.userId, userId))).returning();
   return fav;
@@ -99,6 +104,11 @@ export async function removeFromWatchlist(id: string, userId: string) {
 
 export async function getWatchlist(userId: string) {
   return db.select().from(movieWatchlist).where(eq(movieWatchlist.userId, userId)).orderBy(desc(movieWatchlist.createdAt));
+}
+
+export async function getWatchlistByMediaId(userId: string, mediaId: string) {
+  const [item] = await db.select().from(movieWatchlist).where(and(eq(movieWatchlist.userId, userId), eq(movieWatchlist.mediaId, mediaId))).limit(1);
+  return item ?? null;
 }
 
 export async function getWatchlistByStatus(userId: string, status: "plan_to_watch" | "watching" | "completed" | "dropped" | "rewatching") {

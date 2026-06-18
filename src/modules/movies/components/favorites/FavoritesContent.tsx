@@ -5,8 +5,10 @@ import { SimpleGrid, Text } from "@mantine/core";
 import { IconHeart } from "@tabler/icons-react";
 import { MovieCard } from "@/modules/movies/components/design-system/MovieCard";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
+import { useRouter } from "next/navigation";
 
 export function FavoritesContent() {
+  const router = useRouter();
   const { data: favorites } = useQuery({
     queryKey: ["movie-favorites"],
     queryFn: async () => {
@@ -24,7 +26,12 @@ export function FavoritesContent() {
         <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 5 }} spacing="md">
           {favorites.map((fav: any) => (
             <div key={fav.id} className="text-center">
-              <MovieCard imageUrl={null} title={fav.mediaId} subtitle={`Rewatched ${fav.rewatchCount}×`} />
+              <MovieCard
+                imageUrl={fav.mediaPosterUrl}
+                title={fav.mediaTitle ?? fav.mediaId}
+                subtitle={fav.rewatchCount ? `Rewatched ${fav.rewatchCount}×` : undefined}
+                onClick={() => router.push(`/movies/media/${fav.mediaId}`)}
+              />
               {fav.personalNotes && <Text size="xs" c="dimmed" mt={2} lineClamp={2}>{fav.personalNotes}</Text>}
             </div>
           ))}
