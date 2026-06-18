@@ -18,7 +18,7 @@ export function HabitsShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const currentTab = tabs.find((t) => pathname.startsWith(t.value))?.value ?? "/habits";
+  const currentTab = tabs.find((t) => pathname === t.value || pathname.startsWith(t.value + "/"))?.value ?? "/habits";
 
   return (
     <>

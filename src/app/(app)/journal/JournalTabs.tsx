@@ -14,7 +14,7 @@ export function JournalTabs() {
   const router = useRouter();
   const pathname = usePathname();
 
-  const currentTab = TABS.find((t) => pathname.startsWith(t.route))?.value ?? "list";
+  const currentTab = TABS.find((t) => pathname === t.route || pathname.startsWith(t.route + "/"))?.value ?? "list";
 
   function handleTabChange(value: string | null) {
     const tab = TABS.find((t) => t.value === value);

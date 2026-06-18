@@ -128,8 +128,8 @@ export async function getEventsByDateRange(
       and(
         eq(timelineEvents.userId, userId),
         isNull(timelineEvents.deletedAt),
-        sql`${timelineEvents.eventDate} >= ${startDate}`,
-        sql`${timelineEvents.eventDate} <= ${endDate}`,
+        sql`${timelineEvents.eventDate} >= ${startDate.toISOString()}`,
+        sql`${timelineEvents.eventDate} <= ${endDate.toISOString()}`,
       ),
     )
     .orderBy(asc(timelineEvents.eventDate));
