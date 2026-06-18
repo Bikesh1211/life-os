@@ -1,4 +1,4 @@
-# Focus Linq (formerly Life OS)
+# Life OS
 
 A personal life management platform. Provides an extensible shell (auth, navigation, design system, app shell) that plugins fill with domain-specific features.
 
