@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUserId } from "@/core/auth";
 import { TMDB_BASE_URL, TMDB_IMAGE_BASE_URL } from "@/modules/movies/tmdb";
-import { getMediaByTmdbId, getMemoriesByMediaId, getFavoriteByMediaId, getWatchlistByMediaId } from "@/modules/movies/repository";
+import * as repo from "@/modules/movies/repository";
 
 function parseCompositeId(id: string) {
   const idx = id.lastIndexOf("-");
@@ -21,18 +21,31 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!parsed) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   try {
-    const [local, mediaDetail] = await Promise.all([
-      getMediaByTmdbId(parsed.tmdbId),
-      fetch(`${TMDB_BASE_URL}/${parsed.mediaType}/${parsed.tmdbId}?language=en-US&append_to_response=credits,videos,external_ids&api_key=${process.env.TMDB_API_KEY}`)
-        .then((r) => (r.ok ? r.json() : null)),
-    ]);
+    const mediaDetail = await fetch(`${TMDB_BASE_URL}/${parsed.mediaType}/${parsed.tmdbId}?language=en-US&append_to_response=credits,videos,external_ids&api_key=${process.env.TMDB_API_KEY}`)
+      .then((r) => (r.ok ? r.json() : null));
 
     if (!mediaDetail) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    await repo.upsertMedia({
+      tmdbId: String(mediaDetail.id),
+      mediaType: parsed.mediaType,
+      title: mediaDetail.title ?? mediaDetail.name ?? "",
+      overview: mediaDetail.overview ?? null,
+      posterPath: mediaDetail.poster_path,
+      backdropPath: mediaDetail.backdrop_path,
+      releaseDate: mediaDetail.release_date || mediaDetail.first_air_date ? new Date(mediaDetail.release_date ?? mediaDetail.first_air_date!) : null,
+      genres: (mediaDetail.genres ?? []).map((g: any) => g.name),
+      voteAverage: mediaDetail.vote_average ?? null,
+      runtime: mediaDetail.runtime ?? null,
+      episodeRuntime: mediaDetail.episode_run_time?.[0] ?? null,
+      seasons: mediaDetail.number_of_seasons ?? null,
+      episodes: mediaDetail.number_of_episodes ?? null,
+    });
+
     const [memories, fav, wl] = await Promise.all([
-      getMemoriesByMediaId(userId, id),
-      getFavoriteByMediaId(userId, id),
-      getWatchlistByMediaId(userId, id),
+      repo.getMemoriesByMediaId(userId, id),
+      repo.getFavoriteByMediaId(userId, id),
+      repo.getWatchlistByMediaId(userId, id),
     ]);
 
     return NextResponse.json({
