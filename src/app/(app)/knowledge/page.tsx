@@ -1,13 +1,5 @@
-import { getCurrentUserId } from "@/core/auth";
-import { getKnowledgeEntries, getDashboardStats } from "@/modules/knowledge";
-import { KnowledgeDashboard } from "./components/KnowledgeDashboard";
+import { KnowledgeContent } from "./_components/KnowledgeContent";
 
-
-export default async function KnowledgePage() {
-  const userId = await getCurrentUserId();
-  const [entries, stats] = await Promise.all([
-    getKnowledgeEntries(userId!),
-    getDashboardStats(userId!),
-  ]);
-  return <KnowledgeDashboard entries={entries} stats={stats} />;
+export default function KnowledgePage() {
+  return <KnowledgeContent />;
 }

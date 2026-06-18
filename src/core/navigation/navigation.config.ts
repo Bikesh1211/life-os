@@ -180,34 +180,27 @@ export const navigation: NavGroup[] = [
         featureId: "brain",
         children: [
           {
-            label: "Notes",
-            route: "/brain/notes",
-            description: "Your notes",
-            icon: IconNotes,
-            featureId: "notes",
-          },
-          {
             label: "Ideas",
-            route: "/brain/ideas",
+            route: "/brain",
             description: "Idea board",
             icon: IconBulb,
             featureId: "ideas",
           },
           {
             label: "Graph View",
-            route: "/brain/graph-view",
+            route: "/brain?tab=graph-view",
             description: "Knowledge graph",
             icon: IconGraph,
             featureId: "graph_view",
           },
-          {
-            label: "Knowledge Vault",
-            route: "/brain/knowledge",
-            description: "Capture & organize learning",
-            icon: IconSchool,
-            featureId: "knowledge",
-          },
         ],
+      },
+      {
+        label: "Knowledge Vault",
+        route: "/knowledge",
+        description: "Capture & organize learning",
+        icon: IconSchool,
+        featureId: "knowledge",
       },
       {
         label: "Learning",
@@ -297,7 +290,7 @@ export const navigation: NavGroup[] = [
     items: [
       {
         label: "Finance",
-        route: "/finance/dashboard",
+        route: "/finance",
         description: "Financial overview and management",
         icon: IconCoin,
         featureId: "finance",

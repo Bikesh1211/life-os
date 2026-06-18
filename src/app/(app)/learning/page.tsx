@@ -1,12 +1,5 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconSchool } from "@tabler/icons-react";
+import { LearningContent } from "./_components/LearningContent";
 
 export default function LearningPage() {
-  return (
-    <FeaturePlaceholder
-      title="Learning"
-      description="Track your learning journey"
-      icon={IconSchool}
-    />
-  );
+  return <LearningContent />;
 }
