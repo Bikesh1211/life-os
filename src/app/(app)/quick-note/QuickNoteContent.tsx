@@ -11,7 +11,6 @@ import {
   Paper,
   Badge,
   Tooltip,
-  ScrollArea,
   Container,
   Box,
   Transition,
@@ -30,15 +29,6 @@ import relativeTime from "dayjs/plugin/relativeTime";
 
 dayjs.extend(relativeTime);
 
-function useDebounce<T>(value: T, delay: number): T {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay);
-    return () => clearTimeout(id);
-  }, [value, delay]);
-  return debounced;
-}
-
 type FormState = {
   title: string;
   content: string;
@@ -55,8 +45,6 @@ export function QuickNoteContent() {
   const [saving, setSaving] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const debouncedForm = useDebounce(form, 10000);
 
   useEffect(() => {
     titleRef.current?.focus();
@@ -91,12 +79,6 @@ export function QuickNoteContent() {
     },
     [],
   );
-
-  useEffect(() => {
-    if (debouncedForm.title.trim() || debouncedForm.content.trim()) {
-      save(debouncedForm);
-    }
-  }, [debouncedForm, save]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
