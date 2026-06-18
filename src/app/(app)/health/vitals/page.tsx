@@ -1,12 +1,17 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconActivity } from "@tabler/icons-react";
+import { getCurrentUserId } from "@/core/auth";
+import { getVitalsSnapshot, getVitalsTrends } from "@/modules/health";
+import { VitalsContent } from "./VitalsContent";
 
-export default function VitalsPage() {
-  return (
-    <FeaturePlaceholder
-      title="Vitals"
-      description="Track your vital signs"
-      icon={IconActivity}
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function VitalsPage() {
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
+
+  const [snapshot, trends] = await Promise.all([
+    getVitalsSnapshot(userId),
+    getVitalsTrends(userId),
+  ]);
+
+  return <VitalsContent snapshot={snapshot} trends={trends} />;
 }

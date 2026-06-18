@@ -365,29 +365,6 @@ export const navigation: NavGroup[] = [
         description: "Health tracking",
         icon: IconHeart,
         featureId: "health",
-        children: [
-          {
-            label: "Vitals",
-            route: "/health/vitals",
-            description: "Vital signs",
-            icon: IconActivity,
-            featureId: "vitals",
-          },
-          {
-            label: "Fitness",
-            route: "/health/fitness",
-            description: "Fitness tracking",
-            icon: IconRun,
-            featureId: "fitness",
-          },
-          {
-            label: "Nutrition",
-            route: "/health/nutrition",
-            description: "Nutrition tracking",
-            icon: IconApple,
-            featureId: "nutrition",
-          },
-        ],
       },
       {
         label: "Mindset",

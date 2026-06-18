@@ -1,12 +1,13 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconApple } from "@tabler/icons-react";
+import { getCurrentUserId } from "@/core/auth";
+import { getNutritionSummary } from "@/modules/health";
+import { NutritionContent } from "./NutritionContent";
 
-export default function NutritionPage() {
-  return (
-    <FeaturePlaceholder
-      title="Nutrition"
-      description="Track your nutrition and diet"
-      icon={IconApple}
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function NutritionPage() {
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
+
+  const summary = await getNutritionSummary(userId);
+  return <NutritionContent summary={summary} />;
 }
