@@ -90,6 +90,15 @@ export async function getRoutineItems(routineId: string) {
     .orderBy(asc(routineItems.order));
 }
 
+export async function getRoutineItemsByRoutineIds(routineIds: string[]) {
+  if (routineIds.length === 0) return [];
+  return db
+    .select()
+    .from(routineItems)
+    .where(inArray(routineItems.routineId, routineIds))
+    .orderBy(asc(routineItems.order));
+}
+
 export async function getRoutineItemById(id: string) {
   return db
     .select()
@@ -152,6 +161,14 @@ export async function getExecutionByRoutineAndDate(routineId: string, date: stri
     .then((r) => r[0] ?? null);
 }
 
+export async function getExecutionsByRoutineIdsAndDate(routineIds: string[], date: string) {
+  if (routineIds.length === 0) return [];
+  return db
+    .select()
+    .from(routineExecutions)
+    .where(and(inArray(routineExecutions.routineId, routineIds), eq(routineExecutions.date, date)));
+}
+
 export async function createExecution(input: CreateExecutionInput) {
   return db.insert(routineExecutions).values(input).returning().then((r) => r[0]);
 }
@@ -202,6 +219,30 @@ export async function getExecutionItems(executionId: string) {
     .select()
     .from(routineExecutionItems)
     .where(eq(routineExecutionItems.executionId, executionId))
+    .orderBy(asc(routineExecutionItems.createdAt));
+
+  const itemIds = items.map((i) => i.routineItemId);
+  if (itemIds.length === 0) return items.map((ei) => ({ ...ei, routineItem: null }));
+
+  const itemRows = await db
+    .select()
+    .from(routineItems)
+    .where(inArray(routineItems.id, itemIds));
+
+  const routineItemMap = new Map(itemRows.map((r) => [r.id, r]));
+
+  return items.map((ei) => ({
+    ...ei,
+    routineItem: routineItemMap.get(ei.routineItemId) ?? null,
+  }));
+}
+
+export async function getExecutionItemsByExecutionIds(executionIds: string[]) {
+  if (executionIds.length === 0) return [];
+  const items = await db
+    .select()
+    .from(routineExecutionItems)
+    .where(inArray(routineExecutionItems.executionId, executionIds))
     .orderBy(asc(routineExecutionItems.createdAt));
 
   const itemIds = items.map((i) => i.routineItemId);
