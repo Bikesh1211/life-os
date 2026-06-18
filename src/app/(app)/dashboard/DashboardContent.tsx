@@ -22,7 +22,6 @@ import {
   IconRepeat,
   IconArrowRight,
 } from "@tabler/icons-react";
-import { TodayRoutineWidget } from "@/modules/routines/components/TodayRoutineWidget";
 import Link from "next/link";
 import dayjs from "dayjs";
 import { APP_NAME } from "@/core/constants";
@@ -148,8 +147,6 @@ export function DashboardContent({
           </Group>
         </Paper>
       </SimpleGrid>
-
-      <TodayRoutineWidget />
 
       <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
         <Paper withBorder p="md" radius="md">
