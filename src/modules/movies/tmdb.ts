@@ -12,8 +12,8 @@ async function rateLimitedFetch(url: string): Promise<Response> {
     await new Promise((resolve) => setTimeout(resolve, MIN_INTERVAL_MS - timeSinceLastRequest));
   }
   lastRequestTime = Date.now();
-  return fetch(url, {
-    headers: { Authorization: `Bearer ${TMDB_API_KEY}` },
+  const separator = url.includes("?") ? "&" : "?";
+  return fetch(`${url}${separator}api_key=${TMDB_API_KEY}`, {
     signal: AbortSignal.timeout(5000),
   });
 }

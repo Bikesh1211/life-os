@@ -23,9 +23,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const [local, mediaDetail] = await Promise.all([
       getMediaByTmdbId(parsed.tmdbId),
-      fetch(`${TMDB_BASE_URL}/${parsed.mediaType}/${parsed.tmdbId}?language=en-US&append_to_response=credits,videos,external_ids`, {
-        headers: { Authorization: `Bearer ${process.env.TMDB_API_KEY}` },
-      }).then((r) => (r.ok ? r.json() : null)),
+      fetch(`${TMDB_BASE_URL}/${parsed.mediaType}/${parsed.tmdbId}?language=en-US&append_to_response=credits,videos,external_ids&api_key=${process.env.TMDB_API_KEY}`)
+        .then((r) => (r.ok ? r.json() : null)),
     ]);
 
     if (!mediaDetail) return NextResponse.json({ error: "Not found" }, { status: 404 });
