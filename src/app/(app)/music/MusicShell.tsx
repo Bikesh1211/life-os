@@ -28,7 +28,7 @@ export function MusicShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const currentTab = tabs.find((t) => pathname.startsWith(t.value))?.value ?? "/music";
+  const currentTab = tabs.find((t) => pathname === t.value || pathname.startsWith(t.value + "/"))?.value ?? "/music";
 
   return (
     <>

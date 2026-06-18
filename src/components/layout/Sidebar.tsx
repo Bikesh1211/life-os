@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { AppShellNavbar } from "@mantine/core";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,6 +21,7 @@ import { APP_NAME } from "@/core/constants";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 import { useSidebarVisibility } from "@/core/sidebar-visibility";
 import { useSidebarFavorites } from "@/core/sidebar-favorites";
+import { useSupabase } from "@/infrastructure/providers/supabase-provider";
 
 const NAV_ICON_SIZE = 18;
 const SIDEBAR_COLLAPSED_W = 64;
@@ -47,20 +48,24 @@ function CollapseBtn() {
 
 /* ── Bottom icon button ── */
 
-function BottomIconBtn({ href, icon: Icon, title }: { href: string; icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; title: string }) {
+function BottomIconBtn({ href, onClick, icon: Icon, title }: { href?: string; onClick?: () => void; icon: React.ComponentType<{ size?: number; strokeWidth?: number }>; title: string }) {
   const pathname = usePathname();
-  const isActive = pathname === href || pathname.startsWith(href + "/");
+  const isActive = href ? pathname === href || pathname.startsWith(href + "/") : false;
+  const classes = cn(
+    "flex items-center justify-center h-8 w-8 rounded-lg transition-all duration-200",
+    isActive
+      ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
+      : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] active:scale-95",
+  );
+  if (onClick) {
+    return (
+      <button onClick={onClick} type="button" className={classes} title={title}>
+        <Icon size={15} strokeWidth={1.5} />
+      </button>
+    );
+  }
   return (
-    <Link
-      href={href}
-      className={cn(
-        "flex items-center justify-center h-8 w-8 rounded-lg transition-all duration-200",
-        isActive
-          ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400"
-          : "text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] active:scale-95",
-      )}
-      title={title}
-    >
+    <Link href={href!} className={classes} title={title}>
       <Icon size={15} strokeWidth={1.5} />
     </Link>
   );
@@ -550,6 +555,8 @@ function GroupSection({
 /* ── Main sidebar content ── */
 
 export function SidebarContent({ collapsed = false, showBrand = true, showBottomCollapse = true }: { collapsed?: boolean; showBrand?: boolean; showBottomCollapse?: boolean }) {
+  const router = useRouter();
+  const { supabase } = useSupabase();
   const { loaded, getVisibleGroups } = useSidebarVisibility();
   const {
     loaded: favLoaded,
@@ -645,7 +652,7 @@ export function SidebarContent({ collapsed = false, showBrand = true, showBottom
           <BottomIconBtn href="/settings" icon={IconSettings} title="Settings" />
           <BottomIconBtn href="/archive" icon={IconArchive} title="Archive" />
           <div className="w-px h-5 bg-gray-200/70 dark:bg-white/[0.08]" />
-          <BottomIconBtn href="/logout" icon={IconLogout} title="Logout" />
+          <BottomIconBtn onClick={async () => { await supabase.auth.signOut(); router.push("/sign-in"); }} icon={IconLogout} title="Logout" />
           {showBottomCollapse && <CollapseBtn />}
         </div>
       </div>

@@ -247,8 +247,8 @@ async function collectTravelData(
       and(
         eq(travelTrips.userId, userId),
         isNull(travelTrips.deletedAt),
-        sql`${travelTrips.startDate} <= ${end}`,
-        sql`${travelTrips.endDate} >= ${start}`,
+        sql`${travelTrips.startDate} <= ${end.toISOString()}`,
+        sql`${travelTrips.endDate} >= ${start.toISOString()}`,
       ),
     );
 
@@ -285,8 +285,8 @@ async function collectTravelData(
       and(
         eq(travelJournalsTable.userId, userId),
         isNull(travelJournalsTable.deletedAt),
-        sql`${travelJournalsTable.date} >= ${start}`,
-        sql`${travelJournalsTable.date} <= ${end}`,
+        sql`${travelJournalsTable.date} >= ${start.toISOString()}`,
+        sql`${travelJournalsTable.date} <= ${end.toISOString()}`,
       ),
     );
 
@@ -319,8 +319,8 @@ async function collectTravelData(
       and(
         eq(travelPhotos.userId, userId),
         isNull(travelPhotos.deletedAt),
-        sql`${travelPhotos.dateTaken} >= ${start}`,
-        sql`${travelPhotos.dateTaken} <= ${end}`,
+        sql`${travelPhotos.dateTaken} >= ${start.toISOString()}`,
+        sql`${travelPhotos.dateTaken} <= ${end.toISOString()}`,
       ),
     );
 

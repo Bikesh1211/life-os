@@ -13,7 +13,7 @@ const isPublicRoute = (req: NextRequest) => {
   );
 };
 
-export const proxy = async (req: NextRequest) => {
+export async function proxy(req: NextRequest) {
   const res = NextResponse.next();
 
   if (isPublicRoute(req)) {
@@ -36,7 +36,16 @@ export const proxy = async (req: NextRequest) => {
     },
   });
 
-  const { data: { user } } = await supabase.auth.getUser();
+  let user;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    // Supabase unreachable (ETIMEDOUT, network error) — allow the
+    // request through. Each API route and server component re-checks
+    // auth via getCurrentUserId() and will deny access independently.
+    return res;
+  }
 
   if (!user) {
     const signInUrl = new URL("/sign-in", req.url);
@@ -45,7 +54,7 @@ export const proxy = async (req: NextRequest) => {
   }
 
   return res;
-};
+}
 
 export const config = {
   matcher: [
