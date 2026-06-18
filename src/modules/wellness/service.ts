@@ -77,11 +77,108 @@ export const analyticsFilterSchema = z.object({
   period: z.enum(["week", "month", "quarter", "year"]).optional(),
 });
 
+export const createWeightEntrySchema = z.object({
+  weightKg: z.number().min(20).max(500),
+  bodyFatPercentage: z.number().min(1).max(70).optional(),
+  musclePercentage: z.number().min(1).max(90).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  notes: z.string().max(2000).optional(),
+});
+
+export const createWorkoutEntrySchema = z.object({
+  workoutType: z.string().min(1).max(100),
+  durationMinutes: z.number().int().min(1).max(1440),
+  caloriesBurned: z.number().int().min(0).optional(),
+  distanceKm: z.number().min(0).optional(),
+  notes: z.string().max(2000).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const createStepEntrySchema = z.object({
+  steps: z.number().int().min(0).max(1000000),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const createCalorieEntrySchema = z.object({
+  mealType: z.enum(["breakfast", "lunch", "dinner", "snacks"]),
+  calories: z.number().int().min(0).max(10000),
+  proteinG: z.number().min(0).optional(),
+  carbsG: z.number().min(0).optional(),
+  fatG: z.number().min(0).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const createBpEntrySchema = z.object({
+  systolic: z.number().int().min(60).max(300),
+  diastolic: z.number().int().min(30).max(200),
+  pulse: z.number().int().min(20).max(300).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  notes: z.string().max(2000).optional(),
+});
+
+export const createHrEntrySchema = z.object({
+  resting: z.number().int().min(20).max(300).optional(),
+  average: z.number().int().min(20).max(300).optional(),
+  max: z.number().int().min(20).max(300).optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const createMedicineReminderSchema = z.object({
+  name: z.string().min(1).max(200),
+  dosage: z.string().min(1).max(200),
+  frequency: z.enum(["daily", "weekly", "custom"]),
+  time: z.string().regex(/^\d{2}:\d{2}$/),
+  daysOfWeek: z.array(z.number().int().min(0).max(6)).optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  isActive: z.boolean().optional(),
+  notes: z.string().max(2000).optional(),
+});
+
+export const updateMedicineReminderSchema = createMedicineReminderSchema.partial();
+
+export const createMedicineLogSchema = z.object({
+  medicineId: z.string().uuid(),
+  status: z.enum(["taken", "skipped", "snoozed"]),
+  scheduledTime: z.string().regex(/^\d{2}:\d{2}$/),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+
+export const createUserGoalSchema = z.object({
+  goalType: z.string().min(1).max(100),
+  title: z.string().min(1).max(200),
+  targetValue: z.number().min(0),
+  currentValue: z.number().min(0).optional(),
+  unit: z.string().min(1).max(50),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  isActive: z.boolean().optional(),
+});
+
+export const updateUserGoalSchema = createUserGoalSchema.partial();
+
+export const bmiCalculateSchema = z.object({
+  heightCm: z.number().min(50).max(300),
+  weightKg: z.number().min(10).max(500),
+  age: z.number().int().min(1).max(150).optional(),
+  gender: z.enum(["male", "female", "other"]).optional(),
+});
+
 export type CreateMoodLogParams = z.infer<typeof createMoodLogSchema>;
 export type CreateSleepRecordParams = z.infer<typeof createSleepRecordSchema>;
 export type CreateHydrationEntryParams = z.infer<typeof createHydrationEntrySchema>;
 export type CreateConfidenceCheckinParams = z.infer<typeof createConfidenceCheckinSchema>;
 export type CreateHabitEnrichmentParams = z.infer<typeof createHabitEnrichmentSchema>;
+export type CreateWeightEntryParams = z.infer<typeof createWeightEntrySchema>;
+export type CreateWorkoutEntryParams = z.infer<typeof createWorkoutEntrySchema>;
+export type CreateStepEntryParams = z.infer<typeof createStepEntrySchema>;
+export type CreateCalorieEntryParams = z.infer<typeof createCalorieEntrySchema>;
+export type CreateBpEntryParams = z.infer<typeof createBpEntrySchema>;
+export type CreateHrEntryParams = z.infer<typeof createHrEntrySchema>;
+export type CreateMedicineReminderParams = z.infer<typeof createMedicineReminderSchema>;
+export type CreateMedicineLogParams = z.infer<typeof createMedicineLogSchema>;
+export type CreateUserGoalParams = z.infer<typeof createUserGoalSchema>;
+export type BmiCalculateParams = z.infer<typeof bmiCalculateSchema>;
 export type AnalyticsFilterParams = z.infer<typeof analyticsFilterSchema>;
 
 // ── Helpers ──
@@ -561,4 +658,205 @@ export async function getWellnessInsights(userId: string): Promise<WellnessInsig
   }
 
   return insights;
+}
+
+// ── Weight Entries ──
+
+export async function createWeightEntry(userId: string, params: CreateWeightEntryParams) {
+  const { bodyFatPercentage, musclePercentage, weightKg, ...rest } = createWeightEntrySchema.parse(params);
+  return repo.createWeightEntry({
+    userId,
+    ...rest,
+    weightKg: String(weightKg),
+    bodyFatPercentage: bodyFatPercentage ? String(bodyFatPercentage) : null,
+    musclePercentage: musclePercentage ? String(musclePercentage) : null,
+  });
+}
+
+export async function getWeightEntries(userId: string, filters: AnalyticsFilterParams = {}) {
+  const { dateFrom, dateTo } = getDateRange(filters);
+  return repo.getWeightEntries(userId, { dateFrom, dateTo });
+}
+
+export async function deleteWeightEntry(id: string, userId: string) {
+  return repo.deleteWeightEntry(id, userId);
+}
+
+// ── Workout Entries ──
+
+export async function createWorkoutEntry(userId: string, params: CreateWorkoutEntryParams) {
+  const { distanceKm, ...rest } = createWorkoutEntrySchema.parse(params);
+  const entry = await repo.createWorkoutEntry({
+    userId,
+    ...rest,
+    distanceKm: distanceKm ? String(distanceKm) : null,
+  });
+  try { await awardXp(userId, "workout_logged", entry.id, "Workout logged", 5); } catch { }
+  return entry;
+}
+
+export async function getWorkoutEntries(
+  userId: string,
+  filters: AnalyticsFilterParams & { type?: string } = {},
+) {
+  const { dateFrom, dateTo } = getDateRange(filters);
+  return repo.getWorkoutEntries(userId, { dateFrom, dateTo, type: filters.type });
+}
+
+export async function deleteWorkoutEntry(id: string, userId: string) {
+  return repo.deleteWorkoutEntry(id, userId);
+}
+
+// ── Step Entries ──
+
+export async function upsertStepEntry(userId: string, params: CreateStepEntryParams) {
+  const validated = createStepEntrySchema.parse(params);
+  const entry = await repo.upsertStepEntry({ userId, ...validated });
+  try { await awardXp(userId, "steps_logged", entry.id, "Steps logged", 1); } catch { }
+  return entry;
+}
+
+export async function getStepEntries(userId: string, filters: AnalyticsFilterParams = {}) {
+  const { dateFrom, dateTo } = getDateRange(filters);
+  return repo.getStepEntries(userId, { dateFrom, dateTo });
+}
+
+// ── Calorie Entries ──
+
+export async function createCalorieEntry(userId: string, params: CreateCalorieEntryParams) {
+  const { proteinG, carbsG, fatG, ...rest } = createCalorieEntrySchema.parse(params);
+  return repo.createCalorieEntry({
+    userId,
+    ...rest,
+    proteinG: proteinG ? String(proteinG) : null,
+    carbsG: carbsG ? String(carbsG) : null,
+    fatG: fatG ? String(fatG) : null,
+  });
+}
+
+export async function getCalorieEntries(userId: string, filters: AnalyticsFilterParams = {}) {
+  const { dateFrom, dateTo } = getDateRange(filters);
+  return repo.getCalorieEntries(userId, { dateFrom, dateTo });
+}
+
+// ── Blood Pressure Entries ──
+
+export async function createBloodPressureEntry(userId: string, params: CreateBpEntryParams) {
+  const validated = createBpEntrySchema.parse(params);
+  return repo.createBloodPressureEntry({ userId, ...validated });
+}
+
+export async function getBloodPressureEntries(
+  userId: string,
+  filters: AnalyticsFilterParams = {},
+) {
+  const { dateFrom, dateTo } = getDateRange(filters);
+  return repo.getBloodPressureEntries(userId, { dateFrom, dateTo });
+}
+
+// ── Heart Rate Entries ──
+
+export async function upsertHeartRateEntry(userId: string, params: CreateHrEntryParams) {
+  const validated = createHrEntrySchema.parse(params);
+  return repo.upsertHeartRateEntry({ userId, ...validated });
+}
+
+export async function getHeartRateEntries(userId: string, filters: AnalyticsFilterParams = {}) {
+  const { dateFrom, dateTo } = getDateRange(filters);
+  return repo.getHeartRateEntries(userId, { dateFrom, dateTo });
+}
+
+// ── Medicine Reminders ──
+
+export async function createMedicineReminder(userId: string, params: CreateMedicineReminderParams) {
+  const validated = createMedicineReminderSchema.parse(params);
+  return repo.createMedicineReminder({ userId, ...validated });
+}
+
+export async function getMedicineReminders(userId: string) {
+  return repo.getMedicineReminders(userId);
+}
+
+export async function updateMedicineReminder(
+  id: string,
+  userId: string,
+  params: z.infer<typeof updateMedicineReminderSchema>,
+) {
+  const validated = updateMedicineReminderSchema.parse(params);
+  return repo.updateMedicineReminder(id, userId, validated);
+}
+
+export async function deleteMedicineReminder(id: string, userId: string) {
+  return repo.deleteMedicineReminder(id, userId);
+}
+
+// ── Medicine Logs ──
+
+export async function createMedicineLog(userId: string, params: CreateMedicineLogParams) {
+  const validated = createMedicineLogSchema.parse(params);
+  return repo.createMedicineLog({ userId, ...validated });
+}
+
+export async function getMedicineLogs(
+  userId: string,
+  opts: { dateFrom?: string; dateTo?: string; medicineId?: string } = {},
+) {
+  return repo.getMedicineLogs(userId, opts);
+}
+
+// ── User Goals ──
+
+export async function createUserGoal(userId: string, params: CreateUserGoalParams) {
+  const { targetValue, currentValue, ...rest } = createUserGoalSchema.parse(params);
+  return repo.createUserGoal({
+    userId,
+    ...rest,
+    targetValue: String(targetValue),
+    currentValue: currentValue !== undefined ? String(currentValue) : "0",
+  });
+}
+
+export async function getUserGoals(userId: string) {
+  return repo.getUserGoals(userId);
+}
+
+export async function updateUserGoal(
+  id: string,
+  userId: string,
+  params: z.infer<typeof updateUserGoalSchema>,
+) {
+  const { targetValue, currentValue, ...rest } = updateUserGoalSchema.parse(params);
+  return repo.updateUserGoal(id, userId, {
+    ...rest,
+    ...(targetValue !== undefined ? { targetValue: String(targetValue) } : {}),
+    ...(currentValue !== undefined ? { currentValue: String(currentValue) } : {}),
+  });
+}
+
+export async function deleteUserGoal(id: string, userId: string) {
+  return repo.deleteUserGoal(id, userId);
+}
+
+// ── Achievements ──
+
+export async function createAchievement(userId: string, achievementType: string, title: string) {
+  return repo.createAchievement({ userId, achievementType, title });
+}
+
+export async function getAchievements(userId: string) {
+  return repo.getAchievements(userId);
+}
+
+// ── BMI Calculator ──
+
+export function calculateBmi(heightCm: number, weightKg: number) {
+  const bmi = Math.round((weightKg / ((heightCm / 100) * (heightCm / 100))) * 10) / 10;
+  let category: string;
+  if (bmi < 18.5) category = "underweight";
+  else if (bmi < 25) category = "normal";
+  else if (bmi < 30) category = "overweight";
+  else category = "obese";
+  const minHealthy = Math.round(18.5 * ((heightCm / 100) * (heightCm / 100)) * 10) / 10;
+  const maxHealthy = Math.round(24.9 * ((heightCm / 100) * (heightCm / 100)) * 10) / 10;
+  return { bmi, category, healthyWeightRange: { min: minHealthy, max: maxHealthy } };
 }
