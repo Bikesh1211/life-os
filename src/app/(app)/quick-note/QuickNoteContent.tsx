@@ -23,10 +23,8 @@ import {
   IconClock,
   IconPinFilled,
   IconWriting,
-  IconPlus,
 } from "@tabler/icons-react";
-import { useAppShell } from "../AppShellProvider";
-import { useCreateNote, useNotes, useDeleteNote } from "@/hooks/use-notes";
+import { useNotes, useDeleteNote } from "@/hooks/use-notes";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 
@@ -49,8 +47,6 @@ type FormState = {
 const INITIAL_FORM: FormState = { title: "", content: "" };
 
 export function QuickNoteContent() {
-  const { setMinimalChrome } = useAppShell();
-  const createNote = useCreateNote();
   const deleteNote = useDeleteNote();
   const { data: notes } = useNotes({ limit: 20, sortBy: "updatedAt", sortOrder: "desc" });
 
@@ -60,12 +56,7 @@ export function QuickNoteContent() {
   const titleRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const debouncedForm = useDebounce(form, 1500);
-
-  useEffect(() => {
-    setMinimalChrome(true);
-    return () => setMinimalChrome(false);
-  }, [setMinimalChrome]);
+  const debouncedForm = useDebounce(form, 10000);
 
   useEffect(() => {
     titleRef.current?.focus();
@@ -78,13 +69,18 @@ export function QuickNoteContent() {
       if (!f.title.trim() && !f.content.trim()) return;
       setSaving(true);
       try {
-        await createNote.mutateAsync({
-          title: f.title.trim() || "Untitled",
-          content: f.content.trim() || undefined,
-          category: "personal",
-          status: "published",
-          priority: "medium",
+        const res = await fetch("/api/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: f.title.trim() || "Untitled",
+            content: f.content.trim() || undefined,
+            category: "personal",
+            status: "published",
+            priority: "medium",
+          }),
         });
+        if (!res.ok) throw new Error("Failed to save");
         setForm(INITIAL_FORM);
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
@@ -93,7 +89,7 @@ export function QuickNoteContent() {
         setSaving(false);
       }
     },
-    [createNote],
+    [],
   );
 
   useEffect(() => {
@@ -166,7 +162,10 @@ export function QuickNoteContent() {
               size="xl"
               placeholder="What's on your mind?"
               value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.currentTarget.value }))}
+              onChange={(e) => {
+                const value = e.currentTarget?.value ?? "";
+                setForm((f) => ({ ...f, title: value }));
+              }}
               onKeyDown={handleKeyDown}
               classNames={{ input: "font-semibold placeholder:text-gray-400 dark:placeholder:text-gray-600" }}
               styles={{ input: { height: rem(48), padding: 0 } }}
@@ -177,7 +176,10 @@ export function QuickNoteContent() {
                 variant="unstyled"
                 placeholder="Start writing..."
                 value={form.content}
-                onChange={(e) => setForm((f) => ({ ...f, content: e.currentTarget.value }))}
+                onChange={(e) => {
+                  const value = e.currentTarget?.value ?? "";
+                  setForm((f) => ({ ...f, content: value }));
+                }}
                 onKeyDown={handleKeyDown}
                 autosize
                 minRows={8}

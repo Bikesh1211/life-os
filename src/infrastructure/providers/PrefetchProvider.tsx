@@ -5,7 +5,6 @@ import { useEffect, useRef } from "react";
 
 const PREFETCH_ROUTES = [
   "/api/timeline",
-  "/api/notes",
   "/api/goals",
 ];
 
