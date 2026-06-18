@@ -17,6 +17,7 @@ import * as techGearSchema from "@/modules/tech-gear/schema";
 import * as gamificationSchema from "@/modules/gamification/schema";
 import * as travelSchema from "@/modules/travel/schema";
 import * as readingSchema from "@/modules/reading/schema";
+import * as networkSchema from "@/modules/network/schema";
 import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -46,14 +47,15 @@ export const db = drizzle(queryClient, {
       ...knowledgeSchema,
      ...wardrobeSchema,
        ...routinesSchema,
-        ...techGearSchema,
-        ...gamificationSchema,
-         ...travelSchema,
-         ...readingSchema,
-        coreTags,
-      coreTaggings,
-     sidebarPreferences,
-    },
-  });
+    ...techGearSchema,
+    ...gamificationSchema,
+    ...travelSchema,
+    ...readingSchema,
+    ...networkSchema,
+    coreTags,
+    coreTaggings,
+    sidebarPreferences,
+  },
+});
 
 export type DB = typeof db;

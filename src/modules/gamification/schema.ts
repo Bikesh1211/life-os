@@ -16,6 +16,10 @@ export const xpEventTypeEnum = pgEnum("xp_event_type", [
   "wellness_streak_bonus",
   "workout_logged",
   "steps_logged",
+  "connection_added",
+  "meetup_logged",
+  "event_logged",
+  "memory_created",
 ] as const);
 
 export const challengeTypeEnum = pgEnum("challenge_type", [
