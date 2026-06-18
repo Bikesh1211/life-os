@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import { NextResponse } from "next/server";
 import {
   createFinancialAccount,
@@ -6,8 +6,7 @@ import {
 } from "@/modules/expenses/service/accounts";
 
 export async function GET() {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   const accounts = await getFinancialAccounts(userId);
@@ -15,8 +14,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   try {

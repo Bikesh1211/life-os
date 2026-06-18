@@ -1,6 +1,5 @@
 "use client";
 
-import { ClerkProvider } from "@clerk/nextjs";
 import { MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -9,14 +8,7 @@ import { theme } from "@/core/design-system";
 import { ServiceWorkerRegister } from "./ServiceWorkerRegister";
 import { PrefetchProvider } from "./PrefetchProvider";
 import { CommandPalette } from "@/components/CommandPalette";
-  const localization = {
-    signIn: {
-      start: {
-        title: "Sign in",
-        subtitle: "Welcome back",
-      },
-    },
-} as const;
+import { SupabaseProvider } from "./supabase-provider";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -34,7 +26,7 @@ export function Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <ClerkProvider localization={localization}>
+    <SupabaseProvider>
       <QueryClientProvider client={queryClient}>
         <PrefetchProvider>
           <MantineProvider theme={theme} defaultColorScheme="auto">
@@ -45,6 +37,6 @@ export function Providers({ children }: { children: ReactNode }) {
           </MantineProvider>
         </PrefetchProvider>
       </QueryClientProvider>
-    </ClerkProvider>
+    </SupabaseProvider>
   );
 }

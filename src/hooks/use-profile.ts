@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useUser } from "@clerk/nextjs";
+import { useSupabase } from "@/infrastructure/providers/supabase-provider";
 import { useGamificationProfile } from "./use-gamification";
 
 type HabitDashboard = {
@@ -116,7 +116,7 @@ function useGoalSummary() {
 const EMPTY_GOALS: GoalSummary = { total: 0, active: 0, completed: 0 };
 
 export function useProfile() {
-  const { user, isLoaded: userLoaded } = useUser();
+  const { user, isLoading: authLoading } = useSupabase();
   const gamification = useGamificationProfile();
   const habits = useHabitDashboard();
   const routines = useRoutineAnalytics();
@@ -124,7 +124,7 @@ export function useProfile() {
   const goals = useGoalSummary();
 
   const isLoading =
-    !userLoaded ||
+    authLoading ||
     gamification.isLoading ||
     habits.isLoading ||
     routines.isLoading ||
@@ -133,15 +133,15 @@ export function useProfile() {
   const isLoadingGoals = goals.isLoading;
 
   const profile: ProfileData | null =
-    userLoaded && gamification.data
+    !authLoading && gamification.data
       ? {
           user: {
-            fullName: user?.fullName ?? null,
-            firstName: user?.firstName ?? null,
-            lastName: user?.lastName ?? null,
-            email: user?.primaryEmailAddress?.emailAddress ?? null,
-            imageUrl: user?.imageUrl ?? "",
-            createdAt: user?.createdAt ?? null,
+            fullName: user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? null,
+            firstName: user?.user_metadata?.given_name ?? null,
+            lastName: user?.user_metadata?.family_name ?? null,
+            email: user?.email ?? null,
+            imageUrl: user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? "",
+            createdAt: user?.created_at ? new Date(user.created_at) : null,
           },
           gamification: gamification.data,
           habits: habits.data ?? null,

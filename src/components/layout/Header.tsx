@@ -11,7 +11,7 @@ import {
   AppShellHeader,
   Tooltip,
 } from "@mantine/core";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useSupabase } from "@/infrastructure/providers/supabase-provider";
 import {
   IconSun,
   IconMoon,
@@ -54,8 +54,7 @@ export function Header() {
 
   const { colorScheme, setColorScheme, clearColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme();
-  const { user } = useUser();
-  const { signOut } = useClerk();
+  const { user, supabase } = useSupabase();
   const router = useRouter();
   const breadcrumb = useBreadcrumb();
   const { opened, toggle, minimalChrome } = useAppShell();
@@ -143,8 +142,8 @@ export function Header() {
             <Menu.Target>
               <ActionIcon variant="subtle" size="lg">
                 <Avatar
-                  src={user?.imageUrl}
-                  alt={user?.fullName ?? "User"}
+                  src={user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? ""}
+                  alt={user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "User"}
                   size="sm"
                   style={{ cursor: "pointer" }}
                 />
@@ -154,10 +153,10 @@ export function Header() {
             <Menu.Dropdown>
               <div className="px-3 py-2">
                 <Text size="sm" fw={600} truncate>
-                  {user?.fullName}
+                  {user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "User"}
                 </Text>
                 <Text size="xs" c="dimmed" truncate>
-                  {user?.primaryEmailAddress?.emailAddress}
+                  {user?.email}
                 </Text>
               </div>
               <Menu.Divider />
@@ -175,7 +174,10 @@ export function Header() {
               </Menu.Item>
               <Menu.Item
                 leftSection={<IconLogout size={16} />}
-                onClick={() => signOut({ redirectUrl: "/sign-in" })}
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  router.push("/sign-in");
+                }}
                 color="red"
               >
                 Sign Out

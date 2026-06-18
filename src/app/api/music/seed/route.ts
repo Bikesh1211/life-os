@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import { eq } from "drizzle-orm";
 import { db } from "@/core/database";
 import { musicListeningHistory, musicJournal } from "@/modules/music/schema";
@@ -28,7 +28,7 @@ const DEMO_TRACKS = [
 ];
 
 export async function POST() {
-  const { userId } = await auth();
+  const userId = await getCurrentUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {

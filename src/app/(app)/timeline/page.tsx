@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import { getTimelineEvents } from "@/modules/timeline";
 import { TimelineContent } from "./TimelineContent";
 
@@ -8,7 +8,7 @@ type Props = {
 };
 
 export default async function TimelinePage({ searchParams }: Props) {
-  const { userId } = await auth();
+  const userId = await getCurrentUserId();
   const events = await getTimelineEvents(userId!);
   const { tab } = await searchParams;
   return <TimelineContent events={events} defaultTab={tab ?? "today"} />;

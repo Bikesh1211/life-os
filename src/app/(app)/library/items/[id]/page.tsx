@@ -1,11 +1,11 @@
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import { getReadingItem, getReadingAnnotations, getReadingNotes, getReadingSessions } from "@/modules/reading";
 import { ItemDetailContent } from "./ItemDetailContent";
 
 type Props = { params: Promise<{ id: string }> };
 
 export default async function ItemDetailPage({ params }: Props) {
-  const { userId } = await auth();
+  const userId = await getCurrentUserId();
   const { id } = await params;
 
   if (!userId) return null;

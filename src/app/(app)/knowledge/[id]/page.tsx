@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import { getKnowledgeEntry, getEntryLinks } from "@/modules/knowledge";
 import { notFound } from "next/navigation";
 import { EntryDetail } from "../components/EntryDetail";
@@ -8,7 +8,7 @@ type Props = {
 };
 
 export default async function KnowledgeEntryPage({ params }: Props) {
-  const { userId } = await auth();
+  const userId = await getCurrentUserId();
   const { id } = await params;
   const [entry, links] = await Promise.all([
     getKnowledgeEntry(id, userId!),

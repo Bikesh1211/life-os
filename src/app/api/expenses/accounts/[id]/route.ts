@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { getCurrentUserId } from "@/core/auth";
 import { NextResponse } from "next/server";
 import {
   getFinancialAccount,
@@ -9,8 +9,7 @@ import {
 import { createExpenseTransaction } from "@/modules/expenses/service/transactions";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   const { id } = await params;
@@ -21,8 +20,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   try {
@@ -62,8 +60,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const authResult = await auth();
-  const userId = authResult.userId;
+  const userId = await getCurrentUserId();
   if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
   const { id } = await params;

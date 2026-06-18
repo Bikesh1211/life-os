@@ -1,7 +1,7 @@
 "use client";
 
 import { Stack, Title, Text, Paper, Group, Avatar, Divider, Checkbox, Box } from "@mantine/core";
-import { useUser } from "@clerk/nextjs";
+import { useSupabase } from "@/infrastructure/providers/supabase-provider";
 import { navigation, findNavItemByFeatureId, type NavItem } from "@/core/navigation";
 import { useSidebarVisibility } from "@/core/sidebar-visibility";
 import { useSidebarFavorites } from "@/core/sidebar-favorites";
@@ -136,7 +136,7 @@ function SidebarVisibilitySection() {
 }
 
 export default function SettingsPage() {
-  const { user } = useUser();
+  const { user } = useSupabase();
 
   return (
     <Stack gap="lg">
@@ -144,13 +144,13 @@ export default function SettingsPage() {
 
       <Paper withBorder p="lg" radius="md">
         <Group>
-          <Avatar src={user?.imageUrl} size="xl" radius="xl" />
+          <Avatar src={user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? ""} size="xl" radius="xl" />
           <div>
             <Text fw={600} size="lg">
-              {user?.fullName}
+              {user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "User"}
             </Text>
             <Text size="sm" c="dimmed">
-              {user?.primaryEmailAddress?.emailAddress}
+              {user?.email}
             </Text>
           </div>
         </Group>
@@ -161,7 +161,7 @@ export default function SettingsPage() {
           Account
         </Text>
         <Text size="sm" c="dimmed">
-          Manage your account settings and preferences through Clerk.
+          Manage your account settings and preferences.
         </Text>
       </Paper>
 

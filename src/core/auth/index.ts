@@ -1,12 +1,10 @@
-import { auth } from "@clerk/nextjs/server";
+import { createServerSupabaseClient } from "@/core/supabase/server";
 import { UnauthorizedError } from "@/core/errors";
 
-export async function getCurrentUserId(): Promise<string> {
-  const { userId } = await auth();
-  if (!userId) {
-    throw new UnauthorizedError();
-  }
-  return userId;
+export async function getCurrentUserId(): Promise<string | null> {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id ?? null;
 }
 
 export function requireUserId(userId: string | null): string {
