@@ -1,12 +1,5 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconBrain } from "@tabler/icons-react";
+import { BrainContent } from "./_components/BrainContent";
 
 export default function BrainPage() {
-  return (
-    <FeaturePlaceholder
-      title="Brain"
-      description="Your second brain for knowledge management"
-      icon={IconBrain}
-    />
-  );
+  return <BrainContent />;
 }
