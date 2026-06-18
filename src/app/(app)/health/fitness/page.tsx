@@ -2,8 +2,6 @@ import { getCurrentUserId } from "@/core/auth";
 import { getFitnessSummary } from "@/modules/health";
 import { FitnessContent } from "./FitnessContent";
 
-export const dynamic = "force-dynamic";
-
 export default async function FitnessPage() {
   const userId = await getCurrentUserId();
   if (!userId) return null;

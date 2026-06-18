@@ -1,14 +1,11 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 const PREFETCH_ROUTES = [
   "/api/timeline",
   "/api/notes",
-  "/api/tasks",
-  "/api/routines",
-  "/api/knowledge",
   "/api/goals",
 ];
 
@@ -18,8 +15,12 @@ const PREFETCH_HEADERS = {
 
 export function PrefetchProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
+  const prefetched = useRef(false);
 
   useEffect(() => {
+    if (prefetched.current) return;
+    prefetched.current = true;
+
     const controller = new AbortController();
 
     for (const url of PREFETCH_ROUTES) {
@@ -29,11 +30,9 @@ export function PrefetchProvider({ children }: { children: React.ReactNode }) {
           fetch(url, { signal: controller.signal, headers: PREFETCH_HEADERS }).then(
             (res) => (res.ok ? res.json() : Promise.resolve(null)),
           ),
-        staleTime: 60_000,
+        staleTime: 120_000,
       });
     }
-
-    return () => controller.abort();
   }, [queryClient]);
 
   return <>{children}</>;

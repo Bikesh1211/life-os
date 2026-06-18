@@ -60,11 +60,12 @@ async function deleteTask(id: string) {
 
 // ── Task Queries ──
 
-export function useTasks(filters?: Record<string, unknown>) {
+export function useTasks(filters?: Record<string, unknown>, initialData?: Task[]) {
   return useQuery({
     queryKey: [TASKS_KEY, filters ?? {}],
     queryFn: () => fetchTasks(filters),
     staleTime: 15_000,
+    placeholderData: initialData,
   });
 }
 

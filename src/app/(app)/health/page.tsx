@@ -2,8 +2,6 @@ import { getCurrentUserId } from "@/core/auth";
 import { getHealthDashboard, getVitalsSnapshot, getVitalsTrends, getFitnessSummary, getNutritionSummary } from "@/modules/health";
 import { HealthTabs } from "./HealthTabs";
 
-export const dynamic = "force-dynamic";
-
 export default async function HealthPage() {
   const userId = await getCurrentUserId();
   if (!userId) return null;

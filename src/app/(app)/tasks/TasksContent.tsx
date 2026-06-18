@@ -16,7 +16,7 @@ import { BulkActionBar } from "@/modules/tasks/components/BulkActionBar";
 import { useTaskKeyboardShortcuts } from "@/modules/tasks/hooks/useTaskKeyboardShortcuts";
 import type { Task } from "@/modules/tasks/repository";
 
-export function TasksContent({ taskSummary: initial }: { taskSummary: any }) {
+export function TasksContent({ taskSummary: initial, initialTasks }: { taskSummary: any; initialTasks?: any[] }) {
   const [filters, setFilters] = useState<FilterValues>({
     search: "", status: "active", priority: "", labelIds: [],
   });
@@ -26,7 +26,7 @@ export function TasksContent({ taskSummary: initial }: { taskSummary: any }) {
   if (filters.priority) queryFilters.priority = filters.priority;
   if (filters.labelIds.length > 0) queryFilters.labelIds = filters.labelIds;
 
-  const { data: tasks, isLoading } = useTasks(queryFilters);
+  const { data: tasks, isLoading } = useTasks(queryFilters, initialTasks);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -131,7 +131,7 @@ export function TasksContent({ taskSummary: initial }: { taskSummary: any }) {
         onClear={() => { setSelectedIds([]); setSelectionMode(false); }}
       />
 
-      {isLoading ? (
+      {!tasks || (tasks.length === 0 && isLoading) ? (
         <Text c="dimmed">Loading tasks...</Text>
       ) : !tasks || tasks.length === 0 ? (
         <Paper withBorder p="xl" radius="md">

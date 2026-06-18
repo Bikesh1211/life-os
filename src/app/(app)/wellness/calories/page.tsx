@@ -2,8 +2,6 @@ import { getCurrentUserId } from "@/core/auth";
 import { getCalorieEntries } from "@/modules/wellness";
 import { CaloriesContent } from "./CaloriesContent";
 
-export const dynamic = "force-dynamic";
-
 export default async function CaloriesPage() {
   const userId = await getCurrentUserId();
   if (!userId) return null;
