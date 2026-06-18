@@ -49,8 +49,6 @@ import {
   IconTimelineEvent,
   IconFlag,
   IconUsers,
-  IconUserPlus,
-  IconCake,
   IconChess,
   IconTarget,
   IconEye,
@@ -437,22 +435,6 @@ export const navigation: NavGroup[] = [
         description: "Your network",
         icon: IconUsers,
         featureId: "network",
-        children: [
-          {
-            label: "Connections",
-            route: "/network/connections",
-            description: "People you know",
-            icon: IconUserPlus,
-            featureId: "connections",
-          },
-          {
-            label: "Birthdays",
-            route: "/network/birthdays",
-            description: "Birthday calendar",
-            icon: IconCake,
-            featureId: "birthdays",
-          },
-        ],
       },
       {
         label: "Vault",

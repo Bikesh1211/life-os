@@ -223,6 +223,10 @@ const XP_VALUES = {
   wellness_streak_bonus: 10,
   workout_logged: 5,
   steps_logged: 1,
+  connection_added: 5,
+  meetup_logged: 3,
+  event_logged: 3,
+  memory_created: 5,
 } as const;
 
 export function getXpValue(eventType: keyof typeof XP_VALUES): number {
