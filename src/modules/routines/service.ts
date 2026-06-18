@@ -307,40 +307,74 @@ export async function getTodayRoutines(userId: string) {
   const today = dayjs().format("YYYY-MM-DD");
   const scheduled = activeRoutines.filter((r) => isScheduledToday(r));
 
-  const result = await Promise.all(
-    scheduled.map(async (routine) => {
-      const items = await repo.getRoutineItems(routine.id);
-      let execution = await repo.getExecutionByRoutineAndDate(routine.id, today);
+  if (scheduled.length === 0) return [];
 
-      if (!execution) {
-        const firstItem = items[0];
-        const lastItem = items[items.length - 1];
-        execution = await repo.createExecution({
-          routineId: routine.id,
-          userId,
-          date: today,
-          plannedStart: firstItem?.startTime ?? null,
-          plannedEnd: lastItem?.endTime ?? null,
-          status: "pending",
-          completionRate: 0,
-        });
+  const routineIds = scheduled.map((r) => r.id);
 
-        const executionItems = items.map((item) => ({
-          executionId: execution!.id,
-          routineItemId: item.id,
-          plannedStart: item.startTime,
-          plannedEnd: item.endTime ?? null,
-          status: "pending" as const,
-        }));
-        await repo.createExecutionItems(executionItems);
-      }
+  const [allItems, existingExecutions] = await Promise.all([
+    repo.getRoutineItemsByRoutineIds(routineIds),
+    repo.getExecutionsByRoutineIdsAndDate(routineIds, today),
+  ]);
 
-      const executionItems = await repo.getExecutionItems(execution.id);
-      return { routine, items, execution, executionItems };
-    }),
-  );
+  const itemsByRoutineId = new Map<string, typeof allItems>();
+  for (const item of allItems) {
+    const list = itemsByRoutineId.get(item.routineId!);
+    if (list) list.push(item);
+    else itemsByRoutineId.set(item.routineId!, [item]);
+  }
 
-  return result;
+  const executionByRoutineId = new Map(existingExecutions.map((e) => [e.routineId, e]));
+
+  const toCreate = scheduled.filter((r) => !executionByRoutineId.has(r.id));
+  const createdExecutions: typeof existingExecutions = [];
+
+  for (const routine of toCreate) {
+    const items = itemsByRoutineId.get(routine.id) ?? [];
+    const firstItem = items[0];
+    const lastItem = items[items.length - 1];
+    const execution = await repo.createExecution({
+      routineId: routine.id,
+      userId,
+      date: today,
+      plannedStart: firstItem?.startTime ?? null,
+      plannedEnd: lastItem?.endTime ?? null,
+      status: "pending",
+      completionRate: 0,
+    });
+
+    const executionItems = items.map((item) => ({
+      executionId: execution.id,
+      routineItemId: item.id,
+      plannedStart: item.startTime,
+      plannedEnd: item.endTime ?? null,
+      status: "pending" as const,
+    }));
+    await repo.createExecutionItems(executionItems);
+    createdExecutions.push(execution);
+  }
+
+  for (const e of createdExecutions) {
+    executionByRoutineId.set(e.routineId, e);
+  }
+
+  const executionIds = scheduled
+    .map((r) => executionByRoutineId.get(r.id)?.id)
+    .filter(Boolean) as string[];
+
+  const allExecutionItems = await repo.getExecutionItemsByExecutionIds(executionIds);
+  const itemsByExecutionId = new Map<string, typeof allExecutionItems>();
+  for (const ei of allExecutionItems) {
+    const list = itemsByExecutionId.get(ei.executionId);
+    if (list) list.push(ei);
+    else itemsByExecutionId.set(ei.executionId, [ei]);
+  }
+
+  return scheduled.map((routine) => {
+    const items = itemsByRoutineId.get(routine.id) ?? [];
+    const execution = executionByRoutineId.get(routine.id)!;
+    const executionItems = itemsByExecutionId.get(execution.id) ?? [];
+    return { routine, items, execution, executionItems };
+  });
 }
 
 export async function startExecution(executionId: string, userId: string) {

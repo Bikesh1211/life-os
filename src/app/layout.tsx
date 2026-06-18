@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "@/infrastructure/providers";
 import { APP_NAME, APP_DESCRIPTION } from "@/core/constants";
@@ -14,9 +14,13 @@ const inter = Inter({
   variable: "--font-inter",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#1A1B1E",
+};
+
 export const metadata: Metadata = {
   title: {
-    default: APP_NAME,
+    default: `${APP_NAME} - Design the Life You Want.`,
     template: `%s · ${APP_NAME}`,
   },
   description: APP_DESCRIPTION,
@@ -29,10 +33,6 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#1A1B1E" },
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-  ],
   icons: {
     icon: [
       { url: "/icon-192x192.png", sizes: "192x192", type: "image/png" },
@@ -55,7 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           id="mantine-color-scheme"
           dangerouslySetInnerHTML={{
-            __html: `try{var c=window.localStorage.getItem("mantine-color-scheme-value");var s=c==="light"||c==="dark"||c==="auto"?c:"auto";var d=s!=="auto"?s:window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-mantine-color-scheme",d)}catch(e){}`,
+            __html: `try{var c=window.localStorage.getItem("mantine-color-scheme-value");var d=c==="light"||c==="dark"?c:"dark";document.documentElement.setAttribute("data-mantine-color-scheme",d)}catch(e){}`,
           }}
         />
         <Providers>{children}</Providers>

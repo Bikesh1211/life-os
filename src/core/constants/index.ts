@@ -1,6 +1,6 @@
 export const APP_NAME = "Life OS";
 export const APP_NAME_SHORT = "Lio";
-export const APP_TAGLINE = "Focus Better. Achieve More.";
+export const APP_TAGLINE = "Design the Life You Want.";
 export const APP_DESCRIPTION = "Your personal life management platform";
 
 export const ROUTES = {

@@ -111,9 +111,7 @@ export default function SignUpPage() {
           variants={itemVariants}
           className="text-sm leading-relaxed hidden lg:block text-[var(--mantine-color-dimmed)]"
         >
-          Your personal command center for life. Seamlessly manage tasks,
-          finances, health, learning, and long-term goals — all in one
-          beautifully integrated platform.
+          Your personal command center for everything that matters. Organize tasks, goals, health, finances, and ideas in one seamless experience.
         </motion.p>
       </motion.div>
 
