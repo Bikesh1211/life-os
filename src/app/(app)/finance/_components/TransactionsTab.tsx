@@ -18,7 +18,7 @@ import {
   ThemeIcon,
   Box,
 } from "@mantine/core";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import dayjs from "dayjs";
 import {
@@ -48,7 +48,19 @@ export default function TransactionsTab() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [editTransaction, setEditTransaction] = useState<Transaction | null>(null);
+  const queryClient = useQueryClient();
   const limit = 50;
+
+  async function handleDelete(tx: Transaction) {
+    if (!window.confirm(`Delete transaction with ${tx.merchant ?? "—"}?`)) return;
+    try {
+      const res = await fetch(`/api/expenses/transactions/${tx.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete transaction");
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
+    } catch {
+      // TODO: show notification
+    }
+  }
 
   const { data, isLoading } = useQuery<Transaction[]>({
     queryKey: ["expenses", "transactions", search, page],
@@ -177,6 +189,24 @@ export default function TransactionsTab() {
                         </Badge>
                       )}
                     </Group>
+                    <Group gap="xs" mt={6}>
+                      <ActionIcon
+                        variant="subtle"
+                        size="sm"
+                        color="gray"
+                        onClick={() => setEditTransaction(tx)}
+                      >
+                        <IconEdit size={14} />
+                      </ActionIcon>
+                      <ActionIcon
+                        variant="subtle"
+                        size="sm"
+                        color="red"
+                        onClick={() => handleDelete(tx)}
+                      >
+                        <IconTrash size={14} />
+                      </ActionIcon>
+                    </Group>
                   </Card>
                 ))}
               </Stack>
@@ -271,6 +301,7 @@ export default function TransactionsTab() {
                             <Menu.Item
                               leftSection={<IconTrash size={14} />}
                               color="red"
+                              onClick={() => handleDelete(tx)}
                             >
                               Delete
                             </Menu.Item>
