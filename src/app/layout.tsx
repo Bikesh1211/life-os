@@ -55,7 +55,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           id="mantine-color-scheme"
           dangerouslySetInnerHTML={{
-            __html: `try{var c=window.localStorage.getItem("mantine-color-scheme-value");var s=c==="light"||c==="dark"||c==="auto"?c:"auto";var d=s!=="auto"?s:window.matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light";document.documentElement.setAttribute("data-mantine-color-scheme",d)}catch(e){}`,
+            __html: `try{var c=window.localStorage.getItem("mantine-color-scheme-value");var d=c==="light"||c==="dark"?c:"dark";document.documentElement.setAttribute("data-mantine-color-scheme",d)}catch(e){}`,
           }}
         />
         <Providers>{children}</Providers>

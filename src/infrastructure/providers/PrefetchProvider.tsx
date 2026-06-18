@@ -8,7 +8,6 @@ const PREFETCH_ROUTES = [
   "/api/notes",
   "/api/tasks",
   "/api/routines",
-  "/api/habits",
   "/api/knowledge",
   "/api/goals",
 ];
