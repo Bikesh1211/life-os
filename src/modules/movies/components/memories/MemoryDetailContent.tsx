@@ -60,6 +60,18 @@ export function MemoryDetailContent() {
         </Text>
 
         <Group gap="xs">
+          {memory.mediaId && memory.mediaTitle && (
+            <Badge
+              component={Link}
+              href={`/movies/media/${memory.mediaId}`}
+              variant="light"
+              color="blue"
+              style={{ cursor: "pointer" }}
+              rightSection={memory.mediaPosterUrl ? <img src={memory.mediaPosterUrl} alt="" className="h-4 w-4 rounded object-cover" /> : undefined}
+            >
+              {memory.mediaTitle}
+            </Badge>
+          )}
           {memory.watchDate && <Badge variant="light">📅 {new Date(memory.watchDate).toLocaleDateString()}</Badge>}
           {memory.location && <Badge variant="light">📍 {memory.location}</Badge>}
           {memory.watchedWith && <Badge variant="light">👤 {memory.watchedWith}</Badge>}

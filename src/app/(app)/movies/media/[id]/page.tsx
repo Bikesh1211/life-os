@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { Container, Title, Text, Badge, Group, Button, Card, Avatar, SimpleGrid, Spoiler } from "@mantine/core";
-import { IconArrowLeft, IconStar, IconClock, IconMovie } from "@tabler/icons-react";
+import { IconArrowLeft, IconStar, IconClock, IconMovie, IconHeart } from "@tabler/icons-react";
 import Link from "next/link";
+import { MemoryCard } from "@/modules/movies/components/memories/MemoryCard";
 
 export default function MediaDetailContent() {
   const params = useParams();
@@ -80,6 +81,20 @@ export default function MediaDetailContent() {
                   <Text ta="center" size="sm" fw={500} mt="xs" lineClamp={1}>{c.name}</Text>
                   <Text ta="center" size="xs" c="dimmed" lineClamp={1}>{c.character}</Text>
                 </Card>
+              ))}
+            </SimpleGrid>
+          </div>
+        )}
+
+        {data.memories?.length > 0 && (
+          <div>
+            <Group gap="xs" mb="sm">
+              <IconHeart size={20} className="text-pink-500" />
+              <Title order={3} size="h4" c="white">Your Memories</Title>
+            </Group>
+            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+              {data.memories.map((m: any) => (
+                <MemoryCard key={m.id} memory={m} />
               ))}
             </SimpleGrid>
           </div>

@@ -138,6 +138,10 @@ export async function getMemoriesOnThisDay(userId: string, month: number, day: n
   return db.select().from(movieMemories).where(and(eq(movieMemories.userId, userId), sql`EXTRACT(MONTH FROM ${movieMemories.watchDate}) = ${month}`, sql`EXTRACT(DAY FROM ${movieMemories.watchDate}) = ${day}`)).orderBy(desc(movieMemories.createdAt));
 }
 
+export async function getMemoriesByMediaId(userId: string, mediaId: string, limit = 20) {
+  return db.select().from(movieMemories).where(and(eq(movieMemories.userId, userId), eq(movieMemories.mediaId, mediaId))).orderBy(desc(movieMemories.watchDate)).limit(limit);
+}
+
 // === QUOTES ===
 export async function createQuote(input: typeof movieQuotes.$inferInsert) {
   const [quote] = await db.insert(movieQuotes).values(input).returning();

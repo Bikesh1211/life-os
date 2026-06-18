@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Text } from "@mantine/core";
+import { Text, Group } from "@mantine/core";
 import Link from "next/link";
 
 type Props = {
@@ -17,13 +17,22 @@ export function MemoryCard({ memory }: Props) {
   const moodEmoji = moodLabels[memory.mood?.toLowerCase()] ?? memory.mood ?? "";
 
   return (
-    <Link href={`/movies/memories/${memory.id}`} className="block no-underline">
-      <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="overflow-hidden rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-body)] transition-colors hover:border-[var(--mantine-color-dark-3)]"
-      >
-        {(memory.photoUrls?.length > 0 || memory.screenshotUrls?.length > 0) && (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="overflow-hidden rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-body)] transition-colors hover:border-[var(--mantine-color-dark-3)]"
+    >
+      <Link href={`/movies/memories/${memory.id}`} className="block no-underline">
+        {memory.mediaPosterUrl && (
+          <div className="aspect-video overflow-hidden">
+            <img
+              src={memory.mediaPosterUrl}
+              alt={memory.mediaTitle ?? ""}
+              className="h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+            />
+          </div>
+        )}
+        {!memory.mediaPosterUrl && (memory.photoUrls?.length > 0 || memory.screenshotUrls?.length > 0) && (
           <div className="aspect-video overflow-hidden">
             <img
               src={memory.photoUrls?.[0] ?? memory.screenshotUrls?.[0]}
@@ -48,7 +57,30 @@ export function MemoryCard({ memory }: Props) {
             {memory.watchedWith && <span>👤 {memory.watchedWith}</span>}
           </div>
         </div>
-      </motion.div>
-    </Link>
+      </Link>
+      {memory.mediaId && memory.mediaTitle && (
+        <div className="border-t border-[var(--mantine-color-dark-4)] px-4 py-2">
+          <Link
+            href={`/movies/media/${memory.mediaId}`}
+            className="flex items-center gap-2 no-underline transition-colors hover:opacity-80"
+          >
+            {memory.mediaPosterUrl ? (
+              <img
+                src={memory.mediaPosterUrl}
+                alt={memory.mediaTitle}
+                className="h-8 w-8 shrink-0 rounded object-cover"
+              />
+            ) : (
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-[var(--mantine-color-dark-6)] text-xs">
+                🎬
+              </div>
+            )}
+            <Text size="xs" c="dimmed" lineClamp={1}>
+              {memory.mediaTitle}
+            </Text>
+          </Link>
+        </div>
+      )}
+    </motion.div>
   );
 }
