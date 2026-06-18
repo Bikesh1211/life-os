@@ -1,0 +1,90 @@
+"use client";
+
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "next/navigation";
+import { Container, Title, Text, Badge, Group, Button, Card, Avatar, SimpleGrid, Spoiler } from "@mantine/core";
+import { IconArrowLeft, IconStar, IconClock, IconMovie } from "@tabler/icons-react";
+import Link from "next/link";
+
+export default function MediaDetailContent() {
+  const params = useParams();
+  const id = params?.id as string;
+
+  const { data } = useQuery({
+    queryKey: ["movie-media", id],
+    queryFn: async () => {
+      const res = await fetch(`/api/movies/media/${id}`);
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    enabled: !!id,
+  });
+
+  if (!data) return <Container py="xl"><Text c="dimmed">Loading...</Text></Container>;
+
+  return (
+    <Container size="lg" py="xl">
+      <Button component={Link} href="/movies/discover" variant="subtle" leftSection={<IconArrowLeft size={16} />} mb="lg">
+        Back to Discover
+      </Button>
+
+      <div className="relative mb-8 overflow-hidden rounded-2xl bg-[var(--mantine-color-dark-7)]" style={{ background: data.backdropUrl ? `linear-gradient(to top, #0a0a0f, transparent), url(${data.backdropUrl}) center/cover no-repeat` : undefined, minHeight: 320 }}>
+        <div className="relative z-10 flex flex-col gap-6 p-6 sm:flex-row sm:items-end sm:p-10">
+          <div className="w-32 shrink-0 overflow-hidden rounded-xl shadow-2xl sm:w-40">
+            {data.posterUrl ? (
+              <img src={data.posterUrl} alt={data.title} className="aspect-[2/3] w-full object-cover" />
+            ) : (
+              <div className="flex aspect-[2/3] items-center justify-center bg-[var(--mantine-color-dark-6)]">
+                <IconMovie size={64} className="text-white/20" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1">
+            <Title order={1} size="h2" c="white">{data.title}</Title>
+            {data.tagline && <Text size="sm" c="dimmed" mt={4} fs="italic">{data.tagline}</Text>}
+            <Group gap="xs" mt="sm">
+              {data.genres?.map((g: string) => <Badge key={g} variant="light" size="sm">{g}</Badge>)}
+            </Group>
+            <Group gap="lg" mt="md">
+              {data.releaseDate && <Group gap={4}><IconClock size={14} /><Text size="sm" c="dimmed">{new Date(data.releaseDate).getFullYear()}</Text></Group>}
+              {data.runtime && <Text size="sm" c="dimmed">{Math.floor(data.runtime / 60)}h {data.runtime % 60}m</Text>}
+              {data.voteAverage && <Group gap={4}><IconStar size={14} color="var(--mantine-color-yellow-6)" /><Text size="sm" c="dimmed">{data.voteAverage.toFixed(1)}</Text></Group>}
+            </Group>
+            {data.imdbId && (
+              <Button component="a" href={`https://www.imdb.com/title/${data.imdbId}`} target="_blank" variant="outline" size="xs" mt="sm">
+                View on IMDb
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {data.overview && (
+          <div>
+            <Title order={3} size="h4" mb="xs" c="white">Overview</Title>
+            <Spoiler maxHeight={80} showLabel="Show more" hideLabel="Show less">
+              <Text size="sm" c="dimmed" style={{ lineHeight: 1.7 }}>{data.overview}</Text>
+            </Spoiler>
+          </div>
+        )}
+
+        {data.cast?.length > 0 && (
+          <div>
+            <Title order={3} size="h4" mb="sm" c="white">Cast</Title>
+            <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 5 }} spacing="md">
+              {data.cast.map((c: any) => (
+                <Card key={c.id} padding="sm" radius="md" withBorder style={{ backgroundColor: "var(--mantine-color-dark-7)" }}>
+                  <Avatar src={c.imageUrl} alt={c.name} size="lg" radius="xl" mx="auto">{c.name?.charAt(0)}</Avatar>
+                  <Text ta="center" size="sm" fw={500} mt="xs" lineClamp={1}>{c.name}</Text>
+                  <Text ta="center" size="xs" c="dimmed" lineClamp={1}>{c.character}</Text>
+                </Card>
+              ))}
+            </SimpleGrid>
+          </div>
+        )}
+      </div>
+    </Container>
+  );
+}

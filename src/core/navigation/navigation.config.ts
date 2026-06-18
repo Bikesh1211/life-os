@@ -25,6 +25,7 @@ import {
   IconGridPattern,
   IconBooks,
   IconMusic,
+  IconMovie,
   IconPackage,
   IconShirt,
   IconDeviceLaptop,
@@ -274,6 +275,13 @@ export const navigation: NavGroup[] = [
         description: "Music memories & discovery",
         icon: IconMusic,
         featureId: "music",
+      },
+      {
+        label: "Movies",
+        route: "/movies",
+        description: "Movie & TV memories",
+        icon: IconMovie,
+        featureId: "movies",
       },
       {
         label: "Discovery Feed",
