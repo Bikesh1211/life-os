@@ -9,6 +9,7 @@ type Props = {
   opened: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  memory?: any;
 };
 
 type SearchResult = {
@@ -30,18 +31,42 @@ const moodOptions = [
   { value: "personal_story", label: "✍️ Personal Story" },
 ];
 
-export function MemoryCreateModal({ opened, onClose, onSuccess }: Props) {
-  const [title, setTitle] = useState("");
-  const [context, setContext] = useState("");
-  const [mood, setMood] = useState<string | null>(null);
-  const [watchDate, setWatchDate] = useState(new Date().toISOString().split("T")[0]);
-  const [location, setLocation] = useState("");
-  const [watchedWith, setWatchedWith] = useState("");
+function parseMediaId(mediaId: string): SearchResult | null {
+  if (!mediaId) return null;
+  const idx = mediaId.lastIndexOf("-");
+  if (idx === -1) return null;
+  const mediaType = mediaId.slice(0, idx) as "movie" | "tv";
+  const id = Number(mediaId.slice(idx + 1));
+  if (isNaN(id)) return null;
+  return { id, title: "", mediaType, posterPath: null, year: "" };
+}
+
+export function MemoryCreateModal({ opened, onClose, onSuccess, memory }: Props) {
+  const isEditing = !!memory;
+  const [title, setTitle] = useState(memory?.title ?? "");
+  const [context, setContext] = useState(memory?.contextText ?? "");
+  const [mood, setMood] = useState<string | null>(memory?.mood ?? null);
+  const [watchDate, setWatchDate] = useState(memory?.watchDate ? new Date(memory.watchDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
+  const [location, setLocation] = useState(memory?.location ?? "");
+  const [watchedWith, setWatchedWith] = useState(memory?.watchedWith ?? "");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
-  const [selectedMedia, setSelectedMedia] = useState<SearchResult | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<SearchResult | null>(() => parseMediaId(memory?.mediaId));
   const searchRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    if (!opened) return;
+    if (memory) {
+      setTitle(memory.title ?? "");
+      setContext(memory.contextText ?? "");
+      setMood(memory.mood ?? null);
+      setWatchDate(memory.watchDate ? new Date(memory.watchDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
+      setLocation(memory.location ?? "");
+      setWatchedWith(memory.watchedWith ?? "");
+      setSelectedMedia(parseMediaId(memory.mediaId));
+    }
+  }, [opened, memory]);
 
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults([]); return; }
@@ -68,8 +93,10 @@ export function MemoryCreateModal({ opened, onClose, onSuccess }: Props) {
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch("/api/movies/memories", {
-        method: "POST",
+      const url = isEditing ? `/api/movies/memories/${memory.id}` : "/api/movies/memories";
+      const method = isEditing ? "PATCH" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
@@ -79,7 +106,9 @@ export function MemoryCreateModal({ opened, onClose, onSuccess }: Props) {
     onSuccess: () => {
       onSuccess();
       onClose();
-      setTitle(""); setContext(""); setMood(null); setLocation(""); setWatchedWith(""); setSelectedMedia(null); setSearchQuery(""); setSearchResults([]);
+      if (!isEditing) {
+        setTitle(""); setContext(""); setMood(null); setLocation(""); setWatchedWith(""); setSelectedMedia(null); setSearchQuery(""); setSearchResults([]);
+      }
     },
   });
 
@@ -92,12 +121,12 @@ export function MemoryCreateModal({ opened, onClose, onSuccess }: Props) {
       watchDate: watchDate || undefined,
       location: location.trim() || undefined,
       watchedWith: watchedWith.trim() || undefined,
-      mediaId: selectedMedia ? `${selectedMedia.mediaType}-${selectedMedia.id}` : undefined,
+      mediaId: selectedMedia ? `${selectedMedia.mediaType}-${selectedMedia.id}` : memory?.mediaId ?? undefined,
     });
   };
 
   return (
-    <Modal opened={opened} onClose={onClose} title="New Memory" size="lg">
+    <Modal opened={opened} onClose={onClose} title={isEditing ? "Edit Memory" : "New Memory"} size="lg">
       <div className="space-y-4">
         <TextInput label="Title" placeholder="Movie night with friends?" value={title} onChange={(e) => setTitle(e.currentTarget.value)} />
 

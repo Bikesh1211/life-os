@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SimpleGrid, Text, Skeleton } from "@mantine/core";
 import { IconHeart, IconPhotoHeart, IconListCheck, IconQuote, IconPlaylist } from "@tabler/icons-react";
 import { StatCard } from "@/modules/movies/components/design-system/StatCard";
+import Link from "next/link";
 
 export function DashboardContent() {
   const { data: dash, isLoading } = useQuery({
@@ -35,14 +36,24 @@ export function DashboardContent() {
 
       {dash?.recentMemories?.length > 0 && (
         <div>
-          <Text fw={600} size="lg" c="white" mb="sm">Recent Memories</Text>
+          <Text fw={600} size="lg" c="white" mb="sm">Recently Watched</Text>
           <div className="space-y-3">
             {dash.recentMemories.slice(0, 5).map((m: any) => (
-              <div key={m.id} className="rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-body)] p-4">
-                <Text size="sm" fw={600} c="white">{m.title ?? "Untitled"}</Text>
-                <Text size="xs" c="dimmed" lineClamp={2}>{m.contextText}</Text>
-                {m.watchDate && <Text size="xs" c="dimmed" mt={2}>{new Date(m.watchDate).toLocaleDateString()}</Text>}
-              </div>
+              <Link key={m.id} href={m.mediaId ? `/movies/media/${m.mediaId}` : `/movies/memories/${m.id}`} className="no-underline">
+                <div className="flex gap-4 rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-body)] p-4 transition-colors hover:border-[var(--mantine-color-dark-3)]">
+                  {m.mediaPosterUrl ? (
+                    <img src={m.mediaPosterUrl} alt="" className="h-16 w-12 shrink-0 rounded-lg object-cover" />
+                  ) : (
+                    <div className="flex h-16 w-12 shrink-0 items-center justify-center rounded-lg bg-[var(--mantine-color-dark-6)] text-lg">🎬</div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <Text size="sm" fw={600} c="white">{m.title ?? "Untitled"}</Text>
+                    {m.mediaTitle && <Text size="xs" c="blue" mb={2}>{m.mediaTitle}</Text>}
+                    <Text size="xs" c="dimmed" lineClamp={2}>{m.contextText}</Text>
+                    {m.watchDate && <Text size="xs" c="dimmed" mt={2}>{new Date(m.watchDate).toLocaleDateString()}</Text>}
+                  </div>
+                </div>
+              </Link>
             ))}
           </div>
         </div>

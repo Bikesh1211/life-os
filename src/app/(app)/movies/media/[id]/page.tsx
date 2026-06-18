@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { Container, Title, Text, Badge, Group, Button, Card, Avatar, SimpleGrid, Spoiler } from "@mantine/core";
-import { IconArrowLeft, IconStar, IconClock, IconMovie, IconHeart, IconListDetails } from "@tabler/icons-react";
+import { Container, Title, Text, Badge, Group, Button, Card, Avatar, SimpleGrid, Spoiler, Select } from "@mantine/core";
+import { IconArrowLeft, IconStar, IconClock, IconMovie, IconHeart, IconListDetails, IconCircleCheck, IconPlaylist } from "@tabler/icons-react";
 import Link from "next/link";
 import { MemoryCard } from "@/modules/movies/components/memories/MemoryCard";
 
@@ -24,6 +24,7 @@ export default function MediaDetailContent() {
 
   const [favoriteLoading, setFavoriteLoading] = useState(false);
   const [watchlistLoading, setWatchlistLoading] = useState(false);
+  const [watchedLoading, setWatchedLoading] = useState(false);
 
   const toggleFav = async () => {
     if (!data || favoriteLoading) return;
@@ -56,6 +57,56 @@ export default function MediaDetailContent() {
       }
       refetch();
     } finally { setWatchlistLoading(false); }
+  };
+
+  const markAsWatched = async () => {
+    if (!data || watchedLoading) return;
+    setWatchedLoading(true);
+    try {
+      if (data.watchlistStatus) {
+        const res = await fetch("/api/movies/watchlist");
+        const list = await res.json();
+        const item = list.find((w: any) => w.mediaId === id);
+        if (item) {
+          await fetch("/api/movies/watchlist", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: item.id, status: "completed" }),
+          });
+        }
+      } else {
+        await fetch("/api/movies/watchlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mediaId: id, status: "completed" }),
+        });
+      }
+      refetch();
+    } finally { setWatchedLoading(false); }
+  };
+
+  const [collectionSelect, setCollectionSelect] = useState<string | null>(null);
+  const [collectionLoading, setCollectionLoading] = useState(false);
+  const { data: collections } = useQuery({
+    queryKey: ["movie-collections"],
+    queryFn: async () => {
+      const res = await fetch("/api/movies/collections");
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  const addToCollection = async () => {
+    if (!collectionSelect || collectionLoading) return;
+    setCollectionLoading(true);
+    try {
+      await fetch(`/api/movies/collections/${collectionSelect}/items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaId: id }),
+      });
+      setCollectionSelect(null);
+    } finally { setCollectionLoading(false); }
   };
 
   if (!data) return <Container py="xl"><Text c="dimmed">Loading...</Text></Container>;
@@ -101,19 +152,47 @@ export default function MediaDetailContent() {
               </Button>
               <Button
                 size="sm"
-                variant={data.watchlistStatus ? "filled" : "outline"}
+                variant={data.watchlistStatus === "completed" ? "filled" : "outline"}
+                color="green"
+                leftSection={<IconCircleCheck size={16} />}
+                loading={watchedLoading}
+                onClick={markAsWatched}
+                disabled={data.watchlistStatus === "completed"}
+              >
+                {data.watchlistStatus === "completed" ? "Watched ✓" : "Mark as Watched"}
+              </Button>
+              <Button
+                size="sm"
+                variant={data.watchlistStatus && data.watchlistStatus !== "completed" ? "filled" : "outline"}
                 color="blue"
                 leftSection={<IconListDetails size={16} />}
                 loading={watchlistLoading}
                 onClick={toggleWatchlist}
               >
-                {data.watchlistStatus ? data.watchlistStatus.replace(/_/g, " ") : "Add to Watchlist"}
+                {data.watchlistStatus === "completed" ? "In Watchlist" : data.watchlistStatus ? data.watchlistStatus.replace(/_/g, " ") : "Add to Watchlist"}
               </Button>
             </Group>
             {data.imdbId && (
               <Button component="a" href={`https://www.imdb.com/title/${data.imdbId}`} target="_blank" variant="outline" size="xs" mt="sm">
                 View on IMDb
               </Button>
+            )}
+            {(collections?.length > 0) && (
+              <Group gap="xs" mt="sm">
+                <Select
+                  placeholder="Add to collection"
+                  data={collections.map((c: any) => ({ value: c.id, label: c.name }))}
+                  value={collectionSelect}
+                  onChange={setCollectionSelect}
+                  size="xs"
+                  clearable
+                  searchable
+                  style={{ width: 200 }}
+                />
+                <Button size="xs" variant="light" leftSection={<IconPlaylist size={14} />} loading={collectionLoading} disabled={!collectionSelect} onClick={addToCollection}>
+                  Add
+                </Button>
+              </Group>
             )}
           </div>
         </div>

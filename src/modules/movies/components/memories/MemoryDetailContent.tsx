@@ -1,17 +1,21 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useParams } from "next/navigation";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useParams, useRouter } from "next/navigation";
 import { Container, Text, Group, Button, Title, SimpleGrid, Badge } from "@mantine/core";
-import { IconArrowLeft } from "@tabler/icons-react";
+import { IconArrowLeft, IconEdit, IconTrash } from "@tabler/icons-react";
 import Link from "next/link";
-import { MemoryCard } from "./MemoryCard";
+import { MemoryCreateModal } from "./MemoryCreateModal";
 
 export function MemoryDetailContent() {
   const params = useParams();
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const id = params?.id as string;
+  const [editOpened, setEditOpened] = useState(false);
 
-  const { data: memory } = useQuery({
+  const { data: memory, refetch } = useQuery({
     queryKey: ["movie-memory", id],
     queryFn: async () => {
       const res = await fetch(`/api/movies/memories/${id}`);
@@ -19,6 +23,17 @@ export function MemoryDetailContent() {
       return res.json();
     },
     enabled: !!id,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/movies/memories/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["movie-memories"] });
+      router.push("/movies/memories");
+    },
   });
 
   if (!memory) {
@@ -37,9 +52,17 @@ export function MemoryDetailContent() {
 
   return (
     <Container size="md" py="xl">
-      <Button component={Link} href="/movies/memories" variant="subtle" leftSection={<IconArrowLeft size={16} />} mb="lg">
-        Back to Memories
-      </Button>
+      <MemoryCreateModal opened={editOpened} onClose={() => setEditOpened(false)} onSuccess={() => { refetch(); queryClient.invalidateQueries({ queryKey: ["movie-memories"] }); }} memory={memory} />
+
+      <Group justify="space-between" mb="lg">
+        <Button component={Link} href="/movies/memories" variant="subtle" leftSection={<IconArrowLeft size={16} />}>
+          Back to Memories
+        </Button>
+        <Group gap="xs">
+          <Button size="sm" variant="light" color="yellow" leftSection={<IconEdit size={14} />} onClick={() => setEditOpened(true)}>Edit</Button>
+          <Button size="sm" variant="light" color="red" leftSection={<IconTrash size={14} />} loading={deleteMutation.isPending} onClick={() => { if (confirm("Delete this memory?")) deleteMutation.mutate(); }}>Delete</Button>
+        </Group>
+      </Group>
 
       <Title order={2} c="white" mb={4}>{memory.title ?? "Untitled Memory"}</Title>
       {memory.mood && <Text size="lg" mb="md">{moodLabels[memory.mood] ?? memory.mood}</Text>}

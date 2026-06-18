@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/core/auth";
 import * as repo from "@/modules/movies/repository";
+import { TMDB_IMAGE_BASE_URL } from "@/modules/movies/tmdb";
+
+function parseCompositeId(compositeId: string): string | null {
+  const idx = compositeId.lastIndexOf("-");
+  if (idx === -1) return /^\d+$/.test(compositeId) ? compositeId : null;
+  const tmdbId = compositeId.slice(idx + 1);
+  return /^\d+$/.test(tmdbId) ? tmdbId : null;
+}
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -15,7 +23,21 @@ export async function GET() {
       repo.getMoviesWatchedPerMonth(userId),
     ]);
 
-    return NextResponse.json({ stats, recentMemories, favorites, watchlist, memoriesPerMonth });
+    const hydratedMemories = await Promise.all(
+      recentMemories.map(async (m) => {
+        if (!m.mediaId) return { ...m, mediaTitle: null, mediaPosterUrl: null };
+        const tmdbId = parseCompositeId(m.mediaId);
+        if (!tmdbId) return { ...m, mediaTitle: null, mediaPosterUrl: null };
+        const media = await repo.getMediaByTmdbId(tmdbId);
+        return {
+          ...m,
+          mediaTitle: media?.title ?? null,
+          mediaPosterUrl: media?.posterPath ? `${TMDB_IMAGE_BASE_URL}/w92${media.posterPath}` : null,
+        };
+      }),
+    );
+
+    return NextResponse.json({ stats, recentMemories: hydratedMemories, favorites, watchlist, memoriesPerMonth });
   } catch {
     return NextResponse.json({ error: "Failed" }, { status: 500 });
   }

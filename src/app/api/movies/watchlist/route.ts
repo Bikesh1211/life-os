@@ -11,10 +11,14 @@ function parseCompositeId(compositeId: string): string | null {
   return /^\d+$/.test(tmdbId) ? tmdbId : null;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const userId = await getCurrentUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const items = await repo.getWatchlist(userId);
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get("status");
+  const items = status
+    ? await repo.getWatchlistByStatus(userId, status as any)
+    : await repo.getWatchlist(userId);
   const hydrated = await Promise.all(
     items.map(async (item) => {
       const tmdbId = parseCompositeId(item.mediaId);

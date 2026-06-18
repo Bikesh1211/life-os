@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Tabs } from "@mantine/core";
 import {
   IconDashboard, IconSearch, IconHeart, IconListDetails,
-  IconPhotoHeart, IconDeviceTv, IconMovie, IconQuote,
+  IconCircleCheck, IconPhotoHeart, IconQuote,
   IconPlaylist, IconReportAnalytics,
 } from "@tabler/icons-react";
 
@@ -13,9 +13,8 @@ const tabs = [
   { value: "/movies/discover", label: "Discover", icon: IconSearch },
   { value: "/movies/favorites", label: "Favorites", icon: IconHeart },
   { value: "/movies/watchlist", label: "Watchlist", icon: IconListDetails },
+  { value: "/movies/watched", label: "Watched", icon: IconCircleCheck },
   { value: "/movies/memories", label: "Memories", icon: IconPhotoHeart },
-  { value: "/movies/tv-shows", label: "TV Shows", icon: IconDeviceTv },
-  { value: "/movies/anime", label: "Anime", icon: IconMovie },
   { value: "/movies/quotes", label: "Quotes", icon: IconQuote },
   { value: "/movies/collections", label: "Collections", icon: IconPlaylist },
   { value: "/movies/statistics", label: "Statistics", icon: IconReportAnalytics },
