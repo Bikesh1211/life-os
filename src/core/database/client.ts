@@ -18,6 +18,7 @@ import * as gamificationSchema from "@/modules/gamification/schema";
 import * as travelSchema from "@/modules/travel/schema";
 import * as readingSchema from "@/modules/reading/schema";
 import * as networkSchema from "@/modules/network/schema";
+import * as feedbackSchema from "@/modules/feedback/schema";
 import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -52,6 +53,7 @@ export const db = drizzle(queryClient, {
     ...travelSchema,
     ...readingSchema,
     ...networkSchema,
+    ...feedbackSchema,
     coreTags,
     coreTaggings,
     sidebarPreferences,

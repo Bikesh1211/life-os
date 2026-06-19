@@ -4,29 +4,31 @@ import * as repo from "./repository";
 import { awardXp } from "@/modules/gamification";
 import { createTimelineEvent } from "@/modules/timeline";
 
+const emptyStr = (v: unknown) => (v === "" || v === null || v === undefined) ? undefined : v;
+
 // ── Validation Schemas ──
 
 export const createConnectionSchema = z.object({
   name: z.string().min(1).max(200),
-  nickname: z.string().max(100).optional(),
-  profilePictureUrl: z.string().max(2000).optional(),
-  gender: z.string().max(50).optional(),
-  birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  phone: z.string().max(50).optional(),
-  email: z.string().email().max(200).optional(),
-  address: z.string().max(500).optional(),
-  country: z.string().max(100).optional(),
-  city: z.string().max(100).optional(),
-  occupation: z.string().max(200).optional(),
+  nickname: z.preprocess(emptyStr, z.string().max(100).optional()),
+  profilePictureUrl: z.preprocess(emptyStr, z.string().max(2000).optional()),
+  gender: z.preprocess(emptyStr, z.string().max(50).optional()),
+  birthday: z.preprocess(emptyStr, z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+  phone: z.preprocess(emptyStr, z.string().max(50).optional()),
+  email: z.preprocess(emptyStr, z.string().email().max(200).optional()),
+  address: z.preprocess(emptyStr, z.string().max(500).optional()),
+  country: z.preprocess(emptyStr, z.string().max(100).optional()),
+  city: z.preprocess(emptyStr, z.string().max(100).optional()),
+  occupation: z.preprocess(emptyStr, z.string().max(200).optional()),
   socialLinks: z.array(z.string().max(500)).max(20).optional(),
   relationshipTypes: z.array(z.string().max(50)).max(20).optional(),
   isFavorite: z.boolean().optional(),
-  notes: z.string().max(5000).optional(),
-  firstMetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  friendshipAnniversary: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  lastMetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  lastCallDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  lastMessageDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  notes: z.preprocess(emptyStr, z.string().max(5000).optional()),
+  firstMetDate: z.preprocess(emptyStr, z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+  friendshipAnniversary: z.preprocess(emptyStr, z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+  lastMetDate: z.preprocess(emptyStr, z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+  lastCallDate: z.preprocess(emptyStr, z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
+  lastMessageDate: z.preprocess(emptyStr, z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional()),
 });
 export const updateConnectionSchema = createConnectionSchema.partial();
 export type CreateConnectionParams = z.infer<typeof createConnectionSchema>;
@@ -35,11 +37,11 @@ export type UpdateConnectionParams = z.infer<typeof updateConnectionSchema>;
 export const createMeetupSchema = z.object({
   title: z.string().min(1).max(300),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  location: z.string().max(300).optional(),
+  location: z.preprocess(emptyStr, z.string().max(300).optional()),
   photos: z.array(z.string().max(2000)).max(50).optional(),
   expense: z.number().int().min(0).optional(),
-  notes: z.string().max(5000).optional(),
-  mood: z.string().max(100).optional(),
+  notes: z.preprocess(emptyStr, z.string().max(5000).optional()),
+  mood: z.preprocess(emptyStr, z.string().max(100).optional()),
   connectionIds: z.array(z.string().uuid()).optional(),
 });
 export const updateMeetupSchema = createMeetupSchema.partial();
@@ -49,10 +51,10 @@ export const createEventSchema = z.object({
   eventType: z.string().min(1).max(200),
   title: z.string().min(1).max(300),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  location: z.string().max(300).optional(),
+  location: z.preprocess(emptyStr, z.string().max(300).optional()),
   photos: z.array(z.string().max(2000)).max(50).optional(),
   expense: z.number().int().min(0).optional(),
-  notes: z.string().max(5000).optional(),
+  notes: z.preprocess(emptyStr, z.string().max(5000).optional()),
   connectionIds: z.array(z.string().uuid()).optional(),
 });
 export const updateEventSchema = createEventSchema.partial();
