@@ -1,11 +1,12 @@
 "use client";
 
-import { Stack, Title, Text, Paper, Group, Avatar, Divider, Checkbox, Box } from "@mantine/core";
+import { Stack, Title, Text, Paper, Group, Avatar, Checkbox, Box } from "@mantine/core";
 import { useSupabase } from "@/infrastructure/providers/supabase-provider";
 import { navigation, findNavItemByFeatureId, type NavItem } from "@/core/navigation";
 import { useSidebarVisibility } from "@/core/sidebar-visibility";
 import { useSidebarFavorites } from "@/core/sidebar-favorites";
 import { cn } from "@/core/utils";
+import { FeedbackForm } from "@/modules/feedback/components/FeedbackForm";
 
 function ItemCheckbox({ item, checked, onChange, disabled }: { item: NavItem; checked: boolean; onChange: () => void; disabled: boolean }) {
   return (
@@ -165,8 +166,11 @@ export default function SettingsPage() {
         </Text>
       </Paper>
 
+      <FeedbackForm />
       <SidebarFavoritesSection />
       <SidebarVisibilitySection />
     </Stack>
   );
 }
+
+
