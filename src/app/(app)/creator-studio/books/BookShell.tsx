@@ -5,9 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { IconBooks, IconPlus, IconSearch } from "@tabler/icons-react";
 
 const tabs = [
-  { value: "/books", label: "Library", icon: IconBooks },
-  { value: "/books/new", label: "New Book", icon: IconPlus },
-  { value: "/books/search", label: "Search", icon: IconSearch },
+  { value: "/creator-studio/books", label: "Library", icon: IconBooks },
+  { value: "/creator-studio/books/new", label: "New Book", icon: IconPlus },
+  { value: "/creator-studio/books/search", label: "Search", icon: IconSearch },
 ];
 
 export function BookShell({ children }: { children: React.ReactNode }) {
@@ -16,9 +16,9 @@ export function BookShell({ children }: { children: React.ReactNode }) {
 
   const currentTab = tabs.find(
     (t) => pathname === t.value || pathname.startsWith(t.value + "/"),
-  )?.value ?? "/books";
+  )?.value ?? "/creator-studio/books";
 
-  const showTabs = !pathname.match(/\/books\/[^/]+\/(write|read)/);
+  const showTabs = !pathname.match(/\/creator-studio\/books\/[^/]+\/(write|read)/);
 
   return (
     <>

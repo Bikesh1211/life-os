@@ -105,7 +105,7 @@ export function NewBookForm() {
           />
 
           <Group justify="flex-end" mt="md">
-            <Button variant="light" onClick={() => router.push("/books")}>
+            <Button variant="light" onClick={() => router.push("/creator-studio/books")}>
               Cancel
             </Button>
             <Button type="submit">Create Book</Button>
