@@ -261,6 +261,13 @@ export const navigation: NavGroup[] = [
         icon: IconBooks,
         featureId: "library",
       },
+      {
+        label: "Books",
+        route: "/books",
+        description: "Write, publish & read books",
+        icon: IconFilePencil,
+        featureId: "books",
+      },
     ],
   },
 
