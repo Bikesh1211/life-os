@@ -20,6 +20,9 @@ export const xpEventTypeEnum = pgEnum("xp_event_type", [
   "meetup_logged",
   "event_logged",
   "memory_created",
+  "commitment_completed",
+  "commitment_streak_bonus",
+  "integrity_milestone",
 ] as const);
 
 export const challengeTypeEnum = pgEnum("challenge_type", [
@@ -35,6 +38,8 @@ export const achievementCriteriaTypeEnum = pgEnum("achievement_criteria_type", [
   "level_reached",
   "streak_days",
   "challenge_completed",
+  "commitment_count",
+  "integrity_score",
 ] as const);
 
 export const badgeCategoryEnum = pgEnum("badge_category", [
@@ -43,6 +48,7 @@ export const badgeCategoryEnum = pgEnum("badge_category", [
   "routines",
   "streaks",
   "general",
+  "integrity",
 ] as const);
 
 export const gamificationUserMetrics = pgTable("gamification_user_metrics", {

@@ -4,7 +4,8 @@ import { db } from "@/core/database";
 import { habitCompletions } from "@/modules/habits/schema";
 import { tasks } from "@/modules/tasks/schema";
 import { routineExecutions } from "@/modules/routines/schema";
-import { and, eq, count, gte, lte } from "drizzle-orm";
+import { integrityCommitments } from "@/modules/integrity/schema";
+import { and, eq, count, gte, lte, isNull } from "drizzle-orm";
 
 export type LevelInfo = {
   level: number;
@@ -84,6 +85,8 @@ type UserCounts = {
   habitCompletions: number;
   taskCompletions: number;
   routineCompletions: number;
+  commitmentCompletions: number;
+  integrityScore: number;
 };
 
 async function getUserCompletionCounts(userId: string): Promise<UserCounts> {
@@ -107,10 +110,40 @@ async function getUserCompletionCounts(userId: string): Promise<UserCounts> {
       ),
     );
 
+  const [commitmentResult] = await db
+    .select({ value: count() })
+    .from(integrityCommitments)
+    .where(
+      and(
+        eq(integrityCommitments.userId, userId),
+        isNull(integrityCommitments.deletedAt),
+        eq(integrityCommitments.status, "completed_verified" as any),
+      ),
+    );
+
+  const activeCommitments = await db
+    .select({ status: integrityCommitments.status, difficulty: integrityCommitments.difficulty })
+    .from(integrityCommitments)
+    .where(and(eq(integrityCommitments.userId, userId), isNull(integrityCommitments.deletedAt)));
+
+  let integrityScore = 100;
+  if (activeCommitments.length > 0) {
+    let penalty = 0;
+    for (const c of activeCommitments) {
+      const mult = c.difficulty === "easy" ? 0.5 : c.difficulty === "hard" ? 1.5 : c.difficulty === "extreme" ? 2.0 : 1.0;
+      if (c.status === "missed") penalty += 15 * mult;
+      else if (c.status === "failed") penalty += 10 * mult;
+      else if (c.status === "cancelled") penalty += 5 * mult;
+    }
+    integrityScore = Math.max(0, Math.min(100, Math.round(100 - penalty)));
+  }
+
   return {
     habitCompletions: Number(habitResult?.value ?? 0),
     taskCompletions: Number(taskResult?.value ?? 0),
     routineCompletions: Number(routineResult?.value ?? 0),
+    commitmentCompletions: Number(commitmentResult?.value ?? 0),
+    integrityScore,
   };
 }
 
@@ -227,6 +260,9 @@ const XP_VALUES = {
   meetup_logged: 3,
   event_logged: 3,
   memory_created: 5,
+  commitment_completed: 25,
+  commitment_streak_bonus: 10,
+  integrity_milestone: 50,
 } as const;
 
 export function getXpValue(eventType: keyof typeof XP_VALUES): number {
@@ -330,6 +366,12 @@ export async function syncUser(userId: string) {
         met = completedChallenges.length >= achievement.criteriaValue;
         break;
       }
+      case "commitment_count":
+        met = counts.commitmentCompletions >= achievement.criteriaValue;
+        break;
+      case "integrity_score":
+        met = counts.integrityScore >= achievement.criteriaValue;
+        break;
     }
 
     if (met) {
@@ -370,6 +412,12 @@ export async function syncUser(userId: string) {
         break;
       case "streak_days":
         met = streakInfo.longestStreak >= badge.criteriaValue;
+        break;
+      case "commitment_count":
+        met = counts.commitmentCompletions >= badge.criteriaValue;
+        break;
+      case "integrity_score":
+        met = counts.integrityScore >= badge.criteriaValue;
         break;
       default:
         break;

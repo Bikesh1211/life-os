@@ -410,6 +410,13 @@ export const navigation: NavGroup[] = [
         featureId: "network",
       },
       {
+        label: "Integrity",
+        route: "/integrity",
+        description: "Promise tracker & accountability",
+        icon: IconScale,
+        featureId: "integrity",
+      },
+      {
         label: "Vault",
         route: "/vault",
         description: "Secure storage",
