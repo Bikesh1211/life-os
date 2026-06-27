@@ -76,7 +76,7 @@ export function LibraryContent() {
         <Text size="sm" c="dimmed">Create your first book to get started</Text>
         <Button
           leftSection={<IconPlus size={18} />}
-          onClick={() => router.push("/books/new")}
+          onClick={() => router.push("/creator-studio/books/new")}
         >
           New Book
         </Button>
@@ -113,7 +113,7 @@ export function LibraryContent() {
           </Tooltip>
           <Button
             leftSection={<IconPlus size={18} />}
-            onClick={() => router.push("/books/new")}
+            onClick={() => router.push("/creator-studio/books/new")}
           >
             New Book
           </Button>
@@ -134,7 +134,7 @@ export function LibraryContent() {
                 radius="md"
                 withBorder
                 style={{ cursor: "pointer" }}
-                onClick={() => router.push(`/books/${book.id}`)}
+                onClick={() => router.push(`/creator-studio/books/${book.id}`)}
               >
                 <Card.Section
                   h={180}
@@ -174,7 +174,7 @@ export function LibraryContent() {
                         leftSection={<IconEdit size={16} />}
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(`/books/${book.id}/write`);
+                          router.push(`/creator-studio/books/${book.id}/write`);
                         }}
                       >
                         Write
@@ -184,7 +184,7 @@ export function LibraryContent() {
                           leftSection={<IconEye size={16} />}
                           onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/books/${book.id}/read`);
+                            router.push(`/creator-studio/books/${book.id}/read`);
                           }}
                         >
                           Read
@@ -222,7 +222,7 @@ export function LibraryContent() {
               radius="md"
               withBorder
               style={{ cursor: "pointer" }}
-              onClick={() => router.push(`/books/${book.id}`)}
+              onClick={() => router.push(`/creator-studio/books/${book.id}`)}
             >
               <Group justify="space-between" wrap="nowrap">
                 <Group gap="md" wrap="nowrap">

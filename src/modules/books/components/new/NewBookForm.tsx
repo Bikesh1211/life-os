@@ -50,7 +50,7 @@ export function NewBookForm() {
 
       const book = await res.json();
       notifications.show({ title: "Created", message: "Book created successfully", color: "green" });
-      router.push(`/books/${book.id}/write`);
+      router.push(`/creator-studio/books/${book.id}/write`);
     } catch (err) {
       notifications.show({
         title: "Error",
