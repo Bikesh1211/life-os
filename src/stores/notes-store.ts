@@ -1,49 +1,38 @@
 import { create } from "zustand";
 import type { Note } from "@/modules/notes";
 
-export type ViewMode = "grid" | "list";
+export type SidebarView = "notes" | "reminders" | "labels" | "archive" | "trash";
 
 type NotesStore = {
-  viewMode: ViewMode;
-  setViewMode: (mode: ViewMode) => void;
   search: string;
   setSearch: (search: string) => void;
-  selectedTags: string[];
-  toggleTag: (tag: string) => void;
-  clearTags: () => void;
-  categoryFilter: string | null;
-  setCategoryFilter: (category: string | null) => void;
-  showArchived: boolean;
-  setShowArchived: (show: boolean) => void;
-  isQuickNoteOpen: boolean;
-  openQuickNote: () => void;
-  closeQuickNote: () => void;
-  editingNote: Note | null;
-  openEditNote: (note: Note) => void;
-  clearEditingNote: () => void;
+  sidebarView: SidebarView;
+  setSidebarView: (view: SidebarView) => void;
+  activeLabel: string | null;
+  setActiveLabel: (label: string | null) => void;
+  isSidebarOpen: boolean;
+  toggleSidebar: () => void;
+  closeSidebar: () => void;
+  editModalNote: Note | null;
+  isEditModalOpen: boolean;
+  openEditModal: (note: Note) => void;
+  openCreateModal: () => void;
+  closeEditModal: () => void;
 };
 
 export const useNotesStore = create<NotesStore>((set) => ({
-  viewMode: "grid",
-  setViewMode: (mode) => set({ viewMode: mode }),
   search: "",
   setSearch: (search) => set({ search }),
-  selectedTags: [],
-  toggleTag: (tag) =>
-    set((state) => ({
-      selectedTags: state.selectedTags.includes(tag)
-        ? state.selectedTags.filter((t) => t !== tag)
-        : [...state.selectedTags, tag],
-    })),
-  clearTags: () => set({ selectedTags: [] }),
-  categoryFilter: null,
-  setCategoryFilter: (category) => set({ categoryFilter: category }),
-  showArchived: false,
-  setShowArchived: (show) => set({ showArchived: show }),
-  isQuickNoteOpen: false,
-  openQuickNote: () => set({ isQuickNoteOpen: true, editingNote: null }),
-  closeQuickNote: () => set({ isQuickNoteOpen: false, editingNote: null }),
-  editingNote: null,
-  openEditNote: (note) => set({ isQuickNoteOpen: true, editingNote: note }),
-  clearEditingNote: () => set({ editingNote: null }),
+  sidebarView: "notes",
+  setSidebarView: (view) => set({ sidebarView: view, activeLabel: null }),
+  activeLabel: null,
+  setActiveLabel: (label) => set({ activeLabel: label }),
+  isSidebarOpen: false,
+  toggleSidebar: () => set((s) => ({ isSidebarOpen: !s.isSidebarOpen })),
+  closeSidebar: () => set({ isSidebarOpen: false }),
+  editModalNote: null,
+  isEditModalOpen: false,
+  openEditModal: (note) => set({ editModalNote: note, isEditModalOpen: true }),
+  openCreateModal: () => set({ editModalNote: null, isEditModalOpen: true }),
+  closeEditModal: () => set({ editModalNote: null, isEditModalOpen: false }),
 }));

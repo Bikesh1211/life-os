@@ -21,6 +21,7 @@ export type CreateNoteInput = {
   status?: string;
   folderId?: string;
   reminderDate?: Date;
+  color?: string;
   priority?: string;
 };
 
@@ -71,6 +72,7 @@ export const noteColumns = {
   status: notes.status,
   folderId: notes.folderId,
   reminderDate: notes.reminderDate,
+  color: notes.color,
   priority: notes.priority,
   createdAt: notes.createdAt,
   updatedAt: notes.updatedAt,
@@ -95,6 +97,7 @@ export async function createNote(input: CreateNoteInput) {
       status: input.status ?? "published",
       folderId: input.folderId ?? null,
       reminderDate: input.reminderDate,
+      color: input.color ?? null,
       priority: input.priority ?? "medium",
     })
     .returning(noteColumns);
@@ -214,6 +217,7 @@ export async function duplicateNote(id: string, userId: string) {
       isPinned: false,
       status: "draft",
       folderId: original.folderId,
+      color: original.color,
       priority: original.priority ?? "medium",
     })
     .returning(noteColumns);

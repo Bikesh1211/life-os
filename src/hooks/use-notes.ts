@@ -43,14 +43,16 @@ async function fetchNote(id: string) {
 
 async function createNote(data: {
   title: string;
-  content?: string;
+  content?: string | null;
   contentJson?: unknown;
   category?: string;
   tags?: string[];
   status?: string;
   folderId?: string;
   priority?: string;
+  isPinned?: boolean;
   reminderDate?: string | null;
+  color?: string | null;
 }) {
   const res = await fetch("/api/notes", {
     method: "POST",

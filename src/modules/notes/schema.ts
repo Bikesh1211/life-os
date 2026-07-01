@@ -17,6 +17,7 @@ export const notes = pgTable(
     status: text("status").default("published").notNull(),
     folderId: uuid("folder_id"),
     reminderDate: timestamp("reminder_date", { withTimezone: true }),
+    color: text("color"),
     priority: text("priority").default("medium").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
