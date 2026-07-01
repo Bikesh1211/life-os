@@ -1,12 +1,5 @@
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { IconFocusCentered } from "@tabler/icons-react";
+import { redirect } from "next/navigation";
 
-export default function FocusModePage() {
-  return (
-    <FeaturePlaceholder
-      title="Focus Mode"
-      description="Deep work without distractions"
-      icon={IconFocusCentered}
-    />
-  );
+export default function FocusModeRedirect() {
+  redirect("/tasks?tab=focus-mode");
 }

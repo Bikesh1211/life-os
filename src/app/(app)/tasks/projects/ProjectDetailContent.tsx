@@ -12,7 +12,13 @@ import { TaskFormModal } from "@/modules/tasks/components/TaskFormModal";
 import { TaskQuickAdd } from "@/modules/tasks/components/TaskQuickAdd";
 import type { Task } from "@/modules/tasks/repository";
 
-export function ProjectDetailContent({ projectId }: { projectId: string }) {
+type ProjectDetailContentProps = {
+  projectId: string;
+  hideHeader?: boolean;
+  onBack?: () => void;
+};
+
+export function ProjectDetailContent({ projectId, hideHeader = false, onBack }: ProjectDetailContentProps) {
   const { data: project, isLoading: projectLoading } = useProject(projectId);
   const { data: tasks, isLoading: tasksLoading } = useTasks({
     projectId,
@@ -31,38 +37,41 @@ export function ProjectDetailContent({ projectId }: { projectId: string }) {
 
   return (
     <Stack gap="lg">
-      <Group>
-        <ActionIcon
-          variant="subtle"
-          component={Link}
-          href="/tasks/projects"
-          size="md"
-        >
-          <IconArrowLeft size={18} />
-        </ActionIcon>
-        <ThemeIcon variant="light" size="lg" radius="md" color={project.color}>
-          <IconFolder size={20} />
-        </ThemeIcon>
-        <div style={{ flex: 1 }}>
-          <Title order={2}>{project.title}</Title>
-          <Text size="sm" c="dimmed">
-            {tasks?.length ?? 0} tasks
-          </Text>
-        </div>
-        <Tooltip label="Delete project">
-          <ActionIcon
-            variant="subtle"
-            color="red"
-            onClick={() => {
-              if (confirm("Delete this project? Tasks will be unassigned.")) {
-                deleteProject.mutate(project.id);
-              }
-            }}
-          >
-            <IconTrash size={16} />
-          </ActionIcon>
-        </Tooltip>
-      </Group>
+      {!hideHeader && (
+        <Group>
+          {onBack ? (
+            <ActionIcon variant="subtle" onClick={onBack} size="md">
+              <IconArrowLeft size={18} />
+            </ActionIcon>
+          ) : (
+            <ActionIcon variant="subtle" component={Link} href="/tasks/projects" size="md">
+              <IconArrowLeft size={18} />
+            </ActionIcon>
+          )}
+          <ThemeIcon variant="light" size="lg" radius="md" color={project.color}>
+            <IconFolder size={20} />
+          </ThemeIcon>
+          <div style={{ flex: 1 }}>
+            <Title order={2}>{project.title}</Title>
+            <Text size="sm" c="dimmed">
+              {tasks?.length ?? 0} tasks
+            </Text>
+          </div>
+          <Tooltip label="Delete project">
+            <ActionIcon
+              variant="subtle"
+              color="red"
+              onClick={() => {
+                if (confirm("Delete this project? Tasks will be unassigned.")) {
+                  deleteProject.mutate(project.id);
+                }
+              }}
+            >
+              <IconTrash size={16} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
+      )}
 
       <TaskQuickAdd
         placeholder="Add a task to this project..."

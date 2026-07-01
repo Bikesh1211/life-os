@@ -1,6 +1,5 @@
-import { ProjectsContent } from "./ProjectsContent";
+import { redirect } from "next/navigation";
 
-
-export default function TasksProjectsPage() {
-  return <ProjectsContent />;
+export default function ProjectsRedirect() {
+  redirect("/tasks?tab=projects");
 }

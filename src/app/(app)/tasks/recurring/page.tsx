@@ -1,6 +1,5 @@
-import { RecurringContent } from "./RecurringContent";
+import { redirect } from "next/navigation";
 
-
-export default function TasksRecurringPage() {
-  return <RecurringContent />;
+export default function RecurringRedirect() {
+  redirect("/tasks?tab=recurring");
 }

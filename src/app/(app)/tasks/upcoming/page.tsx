@@ -1,6 +1,5 @@
-import { UpcomingContent } from "./UpcomingContent";
+import { redirect } from "next/navigation";
 
-
-export default function TasksUpcomingPage() {
-  return <UpcomingContent />;
+export default function UpcomingRedirect() {
+  redirect("/tasks?tab=upcoming");
 }

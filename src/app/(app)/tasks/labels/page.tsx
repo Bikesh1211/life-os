@@ -1,6 +1,5 @@
-import { LabelsContent } from "./LabelsContent";
+import { redirect } from "next/navigation";
 
-
-export default function LabelsPage() {
-  return <LabelsContent />;
+export default function LabelsRedirect() {
+  redirect("/tasks?tab=labels");
 }

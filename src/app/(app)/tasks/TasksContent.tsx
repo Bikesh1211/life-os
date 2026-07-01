@@ -1,163 +1,144 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
-import { Stack, Title, Text, Paper, Group, ThemeIcon, SimpleGrid, Button } from "@mantine/core";
+import { useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Stack, Title, Group, Button, Tabs, Text } from "@mantine/core";
 import {
   IconChecklist,
+  IconCalendarDue,
+  IconInbox,
+  IconFolder,
+  IconRepeat,
+  IconTags,
+  IconFocusCentered,
   IconPlus,
-  IconAlertCircle,
 } from "@tabler/icons-react";
-import { useTasks } from "@/modules/tasks/hooks";
-import { TaskCard } from "@/modules/tasks/components/TaskCard";
-import { TaskFormModal } from "@/modules/tasks/components/TaskFormModal";
-import { TaskQuickAdd } from "@/modules/tasks/components/TaskQuickAdd";
-import { TaskFilters, type FilterValues } from "@/modules/tasks/components/TaskFilters";
-import { BulkActionBar } from "@/modules/tasks/components/BulkActionBar";
-import { useTaskKeyboardShortcuts } from "@/modules/tasks/hooks/useTaskKeyboardShortcuts";
-import type { Task } from "@/modules/tasks/repository";
+import { DashboardContent } from "./DashboardContent";
+import { TodayContent } from "./today/TodayContent";
+import { InboxContent } from "./inbox/InboxContent";
+import { ProjectsContent } from "./projects/ProjectsContent";
+import { ProjectDetailContent } from "./projects/ProjectDetailContent";
+import { UpcomingContent } from "./upcoming/UpcomingContent";
+import { RecurringContent } from "./recurring/RecurringContent";
+import { LabelsContent } from "./labels/LabelsContent";
+import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 
-export function TasksContent({ taskSummary: initial, initialTasks }: { taskSummary: any; initialTasks?: any[] }) {
-  const [filters, setFilters] = useState<FilterValues>({
-    search: "", status: "active", priority: "", labelIds: [],
-  });
-  const queryFilters: Record<string, unknown> = { sortBy: "priority", parentId: "null" };
-  if (filters.search) queryFilters.search = filters.search;
-  if (filters.status) queryFilters.status = filters.status;
-  if (filters.priority) queryFilters.priority = filters.priority;
-  if (filters.labelIds.length > 0) queryFilters.labelIds = filters.labelIds;
+type Props = {
+  taskSummary?: any;
+  initialTasks?: any[];
+  defaultTab?: string;
+};
 
-  const { data: tasks, isLoading } = useTasks(queryFilters, initialTasks);
-  const [editTask, setEditTask] = useState<Task | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const searchRef = useRef<HTMLInputElement>(null);
+export function TasksContent({ taskSummary, initialTasks, defaultTab = "dashboard" }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string | null>(
+    searchParams.get("tab") ?? defaultTab,
+  );
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
-  const toggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
-  }, []);
-
-  useTaskKeyboardShortcuts({
-    onNewTask: () => setShowCreate(true),
-    onSearch: () => searchRef.current?.focus(),
-    onToggleSelection: () => setSelectionMode((p) => !p),
-    onEscape: () => { setSelectedIds([]); setSelectionMode(false); },
-  });
-
-  const counts = {
-    total: initial?.total ?? 0,
-    todo: initial?.todo ?? 0,
-    inProgress: initial?.in_progress ?? 0,
-    done: initial?.done ?? 0,
-    overdue: initial?.overdue ?? 0,
-  };
+  const handleTabChange = useCallback(
+    (value: string | null) => {
+      setActiveTab(value);
+      setSelectedProjectId(null);
+      const params = new URLSearchParams(searchParams.toString());
+      if (value && value !== "dashboard") {
+        params.set("tab", value);
+      } else {
+        params.delete("tab");
+      }
+      const qs = params.toString();
+      router.replace(`/tasks${qs ? `?${qs}` : ""}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between">
-        <Group>
-          <ThemeIcon variant="light" size="lg" radius="md">
-            <IconChecklist size={20} />
-          </ThemeIcon>
-          <div>
-            <Title order={2}>My Tasks</Title>
-            <Text size="sm" c="dimmed">{counts.total} tasks</Text>
-          </div>
-        </Group>
+    <Stack gap="md">
+      <Group justify="space-between" align="center">
+        <Title order={2}>Tasks</Title>
         <Button
-          leftSection={<IconPlus size={16} />}
-          onClick={() => setShowCreate(true)}
-          radius="xl"
+          leftSection={<IconPlus size={18} />}
+          onClick={() => {}} // New Task button — handled per-tab via modals
+          variant="light"
+          size="sm"
         >
           New Task
         </Button>
       </Group>
 
-      <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="sm">
-        <Paper withBorder p="sm" radius="md">
-          <Group>
-            <ThemeIcon variant="light" color="blue" size="md" radius="md">
-              <IconChecklist size={16} />
-            </ThemeIcon>
-            <div>
-              <Text size="xs" c="dimmed">To Do</Text>
-              <Text fw={700}>{counts.todo}</Text>
-            </div>
-          </Group>
-        </Paper>
-        <Paper withBorder p="sm" radius="md">
-          <Group>
-            <ThemeIcon variant="light" color="violet" size="md" radius="md">
-              <IconPlus size={16} />
-            </ThemeIcon>
-            <div>
-              <Text size="xs" c="dimmed">In Progress</Text>
-              <Text fw={700}>{counts.inProgress}</Text>
-            </div>
-          </Group>
-        </Paper>
-        <Paper withBorder p="sm" radius="md">
-          <Group>
-            <ThemeIcon variant="light" color="green" size="md" radius="md">
-              <IconChecklist size={16} />
-            </ThemeIcon>
-            <div>
-              <Text size="xs" c="dimmed">Done</Text>
-              <Text fw={700}>{counts.done}</Text>
-            </div>
-          </Group>
-        </Paper>
-        <Paper withBorder p="sm" radius="md">
-          <Group>
-            <ThemeIcon variant="light" color="red" size="md" radius="md">
-              <IconAlertCircle size={16} />
-            </ThemeIcon>
-            <div>
-              <Text size="xs" c="dimmed">Overdue</Text>
-              <Text fw={700}>{counts.overdue}</Text>
-            </div>
-          </Group>
-        </Paper>
-      </SimpleGrid>
+      <Tabs value={activeTab} onChange={handleTabChange}>
+        <Tabs.List>
+          <Tabs.Tab value="dashboard" leftSection={<IconChecklist size={16} />}>
+            Dashboard
+          </Tabs.Tab>
+          <Tabs.Tab value="today" leftSection={<IconCalendarDue size={16} />}>
+            Today
+          </Tabs.Tab>
+          <Tabs.Tab value="inbox" leftSection={<IconInbox size={16} />}>
+            Inbox
+          </Tabs.Tab>
+          <Tabs.Tab value="projects" leftSection={<IconFolder size={16} />}>
+            Projects
+          </Tabs.Tab>
+          <Tabs.Tab value="upcoming" leftSection={<IconCalendarDue size={16} />}>
+            Upcoming
+          </Tabs.Tab>
+          <Tabs.Tab value="recurring" leftSection={<IconRepeat size={16} />}>
+            Recurring
+          </Tabs.Tab>
+          <Tabs.Tab value="labels" leftSection={<IconTags size={16} />}>
+            Labels
+          </Tabs.Tab>
+          <Tabs.Tab value="focus-mode" leftSection={<IconFocusCentered size={16} />}>
+            Focus Mode
+          </Tabs.Tab>
+        </Tabs.List>
 
-      <TaskQuickAdd />
+        <Tabs.Panel value="dashboard" pt="md">
+          <DashboardContent taskSummary={taskSummary} initialTasks={initialTasks} hideHeader />
+        </Tabs.Panel>
 
-      <TaskFilters filters={filters} onChange={setFilters} />
+        <Tabs.Panel value="today" pt="md">
+          <TodayContent hideHeader />
+        </Tabs.Panel>
 
-      <BulkActionBar
-        selectedIds={selectedIds}
-        onClear={() => { setSelectedIds([]); setSelectionMode(false); }}
-      />
+        <Tabs.Panel value="inbox" pt="md">
+          <InboxContent hideHeader />
+        </Tabs.Panel>
 
-      {!tasks || (tasks.length === 0 && isLoading) ? (
-        <Text c="dimmed">Loading tasks...</Text>
-      ) : !tasks || tasks.length === 0 ? (
-        <Paper withBorder p="xl" radius="md">
-          <Text c="dimmed" ta="center">No tasks yet. Create your first task above.</Text>
-        </Paper>
-      ) : (
-        <Stack gap="sm">
-          {tasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onEdit={setEditTask}
-              selected={selectedIds.includes(task.id)}
-              onSelect={toggleSelect}
-              selectionMode={selectionMode}
+        <Tabs.Panel value="projects" pt="md">
+          {selectedProjectId ? (
+            <ProjectDetailContent
+              projectId={selectedProjectId}
+              hideHeader
+              onBack={() => setSelectedProjectId(null)}
             />
-          ))}
-        </Stack>
-      )}
+          ) : (
+            <ProjectsContent hideHeader onProjectSelect={setSelectedProjectId} />
+          )}
+        </Tabs.Panel>
 
-      {showCreate && (
-        <TaskFormModal onClose={() => setShowCreate(false)} />
-      )}
-      {editTask && (
-        <TaskFormModal task={editTask} onClose={() => setEditTask(null)} />
-      )}
+        <Tabs.Panel value="upcoming" pt="md">
+          <UpcomingContent hideHeader />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="recurring" pt="md">
+          <RecurringContent hideHeader />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="labels" pt="md">
+          <LabelsContent hideHeader />
+        </Tabs.Panel>
+
+        <Tabs.Panel value="focus-mode" pt="md">
+          <FeaturePlaceholder
+            title="Focus Mode"
+            description="Deep work without distractions"
+            icon={IconFocusCentered}
+          />
+        </Tabs.Panel>
+      </Tabs>
     </Stack>
   );
 }

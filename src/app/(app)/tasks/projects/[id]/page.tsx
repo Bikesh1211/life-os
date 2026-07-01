@@ -1,6 +1,5 @@
-import { ProjectDetailContent } from "../ProjectDetailContent";
+import { redirect } from "next/navigation";
 
-export default async function ProjectDetailPage(props: { params: Promise<{ id: string }> }) {
-  const { id } = await props.params;
-  return <ProjectDetailContent projectId={id} />;
+export default function ProjectDetailRedirect() {
+  redirect("/tasks?tab=projects");
 }

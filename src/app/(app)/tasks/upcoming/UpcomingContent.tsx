@@ -12,7 +12,11 @@ import { BulkActionBar } from "@/modules/tasks/components/BulkActionBar";
 import { useTaskKeyboardShortcuts } from "@/modules/tasks/hooks/useTaskKeyboardShortcuts";
 import type { Task } from "@/modules/tasks/repository";
 
-export function UpcomingContent() {
+type UpcomingContentProps = {
+  hideHeader?: boolean;
+};
+
+export function UpcomingContent({ hideHeader = false }: UpcomingContentProps) {
   const dueDateFrom = dayjs().add(1, "day").startOf("day").toISOString();
   const dueDateTo = dayjs().add(30, "day").endOf("day").toISOString();
 
@@ -53,15 +57,17 @@ export function UpcomingContent() {
 
   return (
     <Stack gap="lg">
-      <Group>
-        <ThemeIcon variant="light" size="lg" radius="md" color="teal">
-          <IconCalendarDue size={20} />
-        </ThemeIcon>
-        <div>
-          <Title order={2}>Upcoming</Title>
-          <Text size="sm" c="dimmed">Tasks due in the next 30 days</Text>
-        </div>
-      </Group>
+      {!hideHeader && (
+        <Group>
+          <ThemeIcon variant="light" size="lg" radius="md" color="teal">
+            <IconCalendarDue size={20} />
+          </ThemeIcon>
+          <div>
+            <Title order={2}>Upcoming</Title>
+            <Text size="sm" c="dimmed">Tasks due in the next 30 days</Text>
+          </div>
+        </Group>
+      )}
 
       <TaskFilters filters={filters} onChange={setFilters} />
 

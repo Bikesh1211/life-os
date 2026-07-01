@@ -15,7 +15,11 @@ const labelColors = [
   "orange", "cyan", "teal", "grape", "lime", "indigo",
 ];
 
-export function LabelsContent() {
+type LabelsContentProps = {
+  hideHeader?: boolean;
+};
+
+export function LabelsContent({ hideHeader = false }: LabelsContentProps) {
   const { data: labels, isLoading } = useLabels();
   const deleteLabel = useDeleteLabel();
   const [editLabel, setEditLabel] = useState<any>(null);
@@ -23,24 +27,26 @@ export function LabelsContent() {
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between">
-        <Group>
-          <ThemeIcon variant="light" size="lg" radius="md" color="violet">
-            <IconTags size={20} />
-          </ThemeIcon>
-          <div>
-            <Title order={2}>Labels</Title>
-            <Text size="sm" c="dimmed">{labels?.length ?? 0} labels</Text>
-          </div>
+      {!hideHeader && (
+        <Group justify="space-between">
+          <Group>
+            <ThemeIcon variant="light" size="lg" radius="md" color="violet">
+              <IconTags size={20} />
+            </ThemeIcon>
+            <div>
+              <Title order={2}>Labels</Title>
+              <Text size="sm" c="dimmed">{labels?.length ?? 0} labels</Text>
+            </div>
+          </Group>
+          <Button
+            leftSection={<IconPlus size={16} />}
+            onClick={() => { setEditLabel(null); open(); }}
+            radius="xl"
+          >
+            New Label
+          </Button>
         </Group>
-        <Button
-          leftSection={<IconPlus size={16} />}
-          onClick={() => { setEditLabel(null); open(); }}
-          radius="xl"
-        >
-          New Label
-        </Button>
-      </Group>
+      )}
 
       {isLoading ? (
         <Text c="dimmed">Loading...</Text>
