@@ -487,7 +487,7 @@ export function JournalCardsPanel({ entries, onRefresh }: Props) {
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-[var(--mantine-color-dark-7)]">
                 <EditorContent editor={editor} />
               </div>
             </div>
@@ -538,7 +538,7 @@ function StatCard({
       withBorder
       p="sm"
       radius="lg"
-      className="flex items-center gap-3 border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-850"
+      className="flex items-center gap-3 border-gray-200 bg-white dark:border-gray-700 dark:bg-[var(--mantine-color-dark-7)]"
     >
       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
         {icon}

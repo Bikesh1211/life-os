@@ -46,7 +46,7 @@ export function JournalEditorToolbar({ editor }: Props) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white px-2 py-1 shadow-sm dark:border-gray-700 dark:bg-gray-850">
+    <div className="rounded-xl border border-gray-200 bg-white px-2 py-1 shadow-sm dark:border-gray-700 dark:bg-[var(--mantine-color-dark-7)]">
       <Group gap={2} wrap="wrap">
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}

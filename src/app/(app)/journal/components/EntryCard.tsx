@@ -24,7 +24,7 @@ export function EntryCard({ entry, isSelected, onSelect }: EntryCardProps) {
       className={`group cursor-pointer transition-all duration-200 hover:shadow-sm ${
         isSelected
           ? "border-blue-300 bg-blue-50/50 shadow-sm dark:border-blue-700 dark:bg-blue-900/10"
-          : "border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-gray-850 dark:hover:border-gray-600"
+          : "border-gray-200 bg-white hover:border-gray-300 dark:border-gray-700 dark:bg-[var(--mantine-color-dark-7)] dark:hover:border-gray-600"
       }`}
     >
       <Group gap="xs" mb={4} wrap="nowrap">
