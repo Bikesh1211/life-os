@@ -8,7 +8,6 @@ import {
 import { IconFolder, IconPlus } from "@tabler/icons-react";
 import { useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
-import Link from "next/link";
 import { useProjects, useCreateProject } from "@/modules/tasks/hooks";
 
 const projectColors = [
@@ -16,28 +15,35 @@ const projectColors = [
   "orange", "cyan", "teal", "grape",
 ];
 
-export function ProjectsContent() {
+type ProjectsContentProps = {
+  hideHeader?: boolean;
+  onProjectSelect?: (id: string) => void;
+};
+
+export function ProjectsContent({ hideHeader = false, onProjectSelect }: ProjectsContentProps) {
   const { data: projects, isLoading } = useProjects();
   const [opened, { open, close }] = useDisclosure(false);
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between">
-        <Group>
-          <ThemeIcon variant="light" size="lg" radius="md" color="yellow">
-            <IconFolder size={20} />
-          </ThemeIcon>
-          <div>
-            <Title order={2}>Projects</Title>
-            <Text size="sm" c="dimmed">
-              {projects?.length ?? 0} projects
-            </Text>
-          </div>
+      {!hideHeader && (
+        <Group justify="space-between">
+          <Group>
+            <ThemeIcon variant="light" size="lg" radius="md" color="yellow">
+              <IconFolder size={20} />
+            </ThemeIcon>
+            <div>
+              <Title order={2}>Projects</Title>
+              <Text size="sm" c="dimmed">
+                {projects?.length ?? 0} projects
+              </Text>
+            </div>
+          </Group>
+          <Button leftSection={<IconPlus size={16} />} onClick={open} radius="xl">
+            New Project
+          </Button>
         </Group>
-        <Button leftSection={<IconPlus size={16} />} onClick={open} radius="xl">
-          New Project
-        </Button>
-      </Group>
+      )}
 
       {isLoading ? (
         <Text c="dimmed">Loading...</Text>
@@ -55,9 +61,15 @@ export function ProjectsContent() {
               withBorder
               p="md"
               radius="md"
-              component={Link}
-              href={`/tasks/projects/${project.id}`}
-              style={{ textDecoration: "none", color: "inherit" }}
+              component="div"
+              onClick={() => {
+                if (onProjectSelect) {
+                  onProjectSelect(project.id);
+                } else {
+                  window.location.href = `/tasks/projects/${project.id}`;
+                }
+              }}
+              style={{ textDecoration: "none", color: "inherit", cursor: "pointer" }}
             >
               <Group mb="xs">
                 <ThemeIcon variant="light" color={project.color} size="md" radius="md">

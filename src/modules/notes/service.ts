@@ -47,6 +47,7 @@ export const createNoteSchema = z.object({
   status: z.enum(statuses).optional(),
   folderId: z.string().uuid().optional().nullable(),
   reminderDate: z.string().datetime().optional().nullable(),
+  color: z.string().optional().nullable(),
   priority: z.enum(priorities).optional(),
 });
 
@@ -112,6 +113,7 @@ export async function createNoteEntry(userId: string, params: CreateNoteParams) 
     status: validated.status,
     folderId: validated.folderId ?? undefined,
     reminderDate: validated.reminderDate ? new Date(validated.reminderDate) : undefined,
+    color: validated.color ?? undefined,
     priority: validated.priority,
   };
   return createNote(input);
@@ -155,6 +157,7 @@ export async function updateNoteEntry(id: string, userId: string, params: Update
   if (validated.status !== undefined) updateData.status = validated.status;
   if (validated.folderId !== undefined) updateData.folderId = validated.folderId;
   if (validated.reminderDate !== undefined) updateData.reminderDate = validated.reminderDate ? new Date(validated.reminderDate) : null;
+  if (validated.color !== undefined) updateData.color = validated.color;
   if (validated.priority !== undefined) updateData.priority = validated.priority;
 
   return updateNote(id, userId, updateData);

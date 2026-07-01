@@ -12,7 +12,11 @@ import { BulkActionBar } from "@/modules/tasks/components/BulkActionBar";
 import { useTaskKeyboardShortcuts } from "@/modules/tasks/hooks/useTaskKeyboardShortcuts";
 import type { Task } from "@/modules/tasks/repository";
 
-export function InboxContent() {
+type InboxContentProps = {
+  hideHeader?: boolean;
+};
+
+export function InboxContent({ hideHeader = false }: InboxContentProps) {
   const [filters, setFilters] = useState<FilterValues>({
     search: "", status: "active", priority: "", labelIds: [],
   });
@@ -41,17 +45,19 @@ export function InboxContent() {
 
   return (
     <Stack gap="lg">
-      <Group>
-        <ThemeIcon variant="light" size="lg" radius="md" color="grape">
-          <IconInbox size={20} />
-        </ThemeIcon>
-        <div>
-          <Title order={2}>Inbox</Title>
-          <Text size="sm" c="dimmed">
-            Tasks without a project — capture and organize later
-          </Text>
-        </div>
-      </Group>
+      {!hideHeader && (
+        <Group>
+          <ThemeIcon variant="light" size="lg" radius="md" color="grape">
+            <IconInbox size={20} />
+          </ThemeIcon>
+          <div>
+            <Title order={2}>Inbox</Title>
+            <Text size="sm" c="dimmed">
+              Tasks without a project — capture and organize later
+            </Text>
+          </div>
+        </Group>
+      )}
 
       <TaskQuickAdd placeholder="Capture a task..." />
 

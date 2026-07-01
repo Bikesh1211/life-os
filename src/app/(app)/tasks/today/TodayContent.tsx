@@ -13,7 +13,11 @@ import { BulkActionBar } from "@/modules/tasks/components/BulkActionBar";
 import { useTaskKeyboardShortcuts } from "@/modules/tasks/hooks/useTaskKeyboardShortcuts";
 import type { Task } from "@/modules/tasks/repository";
 
-export function TodayContent() {
+type TodayContentProps = {
+  hideHeader?: boolean;
+};
+
+export function TodayContent({ hideHeader = false }: TodayContentProps) {
   const today = dayjs().format("YYYY-MM-DD");
   const dueDateFrom = dayjs().startOf("day").toISOString();
   const dueDateTo = dayjs().endOf("day").toISOString();
@@ -46,15 +50,17 @@ export function TodayContent() {
 
   return (
     <Stack gap="lg">
-      <Group>
-        <ThemeIcon variant="light" size="lg" radius="md" color="blue">
-          <IconCalendarDue size={20} />
-        </ThemeIcon>
-        <div>
-          <Title order={2}>Today</Title>
-          <Text size="sm" c="dimmed">{dayjs().format("dddd, MMMM D")}</Text>
-        </div>
-      </Group>
+      {!hideHeader && (
+        <Group>
+          <ThemeIcon variant="light" size="lg" radius="md" color="blue">
+            <IconCalendarDue size={20} />
+          </ThemeIcon>
+          <div>
+            <Title order={2}>Today</Title>
+            <Text size="sm" c="dimmed">{dayjs().format("dddd, MMMM D")}</Text>
+          </div>
+        </Group>
+      )}
 
       <TaskQuickAdd placeholder="Add a task for today..." />
 

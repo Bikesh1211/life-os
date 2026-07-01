@@ -11,7 +11,11 @@ import { BulkActionBar } from "@/modules/tasks/components/BulkActionBar";
 import { useTaskKeyboardShortcuts } from "@/modules/tasks/hooks/useTaskKeyboardShortcuts";
 import type { Task } from "@/modules/tasks/repository";
 
-export function RecurringContent() {
+type RecurringContentProps = {
+  hideHeader?: boolean;
+};
+
+export function RecurringContent({ hideHeader = false }: RecurringContentProps) {
   const [filters, setFilters] = useState<FilterValues>({
     search: "", status: "active", priority: "", labelIds: [],
   });
@@ -48,15 +52,17 @@ export function RecurringContent() {
 
   return (
     <Stack gap="lg">
-      <Group>
-        <ThemeIcon variant="light" size="lg" radius="md" color="cyan">
-          <IconRepeat size={20} />
-        </ThemeIcon>
-        <div>
-          <Title order={2}>Recurring Tasks</Title>
-          <Text size="sm" c="dimmed">{recurring.length} recurring tasks</Text>
-        </div>
-      </Group>
+      {!hideHeader && (
+        <Group>
+          <ThemeIcon variant="light" size="lg" radius="md" color="cyan">
+            <IconRepeat size={20} />
+          </ThemeIcon>
+          <div>
+            <Title order={2}>Recurring Tasks</Title>
+            <Text size="sm" c="dimmed">{recurring.length} recurring tasks</Text>
+          </div>
+        </Group>
+      )}
 
       <TaskFilters filters={filters} onChange={setFilters} />
 

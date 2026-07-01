@@ -1,6 +1,5 @@
-import { TodayContent } from "./TodayContent";
+import { redirect } from "next/navigation";
 
-
-export default function TasksTodayPage() {
-  return <TodayContent />;
+export default function TodayRedirect() {
+  redirect("/tasks?tab=today");
 }

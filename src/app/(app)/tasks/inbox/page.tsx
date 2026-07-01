@@ -1,6 +1,5 @@
-import { InboxContent } from "./InboxContent";
+import { redirect } from "next/navigation";
 
-
-export default function TasksInboxPage() {
-  return <InboxContent />;
+export default function InboxRedirect() {
+  redirect("/tasks?tab=inbox");
 }

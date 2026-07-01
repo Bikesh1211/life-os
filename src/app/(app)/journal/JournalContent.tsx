@@ -1,100 +1,202 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Stack, Title, Group, Button, TextInput, Select, Paper, Text, SimpleGrid } from "@mantine/core";
-import { IconPlus, IconSearch } from "@tabler/icons-react";
+import { useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Stack, Title, Group, Button, Tabs, Text } from "@mantine/core";
+import {
+  IconSun,
+  IconCards,
+  IconTimelineEvent,
+  IconCalendar,
+  IconChartBar,
+  IconPin,
+  IconHistory,
+  IconPlus,
+} from "@tabler/icons-react";
+import { StoryView } from "../timeline/components/StoryView";
 import { EntryCard } from "./components/EntryCard";
-import { StreakCounter } from "./components/StreakCounter";
-import { computeStreak } from "@/modules/journal/utils";
+import { QuickJournalInput } from "./components/QuickJournalInput";
+import { CalendarView } from "./components/CalendarView";
+import { InsightsPanel } from "./components/InsightsPanel";
+import { TimelineContent as JournalTimelineView } from "./timeline/TimelineContent";
 import type { JournalEntry } from "@/modules/journal";
+import dayjs from "dayjs";
 
-type JournalContentProps = {
-  entries: JournalEntry[];
-  streak: number;
+type JournalStats = {
+  totalEntries: number;
+  moodDistribution: { mood: string | null; count: number }[];
+  commonTags: { tag: string; count: number }[];
 };
 
-export function JournalContent({ entries, streak }: JournalContentProps) {
-  const router = useRouter();
-  const [search, setSearch] = useState("");
-  const [moodFilter, setMoodFilter] = useState<string | null>(null);
+type Props = {
+  entries: JournalEntry[];
+  streak: number;
+  stats: JournalStats;
+  defaultTab?: string;
+};
 
-  const filtered = useMemo(() => {
-    let result = entries;
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter((e) => e.title.toLowerCase().includes(q) || e.content?.toLowerCase().includes(q));
-    }
-    if (moodFilter) {
-      result = result.filter((e) => e.mood === moodFilter);
-    }
-    return result;
-  }, [entries, search, moodFilter]);
+export function JournalContent({ entries, streak, stats, defaultTab = "story" }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<string | null>(
+    searchParams.get("tab") ?? defaultTab,
+  );
+  const [localEntries, setLocalEntries] = useState<JournalEntry[]>(entries);
+
+  const handleTabChange = useCallback(
+    (value: string | null) => {
+      setActiveTab(value);
+      const params = new URLSearchParams(searchParams.toString());
+      if (value && value !== "story") {
+        params.set("tab", value);
+      } else {
+        params.delete("tab");
+      }
+      const qs = params.toString();
+      router.replace(`/journal${qs ? `?${qs}` : ""}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const handleRefresh = useCallback(async () => {
+    try {
+      const res = await fetch("/api/journal");
+      if (res.ok) {
+        const data = await res.json();
+        setLocalEntries(data);
+      }
+    } catch {}
+  }, []);
+
+  const handleCreated = useCallback((entry: JournalEntry) => {
+    setLocalEntries((prev) => [entry, ...prev]);
+  }, []);
+
+  const todayEntries = localEntries.filter((e) => {
+    const d = new Date(e.eventDate ?? e.createdAt);
+    const now = new Date();
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  });
+
+  const pinnedEntries = localEntries.filter((e) => e.isPinned);
+
+  const sortedEntries = [...localEntries].sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    const aDate = a.eventDate ?? a.createdAt;
+    const bDate = b.eventDate ?? b.createdAt;
+    return new Date(bDate).getTime() - new Date(aDate).getTime();
+  });
 
   return (
-    <Stack gap="md">
-      <Group justify="space-between">
-        <Title order={2}>Journal</Title>
-        <Button leftSection={<IconPlus size={16} />} onClick={() => router.push("/journal/new")}>
-          New Entry
-        </Button>
-      </Group>
+    <>
+      <Stack gap="md">
+        <Group justify="space-between" align="center">
+          <Title order={2}>Journal</Title>
+          <Button
+            leftSection={<IconPlus size={18} />}
+            onClick={() => router.push("/journal/new")}
+            variant="light"
+            size="sm"
+          >
+            New Entry
+          </Button>
+        </Group>
 
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 3 }} spacing="md">
-        <StreakCounter streak={streak} />
-        <Paper withBorder p="sm">
-          <Text size="sm" fw={500}>
-            Total Entries
-          </Text>
-          <Text size="xl" fw={700}>
-            {entries.length}
-          </Text>
-        </Paper>
-        <Paper withBorder p="sm">
-          <Text size="sm" fw={500}>
-            This Month
-          </Text>
-          <Text size="xl" fw={700}>
-            {entries.filter((e) => {
-              const d = new Date(e.createdAt);
-              const now = new Date();
-              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            }).length}
-          </Text>
-        </Paper>
-      </SimpleGrid>
+        <QuickJournalInput onCreated={handleCreated} />
 
-      <Group gap="sm">
-        <TextInput
-          placeholder="Search entries..."
-          leftSection={<IconSearch size={16} />}
-          value={search}
-          onChange={(e) => setSearch(e.currentTarget.value)}
-          className="flex-1"
-        />
-        <Select
-          placeholder="Filter by mood"
-          data={["happy", "sad", "neutral", "anxious", "stressed", "motivated", "excited"]}
-          value={moodFilter}
-          onChange={setMoodFilter}
-          clearable
-          className="w-40"
-        />
-      </Group>
+        <Tabs value={activeTab} onChange={handleTabChange}>
+          <Tabs.List>
+            <Tabs.Tab value="story" leftSection={<IconHistory size={16} />}>
+              Story
+            </Tabs.Tab>
+            <Tabs.Tab value="today" leftSection={<IconSun size={16} />}>
+              Today
+            </Tabs.Tab>
+            <Tabs.Tab value="cards" leftSection={<IconCards size={16} />}>
+              Cards
+            </Tabs.Tab>
+            <Tabs.Tab value="timeline" leftSection={<IconTimelineEvent size={16} />}>
+              Timeline
+            </Tabs.Tab>
+            <Tabs.Tab value="calendar" leftSection={<IconCalendar size={16} />}>
+              Calendar
+            </Tabs.Tab>
+            <Tabs.Tab value="pinned" leftSection={<IconPin size={16} />}>
+              Pinned
+            </Tabs.Tab>
+            <Tabs.Tab value="insights" leftSection={<IconChartBar size={16} />}>
+              Insights
+            </Tabs.Tab>
+          </Tabs.List>
 
-      {filtered.length === 0 ? (
-        <Paper withBorder p="xl" className="text-center">
-          <Text c="dimmed">
-            {search || moodFilter ? "No entries match your filters." : "No journal entries yet. Start writing!"}
-          </Text>
-        </Paper>
-      ) : (
-        <Stack gap="xs">
-          {filtered.map((entry) => (
-            <EntryCard key={entry.id} entry={entry} />
-          ))}
-        </Stack>
-      )}
-    </Stack>
+          <Tabs.Panel value="story" pt="md">
+            <StoryView onCreateClick={() => router.push("/journal/new")} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="today" pt="md">
+            <Stack gap="sm">
+              {todayEntries.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                  <IconSun size={48} stroke={1.5} className="mb-4 opacity-40" />
+                  <Text size="sm">No entries today. Write something!</Text>
+                </div>
+              )}
+              {todayEntries.map((entry) => (
+                <EntryCard key={entry.id} entry={entry} />
+              ))}
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="cards" pt="md">
+            <Stack gap="sm">
+              {sortedEntries.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                  <IconCards size={48} stroke={1.5} className="mb-4 opacity-40" />
+                  <Text size="sm">No entries yet. Create your first one!</Text>
+                </div>
+              )}
+              {sortedEntries.map((entry) => (
+                <EntryCard key={entry.id} entry={entry} />
+              ))}
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="timeline" pt="md">
+            <JournalTimelineView entries={localEntries} hideHeader />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="calendar" pt="md">
+            <CalendarView entries={localEntries} />
+          </Tabs.Panel>
+
+          <Tabs.Panel value="pinned" pt="md">
+            <Stack gap="sm">
+              {pinnedEntries.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                  <IconPin size={48} stroke={1.5} className="mb-4 opacity-40" />
+                  <Text size="sm">No pinned entries. Pin an entry to see it here.</Text>
+                </div>
+              )}
+              {pinnedEntries.map((entry) => (
+                <EntryCard key={entry.id} entry={entry} />
+              ))}
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="insights" pt="md">
+            <InsightsPanel
+              entries={localEntries}
+              streak={streak}
+              onCreateClick={() => router.push("/journal/new")}
+            />
+          </Tabs.Panel>
+        </Tabs>
+      </Stack>
+    </>
   );
 }

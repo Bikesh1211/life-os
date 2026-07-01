@@ -1,45 +1,26 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import {
-  Stack,
-  Group,
   TextInput,
+  Group,
   ActionIcon,
   Tooltip,
   Text,
-  Paper,
-  SimpleGrid,
-  SegmentedControl,
+  Drawer,
   ScrollArea,
-  Modal,
-  Button,
-  NavLink,
-  Collapse,
   Box,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import {
-  IconSearch,
-  IconLayoutGrid,
-  IconList,
-  IconPlus,
-  IconArchive,
-  IconArchiveOff,
-  IconTrash,
-  IconFolder,
-  IconFolderPlus,
-  IconChevronDown,
-  IconChevronRight,
-} from "@tabler/icons-react";
+import { IconSearch, IconMenu2, IconPlus } from "@tabler/icons-react";
 import { useHotkeys } from "@mantine/hooks";
 import { NoteCard } from "./NoteCard";
-import { QuickNoteModal } from "./QuickNoteModal";
-import { useNotes, useNoteTags, useDeleteNote, useNoteFolders, useCreateNoteFolder } from "@/hooks/use-notes";
+import { NotesSidebar } from "./NotesSidebar";
+import { InlineNoteInput } from "./InlineNoteInput";
+import { NoteEditModal } from "./NoteEditModal";
+import { useNotes } from "@/hooks/use-notes";
 import { useNotesStore } from "@/stores/notes-store";
 import type { Note } from "@/modules/notes";
-
-const categories = ["all", "personal", "work", "study", "ideas", "journal"] as const;
 
 type NotesContentProps = {
   initialNotes: Note[];
@@ -47,316 +28,177 @@ type NotesContentProps = {
 
 export function NotesContent({ initialNotes }: NotesContentProps) {
   const {
-    viewMode,
-    setViewMode,
     search,
     setSearch,
-    selectedTags,
-    toggleTag,
-    categoryFilter,
-    setCategoryFilter,
-    showArchived,
-    setShowArchived,
-    openQuickNote,
+    sidebarView,
+    activeLabel,
+    isSidebarOpen,
+    toggleSidebar,
+    closeSidebar,
+    openCreateModal,
   } = useNotesStore();
-  const [folderFilter, setFolderFilter] = useState<string | null>(null);
-  const [foldersOpen, { toggle: toggleFolders }] = useDisclosure(false);
-  const { data: notesData } = useNotes({
-    search: search || undefined,
-    category: categoryFilter === "all" ? undefined : categoryFilter ?? undefined,
-    tags: selectedTags.length > 0 ? selectedTags : undefined,
-    includeArchived: showArchived || undefined,
-    folderId: folderFilter ?? undefined,
-  }, initialNotes);
-  const { data: tagDefinitions } = useNoteTags();
-  const { data: folders } = useNoteFolders();
-  const createFolder = useCreateNoteFolder();
-  const deleteNote = useDeleteNote();
-  const [deletingNote, setDeletingNote] = useState<Note | null>(null);
+
+  const [drawerOpened, { open: openDrawer, close: closeDrawer }] = useDisclosure(false);
+
+  const { data: notesData } = useNotes({}, initialNotes);
   const safeNotes = notesData ?? initialNotes;
 
-  useHotkeys([["mod+Shift+N", () => openQuickNote()]]);
+  useHotkeys([["mod+Shift+N", () => openCreateModal()]]);
 
-  const pinnedNotes = useMemo(() => safeNotes.filter((n) => n.isPinned), [safeNotes]);
-  const unpinnedNotes = useMemo(() => safeNotes.filter((n) => !n.isPinned), [safeNotes]);
+  const filtered = useMemo(() => {
+    let result = [...safeNotes];
 
-  function renderNoteCard(note: Note) {
-    return <NoteCard key={note.id} note={note} onDeleteRequest={setDeletingNote} />;
-  }
+    // Filter by sidebar view
+    if (sidebarView === "archive") {
+      result = result.filter((n) => n.status === "archived");
+    } else if (sidebarView === "trash") {
+      result = result.filter((n) => n.deletedAt);
+    } else if (sidebarView === "reminders") {
+      result = result.filter((n) => n.reminderDate);
+    } else {
+      result = result.filter((n) => !n.deletedAt && n.status !== "archived");
+    }
+
+    // Filter by label
+    if (activeLabel) {
+      result = result.filter((n) => n.tags?.includes(activeLabel));
+    }
+
+    // Search filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (n) =>
+          n.title.toLowerCase().includes(q) ||
+          (n.content ?? "").toLowerCase().includes(q),
+      );
+    }
+
+    return result;
+  }, [safeNotes, search, sidebarView, activeLabel]);
+
+  const pinnedNotes = useMemo(() => filtered.filter((n) => n.isPinned), [filtered]);
+  const unpinnedNotes = useMemo(() => filtered.filter((n) => !n.isPinned), [filtered]);
+
+  const heading =
+    sidebarView === "reminders" ? "Reminders" :
+    sidebarView === "archive" ? "Archive" :
+    sidebarView === "trash" ? "Trash" :
+    activeLabel ? `Label: ${activeLabel}` :
+    "Notes";
+
+  const isEmpty = pinnedNotes.length === 0 && unpinnedNotes.length === 0;
 
   return (
     <div className="flex h-full">
-      {/* Folder Sidebar — desktop only */}
-      <Paper
-        withBorder={false}
-        className="flex-col w-56 shrink-0 border-r border-[var(--mantine-color-dark-5)]"
-        style={{ background: "var(--mantine-color-body)" }}
-        visibleFrom="md"
-      >
-        <div className="p-3 border-b border-[var(--mantine-color-dark-5)]">
-          <Group justify="space-between">
-            <Text size="xs" fw={600} tt="uppercase" c="dimmed">Folders</Text>
-            <Tooltip label="New folder">
-              <ActionIcon
-                variant="subtle"
-                size="xs"
-                onClick={() => {
-                  const name = window.prompt("Folder name:");
-                  if (name) createFolder.mutate({ name });
-                }}
-              >
-                <IconFolderPlus size={14} />
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-        </div>
-        <ScrollArea className="flex-1">
-          <NavLink
-            label="All Notes"
-            leftSection={<IconFolder size={16} />}
-            active={!folderFilter}
-            onClick={() => setFolderFilter(null)}
-            styles={{ root: { borderRadius: 0 } }}
-          />
-          {(folders ?? []).map((folder: { id: string; name: string; noteCount?: number }) => (
-            <NavLink
-              key={folder.id}
-              label={
-                <Group gap={4} wrap="nowrap">
-                  <Text size="sm" lineClamp={1}>{folder.name}</Text>
-                  {folder.noteCount != null && (
-                    <Text size="xs" c="dimmed">({folder.noteCount})</Text>
-                  )}
-                </Group>
-              }
-              leftSection={<IconFolder size={16} />}
-              active={folderFilter === folder.id}
-              onClick={() => setFolderFilter(folderFilter === folder.id ? null : folder.id)}
-              styles={{ root: { borderRadius: 0 } }}
-            />
-          ))}
-        </ScrollArea>
-      </Paper>
+      {/* Desktop sidebar */}
+      <Box visibleFrom="md" className="h-full">
+        <NotesSidebar />
+      </Box>
 
-      {/* Main Content */}
+      {/* Mobile drawer */}
+      <Drawer
+        opened={drawerOpened}
+        onClose={closeDrawer}
+        size={240}
+        padding={0}
+        withCloseButton={false}
+      >
+        <NotesSidebar />
+      </Drawer>
+
+      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <Stack gap="sm" className="h-full p-3 sm:p-6">
-          <Group justify="space-between">
-            <Text size="xl" fw={700}>
-              Notes
-            </Text>
+        <div className="p-4 sm:p-6 flex-1 flex flex-col">
+          {/* Header row */}
+          <Group justify="space-between" mb="md">
             <Group gap="xs">
               <Box className="md:hidden">
-                <Tooltip label={foldersOpen ? "Hide folders" : "Show folders"}>
-                  <ActionIcon variant="subtle" size="md" onClick={toggleFolders}>
-                    {foldersOpen ? <IconChevronDown size={18} /> : <IconFolder size={18} />}
-                  </ActionIcon>
-                </Tooltip>
-              </Box>
-              <Tooltip label="New Note (⌘⇧N)">
-                <ActionIcon variant="filled" size="lg" radius="md" onClick={openQuickNote}>
-                  <IconPlus size={20} />
+                <ActionIcon variant="subtle" size="md" onClick={openDrawer}>
+                  <IconMenu2 size={18} />
                 </ActionIcon>
-              </Tooltip>
+              </Box>
+              <Text size="xl" fw={700}>{heading}</Text>
             </Group>
-          </Group>
-
-          {/* Collapsible folder section — mobile only */}
-          <Box className="md:hidden">
-            <Collapse in={foldersOpen}>
-              <Paper withBorder p="xs" mb="sm" style={{ background: "var(--mantine-color-body)" }}>
-                <Group justify="space-between" mb="xs">
-                  <Text size="xs" fw={600} tt="uppercase" c="dimmed">Folders</Text>
-                  <ActionIcon
-                    variant="subtle"
-                    size="xs"
-                    onClick={() => {
-                      const name = window.prompt("Folder name:");
-                      if (name) createFolder.mutate({ name });
-                    }}
-                  >
-                    <IconFolderPlus size={14} />
-                  </ActionIcon>
-                </Group>
-                <NavLink
-                  label="All Notes"
-                  leftSection={<IconFolder size={16} />}
-                  active={!folderFilter}
-                  onClick={() => setFolderFilter(null)}
-                  styles={{ root: { borderRadius: 0 } }}
-                />
-                {(folders ?? []).map((folder: { id: string; name: string; noteCount?: number }) => (
-                  <NavLink
-                    key={folder.id}
-                    label={
-                      <Group gap={4} wrap="nowrap">
-                        <Text size="sm" lineClamp={1}>{folder.name}</Text>
-                        {folder.noteCount != null && (
-                          <Text size="xs" c="dimmed">({folder.noteCount})</Text>
-                        )}
-                      </Group>
-                    }
-                    leftSection={<IconFolder size={16} />}
-                    active={folderFilter === folder.id}
-                    onClick={() => setFolderFilter(folderFilter === folder.id ? null : folder.id)}
-                    styles={{ root: { borderRadius: 0 } }}
-                  />
-                ))}
-              </Paper>
-            </Collapse>
-          </Box>
-
-          <Group gap="xs">
-            <TextInput
-              placeholder="Search notes..."
-              leftSection={<IconSearch size={16} />}
-              value={search}
-              onChange={(e) => setSearch(e.currentTarget.value)}
-              className="flex-1"
-              size="sm"
-            />
-            <SegmentedControl
-              data={[
-                { value: "grid", label: <IconLayoutGrid size={16} /> },
-                { value: "list", label: <IconList size={16} /> },
-              ]}
-              value={viewMode}
-              onChange={(v) => setViewMode(v as "grid" | "list")}
-              size="xs"
-            />
-            <Tooltip label={showArchived ? "Hide archived" : "Show archived"}>
-              <ActionIcon
-                variant={showArchived ? "filled" : "subtle"}
-                size="md"
-                onClick={() => setShowArchived(!showArchived)}
-              >
-                {showArchived ? <IconArchiveOff size={16} /> : <IconArchive size={16} />}
+            <Group gap="xs">
+              <ActionIcon variant="subtle" size="md" onClick={toggleSidebar}>
+                <IconMenu2 size={18} />
               </ActionIcon>
-            </Tooltip>
-          </Group>
-
-          <Group gap={2} wrap="wrap">
-            {categories.map((cat) => (
-              <Paper
-                key={cat}
-                withBorder
-                px={8}
-                py={2}
-                className={`text-xs sm:text-sm cursor-pointer transition-colors ${
-                  categoryFilter === cat || (cat === "all" && !categoryFilter)
-                    ? "bg-blue-500 text-white border-blue-500"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                }`}
-                radius="xl"
-                onClick={() => setCategoryFilter(cat === "all" ? null : cat)}
+              <ActionIcon
+                variant="filled"
+                size="md"
+                radius="md"
+                onClick={openCreateModal}
               >
-                {cat.charAt(0).toUpperCase() + cat.slice(1)}
-              </Paper>
-            ))}
+                <IconPlus size={18} />
+              </ActionIcon>
+            </Group>
           </Group>
 
-          {tagDefinitions && tagDefinitions.length > 0 && (
-            <Group gap={2} wrap="wrap">
-              {tagDefinitions.map((tag) => (
-                <Paper
-                  key={tag.id}
-                  withBorder
-                  px={8}
-                  py={2}
-                  className={`text-xs sm:text-sm cursor-pointer transition-colors ${
-                    selectedTags.includes(tag.name)
-                      ? "ring-2 ring-offset-1"
-                      : "hover:bg-gray-100 dark:hover:bg-gray-800"
-                  }`}
-                  radius="xl"
-                  style={{
-                    borderColor: selectedTags.includes(tag.name) ? tag.color : undefined,
-                    backgroundColor: selectedTags.includes(tag.name) ? `${tag.color}20` : undefined,
-                  }}
-                  onClick={() => toggleTag(tag.name)}
-                >
-                  {tag.name}
-                </Paper>
-              ))}
-            </Group>
-          )}
+          {/* Single search bar */}
+          <TextInput
+            placeholder="Search notes..."
+            leftSection={<IconSearch size={16} />}
+            value={search}
+            onChange={(e) => setSearch(e.currentTarget.value)}
+            size="sm"
+            mb="md"
+          />
 
-          <ScrollArea className="flex-1 -mx-3 sm:-mx-6 px-3 sm:px-6">
-            {safeNotes.length === 0 ? (
-              <Paper withBorder p="xl" className="text-center">
-                <Text c="dimmed">
-                  {search || selectedTags.length > 0 || categoryFilter || folderFilter
-                    ? "No notes match your filters"
-                    : showArchived
+          {/* Inline "Take a note..." bar */}
+          {sidebarView === "notes" && !activeLabel && <InlineNoteInput />}
+
+          {/* Masonry grid */}
+          <ScrollArea className="flex-1 -mx-4 sm:-mx-6 px-4 sm:px-6">
+            {isEmpty ? (
+              <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+                <Text size="sm" c="dimmed">
+                  {search
+                    ? "No notes match your search"
+                    : sidebarView === "archive"
                       ? "No archived notes"
-                      : "No notes yet. Create your first note!"}
+                      : sidebarView === "trash"
+                        ? "Trash is empty"
+                        : sidebarView === "reminders"
+                          ? "No reminders"
+                          : "No notes yet. Take one above!"}
                 </Text>
-              </Paper>
-            ) : viewMode === "grid" ? (
+              </div>
+            ) : (
               <>
                 {pinnedNotes.length > 0 && (
                   <>
-                    <Text size="sm" fw={500} c="dimmed" mb="xs">
+                    <Text size="xs" fw={600} c="dimmed" mb="sm" tt="uppercase">
                       Pinned
                     </Text>
-                    <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md" mb="lg">
-                      {pinnedNotes.map(renderNoteCard)}
-                    </SimpleGrid>
+                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 mb-8">
+                      {pinnedNotes.map((note) => (
+                        <NoteCard key={note.id} note={note} />
+                      ))}
+                    </div>
                   </>
                 )}
                 {unpinnedNotes.length > 0 && (
                   <>
                     {pinnedNotes.length > 0 && (
-                      <Text size="sm" fw={500} c="dimmed" mb="xs">
-                        All Notes
+                      <Text size="xs" fw={600} c="dimmed" mb="sm" tt="uppercase">
+                        Other notes
                       </Text>
                     )}
-                    <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
-                      {unpinnedNotes.map(renderNoteCard)}
-                    </SimpleGrid>
+                    <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4">
+                      {unpinnedNotes.map((note) => (
+                        <NoteCard key={note.id} note={note} />
+                      ))}
+                    </div>
                   </>
                 )}
               </>
-            ) : (
-              <Stack gap="xs">
-                {pinnedNotes.map(renderNoteCard)}
-                {unpinnedNotes.map(renderNoteCard)}
-              </Stack>
             )}
           </ScrollArea>
-        </Stack>
+        </div>
       </div>
 
-      <QuickNoteModal />
-
-      <Modal
-        opened={!!deletingNote}
-        onClose={() => setDeletingNote(null)}
-        title="Delete note"
-        size="sm"
-        centered
-      >
-        <Text size="sm" mb="lg">
-          Are you sure you want to delete <strong>{deletingNote?.title}</strong>? This action cannot be undone.
-        </Text>
-        <Group justify="flex-end" gap="sm">
-          <Button variant="default" onClick={() => setDeletingNote(null)}>
-            Cancel
-          </Button>
-          <Button
-            color="red"
-            loading={deleteNote.isPending}
-            onClick={() =>
-              deletingNote &&
-              deleteNote.mutate(deletingNote.id, {
-                onSuccess: () => setDeletingNote(null),
-              })
-            }
-          >
-            Delete
-          </Button>
-        </Group>
-      </Modal>
+      <NoteEditModal />
     </div>
   );
 }

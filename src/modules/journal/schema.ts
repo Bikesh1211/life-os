@@ -21,6 +21,7 @@ export const journalEntries = pgTable(
     mood: moodEnum("mood"),
     tags: text("tags").array().default([]).notNull(),
     reflectionScore: integer("reflection_score"),
+    isPinned: boolean("is_pinned").default(false).notNull(),
     isPrivate: boolean("is_private").default(true).notNull(),
     eventDate: timestamp("event_date", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
