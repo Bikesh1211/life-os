@@ -12,7 +12,10 @@ import {
   Tooltip,
   Badge,
   ScrollArea,
+  Modal,
+  Button,
 } from "@mantine/core";
+import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconPlus,
@@ -65,6 +68,8 @@ export function JournalCardsPanel({ entries, onRefresh }: Props) {
   const [editorIsPinned, setEditorIsPinned] = useState(false);
   const [editorIsPrivate, setEditorIsPrivate] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [deleteModalOpened, { open: openDeleteModal, close: closeDeleteModal }] = useDisclosure(false);
   const [localEntries, setLocalEntries] = useState<JournalEntry[]>(entries);
   const titleRef = useRef<HTMLInputElement>(null);
 
@@ -296,22 +301,32 @@ export function JournalCardsPanel({ entries, onRefresh }: Props) {
     onRefresh,
   ]);
 
-  const handleDelete = useCallback(async () => {
+  const confirmDelete = useCallback(() => {
+    if (!deleteTargetId) return;
+    (async () => {
+      try {
+        const res = await fetch(`/api/journal/${deleteTargetId}`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Failed to delete");
+        setLocalEntries((prev) => prev.filter((e) => e.id !== deleteTargetId));
+        handleBack();
+        notifications.show({ title: "Deleted", message: "Entry deleted.", color: "orange" });
+        onRefresh();
+      } catch {
+        notifications.show({ title: "Error", message: "Failed to delete entry.", color: "red" });
+      } finally {
+        closeDeleteModal();
+        setDeleteTargetId(null);
+      }
+    })();
+  }, [deleteTargetId, handleBack, onRefresh, closeDeleteModal]);
+
+  const handleDelete = useCallback(() => {
     if (!selectedEntryId) return;
-    if (!window.confirm("Delete this entry?")) return;
-    try {
-      const res = await fetch(`/api/journal/${selectedEntryId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete");
-      setLocalEntries((prev) => prev.filter((e) => e.id !== selectedEntryId));
-      handleBack();
-      notifications.show({ title: "Deleted", message: "Entry deleted.", color: "orange" });
-      onRefresh();
-    } catch {
-      notifications.show({ title: "Error", message: "Failed to delete entry.", color: "red" });
-    }
-  }, [selectedEntryId, handleBack, onRefresh]);
+    setDeleteTargetId(selectedEntryId);
+    openDeleteModal();
+  }, [selectedEntryId, openDeleteModal]);
 
   const isEditing = isCreating || !!selectedEntryId;
 
@@ -518,6 +533,26 @@ export function JournalCardsPanel({ entries, onRefresh }: Props) {
           </div>
         )}
       </div>
+
+      <Modal
+        opened={deleteModalOpened}
+        onClose={closeDeleteModal}
+        title="Delete entry"
+        centered
+        size="sm"
+      >
+        <Text size="sm" mb="lg">
+          Are you sure you want to delete this entry? This action cannot be undone.
+        </Text>
+        <Group justify="flex-end" gap="sm">
+          <Button variant="default" size="sm" onClick={closeDeleteModal}>
+            Cancel
+          </Button>
+          <Button color="red" size="sm" onClick={confirmDelete}>
+            Delete
+          </Button>
+        </Group>
+      </Modal>
     </div>
   );
 }
