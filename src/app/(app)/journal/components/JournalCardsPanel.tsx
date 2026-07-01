@@ -207,14 +207,14 @@ export function JournalCardsPanel({ entries, onRefresh }: Props) {
 
   const handleAutoSave = useCallback(async () => {
     if (!editorTitle.trim() || !selectedEntryId) return;
-    const body = {
+    const body: Record<string, unknown> = {
       title: editorTitle,
       content: editorContentText,
-      mood: editorMood || null,
       tags: editorTags,
       isPinned: editorIsPinned,
       isPrivate: editorIsPrivate,
     };
+    if (editorMood) body.mood = editorMood;
     const res = await fetch(`/api/journal/${selectedEntryId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -244,14 +244,14 @@ export function JournalCardsPanel({ entries, onRefresh }: Props) {
     }
     setSaving(true);
     try {
-      const body = {
+      const body: Record<string, unknown> = {
         title: editorTitle,
         content: editorContentText,
-        mood: editorMood || null,
         tags: editorTags,
         isPinned: editorIsPinned,
         isPrivate: editorIsPrivate,
       };
+      if (editorMood) body.mood = editorMood;
 
       if (selectedEntryId) {
         const res = await fetch(`/api/journal/${selectedEntryId}`, {
