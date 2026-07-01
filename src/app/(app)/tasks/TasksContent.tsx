@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Title, Group, Button, Tabs, Text } from "@mantine/core";
+import { Stack, Title, Group, Button, Tabs } from "@mantine/core";
 import {
   IconChecklist,
   IconCalendarDue,
@@ -22,6 +22,7 @@ import { UpcomingContent } from "./upcoming/UpcomingContent";
 import { RecurringContent } from "./recurring/RecurringContent";
 import { LabelsContent } from "./labels/LabelsContent";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
+import { TaskFormModal } from "@/modules/tasks/components/TaskFormModal";
 
 type Props = {
   taskSummary?: any;
@@ -36,6 +37,7 @@ export function TasksContent({ taskSummary, initialTasks, defaultTab = "dashboar
     searchParams.get("tab") ?? defaultTab,
   );
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const handleTabChange = useCallback(
     (value: string | null) => {
@@ -59,7 +61,7 @@ export function TasksContent({ taskSummary, initialTasks, defaultTab = "dashboar
         <Title order={2}>Tasks</Title>
         <Button
           leftSection={<IconPlus size={18} />}
-          onClick={() => {}} // New Task button — handled per-tab via modals
+          onClick={() => setShowCreate(true)}
           variant="light"
           size="sm"
         >
@@ -139,6 +141,10 @@ export function TasksContent({ taskSummary, initialTasks, defaultTab = "dashboar
           />
         </Tabs.Panel>
       </Tabs>
+
+      {showCreate && (
+        <TaskFormModal onClose={() => setShowCreate(false)} />
+      )}
     </Stack>
   );
 }
