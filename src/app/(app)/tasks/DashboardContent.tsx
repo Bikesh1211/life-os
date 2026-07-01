@@ -63,74 +63,72 @@ export function DashboardContent({ taskSummary: initial, initialTasks, hideHeade
   return (
     <Stack gap="lg">
       {!hideHeader && (
-        <>
-          <Group justify="space-between">
-            <Group>
-              <ThemeIcon variant="light" size="lg" radius="md">
-                <IconChecklist size={20} />
-              </ThemeIcon>
-              <div>
-                <Title order={2}>My Tasks</Title>
-                <Text size="sm" c="dimmed">{counts.total} tasks</Text>
-              </div>
-            </Group>
-            <Button
-              leftSection={<IconPlus size={16} />}
-              onClick={() => setShowCreate(true)}
-              radius="xl"
-            >
-              New Task
-            </Button>
+        <Group justify="space-between">
+          <Group>
+            <ThemeIcon variant="light" size="lg" radius="md">
+              <IconChecklist size={20} />
+            </ThemeIcon>
+            <div>
+              <Title order={2}>My Tasks</Title>
+              <Text size="sm" c="dimmed">{counts.total} tasks</Text>
+            </div>
           </Group>
-
-          <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="sm">
-            <Paper withBorder p="sm" radius="md">
-              <Group>
-                <ThemeIcon variant="light" color="blue" size="md" radius="md">
-                  <IconChecklist size={16} />
-                </ThemeIcon>
-                <div>
-                  <Text size="xs" c="dimmed">To Do</Text>
-                  <Text fw={700}>{counts.todo}</Text>
-                </div>
-              </Group>
-            </Paper>
-            <Paper withBorder p="sm" radius="md">
-              <Group>
-                <ThemeIcon variant="light" color="violet" size="md" radius="md">
-                  <IconPlus size={16} />
-                </ThemeIcon>
-                <div>
-                  <Text size="xs" c="dimmed">In Progress</Text>
-                  <Text fw={700}>{counts.inProgress}</Text>
-                </div>
-              </Group>
-            </Paper>
-            <Paper withBorder p="sm" radius="md">
-              <Group>
-                <ThemeIcon variant="light" color="green" size="md" radius="md">
-                  <IconChecklist size={16} />
-                </ThemeIcon>
-                <div>
-                  <Text size="xs" c="dimmed">Done</Text>
-                  <Text fw={700}>{counts.done}</Text>
-                </div>
-              </Group>
-            </Paper>
-            <Paper withBorder p="sm" radius="md">
-              <Group>
-                <ThemeIcon variant="light" color="red" size="md" radius="md">
-                  <IconAlertCircle size={16} />
-                </ThemeIcon>
-                <div>
-                  <Text size="xs" c="dimmed">Overdue</Text>
-                  <Text fw={700}>{counts.overdue}</Text>
-                </div>
-              </Group>
-            </Paper>
-          </SimpleGrid>
-        </>
+          <Button
+            leftSection={<IconPlus size={16} />}
+            onClick={() => setShowCreate(true)}
+            radius="xl"
+          >
+            New Task
+          </Button>
+        </Group>
       )}
+
+      <SimpleGrid cols={{ base: 1, sm: 4 }} spacing="sm">
+        <Paper withBorder p="sm" radius="md">
+          <Group>
+            <ThemeIcon variant="light" color="blue" size="md" radius="md">
+              <IconChecklist size={16} />
+            </ThemeIcon>
+            <div>
+              <Text size="xs" c="dimmed">To Do</Text>
+              <Text fw={700}>{counts.todo}</Text>
+            </div>
+          </Group>
+        </Paper>
+        <Paper withBorder p="sm" radius="md">
+          <Group>
+            <ThemeIcon variant="light" color="violet" size="md" radius="md">
+              <IconPlus size={16} />
+            </ThemeIcon>
+            <div>
+              <Text size="xs" c="dimmed">In Progress</Text>
+              <Text fw={700}>{counts.inProgress}</Text>
+            </div>
+          </Group>
+        </Paper>
+        <Paper withBorder p="sm" radius="md">
+          <Group>
+            <ThemeIcon variant="light" color="green" size="md" radius="md">
+              <IconChecklist size={16} />
+            </ThemeIcon>
+            <div>
+              <Text size="xs" c="dimmed">Done</Text>
+              <Text fw={700}>{counts.done}</Text>
+            </div>
+          </Group>
+        </Paper>
+        <Paper withBorder p="sm" radius="md">
+          <Group>
+            <ThemeIcon variant="light" color="red" size="md" radius="md">
+              <IconAlertCircle size={16} />
+            </ThemeIcon>
+            <div>
+              <Text size="xs" c="dimmed">Overdue</Text>
+              <Text fw={700}>{counts.overdue}</Text>
+            </div>
+          </Group>
+        </Paper>
+      </SimpleGrid>
 
       <TaskQuickAdd />
 
