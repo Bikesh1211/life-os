@@ -8,9 +8,10 @@ import type { JournalEntry } from "@/modules/journal";
 
 type TimelineContentProps = {
   entries: JournalEntry[];
+  hideHeader?: boolean;
 };
 
-export function TimelineContent({ entries }: TimelineContentProps) {
+export function TimelineContent({ entries, hideHeader = false }: TimelineContentProps) {
   const grouped = useMemo(() => {
     const groups = new Map<string, JournalEntry[]>();
     for (const entry of entries) {
@@ -31,18 +32,20 @@ export function TimelineContent({ entries }: TimelineContentProps) {
 
   return (
     <Stack gap="md">
-      <Group justify="space-between">
-        <Title order={2}>Timeline</Title>
-        <Text
-          component={Link}
-          href="/journal"
-          size="sm"
-          c="dimmed"
-          className="hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"
-        >
-          &larr; Back to entries
-        </Text>
-      </Group>
+      {!hideHeader && (
+        <Group justify="space-between">
+          <Title order={2}>Timeline</Title>
+          <Text
+            component={Link}
+            href="/journal"
+            size="sm"
+            c="dimmed"
+            className="hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"
+          >
+            &larr; Back to entries
+          </Text>
+        </Group>
+      )}
 
       {grouped.length === 0 ? (
         <Paper withBorder p="xl" className="text-center">

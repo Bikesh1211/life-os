@@ -11,6 +11,7 @@ export type CreateJournalEntryInput = {
   mood?: typeof moodEnum.enumValues[number];
   tags?: string[];
   reflectionScore?: number;
+  isPinned?: boolean;
   isPrivate?: boolean;
   eventDate?: Date;
 };
@@ -39,6 +40,7 @@ export const entryColumns = {
   mood: journalEntries.mood,
   tags: journalEntries.tags,
   reflectionScore: journalEntries.reflectionScore,
+  isPinned: journalEntries.isPinned,
   isPrivate: journalEntries.isPrivate,
   eventDate: journalEntries.eventDate,
   deletedAt: journalEntries.deletedAt,
@@ -56,6 +58,7 @@ export async function createEntry(input: CreateJournalEntryInput) {
       mood: input.mood,
       tags: input.tags ?? [],
       reflectionScore: input.reflectionScore,
+      isPinned: input.isPinned ?? false,
       isPrivate: input.isPrivate ?? true,
       eventDate: input.eventDate,
     })

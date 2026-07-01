@@ -24,6 +24,7 @@ export const createEntrySchema = z.object({
   mood: z.enum(moodValues).optional(),
   tags: z.array(z.string().max(50)).max(20).optional(),
   reflectionScore: z.number().int().min(1).max(10).optional(),
+  isPinned: z.boolean().optional(),
   isPrivate: z.boolean().optional(),
   eventDate: z.string().datetime().optional(),
 });
@@ -57,6 +58,7 @@ export async function createJournalEntry(userId: string, params: CreateEntryPara
     mood: validated.mood,
     tags: validated.tags,
     reflectionScore: validated.reflectionScore,
+    isPinned: validated.isPinned,
     isPrivate: validated.isPrivate,
     eventDate: validated.eventDate ? new Date(validated.eventDate) : undefined,
   };
