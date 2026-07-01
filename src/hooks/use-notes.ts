@@ -134,7 +134,51 @@ export function useCreateNote() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createNote,
-    onSuccess: () => {
+    onMutate: async (newNote) => {
+      await queryClient.cancelQueries({ queryKey: [NOTES_KEY] });
+      const previousQueries = queryClient.getQueriesData<Note[]>({ queryKey: [NOTES_KEY] });
+
+      const tempId = `temp-${crypto.randomUUID()}`;
+      const tempNote: Note = {
+        id: tempId,
+        userId: "",
+        title: newNote.title,
+        content: newNote.content ?? null,
+        contentJson: null,
+        excerpt: null,
+        coverImage: null,
+        category: newNote.category ?? "personal",
+        tags: newNote.tags ?? [],
+        isPinned: newNote.isPinned ?? false,
+        status: newNote.status ?? "published",
+        folderId: newNote.folderId ?? null,
+        reminderDate: newNote.reminderDate ? new Date(newNote.reminderDate) : null,
+        color: newNote.color ?? null,
+        priority: newNote.priority ?? "medium",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+      };
+
+      queryClient.setQueriesData<Note[]>({ queryKey: [NOTES_KEY] }, (old) =>
+        old ? [tempNote, ...old] : [tempNote],
+      );
+
+      return { previousQueries, tempId };
+    },
+    onSuccess: (savedNote, _vars, context) => {
+      queryClient.setQueriesData<Note[]>({ queryKey: [NOTES_KEY] }, (old) =>
+        old?.map((n) => (n.id === context?.tempId ? savedNote : n)),
+      );
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousQueries) {
+        for (const [key, data] of context.previousQueries) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: [NOTES_KEY] });
     },
   });
