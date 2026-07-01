@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Stack, Title, Group, Button, Tabs, Text } from "@mantine/core";
 import {
-  IconSun,
   IconCards,
   IconTimelineEvent,
   IconCalendar,
@@ -35,7 +34,7 @@ type Props = {
   defaultTab?: string;
 };
 
-export function JournalContent({ entries, streak, stats, defaultTab = "story" }: Props) {
+export function JournalContent({ entries, streak, stats, defaultTab = "browse" }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
@@ -47,7 +46,7 @@ export function JournalContent({ entries, streak, stats, defaultTab = "story" }:
     (value: string | null) => {
       setActiveTab(value);
       const params = new URLSearchParams(searchParams.toString());
-      if (value && value !== "story") {
+      if (value && value !== "browse") {
         params.set("tab", value);
       } else {
         params.delete("tab");
@@ -71,16 +70,6 @@ export function JournalContent({ entries, streak, stats, defaultTab = "story" }:
   const handleCreated = useCallback((entry: JournalEntry) => {
     setLocalEntries((prev) => [entry, ...prev]);
   }, []);
-
-  const todayEntries = localEntries.filter((e) => {
-    const d = new Date(e.eventDate ?? e.createdAt);
-    const now = new Date();
-    return (
-      d.getDate() === now.getDate() &&
-      d.getMonth() === now.getMonth() &&
-      d.getFullYear() === now.getFullYear()
-    );
-  });
 
   const pinnedEntries = localEntries.filter((e) => e.isPinned);
 
@@ -106,11 +95,8 @@ export function JournalContent({ entries, streak, stats, defaultTab = "story" }:
             <Tabs.Tab value="story" leftSection={<IconHistory size={16} />}>
               Story
             </Tabs.Tab>
-            <Tabs.Tab value="today" leftSection={<IconSun size={16} />}>
-              Today
-            </Tabs.Tab>
-            <Tabs.Tab value="cards" leftSection={<IconCards size={16} />}>
-              Cards
+            <Tabs.Tab value="browse" leftSection={<IconCards size={16} />}>
+              Browse
             </Tabs.Tab>
             <Tabs.Tab value="timeline" leftSection={<IconTimelineEvent size={16} />}>
               Timeline
@@ -130,21 +116,7 @@ export function JournalContent({ entries, streak, stats, defaultTab = "story" }:
             <StoryView onCreateClick={() => router.push("/journal/new")} />
           </Tabs.Panel>
 
-          <Tabs.Panel value="today" pt="md">
-            <Stack gap="sm">
-              {todayEntries.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                  <IconSun size={48} stroke={1.5} className="mb-4 opacity-40" />
-                  <Text size="sm">No entries today. Write something!</Text>
-                </div>
-              )}
-              {todayEntries.map((entry) => (
-                <EntryCard key={entry.id} entry={entry} />
-              ))}
-            </Stack>
-          </Tabs.Panel>
-
-          <Tabs.Panel value="cards" pt="md">
+          <Tabs.Panel value="browse" pt="md">
             <div className="h-[calc(100vh-280px)]">
               <JournalCardsPanel entries={localEntries} onRefresh={handleRefresh} />
             </div>
