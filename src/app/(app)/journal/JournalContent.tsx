@@ -16,11 +16,11 @@ import {
 import { StoryView } from "../timeline/components/StoryView";
 import { EntryCard } from "./components/EntryCard";
 import { QuickJournalInput } from "./components/QuickJournalInput";
+import { JournalCardsPanel } from "./components/JournalCardsPanel";
 import { CalendarView } from "./components/CalendarView";
 import { InsightsPanel } from "./components/InsightsPanel";
 import { TimelineContent as JournalTimelineView } from "./timeline/TimelineContent";
 import type { JournalEntry } from "@/modules/journal";
-import dayjs from "dayjs";
 
 type JournalStats = {
   totalEntries: number;
@@ -84,14 +84,6 @@ export function JournalContent({ entries, streak, stats, defaultTab = "story" }:
 
   const pinnedEntries = localEntries.filter((e) => e.isPinned);
 
-  const sortedEntries = [...localEntries].sort((a, b) => {
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
-    const aDate = a.eventDate ?? a.createdAt;
-    const bDate = b.eventDate ?? b.createdAt;
-    return new Date(bDate).getTime() - new Date(aDate).getTime();
-  });
-
   return (
     <>
       <Stack gap="md">
@@ -153,17 +145,9 @@ export function JournalContent({ entries, streak, stats, defaultTab = "story" }:
           </Tabs.Panel>
 
           <Tabs.Panel value="cards" pt="md">
-            <Stack gap="sm">
-              {sortedEntries.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                  <IconCards size={48} stroke={1.5} className="mb-4 opacity-40" />
-                  <Text size="sm">No entries yet. Create your first one!</Text>
-                </div>
-              )}
-              {sortedEntries.map((entry) => (
-                <EntryCard key={entry.id} entry={entry} />
-              ))}
-            </Stack>
+            <div className="h-[calc(100vh-280px)]">
+              <JournalCardsPanel entries={localEntries} onRefresh={handleRefresh} />
+            </div>
           </Tabs.Panel>
 
           <Tabs.Panel value="timeline" pt="md">
