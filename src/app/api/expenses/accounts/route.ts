@@ -7,10 +7,20 @@ import {
 
 export async function GET() {
   const userId = await getCurrentUserId();
-  if (!userId) return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Authentication required" } }, { status: 401 });
+  if (!userId) {
+    console.error("API /expenses/accounts: Unauthorized - No userId");
+    return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Authentication required" } }, { status: 401 });
+  }
 
-  const accounts = await getFinancialAccounts(userId);
-  return NextResponse.json(accounts);
+  try {
+    const accounts = await getFinancialAccounts(userId);
+    console.log("API /expenses/accounts: Successfully fetched accounts", accounts);
+    return NextResponse.json(accounts);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to fetch accounts";
+    console.error("API /expenses/accounts: Error fetching accounts", error);
+    return NextResponse.json({ error: { code: "INTERNAL_SERVER_ERROR", message } }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
