@@ -24,6 +24,8 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
           collapsed: { desktop: minimalChrome || !opened, mobile: true },
         }}
         header={{ height: minimalChrome ? 0 : 56 }}
+        transitionDuration={350}
+        transitionTimingFunction="cubic-bezier(0.4, 0, 0.2, 1)"
         classNames={{ navbar: "sidebar-navbar", main: "sidebar-main" }}
       >
         <Header />

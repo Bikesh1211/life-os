@@ -665,14 +665,11 @@ export function SidebarContent({ collapsed = false, showBrand = true, showBottom
 export const Sidebar = memo(function Sidebar() {
   const { opened, collapsed, minimalChrome } = useAppShell();
 
-  if (!opened || minimalChrome) return null;
+  if (minimalChrome) return null;
 
   return (
-    <AppShellNavbar
-      className="sd-navbar"
-      style={{ width: collapsed ? SIDEBAR_COLLAPSED_W : 280 }}
-    >
-      <SidebarContent collapsed={collapsed} />
+    <AppShellNavbar className="sd-navbar">
+      {opened && <SidebarContent collapsed={collapsed} />}
     </AppShellNavbar>
   );
 });

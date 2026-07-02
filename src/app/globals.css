@@ -17,7 +17,6 @@ body {
   background: var(--mantine-color-body);
   border-right: 1px solid var(--mantine-color-default-border);
   overflow: hidden;
-  transition: width 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sd-content {
@@ -302,22 +301,13 @@ body {
   -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 70%);
 }
 
-/* Sidebar transition for Mantine AppShell */
+/* Sidebar — Mantine handles transform + padding transitions natively via --app-shell-transition-* vars */
 .sidebar-navbar {
-  transition: width 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
   overflow: hidden;
   border-right: 1px solid var(--mantine-color-default-border);
   display: flex;
   flex-direction: column;
   background: transparent;
-}
-
-.sidebar-main {
-  transition: margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-.sidebar-navbar-inner {
-  height: 100%;
 }
 
 /* Pinned icon hover state */
