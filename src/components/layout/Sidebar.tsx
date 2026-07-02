@@ -74,17 +74,16 @@ function BottomIconBtn({ href, onClick, icon: Icon, title }: { href?: string; on
 /* ── Brand top section ── */
 
 function Brand({ collapsed }: { collapsed: boolean }) {
-  const { toggleCollapsed } = useAppShell();
   return (
-    <button
-      onClick={toggleCollapsed}
+    <Link
+      href="/"
       className={cn(
         "cursor-pointer flex items-center flex-shrink-0 transition-colors",
         collapsed
           ? "justify-center h-14 w-full"
           : "gap-3 h-14 w-full px-4 text-left border-b border-gray-100/80 dark:border-white/[0.06] hover:bg-gray-50/50 dark:hover:bg-white/[0.02]",
       )}
-      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      title="Go to dashboard"
     >
       <div className="sd-brand-logo flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-xs font-bold text-white shadow-sm shadow-blue-500/20 dark:shadow-blue-500/10 ring-1 ring-white/10 dark:ring-white/5">
         {APP_NAME.charAt(0)}
@@ -104,7 +103,7 @@ function Brand({ collapsed }: { collapsed: boolean }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </button>
+    </Link>
   );
 }
 
