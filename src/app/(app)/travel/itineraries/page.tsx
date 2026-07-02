@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function ItinerariesRedirect() {
-  redirect("/travel");
+  redirect("/travel?tab=dashboard");
 }

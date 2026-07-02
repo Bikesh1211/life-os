@@ -1,5 +1,5 @@
-import { TripsContent } from "@/modules/network/components/TripsContent";
+import { redirect } from "next/navigation";
 
-export default function TripsPage() {
-  return <TripsContent />;
+export default function NetworkTripsRedirect() {
+  redirect("/network?tab=trips");
 }

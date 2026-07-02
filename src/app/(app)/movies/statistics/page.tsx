@@ -1,5 +1,5 @@
-import { StatisticsContent } from "@/modules/movies/components/statistics/StatisticsContent";
+import { redirect } from "next/navigation";
 
-export default function StatisticsPage() {
-  return <StatisticsContent />;
+export default function MoviesStatisticsRedirect() {
+  redirect("/movies?tab=statistics");
 }

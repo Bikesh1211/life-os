@@ -1,5 +1,5 @@
-import { FavoritesContent } from "@/modules/movies/components/favorites/FavoritesContent";
+import { redirect } from "next/navigation";
 
-export default function FavoritesPage() {
-  return <FavoritesContent />;
+export default function MoviesFavoritesRedirect() {
+  redirect("/movies?tab=favorites");
 }

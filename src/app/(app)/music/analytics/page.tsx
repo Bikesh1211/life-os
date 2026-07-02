@@ -1,6 +1,5 @@
-import { AnalyticsContent } from "@/modules/music/components/analytics/AnalyticsContent";
+import { redirect } from "next/navigation";
 
-
-export default function MusicAnalyticsPage() {
-  return <AnalyticsContent />;
+export default function MusicAnalyticsRedirect() {
+  redirect("/music?tab=analytics");
 }

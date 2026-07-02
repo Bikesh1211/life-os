@@ -1,6 +1,5 @@
-import { CollectionsContent } from "@/modules/music/components/collections/CollectionsContent";
+import { redirect } from "next/navigation";
 
-
-export default function MusicCollectionsPage() {
-  return <CollectionsContent />;
+export default function MusicCollectionsRedirect() {
+  redirect("/music?tab=collections");
 }

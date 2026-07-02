@@ -1,5 +1,5 @@
-import { EventsContent } from "@/modules/network/components/EventsContent";
+import { redirect } from "next/navigation";
 
-export default function EventsPage() {
-  return <EventsContent />;
+export default function NetworkEventsRedirect() {
+  redirect("/network?tab=events");
 }

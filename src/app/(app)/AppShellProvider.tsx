@@ -46,11 +46,7 @@ export function AppShellNavbarProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined" && window.innerWidth < 576) {
       setMobileOpened((m) => !m);
     } else {
-      setCollapsedState((prev) => {
-        const next = !prev;
-        saveCollapsed(next);
-        return next;
-      });
+      setOpened((prev) => !prev);
     }
   }, []);
 

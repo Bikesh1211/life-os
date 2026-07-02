@@ -1,5 +1,5 @@
-import { WatchlistContent } from "@/modules/movies/components/watchlist/WatchlistContent";
+import { redirect } from "next/navigation";
 
-export default function WatchlistPage() {
-  return <WatchlistContent />;
+export default function MoviesWatchlistRedirect() {
+  redirect("/movies?tab=watchlist");
 }

@@ -1,5 +1,5 @@
-import { DiscoverContent } from "@/modules/movies/components/discover/DiscoverContent";
+import { redirect } from "next/navigation";
 
-export default function DiscoverPage() {
-  return <DiscoverContent />;
+export default function MoviesDiscoverRedirect() {
+  redirect("/movies?tab=discover");
 }

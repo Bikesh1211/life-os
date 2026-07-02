@@ -1,6 +1,5 @@
-import { MemoriesContent } from "@/modules/music/components/memory/MemoriesContent";
+import { redirect } from "next/navigation";
 
-
-export default function MemoriesPage() {
-  return <MemoriesContent />;
+export default function MusicMemoriesRedirect() {
+  redirect("/music?tab=memories");
 }
