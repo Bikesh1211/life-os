@@ -109,7 +109,7 @@ export function LibraryContent() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Filter songs..."
-              className="w-48 rounded-lg border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] py-2 pl-9 pr-3 text-sm text-[var(--mantine-color-text,#c1c2c5)] placeholder-[var(--mantine-color-dimmed,#5c5f66)] outline-none transition-all focus:border-blue-500/50"
+              className="w-48 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] py-2 pl-9 pr-3 text-sm text-[var(--mantine-color-text,#c1c2c5)] placeholder-[var(--mantine-color-dimmed,#5c5f66)] outline-none transition-all focus:border-blue-500/50"
             />
           </div>
           <button

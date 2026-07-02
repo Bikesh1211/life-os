@@ -20,7 +20,7 @@ export function MemoryCard({ memory }: Props) {
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      className="overflow-hidden rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-body)] transition-colors hover:border-[var(--mantine-color-dark-3)]"
+      className="overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] transition-all hover:shadow-md"
     >
       <Link href={`/movies/memories/${memory.id}`} className="block no-underline">
         {memory.mediaPosterUrl && (
@@ -59,7 +59,7 @@ export function MemoryCard({ memory }: Props) {
         </div>
       </Link>
       {memory.mediaId && memory.mediaTitle && (
-        <div className="border-t border-[var(--mantine-color-dark-4)] px-4 py-2">
+        <div className="border-t border-[var(--border-subtle)] px-4 py-2">
           <Link
             href={`/movies/media/${memory.mediaId}`}
             className="flex items-center gap-2 no-underline transition-colors hover:opacity-80"

@@ -221,7 +221,7 @@ export function ArtistContent({ idPromise }: { idPromise: Promise<{ id: string }
           {hasTracks && (
             <section>
               <SectionHeading title={`Tracks (${data.topTracks.length})`} />
-              <div className="overflow-hidden rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)]">
+              <div className="overflow-hidden rounded-xl border border-[var(--border-subtle)]">
                 {data.topTracks.map((track, i) => (
                   <motion.div
                     key={track.id}

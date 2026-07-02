@@ -42,7 +42,7 @@ export default function ProfilePage() {
   if (!profile) {
     return (
       <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
-        <div className="rounded-2xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-dark-7)] p-12 text-center">
+        <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--mantine-color-dark-7)] p-12 text-center">
           <p className="text-[var(--mantine-color-dimmed)]">
             Unable to load profile. Please try syncing.
           </p>

@@ -95,7 +95,7 @@ export function JournalContent() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4"
+          className="mb-8 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4"
         >
           <Editor
             content={textToEditorContent(entry)}
@@ -110,7 +110,7 @@ export function JournalContent() {
               value={mood}
               onChange={(e) => setMood(e.target.value)}
               placeholder="Mood (optional)"
-              className="rounded-lg border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] px-3 py-1.5 text-sm text-[var(--mantine-color-text,#c1c2c5)] placeholder-[var(--mantine-color-dimmed,#5c5f66)] outline-none"
+              className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-card)] px-3 py-1.5 text-sm text-[var(--mantine-color-text,#c1c2c5)] placeholder-[var(--mantine-color-dimmed,#5c5f66)] outline-none"
             />
             <button
               onClick={() => createMutation.mutate({ journalEntry: entry, mood: mood || undefined })}
@@ -137,7 +137,7 @@ export function JournalContent() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
-              className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4"
+              className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4"
             >
               <div className="mb-2 flex items-center gap-2">
                 {entry.mood && (

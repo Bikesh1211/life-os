@@ -60,7 +60,7 @@ export function GoalsProgress({ goals }: { goals?: Goal[] }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.4, delay: i * 0.08 }}
-            className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4"
+            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4"
           >
             <ProgressRing current={goal.current} target={goal.target} label={goal.unit} />
           </motion.div>

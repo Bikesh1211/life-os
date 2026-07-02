@@ -6,7 +6,7 @@ export const theme: MantineThemeOverride = createTheme({
     'var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
   fontFamilyMonospace:
     '"SF Mono", "Fira Code", "JetBrains Mono", "Fira Mono", Menlo, Monaco, monospace',
-  defaultRadius: "md",
+  defaultRadius: "lg",
   colors: {
     blue: [
       "#eff6ff",
@@ -46,11 +46,11 @@ export const theme: MantineThemeOverride = createTheme({
     ],
   },
   shadows: {
-    xs: "0 1px 2px rgba(0, 0, 0, 0.04)",
-    sm: "0 1px 3px rgba(0, 0, 0, 0.06)",
-    md: "0 4px 8px rgba(0, 0, 0, 0.06)",
-    lg: "0 10px 20px rgba(0, 0, 0, 0.06)",
-    xl: "0 20px 30px rgba(0, 0, 0, 0.08)",
+    xs: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+    sm: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+    md: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+    lg: "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+    xl: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)",
   },
   components: {
     Paper: {
@@ -76,10 +76,10 @@ export const theme: MantineThemeOverride = createTheme({
       slow: "400ms",
     },
     borderRadius: {
-      sm: "4px",
-      md: "8px",
-      lg: "12px",
-      xl: "16px",
+      sm: "6px",
+      md: "10px",
+      lg: "14px",
+      xl: "18px",
     },
   },
 });

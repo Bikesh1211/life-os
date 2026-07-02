@@ -1,11 +1,36 @@
 @import "tailwindcss";
 @custom-variant dark (&:where([data-mantine-color-scheme="dark"] *));
 
+@theme {
+  --radius-card: 0.875rem;
+}
+
+:root {
+  --surface-card: #ffffff;
+  --surface-muted: #f8f9fa;
+  --border-subtle: rgba(0, 0, 0, 0.08);
+  --mantine-color-default-border: var(--border-subtle);
+}
+
+[data-mantine-color-scheme="dark"] {
+  --surface-card: #1c1c2b;
+  --surface-muted: #16161f;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --mantine-color-default-border: var(--border-subtle);
+}
+
 html,
 body {
   height: 100%;
   margin: 0;
   padding: 0;
+}
+
+/* ── Card & Paper subtle default shadow ── */
+
+.mantine-Paper-root:where([data-with-border]),
+.mantine-Card-root:where([data-with-border]) {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
 /* ── Premium Sidebar ── */

@@ -113,7 +113,7 @@ export default function RoutineAnalyticsPage() {
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "var(--mantine-color-dark-7)",
-                      border: "1px solid var(--mantine-color-dark-4)",
+                      border: "1px solid var(--border-subtle)",
                       borderRadius: 8,
                     }}
                   />
@@ -132,7 +132,7 @@ export default function RoutineAnalyticsPage() {
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "var(--mantine-color-dark-7)",
-                      border: "1px solid var(--mantine-color-dark-4)",
+                      border: "1px solid var(--border-subtle)",
                       borderRadius: 8,
                     }}
                   />

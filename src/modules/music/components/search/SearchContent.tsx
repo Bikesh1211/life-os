@@ -68,7 +68,7 @@ export function SearchContent() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search artists, albums, tracks..."
-              className="w-full rounded-2xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] py-4 pl-12 pr-12 text-lg text-[var(--mantine-color-text,#c1c2c5)] placeholder-[var(--mantine-color-dimmed,#5c5f66)] outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
+              className="w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] py-4 pl-12 pr-12 text-lg text-[var(--mantine-color-text,#c1c2c5)] placeholder-[var(--mantine-color-dimmed,#5c5f66)] outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
             />
             {query && (
               <button

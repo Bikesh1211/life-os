@@ -95,12 +95,12 @@ export function CalendarGrid({ items, date, onItemsChange }: CalendarGridProps) 
         {/* Time labels column + grid */}
         <div className="flex">
           {/* Time labels */}
-          <div className="w-16 flex-shrink-0 border-r border-[var(--mantine-color-dark-5)]">
+          <div className="w-16 flex-shrink-0 border-r border-[var(--border-subtle)]">
             {hourSlots.map((hour) => (
               <div
                 key={hour}
                 style={{ height: HOUR_HEIGHT }}
-                className="flex items-start justify-center border-b border-[var(--mantine-color-dark-6)] pt-1"
+                className="flex items-start justify-center border-b border-[var(--border-subtle)] pt-1"
               >
                 <Text size="xs" c="dimmed" className="leading-none">
                   {hour === 0 ? "12 AM" : hour < 12 ? `${hour} AM` : hour === 12 ? "12 PM" : `${hour - 12} PM`}
@@ -116,12 +116,12 @@ export function CalendarGrid({ items, date, onItemsChange }: CalendarGridProps) 
               <div
                 key={hour}
                 style={{ height: HOUR_HEIGHT }}
-                className="border-b border-[var(--mantine-color-dark-6)]"
+                className="border-b border-[var(--border-subtle)]"
               >
                 {/* Half-hour marker */}
                 <div
                   style={{ height: HALF_HOUR_HEIGHT }}
-                  className="border-b border-dashed border-[var(--mantine-color-dark-7)]"
+                  className="border-b border-dashed border-[var(--border-subtle)]"
                 />
               </div>
             ))}

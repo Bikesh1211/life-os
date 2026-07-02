@@ -57,13 +57,13 @@ export function QuotesContent() {
       {quotes?.length > 0 ? (
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
           {quotes.map((q: any) => (
-            <div key={q.id} className="relative rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-body)] p-4">
+            <div key={q.id} className="relative rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
               <Text size="sm" fs="italic" c="white" style={{ lineHeight: 1.6 }}>
                 "{q.quote}"
               </Text>
               {q.character && <Text size="xs" c="dimmed" mt={2}>— {q.character}</Text>}
               {q.personalMeaning && (
-                <Text size="xs" c="dimmed" mt={2} className="border-t border-[var(--mantine-color-dark-4)] pt-2">
+                <Text size="xs" c="dimmed" mt={2} className="border-t border-[var(--border-subtle)] pt-2">
                   💭 {q.personalMeaning}
                 </Text>
               )}

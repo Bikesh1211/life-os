@@ -40,7 +40,7 @@ export function DashboardContent() {
           <div className="space-y-3">
             {dash.recentMemories.slice(0, 5).map((m: any) => (
               <Link key={m.id} href={m.mediaId ? `/movies/media/${m.mediaId}` : `/movies/memories/${m.id}`} className="no-underline">
-                <div className="flex gap-4 rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-body)] p-4 transition-colors hover:border-[var(--mantine-color-dark-3)]">
+                <div className="flex gap-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 transition-all hover:shadow-md">
                   {m.mediaPosterUrl ? (
                     <img src={m.mediaPosterUrl} alt="" className="h-16 w-12 shrink-0 rounded-lg object-cover" />
                   ) : (

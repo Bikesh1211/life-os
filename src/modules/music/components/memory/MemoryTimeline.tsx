@@ -50,10 +50,10 @@ function TimelineEntry({ entry, index, onClick }: { entry: MemoryTimelineEntry; 
       className="relative pl-8 pb-6 last:pb-0"
     >
       <div className="absolute left-[11px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-[var(--mantine-color-blue-6,#339af0)] bg-[var(--mantine-color-body,#0a0a0f)]" />
-      <div className="absolute bottom-0 left-[15px] top-4 w-px bg-[var(--mantine-color-dark-4,#2e2f33)] last:hidden" />
+      <div className="absolute bottom-0 left-[15px] top-4 w-px bg-[var(--border-subtle)] last:hidden" />
 
       <div
-        className="cursor-pointer rounded-lg border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3 transition-colors hover:border-[var(--mantine-color-dark-3,#373a40)]"
+        className="cursor-pointer rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3 transition-all hover:shadow-md"
         onClick={() => onClick?.(entry.id)}
       >
         <div className="mb-1 flex items-center gap-2">
@@ -122,7 +122,7 @@ export function MemoryTimeline({ entries, isLoading, onEntryClick }: MemoryTimel
           <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-[var(--mantine-color-dimmed,#5c5f66)]">
             {formatMonth(monthKey)}
           </h3>
-          <div className="border-l-2 border-[var(--mantine-color-dark-4,#2e2f33)]">
+          <div className="border-l-2 border-[var(--border-subtle)]">
             {monthEntries.map((entry, i) => (
               <TimelineEntry
                 key={entry.id}

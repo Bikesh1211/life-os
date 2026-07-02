@@ -72,7 +72,7 @@ export function SpendingTimeline({ data }: SpendingTimelineProps) {
               <Tooltip
                 contentStyle={{
                   backgroundColor: "var(--mantine-color-dark-7)",
-                  border: "1px solid var(--mantine-color-dark-4)",
+                  border: "1px solid var(--border-subtle)",
                   borderRadius: 8,
                 }}
                 formatter={(value) => [`₹${Number(value).toLocaleString()}`, "Spent"]}

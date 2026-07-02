@@ -97,13 +97,13 @@ export function CollectionsContent() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4"
+          className="mb-6 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4"
         >
           <input
             value={createTitle}
             onChange={(e) => setCreateTitle(e.target.value)}
             placeholder="Collection name"
-            className="mb-3 w-full rounded-lg border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] p-2.5 text-sm text-[var(--mantine-color-text,#c1c2c5)] outline-none focus:border-blue-500/50"
+            className="mb-3 w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-card)] p-2.5 text-sm text-[var(--mantine-color-text,#c1c2c5)] outline-none focus:border-blue-500/50"
           />
           <Editor
             content={textToEditorContent(createDesc)}
@@ -122,7 +122,7 @@ export function CollectionsContent() {
             </button>
             <button
               onClick={() => { setShowCreate(false); setCreateTitle(""); setCreateDesc(""); }}
-              className="rounded-lg border border-[var(--mantine-color-dark-4,#2e2f33)] px-4 py-1.5 text-sm text-[var(--mantine-color-dimmed,#5c5f66)] transition-colors hover:text-white"
+              className="rounded-lg border border-[var(--border-subtle)] px-4 py-1.5 text-sm text-[var(--mantine-color-dimmed,#5c5f66)] transition-colors hover:text-white"
             >
               Cancel
             </button>
@@ -146,7 +146,7 @@ export function CollectionsContent() {
               transition={{ delay: i * 0.05 }}
             >
               <Link href={`/music/collections/${collection.id}`}>
-                <div className="group rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-5 transition-colors hover:border-[var(--mantine-color-dark-3,#373a40)]">
+                <div className="group rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-5 transition-all hover:shadow-md">
                   <div className="mb-3 flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--mantine-color-body,#0a0a0f)]">
                       <IconFolder size={20} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />

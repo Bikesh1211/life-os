@@ -74,8 +74,8 @@ export function NoteCard({ note }: NoteCardProps) {
 
   return (
     <div
-      className="break-inside-avoid mb-4 cursor-pointer rounded-xl border border-[var(--mantine-color-dark-5)] transition-shadow hover:shadow-lg"
-      style={{ backgroundColor: bg || "var(--mantine-color-body)" }}
+      className="break-inside-avoid mb-4 cursor-pointer rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] transition-all hover:shadow-md"
+      style={{ backgroundColor: bg || "var(--surface-card)" }}
       onClick={() => openEditModal(note)}
     >
       <div className="p-4">

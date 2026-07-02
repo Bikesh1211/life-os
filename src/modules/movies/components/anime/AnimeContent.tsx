@@ -29,7 +29,7 @@ export function AnimeContent() {
               : 0;
 
             return (
-              <div key={a.id} className="rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-body)] p-4">
+              <div key={a.id} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">
                 <Group justify="space-between" mb={4}>
                   <Text fw={600} c="white" size="sm">{a.mediaId}</Text>
                   <Badge size="sm">{a.status?.replace(/_/g, " ")}</Badge>

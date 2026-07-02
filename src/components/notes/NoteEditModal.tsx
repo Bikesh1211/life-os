@@ -208,7 +208,7 @@ export function NoteEditModal() {
               }`}
               style={{
                 backgroundColor: c.hex || "var(--mantine-color-body)",
-                borderColor: !c.hex ? "var(--mantine-color-dark-5)" : color === c.value ? "#3b82f6" : "transparent",
+                borderColor: !c.hex ? "var(--border-subtle)" : color === c.value ? "#3b82f6" : "transparent",
               }}
               title={c.label}
             />

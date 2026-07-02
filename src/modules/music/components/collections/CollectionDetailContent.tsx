@@ -124,7 +124,7 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
             <input
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3 text-xl font-bold text-[var(--mantine-color-text,#c1c2c5)] outline-none"
+              className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3 text-xl font-bold text-[var(--mantine-color-text,#c1c2c5)] outline-none"
               placeholder="Collection name"
             />
             <Editor
@@ -144,7 +144,7 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
               </button>
               <button
                 onClick={() => setEditing(false)}
-                className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] px-4 py-2 text-sm text-[var(--mantine-color-dimmed,#5c5f66)] transition-colors hover:text-white"
+                className="rounded-xl border border-[var(--border-subtle)] px-4 py-2 text-sm text-[var(--mantine-color-dimmed,#5c5f66)] transition-colors hover:text-white"
               >
                 Cancel
               </button>
@@ -164,14 +164,14 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => { setEditTitle(data.title); setEditDesc(data.description ?? ""); setEditing(true); }}
-                className="flex items-center gap-1.5 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] px-3 py-1.5 text-sm text-[var(--mantine-color-dimmed,#5c5f66)] transition-colors hover:text-white"
+                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-[var(--mantine-color-dimmed,#5c5f66)] transition-colors hover:text-white"
               >
                 <IconEdit size={14} />
                 Edit
               </button>
               <button
                 onClick={() => { if (confirm("Delete this collection?")) deleteMutation.mutate(); }}
-                className="flex items-center gap-1.5 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] px-3 py-1.5 text-sm text-red-400 transition-colors hover:text-red-300"
+                className="flex items-center gap-1.5 rounded-xl border border-[var(--border-subtle)] px-3 py-1.5 text-sm text-red-400 transition-colors hover:text-red-300"
               >
                 <IconTrash size={14} />
                 Delete
@@ -196,7 +196,7 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.03 }}
-                  className="flex items-center gap-3 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3 transition-colors hover:border-[var(--mantine-color-dark-3,#373a40)]"
+                  className="flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3 transition-all hover:shadow-md"
                 >
                   {item.imageUrl && (
                     <img src={item.imageUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />

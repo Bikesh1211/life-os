@@ -57,7 +57,7 @@ export function CollectionsContent() {
       {collections?.length > 0 ? (
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
           {collections.map((c: any) => (
-            <div key={c.id} className="group relative rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-body)] p-4 transition-colors hover:border-[var(--mantine-color-dark-3)]">
+            <div key={c.id} className="group relative rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 transition-all hover:shadow-md">
               <Link href={`/movies/collections/${c.id}`} className="no-underline">
                 <Text fw={600} c="white" size="sm">{c.name}</Text>
                 {c.description && <Text size="xs" c="dimmed" mt={2} lineClamp={2}>{c.description}</Text>}

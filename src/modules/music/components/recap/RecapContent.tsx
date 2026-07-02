@@ -129,7 +129,7 @@ export function RecapContent({ year }: { year: number }) {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.03 }}
-                className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] p-4"
+                className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4"
               >
                 <div className="mb-1 flex items-center gap-2">
                   <span className="text-sm font-medium text-[var(--mantine-color-text,#c1c2c5)]">

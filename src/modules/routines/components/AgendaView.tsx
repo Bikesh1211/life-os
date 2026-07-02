@@ -158,7 +158,7 @@ export function AgendaView({ items, date, onItemsChange }: AgendaViewProps) {
               exit={{ opacity: 0, y: -10 }}
             >
               <Paper withBorder radius="md" className="overflow-hidden">
-                <div className="border-b border-[var(--mantine-color-dark-5)] bg-[var(--mantine-color-dark-7)] px-4 py-2">
+                <div className="border-b border-[var(--border-subtle)] bg-[var(--mantine-color-dark-7)] px-4 py-2">
                   <Group justify="space-between">
                     <Group gap="xs">
                       <Text size="sm" fw={600}>{label}</Text>
@@ -180,7 +180,7 @@ export function AgendaView({ items, date, onItemsChange }: AgendaViewProps) {
                     return (
                       <div
                         key={item.id}
-                        className={`border-b border-[var(--mantine-color-dark-6)] px-4 py-3 transition-colors last:border-b-0 hover:bg-[var(--mantine-color-dark-6)] ${
+                        className={`border-b border-[var(--border-subtle)] px-4 py-3 transition-colors last:border-b-0 hover:bg-[var(--mantine-color-dark-6)] ${
                           isCompleted ? "opacity-60" : ""
                         } ${isInProgress ? "border-l-2 border-l-blue-500" : ""}`}
                       >

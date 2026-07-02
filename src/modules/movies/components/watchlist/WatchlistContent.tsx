@@ -38,7 +38,7 @@ export function WatchlistContent() {
       <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
         {watchlist.map((item: any) => (
           <Link key={item.id} href={`/movies/media/${item.mediaId}`} className="no-underline">
-            <div className="flex gap-4 rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-body)] p-3 transition-colors hover:border-[var(--mantine-color-dark-3)]">
+            <div className="flex gap-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-3 transition-all hover:shadow-md">
               {item.mediaPosterUrl ? (
                 <img src={item.mediaPosterUrl} alt="" className="h-20 w-14 shrink-0 rounded-lg object-cover" />
               ) : (

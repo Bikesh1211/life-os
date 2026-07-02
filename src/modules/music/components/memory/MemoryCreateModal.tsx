@@ -228,7 +228,7 @@ export function MemoryCreateModal({ opened, onClose, initialData }: MemoryCreate
           </label>
 
           {selectedTrack ? (
-            <div className="flex items-center gap-3 rounded-lg border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3">
+            <div className="flex items-center gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3">
               {selectedTrack.imageUrl ? (
                 <img
                   src={selectedTrack.imageUrl}
@@ -278,7 +278,7 @@ export function MemoryCreateModal({ opened, onClose, initialData }: MemoryCreate
                 />
               </Popover.Target>
               <Popover.Dropdown
-                style={{ padding: 0, border: "1px solid var(--mantine-color-dark-4)" }}
+                style={{ padding: 0, border: "1px solid var(--border-subtle)" }}
               >
                 <div className="max-h-72 w-full overflow-y-auto">
                   {(["artist", "album", "track"] as const).map((type) => {

@@ -198,7 +198,7 @@ export function MusicHome() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search artists, albums, tracks..."
-            className="w-full rounded-2xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] py-4 pl-12 pr-12 text-lg text-[var(--mantine-color-text,#c1c2c5)] placeholder-[var(--mantine-color-dimmed,#5c5f66)] outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
+            className="w-full rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] py-4 pl-12 pr-12 text-lg text-[var(--mantine-color-text,#c1c2c5)] placeholder-[var(--mantine-color-dimmed,#5c5f66)] outline-none transition-all focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20"
           />
           {query && (
             <button
@@ -344,46 +344,46 @@ export function MusicHome() {
         <div className="space-y-8">
           {/* Stat Cards */}
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
               <p className="text-2xl font-bold text-[var(--mantine-color-text,#c1c2c5)]">
                 {Math.round(dashboardData?.totalListeningHours ?? 0)}
               </p>
               <p className="text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Hours Listened</p>
             </div>
-            <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
               <p className="text-2xl font-bold text-[var(--mantine-color-text,#c1c2c5)]">
                 {dashboardData?.currentStreak ?? 0}
               </p>
               <p className="text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Day Streak</p>
             </div>
-            <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4">
               <p className="text-2xl font-bold text-[var(--mantine-color-text,#c1c2c5)]">
                 {dashboardData?.longestStreak ?? 0}
               </p>
               <p className="text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Longest Streak</p>
             </div>
-            <Link href="/music/mood" className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]">
+            <Link href="/music/mood" className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 transition-all hover:shadow-md">
               <div className="flex items-center gap-2">
                 <IconMoodHeart size={20} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
                 <p className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">Mood</p>
               </div>
               <p className="mt-1 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Track your mood</p>
             </Link>
-            <Link href="/music/library" className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]">
+            <Link href="/music/library" className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 transition-all hover:shadow-md">
               <div className="flex items-center gap-2">
                 <IconBooks size={20} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
                 <p className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">Library</p>
               </div>
               <p className="mt-1 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Your saved songs</p>
             </Link>
-            <Link href="/music/memories" className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]">
+            <Link href="/music/memories" className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 transition-all hover:shadow-md">
               <div className="flex items-center gap-2">
                 <IconPhotoHeart size={20} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
                 <p className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">Memories</p>
               </div>
               <p className="mt-1 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">Music-connected moments</p>
             </Link>
-            <Link href="/music/journal" className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]">
+            <Link href="/music/journal" className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 transition-all hover:shadow-md">
               <div className="flex items-center gap-2">
                 <IconArticle size={20} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
                 <p className="text-sm text-[var(--mantine-color-text,#c1c2c5)]">Journal</p>
@@ -442,7 +442,7 @@ export function MusicHome() {
                     className="w-60 shrink-0"
                   >
                     <Link href={`/music/memories/${mem.id}`}>
-                      <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]">
+                      <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 transition-all hover:shadow-md">
                         <p className="font-medium text-[var(--mantine-color-text,#c1c2c5)]">{mem.title || "Memory"}</p>
                         <p className="mt-1 line-clamp-2 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">{mem.contextText}</p>
                       </div>
