@@ -31,19 +31,7 @@ import {
   IconEdit,
 } from "@tabler/icons-react";
 import { EditTransactionModal } from "./EditTransactionModal";
-
-type Transaction = {
-  id: string;
-  amount: string;
-  merchant: string | null;
-  description: string | null;
-  categoryId: string | null;
-  paymentMethod: string | null;
-  transactionDate: string;
-  type: string;
-  isRecurring: boolean;
-  accountId: string | null;
-};
+import type { Transaction } from "@/modules/expenses";
 
 export default function TransactionsTab() {
   const [search, setSearch] = useState("");

@@ -2,30 +2,41 @@
 
 import { Card, Group, Stack, Text, Progress, ThemeIcon } from "@mantine/core";
 import { motion } from "framer-motion";
-import { IconDots, type TablerIcon } from "@tabler/icons-react";
+import {
+  IconDots,
+  IconToolsKitchen2,
+  IconCar,
+  IconShoppingBag,
+  IconDeviceGamepad2,
+  IconHeart,
+  IconBook,
+  IconReceipt,
+  IconPlane,
+  IconHome,
+  IconTrendingUp,
+  IconGift,
+  type TablerIcon,
+} from "@tabler/icons-react";
+import type { CategoryItem, CategoryBreakdownProps } from "@/modules/expenses";
 
-type CategoryItem = {
-  categoryId: string | null;
-  categoryName: string | null;
-  categoryColor: string | null;
-  categoryIcon: string | null;
-  total: number;
-  count: number;
-};
-
-type CategoryBreakdownProps = {
-  data: CategoryItem[];
-  totalSpending: number;
+const ICON_MAP: Record<string, TablerIcon> = {
+  IconToolsKitchen2,
+  IconCar,
+  IconShoppingBag,
+  IconDeviceGamepad2,
+  IconHeart,
+  IconBook,
+  IconReceipt,
+  IconPlane,
+  IconHome,
+  IconTrendingUp,
+  IconGift,
+  IconDots,
 };
 
 function getIcon(iconName: string | null): TablerIcon {
-  if (!iconName) return IconDots as unknown as TablerIcon;
-  try {
-    const iconModule = require("@tabler/icons-react");
-    return (iconModule[iconName] ?? IconDots) as unknown as TablerIcon;
-  } catch {
-    return IconDots as unknown as TablerIcon;
-  }
+  if (!iconName) return IconDots;
+  return ICON_MAP[iconName] ?? IconDots;
 }
 
 export function CategoryBreakdown({ data, totalSpending }: CategoryBreakdownProps) {

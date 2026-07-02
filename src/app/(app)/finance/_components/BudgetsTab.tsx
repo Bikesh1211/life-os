@@ -24,21 +24,7 @@ import { IconPigMoney, IconPlus } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
 import { BUDGET_PERIODS } from "@/modules/expenses/constants";
-
-type BudgetWithSpending = {
-  id: string;
-  categoryId: string;
-  amount: string;
-  period: string;
-  startDate: string;
-  endDate: string | null;
-  spent: number;
-  remaining: number;
-  percentageUsed: number;
-  categoryName: string | null;
-  categoryColor: string | null;
-  categoryIcon: string | null;
-};
+import type { BudgetWithSpending } from "@/modules/expenses";
 
 export default function BudgetsTab() {
   const [opened, { open, close }] = useDisclosure(false);

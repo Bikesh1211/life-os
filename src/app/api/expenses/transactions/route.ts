@@ -33,7 +33,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const userId = await getCurrentUserId();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  if (!userId) return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Authentication required" } }, { status: 401 });
 
   try {
     const body = await req.json();
@@ -41,6 +41,6 @@ export async function POST(req: Request) {
     return NextResponse.json(transaction, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Invalid request";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: { code: "VALIDATION_ERROR", message } }, { status: 400 });
   }
 }

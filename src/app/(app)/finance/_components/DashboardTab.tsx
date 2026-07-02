@@ -9,27 +9,7 @@ import { MetricCard } from "./MetricCard";
 import { SpendingTimeline } from "./SpendingTimeline";
 import { CategoryBreakdown } from "./CategoryBreakdown";
 import { QuickAddModal } from "./QuickAddModal";
-
-type OverviewData = {
-  summary: {
-    monthlySpending: number;
-    monthlyIncome: number;
-    savingsRate: number;
-    averageDailySpend: number;
-    transactionCount: number;
-  };
-  categoryBreakdown: {
-    categoryId: string | null;
-    categoryName: string | null;
-    categoryColor: string | null;
-    categoryIcon: string | null;
-    total: number;
-    count: number;
-  }[];
-  timeline: { date: string; total: number; count: number }[];
-  topMerchants: { merchant: string; total: number; count: number }[];
-  categories: { id: string; name: string; icon: string | null }[];
-};
+import type { OverviewData } from "@/modules/expenses";
 
 export default function DashboardTab() {
   const [quickAddOpened, setQuickAddOpened] = useState(false);
@@ -128,10 +108,10 @@ export default function DashboardTab() {
               value={`${s.savingsRate.toFixed(1)}%`}
               subtitle="of income saved"
               icon={IconWallet}
-              color="blue"
+              color={s.savingsRate >= 0 ? "blue" : "red"}
               trend={{
-                value: s.savingsRate > 20 ? "On track" : "Needs improvement",
-                positive: s.savingsRate > 20,
+                value: s.savingsRate >= 20 ? "On track" : s.savingsRate >= 0 ? "Needs improvement" : "Overspending",
+                positive: s.savingsRate >= 20,
               }}
             />
           </Grid.Col>

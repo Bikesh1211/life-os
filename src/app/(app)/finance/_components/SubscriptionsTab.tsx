@@ -15,17 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { IconRepeat } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
-
-type RecurringTransaction = {
-  id: string;
-  amount: string;
-  merchant: string | null;
-  description: string | null;
-  transactionDate: string;
-  recurrence: string;
-  categoryId: string | null;
-  paymentMethod: string | null;
-};
+import type { RecurringTransaction } from "@/modules/expenses";
 
 export default function SubscriptionsTab() {
   const { data: subscriptions, isLoading } = useQuery<RecurringTransaction[]>({
@@ -37,10 +27,21 @@ export default function SubscriptionsTab() {
   const totalMonthly = (subscriptions ?? [])
     .reduce((sum, s) => {
       const amount = Number(s.amount);
-      if (s.recurrence === "monthly") return sum + amount;
-      if (s.recurrence === "yearly") return sum + amount / 12;
-      if (s.recurrence === "weekly") return sum + amount * 4.33;
-      return sum + amount;
+      const recurrence = s.recurrence as string;
+      
+      // Calculate monthly equivalent based on recurrence frequency
+      switch (recurrence) {
+        case "daily":
+          return sum + amount * 30;
+        case "weekly":
+          return sum + amount * (52 / 12);
+        case "monthly":
+          return sum + amount;
+        case "yearly":
+          return sum + amount / 12;
+        default:
+          return sum + amount;
+      }
     }, 0);
 
   const totalYearly = totalMonthly * 12;

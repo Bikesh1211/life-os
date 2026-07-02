@@ -36,17 +36,7 @@ import {
 import { motion } from "framer-motion";
 import { ACCOUNT_TYPES } from "@/modules/expenses/constants";
 import { EditAccountModal } from "./EditAccountModal";
-
-type Account = {
-  id: string;
-  name: string;
-  type: string;
-  balance: string;
-  currency: string;
-  icon: string | null;
-  color: string | null;
-  isArchived: boolean;
-};
+import type { Account } from "@/modules/expenses";
 
 const accountIcons: Record<string, React.ComponentType<{ size?: number }>> = {
   checking: IconBuildingBank,
@@ -76,6 +66,7 @@ export default function AccountsTab() {
     queryKey: ["expenses", "accounts"],
     queryFn: () => fetch("/api/expenses/accounts").then((r) => r.json()),
     staleTime: 5 * 60 * 1000,
+    select: (data) => data.filter((account) => !account.isArchived),
   });
 
   const form = useForm({

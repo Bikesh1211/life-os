@@ -1,6 +1,9 @@
 import { db } from "@/core/database";
 import { transactions } from "../schema/transactions";
+import { TRANSACTION_TYPES } from "../constants";
 import { eq, and, isNull, desc, asc, sql, inArray, gte, lte } from "drizzle-orm";
+
+type TransactionType = typeof TRANSACTION_TYPES[number];
 
 export type Transaction = typeof transactions.$inferSelect;
 export type CreateTransactionInput = typeof transactions.$inferInsert;
@@ -32,7 +35,7 @@ export async function getTransactions(filters: TransactionFilters) {
     isNull(transactions.deletedAt),
   ];
 
-  if (filters.type) conditions.push(eq(transactions.type, filters.type as any));
+  if (filters.type) conditions.push(eq(transactions.type, filters.type as TransactionType));
   if (filters.categoryId) conditions.push(eq(transactions.categoryId, filters.categoryId));
   if (filters.accountId) conditions.push(eq(transactions.accountId, filters.accountId));
   if (filters.merchant) conditions.push(sql`LOWER(${transactions.merchant}) LIKE ${`%${filters.merchant.toLowerCase()}%`}`);

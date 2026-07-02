@@ -10,18 +10,18 @@ import { createExpenseTransaction } from "@/modules/expenses/service/transaction
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = await getCurrentUserId();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  if (!userId) return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Authentication required" } }, { status: 401 });
 
   const { id } = await params;
   const account = await getFinancialAccount(id, userId);
-  if (!account) return new NextResponse("Not found", { status: 404 });
+  if (!account) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Account not found" } }, { status: 404 });
 
   return NextResponse.json(account);
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = await getCurrentUserId();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  if (!userId) return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Authentication required" } }, { status: 401 });
 
   try {
     const { id } = await params;
@@ -31,7 +31,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     if (adjustmentAmount) {
       const account = await getFinancialAccount(id, userId);
-      if (!account) return new NextResponse("Not found", { status: 404 });
+      if (!account) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Account not found" } }, { status: 404 });
 
       const newBalance = String(Number(account.balance) + Number(adjustmentAmount));
       await adjustAccountBalance(id, userId, newBalance);
@@ -51,21 +51,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     const account = await updateFinancialAccount(id, userId, updateData);
-    if (!account) return new NextResponse("Not found", { status: 404 });
+    if (!account) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Account not found" } }, { status: 404 });
     return NextResponse.json(account);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Invalid request";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: { code: "VALIDATION_ERROR", message } }, { status: 400 });
   }
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const userId = await getCurrentUserId();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  if (!userId) return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Authentication required" } }, { status: 401 });
 
   const { id } = await params;
   const account = await deleteFinancialAccount(id, userId);
-  if (!account) return new NextResponse("Not found", { status: 404 });
+  if (!account) return NextResponse.json({ error: { code: "NOT_FOUND", message: "Account not found" } }, { status: 404 });
 
   return new NextResponse(null, { status: 204 });
 }

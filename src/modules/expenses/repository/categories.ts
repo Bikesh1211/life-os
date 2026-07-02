@@ -51,22 +51,20 @@ export async function deleteCategory(id: string) {
 }
 
 export async function seedDefaultCategories() {
-  const existing = await db
-    .select()
-    .from(expenseCategories)
-    .where(isNull(expenseCategories.userId))
-    .limit(1);
-
-  if (existing.length > 0) return;
-
   const { DEFAULT_CATEGORIES } = await import("../constants");
-  await db.insert(expenseCategories).values(
-    DEFAULT_CATEGORIES.map((c) => ({
-      name: c.name,
-      icon: c.icon,
-      color: c.color,
-      sortOrder: c.sortOrder,
-      userId: null,
-    })),
-  );
+  
+  // Use ON CONFLICT DO NOTHING to prevent race conditions
+  // when multiple concurrent requests try to seed categories
+  await db
+    .insert(expenseCategories)
+    .values(
+      DEFAULT_CATEGORIES.map((c) => ({
+        name: c.name,
+        icon: c.icon,
+        color: c.color,
+        sortOrder: c.sortOrder,
+        userId: null,
+      })),
+    )
+    .onConflictDoNothing();
 }
