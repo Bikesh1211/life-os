@@ -19,6 +19,7 @@ import {
   Box,
 } from "@mantine/core";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import dayjs from "dayjs";
 import {
@@ -56,9 +57,10 @@ export default function TransactionsTab() {
     try {
       const res = await fetch(`/api/expenses/transactions/${tx.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete transaction");
+      notifications.show({ title: "Deleted", message: "Transaction deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
     } catch {
-      // TODO: show notification
+      notifications.show({ title: "Error", message: "Failed to delete transaction", color: "red" });
     }
   }
 

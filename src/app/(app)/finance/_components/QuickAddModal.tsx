@@ -12,6 +12,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useQueryClient } from "@tanstack/react-query";
+import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { PAYMENT_METHODS } from "@/modules/expenses/constants";
 import { Editor } from "@/components/editor";
@@ -71,11 +72,12 @@ export function QuickAddModal({
 
       if (!res.ok) throw new Error("Failed to create transaction");
 
+      notifications.show({ title: "Created", message: "Expense added", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       form.reset();
       onClose();
     } catch {
-      // TODO: show notification
+      notifications.show({ title: "Error", message: "Failed to create transaction", color: "red" });
     } finally {
       setLoading(false);
     }

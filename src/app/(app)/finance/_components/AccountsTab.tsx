@@ -19,6 +19,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDisclosure } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import {
   IconWallet,
@@ -90,14 +91,18 @@ export default function AccountsTab() {
   async function handleSubmit(values: typeof form.values) {
     setLoading(true);
     try {
-      await fetch("/api/expenses/accounts", {
+      const res = await fetch("/api/expenses/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
+      if (!res.ok) throw new Error("Failed to create account");
+      notifications.show({ title: "Created", message: "Account created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["expenses", "accounts"] });
       form.reset();
       close();
+    } catch {
+      notifications.show({ title: "Error", message: "Failed to create account", color: "red" });
     } finally {
       setLoading(false);
     }

@@ -30,7 +30,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <PrefetchProvider>
           <MantineProvider theme={theme} defaultColorScheme="auto">
-            <Notifications />
+            <Notifications position="top-center" containerWidth={400} zIndex={9999} />
             <ServiceWorkerRegister />
             <CommandPalette />
             {children}

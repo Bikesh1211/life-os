@@ -3,6 +3,7 @@
 import { Modal, TextInput, Select, Button, Group, Stack, SegmentedControl } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useQueryClient } from "@tanstack/react-query";
+import { notifications } from "@mantine/notifications";
 import { useState, useEffect } from "react";
 import { ACCOUNT_TYPES } from "@/modules/expenses/constants";
 
@@ -72,10 +73,11 @@ export function EditAccountModal({ account, opened, onClose }: EditAccountModalP
 
       if (!res.ok) throw new Error("Failed to update account");
 
+      notifications.show({ title: "Updated", message: "Account updated", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["expenses", "accounts"] });
       onClose();
     } catch {
-      // TODO: show notification
+      notifications.show({ title: "Error", message: "Failed to update account", color: "red" });
     } finally {
       setLoading(false);
     }
@@ -90,10 +92,11 @@ export function EditAccountModal({ account, opened, onClose }: EditAccountModalP
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete account");
+      notifications.show({ title: "Deleted", message: "Account deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["expenses", "accounts"] });
       onClose();
     } catch {
-      // TODO: show notification
+      notifications.show({ title: "Error", message: "Failed to delete account", color: "red" });
     } finally {
       setLoading(false);
     }
