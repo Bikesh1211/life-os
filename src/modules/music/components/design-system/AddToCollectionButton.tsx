@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { notifications } from "@mantine/notifications";
 import { IconFolderPlus, IconCheck } from "@tabler/icons-react";
 
 type Collection = {
@@ -37,6 +38,7 @@ export function AddToCollectionButton({ entityType, entityId }: { entityType: "t
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Added", message: "Added to collection", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-collections"] });
     },
   });

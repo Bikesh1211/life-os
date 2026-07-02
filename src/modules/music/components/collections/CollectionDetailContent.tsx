@@ -7,6 +7,7 @@ import { MusicContainer } from "../design-system/MusicContainer";
 import { MusicCard } from "../design-system/MusicCard";
 import { SectionHeading } from "../design-system/SectionHeading";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
+import { notifications } from "@mantine/notifications";
 import { IconArrowLeft, IconTrash, IconEdit, IconPlus } from "@tabler/icons-react";
 import Link from "next/link";
 import { Editor } from "@/components/editor";
@@ -57,6 +58,7 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Updated", message: "Collection updated", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-collection", id] });
       queryClient.invalidateQueries({ queryKey: ["music-collections"] });
       setEditing(false);
@@ -69,6 +71,7 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
       if (!res.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Collection deleted", color: "orange" });
       window.location.href = "/music/library";
     },
   });
@@ -79,6 +82,7 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
       if (!res.ok) throw new Error("Failed to remove item");
     },
     onSuccess: () => {
+      notifications.show({ title: "Removed", message: "Item removed from collection", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["music-collection", id] });
     },
   });

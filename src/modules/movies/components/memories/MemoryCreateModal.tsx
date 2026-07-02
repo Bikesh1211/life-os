@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { notifications } from "@mantine/notifications";
 import { Modal, TextInput, Group, Button, Text, Loader } from "@mantine/core";
 import { useMutation } from "@tanstack/react-query";
 import { TMDB_IMAGE_BASE_URL } from "@/modules/movies/tmdb";
@@ -104,6 +105,7 @@ export function MemoryCreateModal({ opened, onClose, onSuccess, memory }: Props)
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: isEditing ? "Updated" : "Created", message: isEditing ? "Memory updated" : "Memory created", color: "green" });
       onSuccess();
       onClose();
       if (!isEditing) {

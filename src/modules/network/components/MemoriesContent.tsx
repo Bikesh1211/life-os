@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, ThemeIcon, Badge, SimpleGrid, Button } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconPhotoHeart, IconHeart, IconPlus, IconEdit, IconTrash } from "@tabler/icons-react";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { MemoriesModal } from "./MemoriesModal";
@@ -45,6 +46,7 @@ export function MemoriesContent() {
       if (!res.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Memory deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["network-memories"] });
       queryClient.invalidateQueries({ queryKey: ["network-dashboard-stats"] });
     },

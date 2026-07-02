@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, ThemeIcon, Badge, Button } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconGift, IconPlus, IconEdit, IconTrash } from "@tabler/icons-react";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { GiftsModal } from "./GiftsModal";
@@ -47,6 +48,7 @@ export function GiftsContent() {
       if (!res.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Gift deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["network-gifts"] });
       queryClient.invalidateQueries({ queryKey: ["network-dashboard-stats"] });
     },

@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
+import { notifications } from "@mantine/notifications";
 import { IconPlus } from "@tabler/icons-react";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
@@ -44,6 +45,7 @@ export function JournalContent() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Created", message: "Journal entry created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-journal"] });
       setEntry("");
       setMood("");

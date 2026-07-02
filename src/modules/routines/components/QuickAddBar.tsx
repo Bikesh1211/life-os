@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { notifications } from "@mantine/notifications";
 import { TextInput, ActionIcon, Paper, Group, Collapse, Select, Text } from "@mantine/core";
 import { IconPlus, IconChevronDown, IconChevronUp } from "@tabler/icons-react";
 import { useCreateAdhocItem } from "@/hooks/use-day-plan";
@@ -60,6 +61,7 @@ export function QuickAddBar({ date, onItemCreated }: QuickAddBarProps) {
         priority: priority ?? undefined,
         location: location || undefined,
       });
+      notifications.show({ title: "Created", message: "Activity added", color: "green" });
       setTitle("");
       setEndTime("");
       setCategory(null);

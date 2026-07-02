@@ -15,6 +15,7 @@ import {
 } from "@mantine/core";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
+import { notifications } from "@mantine/notifications";
 import { IconTrash, IconGripVertical, IconPlus } from "@tabler/icons-react";
 import { useCreateRoutine } from "@/hooks/use-routines";
 
@@ -111,6 +112,7 @@ export function RoutineBuilder({ onSuccess, onCancel }: RoutineBuilderProps) {
         })),
     });
 
+    notifications.show({ title: "Created", message: "Routine created", color: "green" });
     onSuccess?.();
   }
 

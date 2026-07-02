@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { MusicCard } from "../design-system/MusicCard";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
+import { notifications } from "@mantine/notifications";
 import { IconSearch, IconX, IconMusic, IconTrendingUp, IconSparkles, IconHeart, IconBooks, IconPhotoHeart, IconArticle, IconMoodHeart } from "@tabler/icons-react";
 import Link from "next/link";
 
@@ -156,6 +157,7 @@ export function MusicHome() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Favorited", message: "Added to favorites", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-library"] });
     },
   });

@@ -44,6 +44,7 @@ export function LibraryContent() {
       if (!res.ok) throw new Error("Failed to remove from library");
     },
     onSuccess: () => {
+      notifications.show({ title: "Removed", message: "Removed from library", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["music-library-songs"] });
     },
     onError: (err) => {

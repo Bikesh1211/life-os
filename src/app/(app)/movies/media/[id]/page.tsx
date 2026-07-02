@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
+import { notifications } from "@mantine/notifications";
 import { Container, Title, Text, Badge, Group, Button, Card, Avatar, SimpleGrid, Spoiler, Select } from "@mantine/core";
 import { IconArrowLeft, IconStar, IconClock, IconMovie, IconHeart, IconListDetails, IconCircleCheck, IconPlaylist } from "@tabler/icons-react";
 import Link from "next/link";
@@ -35,6 +36,7 @@ export default function MediaDetailContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaId: id }),
       });
+      notifications.show({ title: data.isFavorited ? "Removed" : "Added", message: data.isFavorited ? "Removed from favorites" : "Added to favorites", color: data.isFavorited ? "orange" : "green" });
       refetch();
     } finally { setFavoriteLoading(false); }
   };
@@ -55,6 +57,7 @@ export default function MediaDetailContent() {
           body: JSON.stringify({ mediaId: id, status: "plan_to_watch" }),
         });
       }
+      notifications.show({ title: data.watchlistStatus ? "Removed" : "Added", message: data.watchlistStatus ? "Removed from watchlist" : "Added to watchlist", color: data.watchlistStatus ? "orange" : "green" });
       refetch();
     } finally { setWatchlistLoading(false); }
   };
@@ -81,6 +84,7 @@ export default function MediaDetailContent() {
           body: JSON.stringify({ mediaId: id, status: "completed" }),
         });
       }
+      notifications.show({ title: "Watched", message: "Marked as watched", color: "green" });
       refetch();
     } finally { setWatchedLoading(false); }
   };
@@ -105,6 +109,7 @@ export default function MediaDetailContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaId: id }),
       });
+      notifications.show({ title: "Added", message: "Added to collection", color: "green" });
       setCollectionSelect(null);
     } finally { setCollectionLoading(false); }
   };

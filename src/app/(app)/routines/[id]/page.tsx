@@ -99,6 +99,7 @@ export default function RoutineDetailPage() {
   async function handleDelete() {
     if (!confirm("Delete this routine?")) return;
     await deleteRoutine.mutateAsync(id);
+    notifications.show({ title: "Deleted", message: "Routine deleted", color: "orange" });
     router.push("/routines");
   }
 
@@ -110,6 +111,7 @@ export default function RoutineDetailPage() {
   async function handleToggle() {
     if (!routine) return;
     await toggleActive.mutateAsync({ id, isActive: !routine.isActive });
+    notifications.show({ title: routine.isActive ? "Paused" : "Activated", message: `Routine ${routine.isActive ? "paused" : "activated"}`, color: "blue" });
   }
 
   const sortedItems = [...(routine.items ?? [])].sort((a, b) => a.order - b.order);

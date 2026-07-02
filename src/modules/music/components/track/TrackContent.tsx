@@ -88,6 +88,7 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Created", message: "Note saved", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["track-notes", id] });
       setNoteInput("");
     },
@@ -109,6 +110,7 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
       }
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Note deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["track-notes", id] });
     },
     onError: (err) => {
@@ -146,7 +148,8 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
         return res.json();
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, action) => {
+      notifications.show({ title: action === "add" ? "Favorited" : "Unfavorited", message: action === "add" ? "Track added to favorites" : "Track removed from favorites", color: action === "add" ? "green" : "orange" });
       queryClient.invalidateQueries({ queryKey: ["track", id] });
     },
   });

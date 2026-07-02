@@ -40,6 +40,7 @@ export function FavoritesContent() {
       if (!res.ok) throw new Error("Failed to remove favorite");
     },
     onSuccess: () => {
+      notifications.show({ title: "Removed", message: "Removed from favorites", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["music-favorites"] });
     },
     onError: (err) => {

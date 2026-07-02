@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, ThemeIcon, Badge, Button } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconCalendarEvent, IconPlus, IconEdit, IconTrash } from "@tabler/icons-react";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { EventsModal } from "./EventsModal";
@@ -44,6 +45,7 @@ export function EventsContent() {
       if (!res.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Event deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["network-events"] });
       queryClient.invalidateQueries({ queryKey: ["network-dashboard-stats"] });
     },
