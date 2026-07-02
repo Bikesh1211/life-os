@@ -5,6 +5,7 @@ import { APP_NAME, APP_DESCRIPTION } from "@/core/constants";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/spotlight/styles.css";
+import "@mantine/notifications/styles.css";
 import "@/app/globals.css";
 
 const inter = Inter({
