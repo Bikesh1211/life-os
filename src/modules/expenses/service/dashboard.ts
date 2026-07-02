@@ -55,7 +55,7 @@ export async function getDashboardSummary(userId: string) {
   return {
     monthlySpending: monthlySpending.total,
     monthlyIncome,
-    savingsRate: Math.max(0, savingsRate),
+    savingsRate,
     averageDailySpend: averageDaily.average,
     transactionCount: monthlySpending.count,
   };

@@ -1,5 +1,6 @@
 "use client";
 
+import { notifications } from "@mantine/notifications";
 import { useQuery, useMutation } from "@tanstack/react-query";
 
 export type LevelInfo = {
@@ -108,6 +109,12 @@ export function useGamificationSync() {
       const res = await fetch("/api/gamification/sync", { method: "POST" });
       if (!res.ok) throw new Error("Failed to sync gamification data");
       return res.json();
+    },
+    onSuccess: () => {
+      notifications.show({ title: "Synced", message: "Gamification data synced", color: "green" });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to sync gamification data", color: "red" });
     },
   });
 }

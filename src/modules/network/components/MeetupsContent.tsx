@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, ThemeIcon, Button } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconCoffee, IconPlus, IconEdit, IconTrash } from "@tabler/icons-react";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { MeetupsModal } from "./MeetupsModal";
@@ -44,6 +45,7 @@ export function MeetupsContent() {
       if (!res.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Meetup deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["network-meetups"] });
       queryClient.invalidateQueries({ queryKey: ["network-dashboard-stats"] });
     },

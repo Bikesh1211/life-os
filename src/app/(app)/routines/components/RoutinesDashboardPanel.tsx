@@ -37,6 +37,7 @@ export function RoutinesDashboardPanel() {
 
   async function handleToggleActive(id: string, isActive: boolean) {
     await toggleActive.mutateAsync({ id, isActive });
+    notifications.show({ title: isActive ? "Paused" : "Activated", message: `Routine ${isActive ? "paused" : "activated"}`, color: "blue" });
   }
 
   if (isLoading) {

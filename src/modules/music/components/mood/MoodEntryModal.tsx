@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { notifications } from "@mantine/notifications";
 import { Modal, Button, Group, Text } from "@mantine/core";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
@@ -40,6 +41,7 @@ export function MoodEntryModal({ opened, onClose }: MoodEntryModalProps) {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Logged", message: "Mood logged", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-mood"] });
       setSelectedMood(null);
       setNote("");

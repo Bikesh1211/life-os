@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
+import { notifications } from "@mantine/notifications";
 import { Container, Text, Button, Title, SimpleGrid, Group, Badge, TextInput, Loader, Tooltip } from "@mantine/core";
 import { IconArrowLeft, IconTrash, IconPlus, IconX } from "@tabler/icons-react";
 import Link from "next/link";
@@ -51,7 +52,7 @@ export function CollectionDetailContent() {
       });
       if (!res.ok) throw new Error("Failed");
     },
-    onSuccess: () => { refetch(); queryClient.invalidateQueries({ queryKey: ["movie-collections"] }); setSearchQuery(""); setSearchResults([]); },
+    onSuccess: () => { notifications.show({ title: "Added", message: "Movie added to collection", color: "green" }); refetch(); queryClient.invalidateQueries({ queryKey: ["movie-collections"] }); setSearchQuery(""); setSearchResults([]); },
   });
 
   const removeMutation = useMutation({
@@ -59,12 +60,13 @@ export function CollectionDetailContent() {
       const res = await fetch(`/api/movies/collections/${id}/items?itemId=${itemId}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed");
     },
-    onSuccess: () => { refetch(); queryClient.invalidateQueries({ queryKey: ["movie-collections"] }); },
+    onSuccess: () => { notifications.show({ title: "Removed", message: "Removed from collection", color: "orange" }); refetch(); queryClient.invalidateQueries({ queryKey: ["movie-collections"] }); },
   });
 
   const deleteCollection = async () => {
     if (!confirm("Delete this entire collection?")) return;
     await fetch(`/api/movies/collections/${id}`, { method: "DELETE" });
+    notifications.show({ title: "Deleted", message: "Collection deleted", color: "orange" });
     queryClient.invalidateQueries({ queryKey: ["movie-collections"] });
     router.push("/movies/collections");
   };

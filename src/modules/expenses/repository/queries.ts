@@ -3,9 +3,12 @@ import { transactions } from "../schema/transactions";
 import { expenseCategories } from "../schema/categories";
 import { eq, and, isNull, sql, gte, lte } from "drizzle-orm";
 
+function monthRange(year: number, month: number) {
+  return { start: new Date(year, month - 1, 1), end: new Date(year, month, 1) };
+}
+
 export async function getMonthlySpending(userId: string, year: number, month: number) {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 1);
+  const { start: startDate, end: endDate } = monthRange(year, month);
 
   const rows = await db
     .select({
@@ -30,8 +33,7 @@ export async function getMonthlySpending(userId: string, year: number, month: nu
 }
 
 export async function getMonthlyIncome(userId: string, year: number, month: number) {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 1);
+  const { start: startDate, end: endDate } = monthRange(year, month);
 
   const rows = await db
     .select({
@@ -52,8 +54,7 @@ export async function getMonthlyIncome(userId: string, year: number, month: numb
 }
 
 export async function getSpendingByCategory(userId: string, year: number, month: number) {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 1);
+  const { start: startDate, end: endDate } = monthRange(year, month);
 
   return db
     .select({
@@ -105,8 +106,7 @@ export async function getDailySpending(
 }
 
 export async function getTopMerchants(userId: string, year: number, month: number, limit = 10) {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 1);
+  const { start: startDate, end: endDate } = monthRange(year, month);
 
   return db
     .select({
@@ -131,8 +131,7 @@ export async function getTopMerchants(userId: string, year: number, month: numbe
 }
 
 export async function getSpendingByPaymentMethod(userId: string, year: number, month: number) {
-  const startDate = new Date(year, month - 1, 1);
-  const endDate = new Date(year, month, 1);
+  const { start: startDate, end: endDate } = monthRange(year, month);
 
   return db
     .select({

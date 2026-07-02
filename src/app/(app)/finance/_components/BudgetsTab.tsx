@@ -18,26 +18,13 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDisclosure } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { IconPigMoney, IconPlus } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
 import { BUDGET_PERIODS } from "@/modules/expenses/constants";
-
-type BudgetWithSpending = {
-  id: string;
-  categoryId: string;
-  amount: string;
-  period: string;
-  startDate: string;
-  endDate: string | null;
-  spent: number;
-  remaining: number;
-  percentageUsed: number;
-  categoryName: string | null;
-  categoryColor: string | null;
-  categoryIcon: string | null;
-};
+import type { BudgetWithSpending } from "@/modules/expenses";
 
 export default function BudgetsTab() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -72,14 +59,18 @@ export default function BudgetsTab() {
   async function handleSubmit(values: typeof form.values) {
     setLoading(true);
     try {
-      await fetch("/api/expenses/budgets", {
+      const res = await fetch("/api/expenses/budgets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
+      if (!res.ok) throw new Error("Failed to create budget");
+      notifications.show({ title: "Created", message: "Budget created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["expenses", "budgets"] });
       form.reset();
       close();
+    } catch {
+      notifications.show({ title: "Error", message: "Failed to create budget", color: "red" });
     } finally {
       setLoading(false);
     }

@@ -48,6 +48,7 @@ export function MemoriesContent() {
       if (!res.ok) throw new Error("Failed to delete memory");
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Memory deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["music-memories"] });
     },
     onError: (err) => {

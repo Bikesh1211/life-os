@@ -9,6 +9,7 @@ import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { AddToCollectionButton } from "../design-system/AddToCollectionButton";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { notifications } from "@mantine/notifications";
 import { IconExternalLink, IconHeart, IconHeartFilled } from "@tabler/icons-react";
 
 type TrackItem = {
@@ -81,7 +82,8 @@ export function AlbumContent({ idPromise }: { idPromise: Promise<{ id: string }>
         return res.json();
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, action) => {
+      notifications.show({ title: action === "add" ? "Favorited" : "Unfavorited", message: action === "add" ? "Album added to favorites" : "Album removed from favorites", color: action === "add" ? "green" : "orange" });
       queryClient.invalidateQueries({ queryKey: ["album", id] });
     },
   });

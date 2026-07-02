@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import {
   Stack, Group, Text, Paper, Badge, Button, SimpleGrid, RingProgress,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IconPlayerPlay, IconSquareCheck, IconX, IconArrowRight,
 } from "@tabler/icons-react";
@@ -57,16 +58,19 @@ export function RoutinesTimelinePanel() {
 
   async function handleStart(routineId: string, executionId: string) {
     await startExecution.mutateAsync({ routineId, executionId });
+    notifications.show({ title: "Started", message: "Routine started", color: "blue" });
     refetch();
   }
 
   async function handleComplete(routineId: string, executionId: string) {
     await completeExecution.mutateAsync({ routineId, executionId });
+    notifications.show({ title: "Completed", message: "Routine completed", color: "green" });
     refetch();
   }
 
   async function handleSkip(routineId: string, executionId: string) {
     await skipExecution.mutateAsync({ routineId, executionId });
+    notifications.show({ title: "Skipped", message: "Routine skipped", color: "orange" });
     refetch();
   }
 

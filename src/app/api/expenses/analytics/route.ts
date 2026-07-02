@@ -12,7 +12,7 @@ import {
 
 export async function GET(req: Request) {
   const userId = await getCurrentUserId();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  if (!userId) return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Authentication required" } }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const year = searchParams.get("year") ? Number(searchParams.get("year")) : undefined;

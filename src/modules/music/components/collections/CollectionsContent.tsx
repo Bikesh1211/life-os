@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
+import { notifications } from "@mantine/notifications";
 import { IconFolder, IconPlus } from "@tabler/icons-react";
 import Link from "next/link";
 import { Editor } from "@/components/editor";
@@ -44,6 +45,7 @@ export function CollectionsContent() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Created", message: "Collection created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-collections"] });
       setShowCreate(false);
       setCreateTitle("");

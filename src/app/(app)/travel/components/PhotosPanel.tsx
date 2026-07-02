@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { notifications } from "@mantine/notifications";
 import { IconPhoto, IconTrash } from "@tabler/icons-react";
 import { Card, Text, Group, Button, ActionIcon, Tooltip, Modal, TextInput, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -33,6 +34,7 @@ export function PhotosPanel() {
 
   async function deletePhoto(id: string) {
     await fetch(`/api/travel/photos/${id}`, { method: "DELETE" });
+    notifications.show({ title: "Deleted", message: "Photo deleted", color: "orange" });
     setPhotos((prev) => prev.filter((p) => p.id !== id));
   }
 
@@ -69,6 +71,7 @@ export function PhotosPanel() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url: data.url, caption: data.caption || undefined }),
           });
+          notifications.show({ title: "Created", message: "Photo added", color: "green" });
           close();
           window.location.reload();
         }}>

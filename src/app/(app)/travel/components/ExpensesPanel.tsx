@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { notifications } from "@mantine/notifications";
 import { IconPlus, IconCoin, IconTrash } from "@tabler/icons-react";
 import { Card, Text, Group, Badge, Button, Modal, TextInput, Select, Stack, ActionIcon } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -54,6 +55,7 @@ export function ExpensesPanel() {
 
   async function deleteExpense(id: string) {
     await fetch(`/api/travel/expenses/${id}`, { method: "DELETE" });
+    notifications.show({ title: "Deleted", message: "Expense deleted", color: "orange" });
     setExpenses((prev) => prev.filter((e) => e.id !== id));
   }
 
@@ -104,6 +106,7 @@ export function ExpensesPanel() {
               tripId,
             }),
           });
+          notifications.show({ title: "Created", message: "Expense added", color: "green" });
           close();
           window.location.reload();
         }}>

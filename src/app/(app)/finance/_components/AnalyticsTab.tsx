@@ -29,21 +29,7 @@ import {
   LineChart,
   Line,
 } from "recharts";
-
-type AnalyticsData = {
-  categoryBreakdown: {
-    categoryName: string | null;
-    categoryColor: string | null;
-    total: number;
-    count: number;
-  }[];
-  timeline: { date: string; total: number; count: number }[];
-  topMerchants: { merchant: string; total: number; count: number }[];
-  paymentMethods: { paymentMethod: string; total: number; count: number }[];
-  averageDaily: { average: number; total: number; daysInMonth: number };
-  totalSpending: number;
-  totalIncome: number;
-};
+import type { AnalyticsData } from "@/modules/expenses";
 
 const COLORS = ["#FF6B6B", "#4ECDC4", "#FFD93D", "#A78BFA", "#F472B6", "#60A5FA", "#F97316", "#34D399", "#FB923C", "#818CF8", "#E879F9", "#9CA3AF"];
 

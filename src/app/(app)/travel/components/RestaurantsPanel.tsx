@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { notifications } from "@mantine/notifications";
 import { IconPlus, IconToolsKitchen2, IconStar, IconTrash } from "@tabler/icons-react";
 import { Card, Text, Group, Badge, Button, Modal, TextInput, Select, Stack, ActionIcon } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -50,6 +51,7 @@ export function RestaurantsPanel() {
 
   async function deleteRestaurant(id: string) {
     await fetch(`/api/travel/restaurants/${id}`, { method: "DELETE" });
+    notifications.show({ title: "Deleted", message: "Restaurant deleted", color: "orange" });
     setRestaurants((prev) => prev.filter((r) => r.id !== id));
   }
 
@@ -92,6 +94,7 @@ export function RestaurantsPanel() {
               rating: data.rating ? Number(data.rating) : undefined,
             }),
           });
+          notifications.show({ title: "Created", message: "Restaurant added", color: "green" });
           close();
           window.location.reload();
         }}>

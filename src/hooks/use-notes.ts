@@ -1,5 +1,6 @@
 "use client";
 
+import { notifications } from "@mantine/notifications";
 import {
   useQuery,
   useMutation,
@@ -167,11 +168,13 @@ export function useCreateNote() {
       return { previousQueries, tempId };
     },
     onSuccess: (savedNote, _vars, context) => {
+      notifications.show({ title: "Created", message: "Note created", color: "green" });
       queryClient.setQueriesData<Note[]>({ queryKey: [NOTES_KEY] }, (old) =>
         old?.map((n) => (n.id === context?.tempId ? savedNote : n)),
       );
     },
     onError: (_err, _vars, context) => {
+      notifications.show({ title: "Error", message: "Failed to create note", color: "red" });
       if (context?.previousQueries) {
         for (const [key, data] of context.previousQueries) {
           queryClient.setQueryData(key, data);
@@ -196,7 +199,11 @@ export function useUpdateNote() {
       );
       return { previousQueries };
     },
+    onSuccess: () => {
+      notifications.show({ title: "Updated", message: "Note updated", color: "green" });
+    },
     onError: (_err, _vars, context) => {
+      notifications.show({ title: "Error", message: "Failed to update note", color: "red" });
       if (context?.previousQueries) {
         for (const [key, data] of context.previousQueries) {
           queryClient.setQueryData(key, data);
@@ -214,7 +221,11 @@ export function useDeleteNote() {
   return useMutation({
     mutationFn: deleteNote,
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Note deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: [NOTES_KEY] });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to delete note", color: "red" });
     },
   });
 }
@@ -272,6 +283,7 @@ export function useCreateTag() {
   return useMutation({
     mutationFn: createTag,
     onSuccess: () => {
+      notifications.show({ title: "Created", message: "Tag created", color: "green" });
       queryClient.invalidateQueries({ queryKey: [TAGS_KEY] });
     },
   });
@@ -316,6 +328,7 @@ export function useCreateNoteLink() {
       return res.json();
     },
     onSuccess: (_, variables) => {
+      notifications.show({ title: "Created", message: "Note linked", color: "green" });
       queryClient.invalidateQueries({ queryKey: [LINKS_KEY, "outgoing", variables.noteId] });
       queryClient.invalidateQueries({ queryKey: [LINKS_KEY, "backlinks", variables.linkedNoteId] });
     },
@@ -331,6 +344,7 @@ export function useDeleteNoteLink() {
       return res.json();
     },
     onSuccess: (_, variables) => {
+      notifications.show({ title: "Deleted", message: "Link removed", color: "orange" });
       queryClient.invalidateQueries({ queryKey: [LINKS_KEY, "outgoing", variables.noteId] });
       queryClient.invalidateQueries({ queryKey: [LINKS_KEY, "backlinks", variables.noteId] });
     },
@@ -364,6 +378,7 @@ export function useCreateNoteFolder() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Created", message: "Folder created", color: "green" });
       queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] });
     },
   });
@@ -382,6 +397,7 @@ export function useUpdateNoteFolder() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Updated", message: "Folder updated", color: "green" });
       queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: [NOTES_KEY] });
     },
@@ -397,6 +413,7 @@ export function useDeleteNoteFolder() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Folder deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] });
       queryClient.invalidateQueries({ queryKey: [NOTES_KEY] });
     },

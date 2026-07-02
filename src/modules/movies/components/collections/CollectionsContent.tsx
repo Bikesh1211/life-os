@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { SimpleGrid, Text, Group, Button, Modal, TextInput, Textarea } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconPlaylist, IconPlus, IconTrash, IconExternalLink } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
@@ -32,6 +33,7 @@ export function CollectionsContent() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Created", message: "Collection created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["movie-collections"] });
       close(); setName(""); setDescription("");
     },
@@ -41,7 +43,7 @@ export function CollectionsContent() {
     mutationFn: async (id: string) => {
       await fetch(`/api/movies/collections/${id}`, { method: "DELETE" });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["movie-collections"] }),
+    onSuccess: () => { notifications.show({ title: "Deleted", message: "Collection deleted", color: "orange" }); queryClient.invalidateQueries({ queryKey: ["movie-collections"] }); },
   });
 
   return (

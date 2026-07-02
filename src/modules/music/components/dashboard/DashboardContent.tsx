@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { SectionHeading } from "../design-system/SectionHeading";
+import { notifications } from "@mantine/notifications";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { ListeningStats } from "./ListeningStats";
 import { RecentlyPlayed } from "./RecentlyPlayed";
@@ -80,6 +81,7 @@ export function MusicDashboard() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Seeded", message: "Sample data created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["music-journal"] });
     },

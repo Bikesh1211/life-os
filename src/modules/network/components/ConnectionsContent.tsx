@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, Badge, ThemeIcon, SimpleGrid, Button } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import { IconUserPlus, IconHeart, IconPlus, IconTrash, IconEdit } from "@tabler/icons-react";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { ConnectionsModal } from "./ConnectionsModal";
@@ -56,6 +57,7 @@ export function ConnectionsContent() {
       if (!res.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Connection deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["network-connections"] });
       queryClient.invalidateQueries({ queryKey: ["network-dashboard-stats"] });
     },

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
+import { notifications } from "@mantine/notifications";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { MemoryTimeline } from "./MemoryTimeline";
 import { MemoryCreateModal } from "./MemoryCreateModal";
@@ -29,7 +30,7 @@ export function MusicTimelineContent() {
       const res = await fetch(`/api/music/memories/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["music-memories"] }),
+    onSuccess: () => { notifications.show({ title: "Deleted", message: "Memory deleted", color: "orange" }); queryClient.invalidateQueries({ queryKey: ["music-memories"] }); },
   });
 
   const memories = data ?? [];

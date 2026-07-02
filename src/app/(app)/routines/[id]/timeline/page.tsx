@@ -11,6 +11,7 @@ import {
   Badge,
   ActionIcon,
 } from "@mantine/core";
+import { notifications } from "@mantine/notifications";
 import {
   IconArrowLeft,
   IconPlayerPlay,
@@ -42,24 +43,28 @@ export default function RoutineTimelinePage() {
   async function handleStart() {
     if (!execution) return;
     await startExecution.mutateAsync({ routineId: id, executionId: execution.id });
+    notifications.show({ title: "Started", message: "Routine started", color: "blue" });
     refetch();
   }
 
   async function handleComplete() {
     if (!execution) return;
     await completeExecution.mutateAsync({ routineId: id, executionId: execution.id });
+    notifications.show({ title: "Completed", message: "Routine completed", color: "green" });
     refetch();
   }
 
   async function handleSkip() {
     if (!execution) return;
     await skipExecution.mutateAsync({ routineId: id, executionId: execution.id });
+    notifications.show({ title: "Skipped", message: "Routine skipped", color: "orange" });
     refetch();
   }
 
   async function handleStartItem(itemId: string) {
     if (!execution) return;
     await startItem.mutateAsync({ routineId: id, executionId: execution.id, executionItemId: itemId });
+    notifications.show({ title: "Started", message: "Activity started", color: "blue" });
     refetch();
   }
 
@@ -69,7 +74,10 @@ export default function RoutineTimelinePage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ executionId: execution!.id, executionItemId: itemId }),
     });
-    if (res.ok) refetch();
+    if (res.ok) {
+      notifications.show({ title: "Completed", message: "Activity completed", color: "green" });
+      refetch();
+    }
   }
 
   return (

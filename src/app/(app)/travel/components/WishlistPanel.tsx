@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { notifications } from "@mantine/notifications";
 import { IconPlus, IconStar, IconWorld, IconFlag } from "@tabler/icons-react";
 import { Card, Text, Group, Badge, Button, Modal, TextInput, Select, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
@@ -39,6 +40,7 @@ function CreateWishlistModal({ opened, onClose }: { opened: boolean; onClose: ()
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, country: country || undefined, priority: priority || undefined }),
     });
+    notifications.show({ title: "Created", message: "Destination added to wishlist", color: "green" });
     onClose();
     window.location.reload();
   }
@@ -74,11 +76,13 @@ export function WishlistPanel() {
 
   async function markVisited(id: string) {
     await fetch(`/api/travel/wishlist/${id}/visited`, { method: "POST" });
+    notifications.show({ title: "Updated", message: "Marked as visited", color: "green" });
     window.location.reload();
   }
 
   async function deleteItem(id: string) {
     await fetch(`/api/travel/wishlist/${id}`, { method: "DELETE" });
+    notifications.show({ title: "Deleted", message: "Destination removed", color: "orange" });
     window.location.reload();
   }
 

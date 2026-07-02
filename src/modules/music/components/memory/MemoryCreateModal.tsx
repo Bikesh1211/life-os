@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { notifications } from "@mantine/notifications";
 import { Modal, TextInput, Group, Button, Loader, Popover, Text } from "@mantine/core";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
@@ -138,6 +139,7 @@ export function MemoryCreateModal({ opened, onClose, initialData }: MemoryCreate
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: isEditing ? "Updated" : "Created", message: isEditing ? "Memory updated" : "Memory created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-memories"] });
       onClose();
     },

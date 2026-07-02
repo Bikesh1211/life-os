@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { IconArrowLeft, IconTrash, IconEdit, IconWorld, IconCalendar, IconUsers, IconCoin } from "@tabler/icons-react";
 import { Card, Text, Group, Badge, Button, ActionIcon, Stack, Loader, Center, Modal, TextInput, Textarea, Select } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
 
 type Trip = {
@@ -116,6 +117,7 @@ export default function TripDetailPage() {
   async function handleDelete() {
     if (!trip) return;
     await fetch(`/api/travel/trips/${trip.id}`, { method: "DELETE" });
+    notifications.show({ title: "Deleted", message: "Trip deleted", color: "orange" });
     router.push("/travel/trips");
   }
 

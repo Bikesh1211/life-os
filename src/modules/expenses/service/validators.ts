@@ -25,7 +25,7 @@ export const createTransactionSchema = z.object({
   accountId: z.string().uuid().optional(),
   categoryId: z.string().uuid().optional(),
   type: z.enum(TRANSACTION_TYPES).optional().default("expense"),
-  amount: z.string().min(1, "Amount is required"),
+  amount: z.string().min(1, "Amount is required").regex(/^\d+(\.\d{1,2})?$/, "Amount must be a valid decimal number"),
   currency: z.string().optional().default("NPR"),
   merchant: z.string().max(200).optional(),
   description: z.string().max(500).optional(),

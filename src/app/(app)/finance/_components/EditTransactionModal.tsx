@@ -12,6 +12,7 @@ import {
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useQueryClient } from "@tanstack/react-query";
+import { notifications } from "@mantine/notifications";
 import { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { PAYMENT_METHODS, TRANSACTION_TYPES } from "@/modules/expenses/constants";
@@ -108,10 +109,11 @@ export function EditTransactionModal({
 
       if (!res.ok) throw new Error("Failed to update transaction");
 
+      notifications.show({ title: "Updated", message: "Transaction updated", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
       onClose();
     } catch {
-      // TODO: show notification
+      notifications.show({ title: "Error", message: "Failed to update transaction", color: "red" });
     } finally {
       setLoading(false);
     }

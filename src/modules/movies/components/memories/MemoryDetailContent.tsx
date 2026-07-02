@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
+import { notifications } from "@mantine/notifications";
 import { Container, Text, Group, Button, Title, SimpleGrid, Badge } from "@mantine/core";
 import { IconArrowLeft, IconEdit, IconTrash } from "@tabler/icons-react";
 import Link from "next/link";
@@ -31,6 +32,7 @@ export function MemoryDetailContent() {
       if (!res.ok) throw new Error("Failed");
     },
     onSuccess: () => {
+      notifications.show({ title: "Deleted", message: "Memory deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["movie-memories"] });
       router.push("/movies/memories");
     },
