@@ -1,6 +1,15 @@
-import { MusicHome } from "@/modules/music/components/home/MusicHome";
+import { Suspense } from "react";
+import { MusicContent } from "./MusicContent";
 
+type Props = {
+  searchParams: Promise<{ tab?: string }>;
+};
 
-export default function MusicPage() {
-  return <MusicHome />;
+export default async function MusicPage({ searchParams }: Props) {
+  const { tab } = await searchParams;
+  return (
+    <Suspense fallback={null}>
+      <MusicContent defaultTab={tab ?? "overview"} />
+    </Suspense>
+  );
 }

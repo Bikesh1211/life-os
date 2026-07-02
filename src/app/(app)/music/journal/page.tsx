@@ -1,6 +1,5 @@
-import { JournalContent } from "@/modules/music/components/journal/JournalContent";
+import { redirect } from "next/navigation";
 
-
-export default function MusicJournalPage() {
-  return <JournalContent />;
+export default function MusicJournalRedirect() {
+  redirect("/music?tab=journal");
 }

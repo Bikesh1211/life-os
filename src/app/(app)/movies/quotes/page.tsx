@@ -1,5 +1,5 @@
-import { QuotesContent } from "@/modules/movies/components/quotes/QuotesContent";
+import { redirect } from "next/navigation";
 
-export default function QuotesPage() {
-  return <QuotesContent />;
+export default function MoviesQuotesRedirect() {
+  redirect("/movies?tab=quotes");
 }

@@ -1,5 +1,5 @@
-import { CollectionsContent } from "@/modules/movies/components/collections/CollectionsContent";
+import { redirect } from "next/navigation";
 
-export default function CollectionsPage() {
-  return <CollectionsContent />;
+export default function MoviesCollectionsRedirect() {
+  redirect("/movies?tab=collections");
 }

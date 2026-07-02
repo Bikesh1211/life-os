@@ -1,6 +1,5 @@
-import { FavoritesContent } from "@/modules/music/components/favorites/FavoritesContent";
+import { redirect } from "next/navigation";
 
-
-export default function FavoritesPage() {
-  return <FavoritesContent />;
+export default function MusicFavoritesRedirect() {
+  redirect("/music?tab=favorites");
 }

@@ -1,5 +1,5 @@
-import { MeetupsContent } from "@/modules/network/components/MeetupsContent";
+import { redirect } from "next/navigation";
 
-export default function MeetupsPage() {
-  return <MeetupsContent />;
+export default function NetworkMeetupsRedirect() {
+  redirect("/network?tab=meetups");
 }

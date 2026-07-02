@@ -1,6 +1,5 @@
-import { LibraryContent } from "@/modules/music/components/library/LibraryContent";
+import { redirect } from "next/navigation";
 
-
-export default function MusicLibraryPage() {
-  return <LibraryContent />;
+export default function MusicLibraryRedirect() {
+  redirect("/music?tab=library");
 }

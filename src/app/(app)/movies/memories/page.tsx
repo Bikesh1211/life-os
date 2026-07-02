@@ -1,5 +1,5 @@
-import { MemoriesContent } from "@/modules/movies/components/memories/MemoriesContent";
+import { redirect } from "next/navigation";
 
-export default function MemoriesPage() {
-  return <MemoriesContent />;
+export default function MoviesMemoriesRedirect() {
+  redirect("/movies?tab=memories");
 }

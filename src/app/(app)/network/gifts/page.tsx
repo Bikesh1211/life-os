@@ -1,5 +1,5 @@
-import { GiftsContent } from "@/modules/network/components/GiftsContent";
+import { redirect } from "next/navigation";
 
-export default function GiftsPage() {
-  return <GiftsContent />;
+export default function NetworkGiftsRedirect() {
+  redirect("/network?tab=gifts");
 }

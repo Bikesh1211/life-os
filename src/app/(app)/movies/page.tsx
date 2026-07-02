@@ -1,5 +1,15 @@
-import { DashboardContent } from "@/modules/movies/components/dashboard/DashboardContent";
+import { Suspense } from "react";
+import { MoviesContent } from "./MoviesContent";
 
-export default function MoviesDashboardPage() {
-  return <DashboardContent />;
+type Props = {
+  searchParams: Promise<{ tab?: string }>;
+};
+
+export default async function MoviesPage({ searchParams }: Props) {
+  const { tab } = await searchParams;
+  return (
+    <Suspense fallback={null}>
+      <MoviesContent defaultTab={tab ?? "dashboard"} />
+    </Suspense>
+  );
 }

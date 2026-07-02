@@ -1,5 +1,5 @@
-import { ConnectionsContent } from "@/modules/network/components/ConnectionsContent";
+import { redirect } from "next/navigation";
 
-export default function ConnectionsPage() {
-  return <ConnectionsContent />;
+export default function NetworkConnectionsRedirect() {
+  redirect("/network?tab=connections");
 }

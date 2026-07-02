@@ -1,6 +1,5 @@
-import { HistoryContent } from "@/modules/music/components/history/HistoryContent";
+import { redirect } from "next/navigation";
 
-
-export default function MusicHistoryPage() {
-  return <HistoryContent />;
+export default function MusicHistoryRedirect() {
+  redirect("/music?tab=history");
 }
