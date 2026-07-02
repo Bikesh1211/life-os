@@ -1,5 +1,6 @@
 "use client";
 
+import { notifications } from "@mantine/notifications";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export type RoutineTemplateItem = {
@@ -49,8 +50,12 @@ export function useCloneTemplate() {
       return res.json();
     },
     onSuccess: () => {
+      notifications.show({ title: "Cloned", message: "Template cloned as routine", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["routines"] });
       queryClient.invalidateQueries({ queryKey: ["today-routines"] });
+    },
+    onError: () => {
+      notifications.show({ title: "Error", message: "Failed to clone template", color: "red" });
     },
   });
 }
