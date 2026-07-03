@@ -1,22 +1,95 @@
 @import "tailwindcss";
 @custom-variant dark (&:where([data-mantine-color-scheme="dark"] *));
 
+/* ── Design Tokens ── */
+
 @theme {
+  /* Neutrals */
+  --color-bg: #fafbfc;
+  --color-bg-muted: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f8f9fa;
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-hover: rgba(0, 0, 0, 0.12);
+
+  /* Dark mode neutrals */
+  --color-dark-bg: #06060d;
+  --color-dark-bg-muted: #0a0a15;
+  --color-dark-surface: #0f0f1a;
+  --color-dark-surface-hover: #141420;
+  --color-dark-border: rgba(255, 255, 255, 0.06);
+  --color-dark-border-hover: rgba(255, 255, 255, 0.1);
+
+  /* Brand */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+
+  /* Status */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #f43f5e;
+  --color-info: #0ea5e9;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.06), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.12);
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.04), 0 1px 2px -1px rgb(0 0 0 / 0.03);
+  --shadow-card-hover: 0 10px 25px -5px rgb(0 0 0 / 0.08), 0 4px 10px -6px rgb(0 0 0 / 0.04);
+  --shadow-sidebar: 4px 0 24px 0 rgb(0 0 0 / 0.06), 0 1px 3px 0 rgb(0 0 0 / 0.04);
+  --shadow-modal: 0 25px 50px -12px rgb(0 0 0 / 0.20);
+  --shadow-button: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+
+  /* Dark shadows */
+  --shadow-dark-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-dark-sm: 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+  --shadow-dark-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.35);
+  --shadow-dark-lg: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+  --shadow-dark-xl: 0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.45);
+  --shadow-dark-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.6);
+  --shadow-dark-card: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+  --shadow-dark-card-hover: 0 10px 25px -5px rgb(0 0 0 / 0.5), 0 4px 10px -6px rgb(0 0 0 / 0.4);
+  --shadow-dark-sidebar: 4px 0 24px 0 rgb(0 0 0 / 0.4);
+  --shadow-dark-modal: 0 25px 50px -12px rgb(0 0 0 / 0.6);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
   --radius-card: 0.875rem;
+
+  /* Spacing */
+  --spacing-page: 32px;
+  --spacing-section: 24px;
+  --spacing-card: 20px;
+  --spacing-element: 12px;
 }
 
 :root {
-  --surface-card: #ffffff;
-  --surface-muted: #f8f9fa;
-  --border-subtle: rgba(0, 0, 0, 0.08);
+  --surface-card: var(--color-surface);
+  --surface-muted: var(--color-bg-muted);
+  --border-subtle: var(--color-border);
   --mantine-color-default-border: var(--border-subtle);
+  --mantine-color-body: var(--color-bg);
 }
 
 [data-mantine-color-scheme="dark"] {
-  --surface-card: #1c1c2b;
-  --surface-muted: #16161f;
-  --border-subtle: rgba(255, 255, 255, 0.06);
+  --surface-card: var(--color-dark-surface);
+  --surface-muted: var(--color-dark-bg-muted);
+  --border-subtle: var(--color-dark-border);
   --mantine-color-default-border: var(--border-subtle);
+  --mantine-color-body: var(--color-dark-bg);
 }
 
 html,
@@ -24,32 +97,25 @@ body {
   height: 100%;
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Card & Paper subtle default shadow ── */
+/* ── Card & Paper ── */
 
 .mantine-Paper-root:where([data-with-border]),
 .mantine-Card-root:where([data-with-border]) {
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  box-shadow: var(--shadow-card);
+  border-color: var(--border-subtle);
 }
 
-/* ── Premium Sidebar ── */
-
-.sd-navbar {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  background: var(--mantine-color-body);
-  border-right: 1px solid var(--mantine-color-default-border);
-  overflow: hidden;
+[data-mantine-color-scheme="dark"] .mantine-Paper-root:where([data-with-border]),
+[data-mantine-color-scheme="dark"] .mantine-Card-root:where([data-with-border]) {
+  box-shadow: var(--shadow-dark-card);
 }
 
-.sd-content {
-  user-select: none;
-  overflow: hidden;
-}
+/* ── Scrollbar ── */
 
-/* Scrollbar */
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
@@ -95,7 +161,23 @@ body {
   background: var(--mantine-color-dark-3);
 }
 
-/* Premium nav item styles */
+/* ── Premium Sidebar ── */
+
+.sd-navbar {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--mantine-color-body);
+  border-right: 1px solid var(--mantine-color-default-border);
+  overflow: hidden;
+}
+
+.sd-content {
+  user-select: none;
+  overflow: hidden;
+}
+
+/* Nav item */
 .sd-nav-item {
   position: relative;
   border-radius: 8px;
@@ -110,7 +192,7 @@ body {
   background: rgba(255, 255, 255, 0.04);
 }
 
-/* Active nav item — refined pill with glow */
+/* Active nav item */
 .sd-nav-active {
   position: relative;
   background: rgba(59, 130, 246, 0.08);
@@ -138,7 +220,6 @@ body {
   box-shadow: 0 0 8px rgba(96, 165, 250, 0.3);
 }
 
-/* Active icon color refinement */
 .sd-nav-active-icon {
   color: #3b82f6;
 }
@@ -147,7 +228,6 @@ body {
   color: #60a5fa;
 }
 
-/* Group label styling */
 .sd-group-label {
   font-size: 10px;
   font-weight: 700;
@@ -162,7 +242,6 @@ body {
   color: var(--mantine-color-dark-2);
 }
 
-/* Brand logo glow */
 .sd-brand-logo {
   position: relative;
   isolation: isolate;
@@ -181,6 +260,19 @@ body {
 
 .sd-brand-logo:hover::after {
   opacity: 1;
+}
+
+/* Sidebar */
+.sidebar-navbar {
+  overflow: hidden;
+  border-right: 1px solid var(--mantine-color-default-border);
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+.pin-button:hover {
+  color: var(--mantine-color-blue-6);
 }
 
 /* ── Auth Layout ── */
@@ -213,7 +305,6 @@ body {
   background: linear-gradient(180deg, #f8f9fc 0%, #f0f2f8 50%, #f8f9fc 100%);
 }
 
-/* Grid overlay */
 .auth-grid {
   position: fixed;
   inset: 0;
@@ -237,20 +328,6 @@ body {
   background-size: 64px 64px;
   mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 70%);
   -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 50%, black 20%, transparent 70%);
-}
-
-/* Sidebar — Mantine handles transform + padding transitions natively via --app-shell-transition-* vars */
-.sidebar-navbar {
-  overflow: hidden;
-  border-right: 1px solid var(--mantine-color-default-border);
-  display: flex;
-  flex-direction: column;
-  background: transparent;
-}
-
-/* Pinned icon hover state */
-.pin-button:hover {
-  color: var(--mantine-color-blue-6);
 }
 
 /* ── Mobile Bottom Navigation ── */
@@ -465,23 +542,19 @@ body {
     height: 0;
   }
 
-  /* Selected node */
   .ProseMirror-selectednode {
     outline: 2px solid var(--mantine-color-blue-6);
     border-radius: 4px;
   }
 
-  /* Focus outline */
   &:focus { outline: none; }
 
-  /* Selection highlight */
   ::selection {
     background: var(--mantine-color-blue-6);
     color: white;
   }
 }
 
-/* Table resize cursor */
 .ProseMirror .tableWrapper {
   overflow-x: auto;
 }
@@ -500,4 +573,36 @@ body {
 .resize-cursor {
   cursor: ew-resize;
   cursor: col-resize;
+}
+
+/* ── Animation keyframes ── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }

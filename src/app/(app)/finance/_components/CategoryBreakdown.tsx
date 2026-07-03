@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Group, Stack, Text, Progress, ThemeIcon } from "@mantine/core";
+import { Group, Stack, Text, Progress, ThemeIcon } from "@mantine/core";
 import { motion } from "framer-motion";
 import {
   IconDots,
@@ -18,6 +18,7 @@ import {
   type TablerIcon,
 } from "@tabler/icons-react";
 import type { CategoryItem, CategoryBreakdownProps } from "@/modules/expenses";
+import { PremiumCard } from "@/components/ui/card";
 
 const ICON_MAP: Record<string, TablerIcon> = {
   IconToolsKitchen2,
@@ -39,59 +40,74 @@ function getIcon(iconName: string | null): TablerIcon {
   return ICON_MAP[iconName] ?? IconDots;
 }
 
+const COLOR_MAP: Record<string, string> = {
+  food: "orange",
+  transport: "blue",
+  shopping: "violet",
+  entertainment: "grape",
+  health: "red",
+  education: "cyan",
+  bills: "yellow",
+  travel: "teal",
+  housing: "pink",
+  income: "green",
+  gifts: "indigo",
+};
+
+function getColor(name: string): string {
+  return COLOR_MAP[name.toLowerCase()] ?? "gray";
+}
+
 export function CategoryBreakdown({ data, totalSpending }: CategoryBreakdownProps) {
+  const total = data.reduce((acc, c) => acc + c.total, 0);
+
   return (
-    <Card padding="lg" radius="lg" h="100%">
-      <Stack gap="md">
+    <PremiumCard className="h-full">
+      <Stack gap="md" h="100%">
         <Text fw={600} size="lg">
-          Spending by Category
+          Category Breakdown
         </Text>
-        <Stack gap="sm">
-          {data.map((item, index) => {
-            const percentage = totalSpending > 0 ? (item.total / totalSpending) * 100 : 0;
-            const Icon = getIcon(item.categoryIcon);
+
+        <Stack gap="sm" style={{ flex: 1 }}>
+          {data.map((category, index) => {
+            const pct = total > 0 ? (category.total / total) * 100 : 0;
+            const Icon = getIcon(category.categoryIcon);
+            const color = getColor(category.categoryName ?? "other");
 
             return (
               <motion.div
-                key={item.categoryId ?? `uncategorized-${index}`}
-                initial={{ opacity: 0, x: -20 }}
+                key={category.categoryId ?? index}
+                initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.2, delay: index * 0.05 }}
+                transition={{ duration: 0.2, delay: index * 0.03 }}
               >
-                <Group gap="sm" align="center">
-                  <ThemeIcon
-                    size={36}
-                    radius="md"
-                    variant="light"
-                    color={item.categoryColor ?? "gray"}
-                  >
-                    <Icon size={18} />
+                <Group gap="sm" wrap="nowrap">
+                  <ThemeIcon size={32} radius="lg" variant="light" color={color as any}>
+                    <Icon size={14} />
                   </ThemeIcon>
-                  <Stack gap={4} style={{ flex: 1 }}>
-                    <Group justify="space-between">
-                      <Text size="sm" fw={500}>
-                        {item.categoryName ?? "Uncategorized"}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <Group justify="space-between" mb={2}>
+                      <Text size="sm" fw={500} truncate>
+                        {category.categoryName ?? "Uncategorized"}
                       </Text>
                       <Text size="sm" fw={600}>
-                        ₹{item.total.toLocaleString()}
+                        ₹{Number(category.total).toLocaleString()}
                       </Text>
                     </Group>
                     <Progress
-                      value={percentage}
-                      color={item.categoryColor ?? "gray"}
+                      value={pct}
+                      color={color as any}
                       size="sm"
-                      radius="xl"
+                      radius="lg"
+                      animated
                     />
-                    <Text size="xs" c="dimmed">
-                      {percentage.toFixed(1)}% · {item.count} transactions
-                    </Text>
-                  </Stack>
+                  </div>
                 </Group>
               </motion.div>
             );
           })}
         </Stack>
       </Stack>
-    </Card>
+    </PremiumCard>
   );
 }
