@@ -1,14 +1,17 @@
 "use client";
 
-import { Container, Grid, Group, Stack, Text, Title, Button, Skeleton } from "@mantine/core";
+import { Grid, Group, Stack, Text, SimpleGrid, Button } from "@mantine/core";
 import { IconPlus, IconCoin, IconTrendingUp, IconWallet, IconReceipt } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import dayjs from "dayjs";
+import { motion } from "framer-motion";
 import { MetricCard } from "./MetricCard";
 import { SpendingTimeline } from "./SpendingTimeline";
 import { CategoryBreakdown } from "./CategoryBreakdown";
 import { QuickAddModal } from "./QuickAddModal";
+
+import { StatGridSkeleton, ChartSkeleton } from "@/components/ui/loading-skeleton";
 import type { OverviewData } from "@/modules/expenses";
 
 export default function DashboardTab() {
@@ -26,9 +29,7 @@ export default function DashboardTab() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const recentMerchants = data?.topMerchants.map((m) => m.merchant) ?? [];
-
-  const categoryOptions = (data?.categories ?? []).map((c) => ({
+  const categoryOptions = (data?.categories ?? []).map((c: any) => ({
     value: c.id,
     label: c.name,
   }));
@@ -40,36 +41,40 @@ export default function DashboardTab() {
 
   if (isLoading) {
     return (
-      <Container size="xl">
-        <Stack gap="md">
-          <Skeleton height={40} width={300} />
-          <Grid>
-            {[1, 2, 3, 4].map((i) => (
-              <Grid.Col key={i} span={{ base: 12, sm: 6, md: 3 }}>
-                <Skeleton height={140} radius="lg" />
-              </Grid.Col>
-            ))}
-          </Grid>
-          <Skeleton height={320} radius="lg" />
-          <Skeleton height={400} radius="lg" />
-        </Stack>
-      </Container>
+      <Stack gap="lg">
+        <StatGridSkeleton count={4} />
+        <ChartSkeleton height={300} />
+        <ChartSkeleton height={350} />
+      </Stack>
     );
   }
 
   const s = data!.summary;
-  const timeline = data!.timeline.map((d) => ({ date: d.date, total: Number(d.total) }));
-  const categoryData = data!.categoryBreakdown.map((c) => ({
+  const timeline = data!.timeline.map((d: any) => ({ date: d.date, total: Number(d.total) }));
+  const categoryData = data!.categoryBreakdown.map((c: any) => ({
     ...c,
     total: Number(c.total),
   }));
 
+  const metrics = [
+    { label: "Monthly Spending", value: `₹${Number(s.monthlySpending).toLocaleString()}`, subtitle: "This month", icon: IconCoin, color: "red" },
+    { label: "Monthly Income", value: `₹${Number(s.monthlyIncome).toLocaleString()}`, subtitle: "This month", icon: IconTrendingUp, color: "green" },
+    { label: "Savings Rate", value: `${Math.round(s.savingsRate)}%`, subtitle: "This month", icon: IconWallet, color: "blue" },
+    { label: "Transactions", value: String(s.transactionCount), subtitle: "This month", icon: IconReceipt, color: "violet" },
+  ];
+
   return (
-    <Container size="xl">
-      <Stack gap="lg">
-        <Group justify="space-between">
+    <Stack gap="lg">
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+      >
+        <Group justify="space-between" mb="sm">
           <div>
-            <Title order={2}>Finance Overview</Title>
+            <Text fw={700} className="text-xl tracking-tight">
+              Overview
+            </Text>
             <Text c="dimmed" size="sm">
               {dayjs().format("MMMM YYYY")}
             </Text>
@@ -78,62 +83,39 @@ export default function DashboardTab() {
             leftSection={<IconPlus size={16} />}
             onClick={() => setQuickAddOpened(true)}
             radius="xl"
-            size="md"
           >
-            Add Expense
+            Add Transaction
           </Button>
         </Group>
+      </motion.div>
 
-        <Grid>
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }}>
+        {metrics.map((m, i) => (
+          <motion.div
+            key={m.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: i * 0.05, ease: [0.4, 0, 0.2, 1] }}
+          >
             <MetricCard
-              label="Monthly Spending"
-              value={`₹${s.monthlySpending.toLocaleString()}`}
-              subtitle={`${s.transactionCount} transactions`}
-              icon={IconCoin}
-              color="red"
+              label={m.label}
+              value={m.value}
+              subtitle={m.subtitle}
+              icon={m.icon}
+              color={m.color}
             />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <MetricCard
-              label="Monthly Income"
-              value={`₹${s.monthlyIncome.toLocaleString()}`}
-              icon={IconTrendingUp}
-              color="green"
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <MetricCard
-              label="Savings Rate"
-              value={`${s.savingsRate.toFixed(1)}%`}
-              subtitle="of income saved"
-              icon={IconWallet}
-              color={s.savingsRate >= 0 ? "blue" : "red"}
-              trend={{
-                value: s.savingsRate >= 20 ? "On track" : s.savingsRate >= 0 ? "Needs improvement" : "Overspending",
-                positive: s.savingsRate >= 20,
-              }}
-            />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-            <MetricCard
-              label="Avg Daily Spend"
-              value={`₹${s.averageDailySpend.toLocaleString()}`}
-              icon={IconReceipt}
-              color="violet"
-            />
-          </Grid.Col>
-        </Grid>
+          </motion.div>
+        ))}
+      </SimpleGrid>
 
-        <Grid>
-          <Grid.Col span={{ base: 12, md: 8 }}>
-            <SpendingTimeline data={timeline} />
-          </Grid.Col>
-          <Grid.Col span={{ base: 12, md: 4 }}>
-            <CategoryBreakdown data={categoryData} totalSpending={s.monthlySpending} />
-          </Grid.Col>
-        </Grid>
-      </Stack>
+      <Grid>
+        <Grid.Col span={{ base: 12, md: 7 }}>
+          <SpendingTimeline data={timeline} />
+        </Grid.Col>
+        <Grid.Col span={{ base: 12, md: 5 }}>
+          <CategoryBreakdown data={categoryData} totalSpending={s.monthlySpending} />
+        </Grid.Col>
+      </Grid>
 
       <QuickAddModal
         opened={quickAddOpened}
@@ -141,6 +123,6 @@ export default function DashboardTab() {
         categories={categoryOptions}
         accounts={accountOptions}
       />
-    </Container>
+    </Stack>
   );
 }

@@ -6,6 +6,7 @@ export {
   updateJournalEntry,
   deleteJournalEntry,
   getJournalStats,
+  getJournalCoverageForUser,
 } from "./service";
 export type { CreateEntryParams, UpdateEntryParams, JournalFiltersParams } from "./service";
 export type { JournalEntry } from "./repository";

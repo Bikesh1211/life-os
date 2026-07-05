@@ -12,7 +12,7 @@ type Props = {
 
 export function StatCard({ label, value, icon, trend }: Props) {
   return (
-    <motion.div whileHover={{ y: -2 }} className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] p-4 transition-colors hover:border-[var(--mantine-color-dark-3,#373a40)]">
+    <motion.div whileHover={{ y: -2 }} className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 transition-all hover:shadow-md">
       <Group justify="space-between" mb={4}>
         <Text size="xs" c="dimmed" tt="uppercase" fw={600}>{label}</Text>
         <Box c="dimmed">{icon}</Box>

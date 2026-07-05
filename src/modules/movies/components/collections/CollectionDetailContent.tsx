@@ -104,7 +104,7 @@ export function CollectionDetailContent() {
           rightSection={searching ? <Loader size="xs" /> : null}
         />
         {searchResults.length > 0 && (
-          <div className="mt-2 max-h-60 space-y-1 overflow-y-auto rounded-lg border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-dark-6)] p-1">
+          <div className="mt-2 max-h-60 space-y-1 overflow-y-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--mantine-color-dark-6)] p-1">
             {searchResults.map((r: any) => {
               const compId = `${r.mediaType}-${r.tmdbId}`;
               const alreadyAdded = existingMediaIds.has(compId);
@@ -139,7 +139,7 @@ export function CollectionDetailContent() {
       {collection.items?.length > 0 ? (
         <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 5 }} spacing="md">
           {collection.items.map((item: any) => (
-            <div key={item.id} className="group relative overflow-hidden rounded-xl border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-dark-6)] transition-colors hover:border-[var(--mantine-color-dark-3)]">
+            <div key={item.id} className="group relative overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] transition-all hover:shadow-md">
               <Link href={`/movies/media/${item.mediaId}`} className="no-underline">
                 {item.mediaPosterUrl ? (
                   <img src={item.mediaPosterUrl} alt="" className="aspect-[2/3] w-full object-cover" />

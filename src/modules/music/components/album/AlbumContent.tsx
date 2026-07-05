@@ -202,7 +202,7 @@ export function AlbumContent({ idPromise }: { idPromise: Promise<{ id: string }>
 
           <section>
             <SectionHeading title="Tracklist" />
-            <div className="overflow-hidden rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)]">
+            <div className="overflow-hidden rounded-xl border border-[var(--border-subtle)]">
               {data.tracks.length === 0 && (
                 <p className="p-4 text-sm text-[var(--mantine-color-dimmed,#5c5f66)]">No tracks yet.</p>
               )}

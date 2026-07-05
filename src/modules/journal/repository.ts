@@ -180,6 +180,26 @@ export async function getMoodDistribution(userId: string, days: number) {
   return results;
 }
 
+export async function getJournalCoverage(userId: string) {
+  const dateCol = sql`COALESCE(${journalEntries.eventDate}, ${journalEntries.createdAt})`;
+  const results = await db
+    .select({
+      year: sql<number>`EXTRACT(YEAR FROM ${dateCol})`,
+      month: sql<number>`EXTRACT(MONTH FROM ${dateCol})`,
+    })
+    .from(journalEntries)
+    .where(and(eq(journalEntries.userId, userId), isNull(journalEntries.deletedAt)))
+    .groupBy(
+      sql`EXTRACT(YEAR FROM ${dateCol})`,
+      sql`EXTRACT(MONTH FROM ${dateCol})`,
+    )
+    .orderBy(
+      asc(sql`EXTRACT(YEAR FROM ${dateCol})`),
+      asc(sql`EXTRACT(MONTH FROM ${dateCol})`),
+    );
+  return results.map((r) => ({ year: r.year, month: r.month }));
+}
+
 export async function getCommonTags(userId: string, limit = 10) {
   const results = await db
     .select({

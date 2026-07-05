@@ -25,7 +25,7 @@ export function ProfileHero({
   const joinYear = createdAt?.getFullYear() ?? "—";
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-[var(--mantine-color-dark-4)] bg-gradient-to-br from-[var(--mantine-color-dark-8)] via-[var(--mantine-color-dark-7)] to-[var(--mantine-color-dark-8)] p-4 sm:p-5">
+    <div className="relative overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-gradient-to-br from-[var(--mantine-color-dark-8)] via-[var(--mantine-color-dark-7)] to-[var(--mantine-color-dark-8)] p-4 sm:p-5">
       <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-gradient-to-br from-yellow-500/10 to-orange-500/5 blur-3xl" />
       <div className="absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-gradient-to-tr from-blue-500/10 to-cyan-500/5 blur-3xl" />
 

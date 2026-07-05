@@ -66,7 +66,7 @@ export function AddToCollectionButton({ entityType, entityId }: { entityType: "t
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] p-2 shadow-xl">
+        <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-2 shadow-xl">
           {list.length === 0 ? (
             <p className="px-2 py-3 text-center text-sm text-[var(--mantine-color-dimmed,#5c5f66)]">
               No collections yet

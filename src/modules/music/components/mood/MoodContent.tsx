@@ -124,7 +124,7 @@ export function MoodContent() {
               initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.02 }}
-              className="flex items-center gap-4 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] p-4"
+              className="flex items-center gap-4 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4"
             >
               <span className="text-2xl">{moodEmojis[entry.mood] || "💭"}</span>
               <div className="min-w-0 flex-1">

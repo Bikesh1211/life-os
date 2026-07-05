@@ -2,7 +2,7 @@
 
 import { useCallback, lazy, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Tabs, Skeleton, Stack } from "@mantine/core";
+import { Tabs, Stack } from "@mantine/core";
 import {
   IconDashboard,
   IconArrowsLeftRight,
@@ -11,6 +11,8 @@ import {
   IconRepeat,
   IconReportAnalytics,
 } from "@tabler/icons-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { CardGridSkeleton } from "@/components/ui/loading-skeleton";
 
 const DashboardTab = lazy(() => import("./DashboardTab"));
 const TransactionsTab = lazy(() => import("./TransactionsTab"));
@@ -29,13 +31,7 @@ const tabs = [
 ];
 
 function TabFallback() {
-  return (
-    <Stack gap="md">
-      <Skeleton height={40} width={300} />
-      <Skeleton height={140} />
-      <Skeleton height={320} />
-    </Stack>
-  );
+  return <CardGridSkeleton count={2} height={200} />;
 }
 
 export function FinanceContent() {
@@ -59,58 +55,64 @@ export function FinanceContent() {
   );
 
   return (
-    <Tabs
-      value={activeTab}
-      onChange={handleTabChange}
-      keepMounted={false}
-    >
-      <Tabs.List mb="lg">
-        {tabs.map((tab) => (
-          <Tabs.Tab
-            key={tab.value}
-            value={tab.value}
-            leftSection={<tab.icon size={18} />}
-          >
-            {tab.label}
-          </Tabs.Tab>
-        ))}
-      </Tabs.List>
+    <Stack gap="lg">
+      <PageHeader title="Finance" subtitle="Manage your money, budgets, and accounts" />
 
-      <Tabs.Panel value="dashboard">
-        <Suspense fallback={<TabFallback />}>
-          <DashboardTab />
-        </Suspense>
-      </Tabs.Panel>
+      <Tabs
+        value={activeTab}
+        onChange={handleTabChange}
+        keepMounted={false}
+        variant="pills"
+        radius="lg"
+      >
+        <Tabs.List mb="lg">
+          {tabs.map((tab) => (
+            <Tabs.Tab
+              key={tab.value}
+              value={tab.value}
+              leftSection={<tab.icon size={18} />}
+            >
+              {tab.label}
+            </Tabs.Tab>
+          ))}
+        </Tabs.List>
 
-      <Tabs.Panel value="transactions">
-        <Suspense fallback={<TabFallback />}>
-          <TransactionsTab />
-        </Suspense>
-      </Tabs.Panel>
+        <Tabs.Panel value="dashboard">
+          <Suspense fallback={<TabFallback />}>
+            <DashboardTab />
+          </Suspense>
+        </Tabs.Panel>
 
-      <Tabs.Panel value="budgets">
-        <Suspense fallback={<TabFallback />}>
-          <BudgetsTab />
-        </Suspense>
-      </Tabs.Panel>
+        <Tabs.Panel value="transactions">
+          <Suspense fallback={<TabFallback />}>
+            <TransactionsTab />
+          </Suspense>
+        </Tabs.Panel>
 
-      <Tabs.Panel value="accounts">
-        <Suspense fallback={<TabFallback />}>
-          <AccountsTab />
-        </Suspense>
-      </Tabs.Panel>
+        <Tabs.Panel value="budgets">
+          <Suspense fallback={<TabFallback />}>
+            <BudgetsTab />
+          </Suspense>
+        </Tabs.Panel>
 
-      <Tabs.Panel value="subscriptions">
-        <Suspense fallback={<TabFallback />}>
-          <SubscriptionsTab />
-        </Suspense>
-      </Tabs.Panel>
+        <Tabs.Panel value="accounts">
+          <Suspense fallback={<TabFallback />}>
+            <AccountsTab />
+          </Suspense>
+        </Tabs.Panel>
 
-      <Tabs.Panel value="analytics">
-        <Suspense fallback={<TabFallback />}>
-          <AnalyticsTab />
-        </Suspense>
-      </Tabs.Panel>
-    </Tabs>
+        <Tabs.Panel value="subscriptions">
+          <Suspense fallback={<TabFallback />}>
+            <SubscriptionsTab />
+          </Suspense>
+        </Tabs.Panel>
+
+        <Tabs.Panel value="analytics">
+          <Suspense fallback={<TabFallback />}>
+            <AnalyticsTab />
+          </Suspense>
+        </Tabs.Panel>
+      </Tabs>
+    </Stack>
   );
 }

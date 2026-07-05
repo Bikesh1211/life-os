@@ -47,7 +47,7 @@ export function MemoryCard({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4, ease: "easeOut" }}
-      className="group overflow-hidden rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] transition-colors hover:border-[var(--mantine-color-dark-3,#373a40)]"
+      className="group overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] transition-all hover:shadow-md"
     >
       {photoUrls.length > 0 && (
         <div className={`grid gap-0.5 ${photoUrls.length === 1 ? "" : photoUrls.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
@@ -159,7 +159,7 @@ export function MemoryCard({
         </div>
 
         {(onEdit || onDelete) && (
-          <div className="mt-3 flex gap-2 border-t border-[var(--mantine-color-dark-4,#2e2f33)] pt-3 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="mt-3 flex gap-2 border-t border-[var(--border-subtle)] pt-3 opacity-0 transition-opacity group-hover:opacity-100">
             {onEdit && (
               <button
                 onClick={(e) => { e.preventDefault(); onEdit(id); }}

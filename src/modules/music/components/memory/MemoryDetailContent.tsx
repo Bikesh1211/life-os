@@ -139,7 +139,7 @@ export function MemoryDetailContent({ idPromise }: { idPromise: Promise<{ id: st
               >
                 <Link
                   href={`/music/song/${song.trackId}`}
-                  className="flex items-center gap-3 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]"
+                  className="flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3 transition-all hover:shadow-md"
                 >
                   {song.trackImageUrl ? (
                     <img

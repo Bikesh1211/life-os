@@ -276,7 +276,7 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
         {data.albumTitle && (
           <Link
             href={`/music/albums/${data.albumId}`}
-            className="mb-6 flex items-center gap-3 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]"
+            className="mb-6 flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 transition-all hover:shadow-md"
           >
             {data.albumCoverUrl && (
               <img
@@ -300,7 +300,7 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
                 <Link
                   key={col.id}
                   href={`/music/collections/${col.id}`}
-                  className="flex items-center gap-3 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-3 transition-colors hover:bg-[var(--mantine-color-dark-5,#25262b)]"
+                  className="flex items-center gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-3 transition-all hover:shadow-md"
                 >
                   <IconFolder size={18} className="shrink-0 text-[var(--mantine-color-dimmed,#5c5f66)]" />
                   <div>
@@ -328,7 +328,7 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4"
                   >
                     {entry.mood && (
                       <span className="mb-2 inline-block rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/70">
@@ -357,7 +357,7 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4"
+                    className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4"
                   >
                     <div className="mb-2 flex items-center gap-2 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">
                       <IconClock size={12} />
@@ -400,7 +400,7 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
                 key={note.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex items-start gap-3 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4"
+                className="flex items-start gap-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4"
               >
                 <IconNote size={16} className="mt-0.5 shrink-0 text-[var(--mantine-color-dimmed,#5c5f66)]" />
                 <div className="flex-1 min-w-0">

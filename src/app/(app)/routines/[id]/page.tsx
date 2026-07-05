@@ -192,7 +192,7 @@ export default function RoutineDetailPage() {
                   <Group
                     key={item.id}
                     gap="md"
-                    className={`py-2 ${idx < sortedItems.length - 1 ? "border-b border-[var(--mantine-color-dark-5)]" : ""}`}
+                    className={`py-2 ${idx < sortedItems.length - 1 ? "border-b border-[var(--border-subtle)]" : ""}`}
                     wrap="nowrap"
                   >
                     <Text size="sm" fw={500} className="w-20 shrink-0" c="dimmed">

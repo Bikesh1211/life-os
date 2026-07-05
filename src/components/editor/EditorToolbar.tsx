@@ -88,7 +88,7 @@ export function EditorToolbar({ editor }: ToolbarSectionProps) {
   }
 
   return (
-    <div className="sticky top-0 z-10 border-b border-[var(--mantine-color-dark-5)] bg-[var(--mantine-color-body)] px-1 sm:px-2 py-1">
+    <div className="sticky top-0 z-10 border-b border-[var(--border-subtle)] bg-[var(--mantine-color-body)] px-1 sm:px-2 py-1">
       <Group gap={2} wrap="wrap">
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}

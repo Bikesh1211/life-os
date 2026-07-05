@@ -50,7 +50,7 @@ export function MemoryRewind() {
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] p-4"
+      className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4"
     >
       <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--mantine-color-text,#c1c2c5)]">
         <IconClock size={16} />

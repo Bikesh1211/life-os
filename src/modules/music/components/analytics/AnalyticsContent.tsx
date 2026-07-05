@@ -134,7 +134,7 @@ export function AnalyticsContent() {
         <section>
           <SectionHeading title="Year in Review" />
           <div className="grid grid-cols-3 gap-4">
-            <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 text-center">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 text-center">
               <p className="text-2xl font-bold text-[var(--mantine-color-text,#c1c2c5)]">
                 {data.yearlyStats.totalSongs}
               </p>
@@ -142,7 +142,7 @@ export function AnalyticsContent() {
                 Songs
               </p>
             </div>
-            <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 text-center">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 text-center">
               <p className="text-2xl font-bold text-[var(--mantine-color-text,#c1c2c5)]">
                 {data.yearlyStats.uniqueArtists}
               </p>
@@ -150,7 +150,7 @@ export function AnalyticsContent() {
                 Artists
               </p>
             </div>
-            <div className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 text-center">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 text-center">
               <p className="text-2xl font-bold text-[var(--mantine-color-text,#c1c2c5)]">
                 {data.yearlyStats.uniqueAlbums}
               </p>
@@ -171,7 +171,7 @@ export function AnalyticsContent() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.04 }}
-                  className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] p-4 text-center"
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] p-4 text-center"
                 >
                   <p className="text-lg font-bold text-[var(--mantine-color-text,#c1c2c5)]">
                     {m.count}

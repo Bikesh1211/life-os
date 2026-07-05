@@ -141,7 +141,7 @@ export function MemoryCreateModal({ opened, onClose, onSuccess, memory }: Props)
             rightSection={searching ? <Loader size="xs" /> : null}
           />
           {searchResults.length > 0 && !selectedMedia && (
-            <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-lg border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-dark-6)] p-1">
+            <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-lg border border-[var(--border-subtle)] bg-[var(--mantine-color-dark-6)] p-1">
               {searchResults.map((r) => (
                 <button
                   key={`${r.mediaType}-${r.id}`}
@@ -183,7 +183,7 @@ export function MemoryCreateModal({ opened, onClose, onSuccess, memory }: Props)
             value={context}
             onChange={(e) => setContext(e.currentTarget.value)}
             placeholder="Describe this memory..."
-            className="w-full rounded-lg border border-[var(--mantine-color-dark-4)] bg-[var(--mantine-color-dark-6)] p-3 text-sm text-[var(--mantine-color-text)] placeholder-[var(--mantine-color-dimmed)] outline-none"
+            className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--mantine-color-dark-6)] p-3 text-sm text-[var(--mantine-color-text)] placeholder-[var(--mantine-color-dimmed)] outline-none"
             rows={4}
           />
         </div>

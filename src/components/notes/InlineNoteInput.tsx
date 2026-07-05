@@ -79,7 +79,7 @@ export function InlineNoteInput() {
   return (
     <div ref={containerRef} className="mb-6">
       <div
-        className={`rounded-xl border border-[var(--mantine-color-dark-5)] transition-all ${
+        className={`rounded-xl border border-[var(--border-subtle)] transition-all ${
           expanded ? "shadow-md" : "hover:shadow-sm"
         }`}
         style={{ backgroundColor: color ? NOTE_COLORS.find((c) => c.value === color)?.className.split(" ")[0] || undefined : "var(--mantine-color-body)" }}

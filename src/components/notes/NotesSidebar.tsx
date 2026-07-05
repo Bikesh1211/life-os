@@ -43,7 +43,7 @@ export function NotesSidebar() {
   return (
     <Paper
       withBorder={false}
-      className="flex-col w-60 shrink-0 border-r border-[var(--mantine-color-dark-5)] h-full"
+      className="flex-col w-60 shrink-0 border-r border-[var(--border-subtle)] h-full"
       style={{ background: "var(--mantine-color-body)" }}
     >
       <ScrollArea className="flex-1 px-2 py-3">

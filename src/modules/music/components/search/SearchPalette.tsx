@@ -77,11 +77,11 @@ export function SearchPalette() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-dark-6,#1a1b1e)] px-4 py-2.5 text-sm text-[var(--mantine-color-dimmed,#5c5f66)] transition-colors hover:border-[var(--mantine-color-dark-3,#373a40)] hover:text-white"
+        className="flex items-center gap-2 rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-muted)] px-4 py-2.5 text-sm text-[var(--mantine-color-dimmed,#5c5f66)] transition-all hover:shadow-md hover:text-white"
       >
         <IconSearch size={16} />
         Search music...
-        <kbd className="ml-auto rounded-md border border-[var(--mantine-color-dark-4,#2e2f33)] px-1.5 py-0.5 text-[11px]">
+        <kbd className="ml-auto rounded-md border border-[var(--border-subtle)] px-1.5 py-0.5 text-[11px]">
           ⌘K
         </kbd>
       </button>
@@ -103,8 +103,8 @@ export function SearchPalette() {
               transition={{ duration: 0.15 }}
               className="fixed left-1/2 top-[15%] z-50 w-full max-w-lg -translate-x-1/2"
             >
-              <div className="overflow-hidden rounded-2xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] shadow-2xl">
-                <div className="flex items-center gap-3 border-b border-[var(--mantine-color-dark-4,#2e2f33)] px-4">
+              <div className="overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] shadow-2xl">
+                <div className="flex items-center gap-3 border-b border-[var(--border-subtle)] px-4">
                   <IconSearch size={18} className="text-[var(--mantine-color-dimmed,#5c5f66)]" />
                   <input
                     ref={inputRef}
@@ -149,7 +149,7 @@ export function SearchPalette() {
                     No results found
                   </div>
                 )}
-                <div className="border-t border-[var(--mantine-color-dark-4,#2e2f33)] px-4 py-2 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">
+                <div className="border-t border-[var(--border-subtle)] px-4 py-2 text-xs text-[var(--mantine-color-dimmed,#5c5f66)]">
                   ↑↓ Navigate · Enter Select · Esc Close
                 </div>
               </div>

@@ -91,7 +91,7 @@ export function AnalyticsOverviewCards({ data }: Props) {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: i * 0.04, ease: "easeOut" }}
-            className="rounded-xl border border-[var(--mantine-color-dark-4,#2e2f33)] bg-[var(--mantine-color-body,#0a0a0f)] p-4 transition-colors hover:border-[var(--mantine-color-dark-3,#373a40)]"
+            className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 transition-all hover:shadow-md"
           >
             <div className="flex items-start justify-between">
               <div>
