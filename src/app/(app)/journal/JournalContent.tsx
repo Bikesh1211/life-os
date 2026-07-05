@@ -10,6 +10,7 @@ import {
   IconChartBar,
   IconPin,
   IconHistory,
+  IconBook2,
   IconPlus,
 } from "@tabler/icons-react";
 import { StoryView } from "../timeline/components/StoryView";
@@ -19,6 +20,7 @@ import { JournalCardsPanel } from "./components/JournalCardsPanel";
 import { CalendarView } from "./components/CalendarView";
 import { InsightsPanel } from "./components/InsightsPanel";
 import { TimelineContent as JournalTimelineView } from "./timeline/TimelineContent";
+import { BookView } from "./components/book-view/BookView";
 import type { JournalEntry } from "@/modules/journal";
 
 type JournalStats = {
@@ -73,6 +75,10 @@ export function JournalContent({ entries, streak, stats, defaultTab = "browse" }
 
   const pinnedEntries = localEntries.filter((e) => e.isPinned);
 
+  if (activeTab === "book") {
+    return <BookView onClose={() => handleTabChange("browse")} />;
+  }
+
   return (
     <>
       <Stack gap="md">
@@ -109,6 +115,9 @@ export function JournalContent({ entries, streak, stats, defaultTab = "browse" }
             </Tabs.Tab>
             <Tabs.Tab value="insights" leftSection={<IconChartBar size={16} />}>
               Insights
+            </Tabs.Tab>
+            <Tabs.Tab value="book" leftSection={<IconBook2 size={16} />}>
+              Book View
             </Tabs.Tab>
           </Tabs.List>
 

@@ -18,6 +18,15 @@ A person who authenticates with Supabase Auth and owns their data. `userId` is t
 
 *Avoid*: Account (when referring to user identity — use Supabase Auth instead), customer, member
 
+**Journal** (plugin):
+The personal journaling & reflection plugin at `src/modules/journal/`. Route group is `/journal/*`. Feature ID is `journal`. Owns all journal data — entries, insights, reflections. Sub-routes: Story (`/journal?tab=story`), Browse (`/journal?tab=browse`), Timeline (`/journal?tab=timeline`), Calendar (`/journal?tab=calendar`), Pinned (`/journal?tab=pinned`), Insights (`/journal?tab=insights`), Book View (`/journal?tab=book`). The journal editor uses Tiptap with ProseMirror JSON content format.
+
+**Journal Entry**:
+A written personal reflection owned by a User. Contains `title`, `content` (ProseMirror JSON text, returned as rendered HTML for read-only views), `mood` (happy/sad/neutral/anxious/stressed/motivated/excited), `tags` (text array), `reflectionScore` (1-10), `isPinned`, `isPrivate` (defaults true), optional `eventDate` (for backdated entries), and `createdAt`/`updatedAt` timestamps. Soft-deleted via `deletedAt`. Every entry is scoped to a `userId`. When created, a corresponding Timeline Event is automatically created via the Timeline service layer.
+
+**Journal Book View**:
+A read-only view mode within the Journal plugin that renders journal entries as a realistic digital diary. Displays entries in chronological order (oldest → newest), grouped by date, in a two-page spread on desktop (single page on mobile). Uses `react-pageflip` for 3D page curl animation. Features a floating bottom toolbar with navigation (prev/next, sequential page numbers, progress bar), search & filter overlay, collapsible timeline drawer (year/month navigation), and statistics panel. Supports dark/light mode with adaptive page colors, handwritten font toggle (Caveat from Google Fonts), and keyboard shortcuts. Reading position is persisted to localStorage with optional URL date param for deep-linking. Data is loaded year-by-year from the existing `/api/journal` endpoint with coverage metadata from a dedicated `/api/journal/coverage` endpoint.
+
 **Financial Account**:
 A financial institution account or wallet owned by a User. Examples: bank account, credit card, cash wallet, UPI, PayPal. Not a user identity concept — distinct from the Clerk-based User model. Every Financial Account is scoped to a `userId`. Managed by the Expenses plugin.
 

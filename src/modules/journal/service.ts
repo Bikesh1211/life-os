@@ -11,6 +11,7 @@ import {
   getRecentEntriesForUser,
   getMoodDistribution,
   getCommonTags,
+  getJournalCoverage,
   type CreateJournalEntryInput,
   type JournalFilters,
 } from "./repository";
@@ -109,6 +110,10 @@ export async function updateJournalEntry(id: string, userId: string, params: Upd
     ...validated,
     eventDate: validated.eventDate ? new Date(validated.eventDate) : undefined,
   });
+}
+
+export async function getJournalCoverageForUser(userId: string) {
+  return getJournalCoverage(userId);
 }
 
 export async function deleteJournalEntry(id: string, userId: string) {
