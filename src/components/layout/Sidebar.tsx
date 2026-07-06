@@ -791,13 +791,13 @@ export function SidebarContent({
       <UserProfile collapsed={collapsed} />
 
       {/* Workspace Switcher */}
-      {!collapsed && <WorkspaceSwitcher collapsed={collapsed} />}
+      {/* {!collapsed && <WorkspaceSwitcher collapsed={collapsed} />} */}
 
       {/* Quick Create */}
       <QuickCreate collapsed={collapsed} />
 
       {/* Search */}
-      <SearchBtn collapsed={collapsed} />
+      {/* <SearchBtn collapsed={collapsed} /> */}
 
       {/* Divider */}
       {!collapsed && (
@@ -898,13 +898,14 @@ export const Sidebar = memo(function Sidebar() {
       {opened && (
         <div
           className={cn(
-            "h-full flex flex-col",
+            "flex flex-1 flex-col overflow-hidden",
             "m-1.5 rounded-2xl",
           )}
-          style={{
+          style={{  
             background: "var(--mantine-color-body)",
             border: "1px solid var(--mantine-color-default-border)",
             boxShadow: "var(--shadow-sidebar)",
+            marginBottom:"60px"
           }}
         >
           <SidebarContent collapsed={collapsed} />
