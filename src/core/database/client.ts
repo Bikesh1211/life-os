@@ -14,6 +14,7 @@ import * as wardrobeSchema from "@/modules/wardrobe/schema";
 import * as routinesSchema from "@/modules/routines/schema";
 import { coreTags, coreTaggings } from "@/core/tags/schema";
 import * as techGearSchema from "@/modules/tech-gear/schema";
+import * as countdownSchema from "@/modules/countdown/schema";
 import * as gamificationSchema from "@/modules/gamification/schema";
 import * as travelSchema from "@/modules/travel/schema";
 import * as readingSchema from "@/modules/reading/schema";
@@ -49,7 +50,8 @@ export const db = drizzle(queryClient, {
       ...knowledgeSchema,
      ...wardrobeSchema,
        ...routinesSchema,
-    ...techGearSchema,
+     ...techGearSchema,
+     ...countdownSchema,
     ...gamificationSchema,
     ...travelSchema,
     ...readingSchema,

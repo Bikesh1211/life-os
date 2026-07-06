@@ -1,6 +1,23 @@
-@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap");
+/* Book View styles — clean modern reading experience */
 
-.font-handwritten {
-  font-family: "Caveat", cursive;
-  font-weight: 500;
+.relative {
+  position: relative;
+}
+
+/* Smooth scrollbar for long entries */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
 }
