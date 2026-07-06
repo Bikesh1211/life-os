@@ -98,7 +98,7 @@ export function BookView({ onClose }: BookViewProps) {
 
   if (loading) {
     return (
-      <Center h="100vh" bg="var(--mantine-color-body)">
+      <Center style={{ position: "fixed", inset: 0, zIndex: 200 }} bg="var(--mantine-color-body)">
         <Loader />
       </Center>
     );
@@ -106,14 +106,14 @@ export function BookView({ onClose }: BookViewProps) {
 
   if (error) {
     return (
-      <Center h="100vh" bg="var(--mantine-color-body)">
+      <Center style={{ position: "fixed", inset: 0, zIndex: 200 }} bg="var(--mantine-color-body)">
         <Text c="red" size="sm">{error}</Text>
       </Center>
     );
   }
 
   return (
-    <Box className="relative" bg="var(--mantine-color-body)" style={{ height: "100vh", overflow: "hidden" }}>
+    <Box style={{ position: "fixed", inset: 0, zIndex: 200 }} bg="var(--mantine-color-body)" className="overflow-hidden">
       <div className="flex h-full items-center justify-center px-4 pb-16 pt-4">
         <div className="relative h-full w-full max-w-4xl">
           <div className="relative h-full w-full overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-100 dark:bg-[#1a1a1c] dark:ring-gray-800">
