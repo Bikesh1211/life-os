@@ -32,7 +32,7 @@ export function NearestCountdownWidget() {
 
   const cat = CATEGORY_CONFIG[event.category as keyof typeof CATEGORY_CONFIG] ?? CATEGORY_CONFIG.custom;
   const CatIcon = cat.icon;
-  const target = event.targetDate ?? new Date(event.eventDate);
+  const target = new Date(event.targetDate ?? event.eventDate);
   const diff = Math.max(0, target.getTime() - Date.now());
   const days = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
