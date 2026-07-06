@@ -369,6 +369,26 @@ A saved position within a Book for quick navigation. Stored in `book_bookmarks`.
 **Book Highlight**:
 A colored text selection within a Book Chapter. Stored in `book_highlights`. Anchored to a ProseMirror document position (not a page number), enabling highlights to stay anchored when content changes. Supports multiple colors. Separate from the Reading plugin's annotations, which are for third-party content.
 
+**Countdown** (plugin):
+The personal event countdown plugin at `src/modules/countdown/`. Route group is `/countdown/*`. Feature ID is `countdown`. Owns all countdown data — events, checklists, attachments, reminders, memories. Provides a focused anticipation experience for future events (movie releases, football matches, concerts, vacations, weddings, product launches, etc.). Distinct from the Timeline plugin which records life events and daily activities — Countdown is specifically about the build-up phase (creation to event date) and post-event closure.
+
+**Countdown Event**:
+A future-dated event the User is anticipating, owned by a User. Contains `title`, `description`, `category` (see Countdown Category), `eventDate`, `eventTime`, `timezone`, `location`, `organizer`, `coverImage`, `bannerImage`, `color`, `icon`, `notes` (Markdown), `isFavorited`, `isArchived`, `recurrence` (none/yearly), `status` (pending/completed/archived), `createdAt`, `eventDate`. Progress is computed on-read as percentage from `createdAt` to `eventDate`. Every countdown is scoped to a `userId`. Optionally creates a Timeline Event via the Timeline service layer upon creation for cross-plugin visibility. For yearly recurrence, the target date is computed on-read (no instance rows), matching the Timeline plugin's pattern.
+
+**Countdown Category**:
+A fixed enum on Countdown Events: `football`, `movies`, `concerts`, `travel`, `retreats`, `birthdays`, `weddings`, `festivals`, `exams`, `meetings`, `product-launches`, `holidays`, `personal`, `custom`. Own enum — distinct from Timeline's `Category` enum which is lifecycle-oriented. Each category has a default icon and accent color.
+
+**Countdown Checklist**:
+A task list within a Countdown Event for preparation tracking. Stored in `countdown_checklist_items` with `eventId`, `text`, `isCompleted`, `order`. Completion percentage is computed on-read per event.
+
+**Countdown Reminder**:
+A notification trigger tied to a Countdown Event. Stored in `countdown_reminders` with `eventId`, `reminderAt` (computed offset from `eventDate`), `offset` (e.g. `1d`, `3h`, `30m`), `isSent`. Reminders fire at the computed time via the local notification system. No push notification infrastructure in v1 — uses browser/local notifications.
+
+**Countdown Memory**:
+A post-event reflection stored after the countdown reaches zero. Contains `photos` (URLs), `reflection`, `rating` (1-10), `archived` (boolean). Created after the event date passes.
+
+*Avoid*: Confusing Countdown with Timeline events. A Countdown is about building anticipation with live timers, checklists, and reminders; a Timeline Event is a record of "something happened or will happen." They complement each other — a football match can be both a Countdown and a Timeline Event.
+
 **Reading** (plugin):
 The consumption-tracking plugin at `src/modules/reading/`. Route group is `/reading/*`. Feature ID is `reading`. Owns reading-list management — reading items (books, articles, PDFs, research papers), annotations, notes, sessions, and dashboard stats. Tracks what the user reads, progress, and time spent. The reading-item schema tracks consumption (status, currentPage, startDate, endDate, rating, review). Does not handle authored/collaborative writing — that is the Books plugin's domain. Cross-plugin: the Books plugin's Library can query Reading's service layer to display "books you're reading" alongside "books you've written." Sub-routes: Dashboard (`/reading`), Items (`/reading/library` — note the route is `/reading` not `/books`).
 

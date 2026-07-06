@@ -54,6 +54,7 @@ import {
   IconSearch,
   IconSun,
   IconTags,
+  IconHourglassEmpty,
 } from "@tabler/icons-react";
 
 export type NavItem = {
@@ -132,6 +133,13 @@ export const navigation: NavGroup[] = [
         description: "Your schedule",
         icon: IconCalendar,
         featureId: "calendar",
+      },
+      {
+        label: "Countdown",
+        route: "/countdown",
+        description: "Event countdowns & anticipation",
+        icon: IconHourglassEmpty,
+        featureId: "countdown",
       },
       {
         label: "Routines",

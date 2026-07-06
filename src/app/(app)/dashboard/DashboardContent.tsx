@@ -8,6 +8,7 @@ import {
   ThemeIcon,
   Paper,
 } from "@mantine/core";
+import { NearestCountdownWidget } from "@/app/(app)/countdown/components/NearestCountdownWidget";
 import {
   IconChecklist,
   IconTarget,
@@ -510,6 +511,9 @@ export function DashboardContent({
       <div className="space-y-5">
         {/* Welcome Banner */}
         <WelcomeWidget />
+
+        {/* Countdown widget */}
+        <NearestCountdownWidget />
 
         {/* First row: Focus + Quick Actions */}
         <SimpleGrid cols={{ base: 1, sm: 2 }}>
