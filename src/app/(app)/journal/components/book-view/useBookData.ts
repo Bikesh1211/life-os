@@ -6,18 +6,21 @@ import type { JournalEntry } from "@/modules/journal";
 type CoverageEntry = { year: number; month: number };
 
 export type BookPage =
-  | { type: "cover" }
   | { type: "entry"; date: string; dateLabel: string; entries: JournalEntry[] }
-  | { type: "end" };
+  | { type: "empty" };
 
 type UseBookDataResult = {
   pages: BookPage[];
   loading: boolean;
   error: string | null;
   coverage: CoverageEntry[];
+  sortOrder: "asc" | "desc";
+  toggleSortOrder: () => void;
   loadedYears: number[];
   loadYear: (year: number) => Promise<void>;
 };
+
+const LS_SORT_KEY = "life-os:journal-book-sort";
 
 async function fetchCoverage(): Promise<CoverageEntry[]> {
   const res = await fetch("/api/journal/coverage");
@@ -25,12 +28,12 @@ async function fetchCoverage(): Promise<CoverageEntry[]> {
   return res.json();
 }
 
-async function fetchYearEntries(year: number): Promise<JournalEntry[]> {
+async function fetchYearEntries(year: number, sortOrder: "asc" | "desc"): Promise<JournalEntry[]> {
   const params = new URLSearchParams({
     dateFrom: `${year}-01-01T00:00:00.000Z`,
     dateTo: `${year}-12-31T23:59:59.999Z`,
     sortBy: "createdAt",
-    sortOrder: "asc",
+    sortOrder,
     limit: "500",
   });
   const res = await fetch(`/api/journal?${params}`);
@@ -64,13 +67,10 @@ function groupEntriesByDate(entries: JournalEntry[]): { date: string; dateLabel:
     }));
 }
 
-function buildPages(entriesByDate: { date: string; dateLabel: string; entries: JournalEntry[] }[]): BookPage[] {
-  const pages: BookPage[] = [{ type: "cover" }];
-  for (const group of entriesByDate) {
-    pages.push({ type: "entry", ...group });
-  }
-  pages.push({ type: "end" });
-  return pages;
+function buildPages(entriesByDate: { date: string; dateLabel: string; entries: JournalEntry[] }[], sortOrder: "asc" | "desc"): BookPage[] {
+  const sorted = sortOrder === "asc" ? entriesByDate : [...entriesByDate].reverse();
+  if (sorted.length === 0) return [{ type: "empty" }];
+  return sorted.map((g) => ({ type: "entry" as const, ...g }));
 }
 
 export function useBookData(): UseBookDataResult {
@@ -78,17 +78,26 @@ export function useBookData(): UseBookDataResult {
   const [entriesByYear, setEntriesByYear] = useState<Map<number, JournalEntry[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadedYears, setLoadedYears] = useState<number[]>([]);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [version, setVersion] = useState(0);
   const pendingYears = useRef(new Set<number>());
   const loadedRef = useRef<number[]>([]);
+  const sortRef = useRef<"asc" | "desc">("asc");
+
+  useEffect(() => {
+    const stored = localStorage.getItem(LS_SORT_KEY);
+    if (stored === "asc" || stored === "desc") {
+      setSortOrder(stored);
+      sortRef.current = stored;
+    }
+  }, []);
 
   const loadYear = useCallback(async (year: number) => {
     if (pendingYears.current.has(year) || loadedRef.current.includes(year)) return;
     pendingYears.current.add(year);
     try {
-      const entries = await fetchYearEntries(year);
+      const entries = await fetchYearEntries(year, sortRef.current);
       loadedRef.current = [...loadedRef.current, year].sort();
-      setLoadedYears(loadedRef.current);
       setEntriesByYear((prev) => {
         const next = new Map(prev);
         next.set(year, entries);
@@ -110,7 +119,7 @@ export function useBookData(): UseBookDataResult {
         setCoverage(data);
         if (data.length > 0) {
           const years = [...new Set(data.map((d) => d.year))];
-          const latestYear = years[years.length - 1];
+          const latestYear = sortOrder === "desc" ? years[0] : years[years.length - 1];
           return loadYear(latestYear);
         }
         setLoading(false);
@@ -122,6 +131,29 @@ export function useBookData(): UseBookDataResult {
         }
       });
     return () => { cancelled = true; };
+  }, [loadYear, sortOrder]);
+
+  const toggleSortOrder = useCallback(() => {
+    setSortOrder((prev) => {
+      const next = prev === "asc" ? "desc" : "asc";
+      localStorage.setItem(LS_SORT_KEY, next);
+      sortRef.current = next;
+      setEntriesByYear(new Map());
+      loadedRef.current = [];
+      setLoading(true);
+      setVersion((v) => v + 1);
+      fetchCoverage().then((data) => {
+        setCoverage(data);
+        if (data.length > 0) {
+          const years = [...new Set(data.map((d) => d.year))];
+          const latestYear = next === "desc" ? years[0] : years[years.length - 1];
+          loadYear(latestYear);
+        } else {
+          setLoading(false);
+        }
+      });
+      return next;
+    });
   }, [loadYear]);
 
   const allEntries = Array.from(entriesByYear.entries())
@@ -129,7 +161,7 @@ export function useBookData(): UseBookDataResult {
     .flatMap(([, entries]) => entries);
 
   const groupedByDate = groupEntriesByDate(allEntries);
-  const pages = buildPages(groupedByDate);
+  const pages = buildPages(groupedByDate, sortOrder);
 
-  return { pages, loading, error, coverage, loadedYears: loadedRef.current, loadYear };
+  return { pages, loading, error, coverage, sortOrder, toggleSortOrder, loadedYears: loadedRef.current, loadYear };
 }

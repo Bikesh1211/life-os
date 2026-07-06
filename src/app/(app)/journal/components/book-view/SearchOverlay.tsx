@@ -57,14 +57,14 @@ export function SearchOverlay({ opened, onClose, pages, onJumpToDate }: SearchOv
         });
         return matching.length > 0 ? { date: page.date, dateLabel: page.dateLabel, entries: matching } : null;
       })
-      .filter(Boolean);
+      .filter((r): r is NonNullable<typeof r> => r !== null);
   }, [query, selectedMood, selectedTag, pages]);
 
   return (
     <Modal
       opened={opened}
       onClose={onClose}
-      title="Search & Filter"
+      title="Search entries"
       size="lg"
       closeButtonProps={{ icon: <IconX size={16} /> }}
       scrollAreaComponent={ScrollArea}
@@ -72,7 +72,7 @@ export function SearchOverlay({ opened, onClose, pages, onJumpToDate }: SearchOv
       <Stack gap="md">
         <TextInput
           ref={inputRef}
-          placeholder="Search entries..."
+          placeholder="Search titles or content..."
           value={query}
           onChange={(e) => setQuery(e.currentTarget.value)}
           leftSection={<IconSearch size={16} />}
@@ -98,7 +98,7 @@ export function SearchOverlay({ opened, onClose, pages, onJumpToDate }: SearchOv
           <>
             <Text size="xs" fw={600} c="dimmed">Tags</Text>
             <Group gap={4}>
-              {allTags.slice(0, 15).map((tag) => (
+              {allTags.slice(0, 20).map((tag) => (
                 <Badge
                   key={tag}
                   variant={selectedTag === tag ? "filled" : "outline"}
@@ -116,35 +116,35 @@ export function SearchOverlay({ opened, onClose, pages, onJumpToDate }: SearchOv
         <ScrollArea h={300}>
           {results.length === 0 && (query || selectedMood || selectedTag) && (
             <Text size="sm" c="dimmed" ta="center" py="xl">
-              No matching entries found
+              No matching entries
             </Text>
           )}
           {results.length === 0 && !query && !selectedMood && !selectedTag && (
             <Text size="sm" c="dimmed" ta="center" py="xl">
-              Start typing to search or select filters
+              Start typing or select a filter
             </Text>
           )}
           <Stack gap="xs">
             {results.map((group) => (
               <Box
-                key={(group as { date: string }).date}
+                key={group.date}
                 className="cursor-pointer rounded-lg border border-gray-100 p-3 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
                 onClick={() => {
-                  onJumpToDate((group as { date: string }).date);
+                  onJumpToDate(group.date);
                   onClose();
                 }}
               >
                 <Text size="sm" fw={600}>
-                  {(group as { dateLabel: string }).dateLabel}
+                  {group.dateLabel}
                 </Text>
-                {(group as { entries: JournalEntry[] }).entries.slice(0, 3).map((entry: JournalEntry) => (
+                {group.entries.slice(0, 3).map((entry: JournalEntry) => (
                   <Text key={entry.id} size="xs" c="dimmed" lineClamp={1}>
                     {entry.title}
                   </Text>
                 ))}
-                {(group as { entries: JournalEntry[] }).entries.length > 3 && (
+                {group.entries.length > 3 && (
                   <Text size="xs" c="dimmed">
-                    +{(group as { entries: JournalEntry[] }).entries.length - 3} more
+                    +{group.entries.length - 3} more
                   </Text>
                 )}
               </Box>

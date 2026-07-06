@@ -50,6 +50,6 @@ Journal entry content is stored as Tiptap/ProseMirror JSON. For read-only Book V
 
 - Book View ships as a new component directory under `src/app/(app)/journal/components/book-view/`, with no changes to existing journal components except adding one tab entry in `JournalContent.tsx`.
 - Users with slow connections experience a brief loading state when crossing year boundaries (skeleton pages shown during prefetch).
-- The `react-pageflip` library must be maintained and kept up-to-date with React releases.
 - The `/api/journal/coverage` endpoint needs its own tests and documentation alongside the existing API routes.
+- Sort order is stored in localStorage and triggers a full data reload when toggled (clears cached entries, re-fetches in the new direction).
 - Reading position is stored in localStorage (not the database), meaning position is lost if the user clears browser storage. Cross-device position sync would require a database-stored position as a future enhancement.

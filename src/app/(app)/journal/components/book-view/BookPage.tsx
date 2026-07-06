@@ -1,79 +1,50 @@
 "use client";
 
-import { Text, Stack, Box } from "@mantine/core";
-import type { JournalEntry } from "@/modules/journal";
+import { Text } from "@mantine/core";
+import type { BookPage as BookPageType } from "./useBookData";
 
 type BookPageProps = {
-  page:
-    | { type: "entry"; date: string; dateLabel: string; entries: JournalEntry[] }
-    | { type: "end" }
-    | { type: "cover" };
-  handwritten?: boolean;
+  page: BookPageType;
 };
 
-export function BookPage({ page, handwritten }: BookPageProps) {
-  if (page.type === "cover" || page.type === "end") {
+export function BookPage({ page }: BookPageProps) {
+  if (page.type === "empty") {
     return (
-      <div className="flex h-full flex-col items-center justify-center p-8 text-center">
-        <div className={`max-w-md ${handwritten ? "font-handwritten" : ""}`}>
-          {page.type === "cover" ? (
-            <>
-              <Text size="xl" fw={700} c="dimmed" className="tracking-widest uppercase">
-                My Journal
-              </Text>
-              <div className="mx-auto my-6 h-px w-16 bg-gray-300 dark:bg-gray-600" />
-              <Text size="sm" c="dimmed">
-                A collection of thoughts, memories, and reflections
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text size="xl" fw={700} c="dimmed" className="tracking-widest uppercase">
-                The End
-              </Text>
-              <div className="mx-auto my-6 h-px w-16 bg-gray-300 dark:bg-gray-600" />
-              <Text size="sm" c="dimmed">
-                ...for now
-              </Text>
-            </>
-          )}
-        </div>
+      <div className="flex h-full items-center justify-center p-12 text-center">
+        <Text size="sm" c="dimmed">
+          No journal entries yet. Start writing to fill these pages.
+        </Text>
       </div>
     );
   }
 
   return (
-    <div className={`flex h-full flex-col p-6 sm:p-8 ${handwritten ? "font-handwritten" : ""}`}>
-      <Text
-        size="sm"
-        c="dimmed"
-        className={`mb-4 ${handwritten ? "text-base" : "text-xs"} tracking-wide`}
-      >
+    <div className="mx-auto flex h-full w-full max-w-2xl flex-col px-6 py-10 sm:px-10 sm:py-14">
+      <Text size="sm" c="dimmed" className="mb-2 tracking-wide">
         {page.dateLabel}
       </Text>
-      <div className="mb-4 h-px w-full bg-gradient-to-r from-gray-200 to-transparent dark:from-gray-700" />
-      <div className="flex-1 overflow-y-auto">
-        <Stack gap="lg">
-          {page.entries.map((entry) => (
-            <div key={entry.id}>
+      <div className="mb-6 h-px bg-gradient-to-r from-gray-200 via-gray-100 to-transparent dark:from-gray-700 dark:via-gray-800" />
+      <div className="flex-1 space-y-6 overflow-y-auto">
+        {page.entries.map((entry) => (
+          <article key={entry.id}>
+            <Text
+              size="lg"
+              fw={600}
+              className="leading-relaxed text-gray-900 dark:text-gray-100"
+            >
+              {entry.title}
+            </Text>
+            {entry.content && (
               <Text
-                className={`leading-relaxed ${handwritten ? "text-lg" : "text-sm"}`}
-                style={{ lineHeight: handwritten ? 1.8 : 1.7 }}
+                size="sm"
+                className="mt-2 leading-relaxed whitespace-pre-wrap text-gray-600 dark:text-gray-400"
+                style={{ lineHeight: 1.8 }}
               >
-                {entry.title}
+                {entry.content}
               </Text>
-              {entry.content && (
-                <Text
-                  c="dimmed"
-                  className={`mt-2 leading-relaxed whitespace-pre-wrap ${handwritten ? "text-base" : "text-sm"}`}
-                  style={{ lineHeight: handwritten ? 1.8 : 1.7 }}
-                >
-                  {entry.content}
-                </Text>
-              )}
-            </div>
-          ))}
-        </Stack>
+            )}
+          </article>
+        ))}
       </div>
     </div>
   );
