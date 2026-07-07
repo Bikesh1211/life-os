@@ -791,7 +791,7 @@ export function SidebarContent({
       <UserProfile collapsed={collapsed} />
 
       {/* Workspace Switcher */}
-      {/* {!collapsed && <WorkspaceSwitcher collapsed={collapsed} />} */}
+      {!collapsed && <WorkspaceSwitcher collapsed={collapsed} />}
 
       {/* Quick Create */}
       <QuickCreate collapsed={collapsed} />

@@ -7,6 +7,7 @@ import { useSidebarVisibility } from "@/core/sidebar-visibility";
 import { useSidebarFavorites } from "@/core/sidebar-favorites";
 import { cn } from "@/core/utils";
 import { FeedbackForm } from "@/modules/feedback/components/FeedbackForm";
+import { AppLockSettingsSection } from "@/core/app-lock/settings-section";
 
 function ItemCheckbox({ item, checked, onChange, disabled }: { item: NavItem; checked: boolean; onChange: () => void; disabled: boolean }) {
   return (
@@ -165,6 +166,8 @@ export default function SettingsPage() {
           Manage your account settings and preferences.
         </Text>
       </Paper>
+
+      <AppLockSettingsSection />
 
       <FeedbackForm />
       <SidebarFavoritesSection />

@@ -430,3 +430,6 @@ A rule-generated observation about the user's integrity patterns, surfaced on th
 
 **Commitment Field Model**:
 Stored on `integrity_commitments`: `title`, `description`, `category`, `priority`, `difficulty`, `estimatedTime`, `dueDate`, `dueTime`, `startDate`, `tags` (text[]), `color`, `icon`, `evidenceRequired` (boolean), `location`, `repeatRule` (none/daily/weekly/monthly), `reminderMinutesBefore` (stored but unused in v1), `status` (state machine). Computed on-read: current streak, longest streak, completion percentage, completion time. Visibility/public/team dropped for v1 — single-user only.
+
+**App Lock** (core):
+A privacy feature owned by Core that gates access to the entire application behind a numeric PIN. When enabled, the user is prompted to enter their PIN on app startup, after browser tab inactivity, or after a configurable timeout. The lock screen is a full-route overlay — no app content is visible until the correct PIN is entered. PIN is hashed and stored locally (never sent to the server). Enable/disable and timeout configuration live in the Settings page. A "disable for N minutes" option suppresses the lock temporarily without turning it off entirely.
