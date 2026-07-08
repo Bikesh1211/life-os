@@ -55,6 +55,7 @@ import {
   IconSun,
   IconTags,
   IconHourglassEmpty,
+  IconBriefcase,
 } from "@tabler/icons-react";
 
 export type NavItem = {
@@ -409,6 +410,13 @@ export const navigation: NavGroup[] = [
             featureId: "principles",
           },
         ],
+      },
+      {
+        label: "Career",
+        route: "/career",
+        description: "Professional career management",
+        icon: IconBriefcase,
+        featureId: "career",
       },
       {
         label: "Network",
