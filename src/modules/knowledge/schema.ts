@@ -24,6 +24,8 @@ export const knowledgeEntries = pgTable("knowledge_entries", {
   keyTakeaways: text("key_takeaways"),
   examples: text("examples"),
   resources: text("resources"),
+  targetLevel: integer("target_level"),
+  projects: text("projects").array().default([]).notNull(),
   tags: text("tags").array().notNull().default([]),
   difficultyLevel: difficultyLevelEnum("difficulty_level").default("beginner").notNull(),
   learningSource: text("learning_source"),
