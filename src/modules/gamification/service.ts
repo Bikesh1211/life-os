@@ -5,6 +5,7 @@ import { habitCompletions } from "@/modules/habits/schema";
 import { tasks } from "@/modules/tasks/schema";
 import { routineExecutions } from "@/modules/routines/schema";
 import { integrityCommitments } from "@/modules/integrity/schema";
+import { wellnessHabitEnrichment } from "@/modules/wellness/schema";
 import { and, eq, count, gte, lte, isNull } from "drizzle-orm";
 
 export type LevelInfo = {
@@ -87,6 +88,7 @@ type UserCounts = {
   routineCompletions: number;
   commitmentCompletions: number;
   integrityScore: number;
+  groomingCompletions: number;
 };
 
 async function getUserCompletionCounts(userId: string): Promise<UserCounts> {
@@ -138,12 +140,25 @@ async function getUserCompletionCounts(userId: string): Promise<UserCounts> {
     integrityScore = Math.max(0, Math.min(100, Math.round(100 - penalty)));
   }
 
+  const [groomingResult] = await db
+    .select({ value: count() })
+    .from(habitCompletions)
+    .innerJoin(
+      wellnessHabitEnrichment,
+      and(
+        eq(habitCompletions.habitId, wellnessHabitEnrichment.habitId),
+        eq(wellnessHabitEnrichment.wellnessType, "grooming"),
+      ),
+    )
+    .where(eq(habitCompletions.userId, userId));
+
   return {
     habitCompletions: Number(habitResult?.value ?? 0),
     taskCompletions: Number(taskResult?.value ?? 0),
     routineCompletions: Number(routineResult?.value ?? 0),
     commitmentCompletions: Number(commitmentResult?.value ?? 0),
     integrityScore,
+    groomingCompletions: Number(groomingResult?.value ?? 0),
   };
 }
 
@@ -263,6 +278,9 @@ const XP_VALUES = {
   commitment_completed: 25,
   commitment_streak_bonus: 10,
   integrity_milestone: 50,
+  grooming_completed: 10,
+  grooming_streak_bonus: 15,
+  grooming_perfect_week: 50,
 } as const;
 
 export function getXpValue(eventType: keyof typeof XP_VALUES): number {
@@ -372,6 +390,9 @@ export async function syncUser(userId: string) {
       case "integrity_score":
         met = counts.integrityScore >= achievement.criteriaValue;
         break;
+      case "grooming_completions":
+        met = counts.groomingCompletions >= achievement.criteriaValue;
+        break;
     }
 
     if (met) {
@@ -418,6 +439,9 @@ export async function syncUser(userId: string) {
         break;
       case "integrity_score":
         met = counts.integrityScore >= badge.criteriaValue;
+        break;
+      case "grooming_completions":
+        met = counts.groomingCompletions >= badge.criteriaValue;
         break;
       default:
         break;
@@ -468,6 +492,9 @@ export async function syncUser(userId: string) {
         break;
       case "routine_count":
         progress = Math.min(challenge.criteriaValue, counts.routineCompletions);
+        break;
+      case "grooming_completions":
+        progress = Math.min(challenge.criteriaValue, counts.groomingCompletions);
         break;
       default:
         break;

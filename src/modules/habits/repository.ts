@@ -71,7 +71,13 @@ export async function getOverallStats(userId: string) {
 
 export async function getCompletionRate(userId: string, dateFrom: string, dateTo: string) {
   const activeHabits = await db
-    .select({ id: habits.id, frequency: habits.frequency })
+    .select({
+      id: habits.id,
+      frequency: habits.frequency,
+      frequencyType: habits.frequencyType,
+      frequencyInterval: habits.frequencyInterval,
+      frequencyWeekdays: habits.frequencyWeekdays,
+    })
     .from(habits)
     .where(and(eq(habits.userId, userId), isNull(habits.deletedAt)));
 
@@ -94,12 +100,27 @@ export async function getCompletionRate(userId: string, dateFrom: string, dateTo
   let totalCompleted = 0;
   let totalExpected = 0;
 
+  const weeksInRange = Math.max(1, Math.round(daysInRange / 7));
+  const monthsInRange = Math.max(1, Math.round(daysInRange / 30));
+
   for (const habit of activeHabits) {
     const completed = completionMap.get(habit.id) ?? 0;
     totalCompleted += completed;
-    if (habit.frequency === "daily") totalExpected += daysInRange;
-    else if (habit.frequency === "weekly") totalExpected += Math.max(1, Math.round(daysInRange / 7));
-    else if (habit.frequency === "monthly") totalExpected += Math.max(1, Math.round(daysInRange / 30));
+
+    if (habit.frequencyType === "every_x_days" && habit.frequencyInterval) {
+      totalExpected += Math.max(1, Math.round(daysInRange / habit.frequencyInterval));
+    } else if (habit.frequencyType === "every_x_weeks" && habit.frequencyInterval) {
+      totalExpected += Math.max(1, Math.round(weeksInRange / habit.frequencyInterval));
+    } else if (habit.frequencyType === "specific_weekdays" && habit.frequencyWeekdays) {
+      const weekdayCount = habit.frequencyWeekdays.length;
+      totalExpected += Math.max(1, Math.round((daysInRange / 7) * weekdayCount));
+    } else if (habit.frequencyType === "specific_dates") {
+      totalExpected += Math.max(1, Math.round(monthsInRange));
+    } else {
+      if (habit.frequency === "daily") totalExpected += daysInRange;
+      else if (habit.frequency === "weekly") totalExpected += weeksInRange;
+      else if (habit.frequency === "monthly") totalExpected += monthsInRange;
+    }
   }
 
   return {
@@ -129,18 +150,34 @@ export async function getCompletionRatesByHabit(userId: string, dateFrom: string
     (new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000
   ));
 
+  const weeksInRange = Math.max(1, Math.round(daysInRange / 7));
+  const monthsInRange = Math.max(1, Math.round(daysInRange / 30));
+
   return activeHabits.map((habit) => {
     const completed = completionMap.get(habit.id) ?? 0;
     let expected = 0;
-    if (habit.frequency === "daily") expected = daysInRange;
-    else if (habit.frequency === "weekly") expected = Math.max(1, Math.round(daysInRange / 7));
-    else if (habit.frequency === "monthly") expected = Math.max(1, Math.round(daysInRange / 30));
+
+    if (habit.frequencyType === "every_x_days" && habit.frequencyInterval) {
+      expected = Math.max(1, Math.round(daysInRange / habit.frequencyInterval));
+    } else if (habit.frequencyType === "every_x_weeks" && habit.frequencyInterval) {
+      expected = Math.max(1, Math.round(weeksInRange / habit.frequencyInterval));
+    } else if (habit.frequencyType === "specific_weekdays" && habit.frequencyWeekdays) {
+      const weekdayCount = habit.frequencyWeekdays.length;
+      expected = Math.max(1, Math.round((daysInRange / 7) * weekdayCount));
+    } else if (habit.frequencyType === "specific_dates") {
+      expected = Math.max(1, Math.round(monthsInRange));
+    } else {
+      if (habit.frequency === "daily") expected = daysInRange;
+      else if (habit.frequency === "weekly") expected = weeksInRange;
+      else if (habit.frequency === "monthly") expected = monthsInRange;
+    }
 
     return {
       habitId: habit.id,
       title: habit.title,
       category: habit.category,
       frequency: habit.frequency,
+      frequencyType: habit.frequencyType,
       completed,
       expected,
       rate: expected > 0 ? Math.round((completed / expected) * 100) : 0,
