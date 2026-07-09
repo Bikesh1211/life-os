@@ -53,6 +53,7 @@ import {
   IconCompass,
   IconSearch,
   IconSun,
+  IconScissors,
   IconTags,
   IconHourglassEmpty,
   IconBriefcase,
@@ -360,6 +361,15 @@ export const navigation: NavGroup[] = [
         description: "Mood, sleep, hydration & self-care",
         icon: IconSun,
         featureId: "wellness",
+        children: [
+          {
+            label: "Grooming",
+            route: "/wellness/grooming",
+            description: "Grooming & self-care routines",
+            icon: IconScissors,
+            featureId: "grooming",
+          },
+        ],
       },
       {
         label: "Travel",

@@ -95,8 +95,13 @@ function CollapseBtn() {
 /* ── Theme toggle ── */
 
 function ThemeToggleBtn() {
+  const [mounted, setMounted] = useState(false);
   const { colorScheme, setColorScheme, clearColorScheme } = useMantineColorScheme();
   const computed = useComputedColorScheme();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const cycle = useCallback(() => {
     if (colorScheme === "light") setColorScheme("dark");
@@ -110,7 +115,11 @@ function ThemeToggleBtn() {
         onClick={cycle}
         className="flex items-center justify-center h-7 w-7 rounded-lg transition-all duration-200 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06] active:scale-95"
       >
-        {computed === "dark" ? <IconSun size={14} strokeWidth={1.5} /> : <IconMoon size={14} strokeWidth={1.5} />}
+        {mounted ? (
+          computed === "dark" ? <IconSun size={14} strokeWidth={1.5} /> : <IconMoon size={14} strokeWidth={1.5} />
+        ) : (
+          <div className="h-4 w-4" />
+        )}
       </button>
     </Tooltip>
   );

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { cache } from "react";
+import { and, eq, gte, lte, inArray, count } from "drizzle-orm";
 import * as repo from "./repository";
 import { awardXp } from "@/modules/gamification";
 import { createTimelineEvent } from "@/modules/timeline";
@@ -12,6 +13,19 @@ const DIMENSION_KEYS = [
 ] as const;
 
 const WELLNESS_TYPES = ["grooming", "hygiene", "self-care", "confidence"] as const;
+
+export const GROOMING_CATEGORIES = [
+  "hair-care",
+  "face-care",
+  "skin-care",
+  "dental-care",
+  "body-care",
+  "personal-hygiene",
+  "clothing-care",
+  "custom",
+] as const;
+
+export type GroomingCategory = (typeof GROOMING_CATEGORIES)[number];
 
 const DEFAULT_HYDRATION_GOAL_ML = 2500;
 
@@ -70,6 +84,40 @@ export const createHabitEnrichmentSchema = z.object({
 });
 
 export const updateHabitEnrichmentSchema = createHabitEnrichmentSchema.partial();
+
+export const createGroomingEnrichmentSchema = z.object({
+  habitId: z.string().uuid(),
+  groomingCategory: z.enum(GROOMING_CATEGORIES).optional(),
+  icon: z.string().max(50).optional(),
+  color: z.string().max(20).optional(),
+  preferredTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  estimatedDurationMinutes: z.number().int().min(1).max(480).optional(),
+  sortOrder: z.number().int().min(0).optional(),
+  isArchived: z.boolean().optional(),
+  reminderConfig: z.object({
+    enabled: z.boolean().optional(),
+    times: z.array(z.string().regex(/^\d{2}:\d{2}$/)).optional(),
+    snoozable: z.boolean().optional(),
+  }).optional(),
+  notes: z.string().max(2000).optional(),
+  estimatedCost: z.number().min(0).optional(),
+});
+
+export const updateGroomingEnrichmentSchema = createGroomingEnrichmentSchema.partial();
+
+export const completeGroomingSchema = z.object({
+  habitId: z.string().uuid(),
+  completedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  note: z.string().max(2000).optional(),
+  metadata: z.object({
+    mood: z.number().int().min(1).max(10).optional(),
+    energy: z.number().int().min(1).max(10).optional(),
+    cleanliness: z.number().int().min(1).max(10).optional(),
+    confidence: z.number().int().min(1).max(10).optional(),
+    rating: z.number().int().min(1).max(10).optional(),
+    photoUrls: z.array(z.string().url()).optional(),
+  }).optional(),
+});
 
 export const analyticsFilterSchema = z.object({
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -180,6 +228,9 @@ export type CreateMedicineLogParams = z.infer<typeof createMedicineLogSchema>;
 export type CreateUserGoalParams = z.infer<typeof createUserGoalSchema>;
 export type BmiCalculateParams = z.infer<typeof bmiCalculateSchema>;
 export type AnalyticsFilterParams = z.infer<typeof analyticsFilterSchema>;
+export type CreateGroomingEnrichmentParams = z.infer<typeof createGroomingEnrichmentSchema>;
+export type UpdateGroomingEnrichmentParams = z.infer<typeof updateGroomingEnrichmentSchema>;
+export type CompleteGroomingParams = z.infer<typeof completeGroomingSchema>;
 
 // ── Helpers ──
 
@@ -377,6 +428,366 @@ export async function updateHabitEnrichment(
 
 export async function getOverdueEnrichments(userId: string) {
   return repo.getOverdueEnrichments(userId);
+}
+
+// ── Grooming ──
+
+export const GROOMING_DEFAULT_TEMPLATES: Array<{
+  name: string;
+  description: string;
+  groomingCategory: GroomingCategory;
+  defaultFrequencyType: "daily" | "every_x_days" | "every_x_weeks" | "specific_weekdays";
+  defaultFrequencyInterval?: number;
+  defaultFrequencyWeekdays?: number[];
+  icon: string;
+  color: string;
+  preferredTime?: string;
+  estimatedDurationMinutes?: number;
+  sortOrder: number;
+}> = [
+  { name: "Bathing", description: "Take a bath or shower", groomingCategory: "body-care", defaultFrequencyType: "daily", icon: "shower", color: "#4FC3F7", preferredTime: "07:00", estimatedDurationMinutes: 15, sortOrder: 1 },
+  { name: "Hair Wash", description: "Wash your hair with shampoo", groomingCategory: "hair-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 3, icon: "droplet", color: "#81C784", preferredTime: "09:00", estimatedDurationMinutes: 20, sortOrder: 2 },
+  { name: "Face Wash", description: "Wash your face with cleanser", groomingCategory: "face-care", defaultFrequencyType: "daily", icon: "face", color: "#FFB74D", preferredTime: "07:00", estimatedDurationMinutes: 3, sortOrder: 3 },
+  { name: "Skincare Routine", description: "Apply skincare products", groomingCategory: "skin-care", defaultFrequencyType: "daily", icon: "sparkles", color: "#F48FB1", preferredTime: "21:00", estimatedDurationMinutes: 10, sortOrder: 4 },
+  { name: "Moisturizer", description: "Apply body moisturizer", groomingCategory: "skin-care", defaultFrequencyType: "daily", icon: "droplet", color: "#CE93D8", preferredTime: "07:30", estimatedDurationMinutes: 5, sortOrder: 5 },
+  { name: "Sunscreen", description: "Apply sunscreen protection", groomingCategory: "skin-care", defaultFrequencyType: "daily", icon: "sun", color: "#FFD54F", preferredTime: "07:30", estimatedDurationMinutes: 3, sortOrder: 6 },
+  { name: "Shampoo", description: "Wash hair with shampoo", groomingCategory: "hair-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 3, icon: "droplet", color: "#4DD0E1", estimatedDurationMinutes: 10, sortOrder: 7 },
+  { name: "Conditioner", description: "Apply hair conditioner", groomingCategory: "hair-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 3, icon: "droplet", color: "#E0E0E0", estimatedDurationMinutes: 5, sortOrder: 8 },
+  { name: "Hair Oil", description: "Apply oil to hair and scalp", groomingCategory: "hair-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 2, icon: "droplet", color: "#FFB74D", estimatedDurationMinutes: 10, sortOrder: 9 },
+  { name: "Hair Cutting", description: "Get a haircut", groomingCategory: "hair-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 30, icon: "scissors", color: "#90A4AE", estimatedDurationMinutes: 30, sortOrder: 10 },
+  { name: "Beard Trim", description: "Trim and shape beard", groomingCategory: "face-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 7, icon: "scissors", color: "#A1887F", estimatedDurationMinutes: 10, sortOrder: 11 },
+  { name: "Mustache Trim", description: "Trim mustache", groomingCategory: "face-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 7, icon: "scissors", color: "#BCAAA4", estimatedDurationMinutes: 5, sortOrder: 12 },
+  { name: "Shaving", description: "Shave face", groomingCategory: "face-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 2, icon: "razor", color: "#B0BEC5", estimatedDurationMinutes: 10, sortOrder: 13 },
+  { name: "Nail Cutting", description: "Trim fingernails and toenails", groomingCategory: "personal-hygiene", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 7, icon: "scissors", color: "#FF8A65", estimatedDurationMinutes: 10, sortOrder: 14 },
+  { name: "Ear Cleaning", description: "Clean ears safely", groomingCategory: "personal-hygiene", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 7, icon: "ear", color: "#FFCC02", estimatedDurationMinutes: 3, sortOrder: 15 },
+  { name: "Nose Hair Trim", description: "Trim nose hair", groomingCategory: "personal-hygiene", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 14, icon: "scissors", color: "#78909C", estimatedDurationMinutes: 2, sortOrder: 16 },
+  { name: "Teeth Brushing (Morning)", description: "Brush teeth in the morning", groomingCategory: "dental-care", defaultFrequencyType: "daily", icon: "tooth", color: "#4FC3F7", preferredTime: "07:00", estimatedDurationMinutes: 3, sortOrder: 17 },
+  { name: "Teeth Brushing (Night)", description: "Brush teeth before bed", groomingCategory: "dental-care", defaultFrequencyType: "daily", icon: "tooth", color: "#29B6F6", preferredTime: "22:00", estimatedDurationMinutes: 3, sortOrder: 18 },
+  { name: "Mouthwash", description: "Rinse with mouthwash", groomingCategory: "dental-care", defaultFrequencyType: "daily", icon: "droplet", color: "#26A69A", preferredTime: "22:00", estimatedDurationMinutes: 1, sortOrder: 19 },
+  { name: "Flossing", description: "Floss between teeth", groomingCategory: "dental-care", defaultFrequencyType: "daily", icon: "dots", color: "#80CBC4", preferredTime: "22:00", estimatedDurationMinutes: 2, sortOrder: 20 },
+  { name: "Tongue Cleaning", description: "Clean your tongue", groomingCategory: "dental-care", defaultFrequencyType: "daily", icon: "brush", color: "#B2DFDB", preferredTime: "07:00", estimatedDurationMinutes: 1, sortOrder: 21 },
+  { name: "Hand Care", description: "Moisturize and care for hands", groomingCategory: "body-care", defaultFrequencyType: "daily", icon: "hand", color: "#FFCC80", estimatedDurationMinutes: 3, sortOrder: 22 },
+  { name: "Foot Care", description: "Moisturize and care for feet", groomingCategory: "body-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 2, icon: "foot", color: "#A5D6A7", estimatedDurationMinutes: 5, sortOrder: 23 },
+  { name: "Body Lotion", description: "Apply lotion to body", groomingCategory: "skin-care", defaultFrequencyType: "daily", icon: "droplet", color: "#F8BBD0", preferredTime: "07:30", estimatedDurationMinutes: 5, sortOrder: 24 },
+  { name: "Lip Balm", description: "Apply lip balm", groomingCategory: "face-care", defaultFrequencyType: "daily", icon: "heart", color: "#EF9A9A", estimatedDurationMinutes: 1, sortOrder: 25 },
+  { name: "Perfume / Deodorant", description: "Apply perfume or deodorant", groomingCategory: "personal-hygiene", defaultFrequencyType: "daily", icon: "sparkles", color: "#CE93D8", preferredTime: "07:30", estimatedDurationMinutes: 1, sortOrder: 26 },
+  { name: "Exercise Shower", description: "Shower after exercise", groomingCategory: "body-care", defaultFrequencyType: "daily", icon: "shower", color: "#4DD0E1", estimatedDurationMinutes: 10, sortOrder: 27 },
+  { name: "Laundry", description: "Wash clothes", groomingCategory: "clothing-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 7, icon: "shirt", color: "#90CAF9", estimatedDurationMinutes: 60, sortOrder: 28 },
+  { name: "Change Bedsheet", description: "Change bedsheets", groomingCategory: "clothing-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 14, icon: "bed", color: "#B39DDB", estimatedDurationMinutes: 10, sortOrder: 29 },
+  { name: "Change Pillow Cover", description: "Change pillow covers", groomingCategory: "clothing-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 7, icon: "bed", color: "#D1C4E9", estimatedDurationMinutes: 5, sortOrder: 30 },
+  { name: "Wash Towels", description: "Wash bath towels", groomingCategory: "clothing-care", defaultFrequencyType: "every_x_days", defaultFrequencyInterval: 7, icon: "shirt", color: "#B3E5FC", estimatedDurationMinutes: 5, sortOrder: 31 },
+];
+
+function computeNextDueDate(
+  frequencyType: string,
+  lastCompletedDate: string | null,
+  frequencyInterval?: number | null,
+  frequencyWeekdays?: number[] | null,
+): string | null {
+  const base = lastCompletedDate ?? new Date().toISOString().slice(0, 10);
+  const last = new Date(base);
+  let next: Date;
+
+  if (frequencyType === "daily") {
+    next = new Date(base);
+    next.setDate(next.getDate() + 1);
+  } else if (frequencyType === "every_x_days" && frequencyInterval) {
+    next = new Date(base);
+    next.setDate(next.getDate() + frequencyInterval);
+  } else if (frequencyType === "every_x_weeks" && frequencyInterval) {
+    next = new Date(base);
+    next.setDate(next.getDate() + frequencyInterval * 7);
+  } else if (frequencyType === "weekly") {
+    next = new Date(base);
+    next.setDate(next.getDate() + 7);
+  } else if (frequencyType === "monthly") {
+    next = new Date(base);
+    next.setMonth(next.getMonth() + 1);
+  } else if (frequencyType === "specific_weekdays" && frequencyWeekdays && frequencyWeekdays.length > 0) {
+    next = new Date(base);
+    next.setDate(next.getDate() + 1);
+    const maxIterations = 14;
+    let iterations = 0;
+    while (!frequencyWeekdays.includes(next.getDay()) && iterations < maxIterations) {
+      next.setDate(next.getDate() + 1);
+      iterations++;
+    }
+  } else {
+    next = new Date(base);
+    next.setDate(next.getDate() + 1);
+  }
+
+  return next.toISOString().slice(0, 10);
+}
+
+export async function setupGroomingTemplates(userId: string) {
+  const existing = await repo.getHabitEnrichments(userId, "grooming");
+  if (existing.length > 0) return { created: false, count: existing.length };
+
+  const { db } = await import("@/core/database");
+  const { habits } = await import("@/modules/habits/schema");
+
+  let created = 0;
+  for (const template of GROOMING_DEFAULT_TEMPLATES) {
+    const [habit] = await db.insert(habits).values({
+      userId,
+      title: template.name,
+      description: template.description,
+      category: "health",
+      frequency: template.defaultFrequencyType === "daily" ? "daily" : "weekly",
+      frequencyType: template.defaultFrequencyType,
+      frequencyInterval: template.defaultFrequencyInterval ?? null,
+      frequencyWeekdays: template.defaultFrequencyWeekdays ?? null,
+      timesPerDay: 1,
+    }).returning();
+
+    await repo.createHabitEnrichment({
+      userId,
+      habitId: habit.id,
+      wellnessType: "grooming",
+      groomingCategory: template.groomingCategory,
+      icon: template.icon,
+      color: template.color,
+      preferredTime: template.preferredTime ?? null,
+      estimatedDurationMinutes: template.estimatedDurationMinutes ?? null,
+      sortOrder: template.sortOrder,
+      isArchived: false,
+      notes: null,
+      subcategory: null,
+      lastCompletedDate: null,
+      nextDueDate: null,
+      reminderDaysBefore: 1,
+      seasonalMonths: null,
+      estimatedCost: null,
+      reminderConfig: null,
+    });
+    created++;
+  }
+
+  return { created: true, count: created };
+}
+
+export async function completeGroomingActivity(
+  userId: string,
+  params: CompleteGroomingParams,
+) {
+  const validated = completeGroomingSchema.parse(params);
+
+  const { db } = await import("@/core/database");
+  const { habitCompletions } = await import("@/modules/habits/schema");
+  const { habits } = await import("@/modules/habits/schema");
+  const { logCompletion } = await import("@/modules/habits");
+
+  const completion = await logCompletion(
+    userId,
+    validated.habitId,
+    validated.completedDate,
+    validated.note,
+  );
+
+  if (validated.metadata) {
+    await db.update(habitCompletions)
+      .set({ metadata: validated.metadata as Record<string, unknown> })
+      .where(eq(habitCompletions.id, completion.id));
+  }
+
+  const enrichment = await repo.getHabitEnrichment(validated.habitId, userId);
+  if (enrichment) {
+    const [habitRow] = await db.select({
+      frequencyType: habits.frequencyType,
+      frequencyInterval: habits.frequencyInterval,
+      frequencyWeekdays: habits.frequencyWeekdays,
+    }).from(habits).where(eq(habits.id, validated.habitId));
+
+    const nextDue = habitRow && enrichment.lastCompletedDate
+      ? computeNextDueDate(
+          habitRow.frequencyType,
+          validated.completedDate,
+          habitRow.frequencyInterval,
+          habitRow.frequencyWeekdays,
+        )
+      : null;
+
+    await repo.updateHabitEnrichment(enrichment.id, userId, {
+      lastCompletedDate: validated.completedDate,
+      nextDueDate: nextDue,
+    });
+  }
+
+  try {
+    await awardXp(
+      userId,
+      "grooming_completed",
+      completion.id,
+      `Grooming: ${completion.note ?? "Activity completed"}`,
+      10,
+    );
+  } catch {}
+
+  return completion;
+}
+
+export async function getGroomingActivities(userId: string) {
+  const enrichments = await repo.getHabitEnrichments(userId, "grooming");
+  if (enrichments.length === 0) return [];
+
+  const { db } = await import("@/core/database");
+  const { habits, habitCompletions } = await import("@/modules/habits/schema");
+
+  const habitIds = enrichments.map((e) => e.habitId);
+  const habitRows = await db
+    .select()
+    .from(habits)
+    .where(inArray(habits.id, habitIds));
+
+  const today = new Date().toISOString().slice(0, 10);
+  const todayCompletions = await db
+    .select({ habitId: habitCompletions.habitId })
+    .from(habitCompletions)
+    .where(
+      and(
+        eq(habitCompletions.userId, userId),
+        eq(habitCompletions.completedDate, today),
+        inArray(habitCompletions.habitId, habitIds),
+      ),
+    );
+
+  const todayCompletedIds = new Set(todayCompletions.map((c) => c.habitId));
+
+  return enrichments
+    .map((e) => {
+      const habit = habitRows.find((h) => h.id === e.habitId);
+      if (!habit) return null;
+      return {
+        ...e,
+        habit: {
+          id: habit.id,
+          title: habit.title,
+          description: habit.description,
+          frequency: habit.frequency,
+          frequencyType: habit.frequencyType,
+          frequencyInterval: habit.frequencyInterval,
+          frequencyWeekdays: habit.frequencyWeekdays,
+          timesPerDay: habit.timesPerDay,
+        },
+        isCompletedToday: todayCompletedIds.has(habit.id),
+      };
+    })
+    .filter((e): e is NonNullable<typeof e> => e !== null)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export async function getGroomingDashboardStats(userId: string) {
+  const activities = await getGroomingActivities(userId);
+  const habitIds = activities.map((a) => a.habitId);
+  const { db } = await import("@/core/database");
+  const { habitCompletions } = await import("@/modules/habits/schema");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+
+  const [todayCount, weekCount, allDates] = await Promise.all([
+    habitIds.length > 0
+      ? db
+          .select({ value: count() })
+          .from(habitCompletions)
+          .where(
+            and(
+              eq(habitCompletions.userId, userId),
+              eq(habitCompletions.completedDate, today),
+              inArray(habitCompletions.habitId, habitIds),
+            ),
+          )
+      : Promise.resolve([{ value: 0 }]),
+    habitIds.length > 0
+      ? db
+          .select({ value: count() })
+          .from(habitCompletions)
+          .where(
+            and(
+              eq(habitCompletions.userId, userId),
+              gte(habitCompletions.completedDate, weekAgo),
+              lte(habitCompletions.completedDate, today),
+              inArray(habitCompletions.habitId, habitIds),
+            ),
+          )
+      : Promise.resolve([{ value: 0 }]),
+    habitIds.length > 0
+      ? db
+          .select({ date: habitCompletions.completedDate })
+          .from(habitCompletions)
+          .where(
+            and(
+              eq(habitCompletions.userId, userId),
+              inArray(habitCompletions.habitId, habitIds),
+            ),
+          )
+          .orderBy(habitCompletions.completedDate)
+      : Promise.resolve([]),
+  ]);
+
+  const completionDates = allDates.map((r) => r.date);
+  const uniqueDates = [...new Set(completionDates)].sort();
+
+  const { calculateStreak } = await import("@/modules/habits");
+
+  const streak = calculateStreak(uniqueDates);
+
+  const overdue = activities.filter(
+    (a) => a.nextDueDate && a.nextDueDate < today && !a.isCompletedToday,
+  );
+
+  const upcoming = activities.filter(
+    (a) =>
+      a.nextDueDate &&
+      a.nextDueDate >= today &&
+      a.nextDueDate <= new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10) &&
+      !a.isCompletedToday,
+  );
+
+  return {
+    totalActivities: activities.length,
+    completedToday: Number(todayCount[0]?.value ?? 0),
+    completedThisWeek: Number(weekCount[0]?.value ?? 0),
+    overdueCount: overdue.length,
+    overdueActivities: overdue,
+    upcomingCount: upcoming.length,
+    upcomingActivities: upcoming,
+    currentStreak: streak.current,
+    longestStreak: streak.longest,
+  };
+}
+
+export async function getGroomingInsights(userId: string) {
+  const stats = await getGroomingDashboardStats(userId);
+  const activities = await getGroomingActivities(userId);
+
+  const insights: Array<{ type: "positive" | "negative" | "info"; message: string }> = [];
+
+  if (stats.currentStreak >= 7) {
+    insights.push({ type: "positive", message: `You've maintained grooming consistency for ${stats.currentStreak} consecutive days!` });
+  } else if (stats.currentStreak >= 3) {
+    insights.push({ type: "info", message: `Grooming streak: ${stats.currentStreak} days. Try to make it a week!` });
+  }
+
+  if (stats.overdueCount > 0) {
+    const overdueNames = stats.overdueActivities.slice(0, 3).map((a) => a.habit?.title ?? "Unknown");
+    insights.push({ type: "negative", message: `${stats.overdueCount} grooming ${stats.overdueCount === 1 ? "activity is" : "activities are"} overdue: ${overdueNames.join(", ")}` });
+  }
+
+  if (stats.completedToday > 0) {
+    insights.push({ type: "positive", message: `Great start! You've completed ${stats.completedToday} grooming ${stats.completedToday === 1 ? "activity" : "activities"} today.` });
+  }
+
+  const longestStreakHabit = activities.reduce(
+    (best, a) => {
+      const dates = []; // This would be fetched per-habit in a more detailed implementation
+      return best;
+    },
+    { current: 0, longest: 0, name: "" },
+  );
+
+  return insights;
 }
 
 // ── Scoring ──

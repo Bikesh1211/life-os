@@ -26,6 +26,7 @@ export type WellnessSleepRecord = typeof wellnessSleepRecords.$inferSelect;
 export type WellnessHydrationEntry = typeof wellnessHydrationEntries.$inferSelect;
 export type WellnessConfidenceCheckin = typeof wellnessConfidenceCheckins.$inferSelect;
 export type WellnessHabitEnrichment = typeof wellnessHabitEnrichment.$inferSelect;
+export type WellnessHabitEnrichmentInsert = typeof wellnessHabitEnrichment.$inferInsert;
 
 export type CreateMoodLogInput = typeof wellnessMoodLogs.$inferInsert;
 export type CreateSleepRecordInput = typeof wellnessSleepRecords.$inferInsert;

@@ -40,6 +40,16 @@ export type {
 } from "./repository";
 
 export {
+  GROOMING_CATEGORIES,
+  GROOMING_DEFAULT_TEMPLATES,
+  setupGroomingTemplates,
+  getGroomingActivities,
+  completeGroomingActivity,
+  getGroomingDashboardStats,
+  getGroomingInsights,
+  completeGroomingSchema,
+  createGroomingEnrichmentSchema,
+  updateGroomingEnrichmentSchema,
   createMoodLog,
   getMoodLogs,
   createSleepRecord,
@@ -126,4 +136,7 @@ export type {
   CreateUserGoalParams,
   BmiCalculateParams,
   AnalyticsFilterParams,
+  CreateGroomingEnrichmentParams,
+  UpdateGroomingEnrichmentParams,
+  CompleteGroomingParams,
 } from "./service";

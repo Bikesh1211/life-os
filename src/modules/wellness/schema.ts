@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, date, numeric, uniqueIndex, index, boolean, time, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, integer, date, numeric, uniqueIndex, index, boolean, jsonb } from "drizzle-orm/pg-core";
 
 // ── 1. Mood Log ──
 export const wellnessMoodLogs = pgTable("wellness_mood_logs", {
@@ -82,12 +82,23 @@ export const wellnessHabitEnrichment = pgTable("wellness_habit_enrichment", {
   seasonalMonths: integer("seasonal_months").array(),
   estimatedCost: numeric("estimated_cost"),
   notes: text("notes"),
+  // Grooming-specific enrichment fields
+  groomingCategory: text("grooming_category"),
+  icon: text("icon"),
+  color: text("color"),
+  preferredTime: text("preferred_time"),
+  estimatedDurationMinutes: integer("estimated_duration_minutes"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  isArchived: boolean("is_archived").default(false).notNull(),
+  reminderConfig: jsonb("reminder_config"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   userHabitUniq: uniqueIndex("idx_wellness_enrichment_habit").on(table.userId, table.habitId),
   wellnessTypeIdx: index("idx_wellness_enrichment_type").on(table.userId, table.wellnessType),
   dueDateIdx: index("idx_wellness_enrichment_due").on(table.nextDueDate),
+  groomingCategoryIdx: index("idx_wellness_enrichment_grooming_cat").on(table.userId, table.groomingCategory),
+  sortOrderIdx: index("idx_wellness_enrichment_sort").on(table.userId, table.sortOrder),
 }));
 
 // ── 6. Weight Entry ──

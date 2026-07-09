@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, date, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, date, integer, pgEnum, jsonb } from "drizzle-orm/pg-core";
 
 export const habitCategoryEnum = pgEnum("habit_category", [
   "health",
@@ -18,6 +18,16 @@ export const habitFrequencyEnum = pgEnum("habit_frequency", [
   "monthly",
 ] as const);
 
+export const habitFrequencyTypeEnum = pgEnum("habit_frequency_type", [
+  "daily",
+  "weekly",
+  "monthly",
+  "every_x_days",
+  "every_x_weeks",
+  "specific_weekdays",
+  "specific_dates",
+] as const);
+
 export const habits = pgTable("habits", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id").notNull(),
@@ -25,6 +35,11 @@ export const habits = pgTable("habits", {
   description: text("description"),
   category: habitCategoryEnum("category"),
   frequency: habitFrequencyEnum("frequency").default("daily").notNull(),
+  frequencyType: habitFrequencyTypeEnum("frequency_type").default("daily").notNull(),
+  frequencyInterval: integer("frequency_interval"),
+  frequencyWeekdays: integer("frequency_weekdays").array(),
+  frequencyMonthDay: integer("frequency_month_day"),
+  timesPerDay: integer("times_per_day").default(1).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   deletedAt: timestamp("deleted_at"),
@@ -38,5 +53,6 @@ export const habitCompletions = pgTable("habit_completions", {
   userId: text("user_id").notNull(),
   completedDate: date("completed_date").notNull(),
   note: text("note"),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

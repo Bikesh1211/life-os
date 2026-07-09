@@ -874,6 +874,14 @@ export function WellnessDashboard({
           color="violet"
           href="/wellness/goals"
         />
+        <SummaryCard
+          title="Grooming"
+          value={`${scores.grooming}%`}
+          subtitle="Self-care score"
+          icon={IconScissors}
+          color="teal"
+          href="/wellness/grooming"
+        />
       </SimpleGrid>
 
       {/* Active Goals Progress */}
