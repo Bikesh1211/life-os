@@ -2,11 +2,14 @@ export {
   integrityCommitments,
   integrityCommitmentEvents,
   integrityDailyCheckins,
+  integrityDailySnapshots,
   commitmentStatusEnum,
   commitmentDifficultyEnum,
   commitmentRepeatEnum,
   eventTypeEnum,
 } from "./schema";
+
+export { EXCUSE_TAGS, DISCIPLINE_LEVELS, SCORE_WEIGHTS } from "./constants";
 
 export {
   getCommitments,
@@ -25,9 +28,13 @@ export {
   convertToCommitment,
   syncLinkedEntityStatus,
   getStreaks,
-  calculateIntegrityScore,
   calculateCurrentStreak,
   calculateLongestStreak,
+  calculateDisciplineScore,
+  getDisciplineDashboard,
+  getExcuseTagDistribution,
+  computeDailySnapshot,
+  getDisciplineLevel,
 } from "./service";
 
 export {
@@ -35,12 +42,14 @@ export {
   updateCommitmentSchema,
   createCheckinSchema,
   commitmentCategories,
+  disciplineDashboardSchema,
 } from "./service";
 
 export type {
   Commitment,
   CommitmentEvent,
   DailyCheckin,
+  DailySnapshot,
 } from "./repository";
 
 export type {

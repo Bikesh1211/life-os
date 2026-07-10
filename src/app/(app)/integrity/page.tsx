@@ -1,5 +1,5 @@
-import { IntegrityContent } from "./_components/IntegrityContent";
+import { permanentRedirect } from "next/navigation";
 
 export default function IntegrityPage() {
-  return <IntegrityContent />;
+  permanentRedirect("/discipline");
 }

@@ -4,6 +4,7 @@ import type { SQL } from "drizzle-orm";
 import {
   wellnessMoodLogs,
   wellnessSleepRecords,
+  wellnessUserPreferences,
   wellnessHydrationEntries,
   wellnessConfidenceCheckins,
   wellnessHabitEnrichment,
@@ -167,6 +168,123 @@ export async function deleteSleepRecord(id: string, userId: string) {
     .where(and(eq(wellnessSleepRecords.id, id), eq(wellnessSleepRecords.userId, userId)))
     .returning();
   return record ?? null;
+}
+
+export async function getSleepRecordsByDateRange(
+  userId: string,
+  dateFrom: string,
+  dateTo: string,
+) {
+  return db
+    .select()
+    .from(wellnessSleepRecords)
+    .where(
+      and(
+        eq(wellnessSleepRecords.userId, userId),
+        gte(wellnessSleepRecords.bedtime, new Date(dateFrom)),
+        lte(wellnessSleepRecords.bedtime, new Date(dateTo + "T23:59:59.999Z")),
+      ),
+    )
+    .orderBy(desc(wellnessSleepRecords.bedtime));
+}
+
+export async function getSleepStatistics(userId: string) {
+  const result = await db
+    .select({
+      totalSleptHours: sql<string>`coalesce(round(extract(epoch from sum(${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime})) / 3600, 1)::text, '0')`,
+      totalNights: sql<number>`count(*)`,
+      longestSleepHours: sql<string>`coalesce(round(max(extract(epoch from ${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime}) / 3600)::numeric, 1)::text, '0')`,
+      shortestSleepHours: sql<string>`coalesce(round(min(extract(epoch from ${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime}) / 3600)::numeric, 1)::text, '0')`,
+      avgBedtimeHour: sql<string>`coalesce(round(avg(extract(hour from ${wellnessSleepRecords.bedtime}) + extract(minute from ${wellnessSleepRecords.bedtime}) / 60)::numeric, 1)::text, '0')`,
+      avgWakeTimeHour: sql<string>`coalesce(round(avg(extract(hour from ${wellnessSleepRecords.wakeTime}) + extract(minute from ${wellnessSleepRecords.wakeTime}) / 60)::numeric, 1)::text, '0')`,
+      avgQuality: sql<string>`coalesce(round(avg(${wellnessSleepRecords.quality})::numeric, 1)::text, '0')`,
+    })
+    .from(wellnessSleepRecords)
+    .where(eq(wellnessSleepRecords.userId, userId));
+
+  return result ?? null;
+}
+
+export async function getSleepDailyTotals(
+  userId: string,
+  dateFrom: string,
+  dateTo: string,
+) {
+  return db
+    .select({
+      date: sql<string>`${wellnessSleepRecords.bedtime}::date`,
+      totalHours: sql<string>`coalesce(round(sum(extract(epoch from ${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime}) / 3600)::numeric, 1)::text, '0')`,
+      avgQuality: sql<string>`coalesce(round(avg(${wellnessSleepRecords.quality})::numeric, 1)::text, '0')`,
+      count: sql<number>`count(*)`,
+      bedtime: sql<string>`min(${wellnessSleepRecords.bedtime})`,
+      wakeTime: sql<string>`max(${wellnessSleepRecords.wakeTime})`,
+    })
+    .from(wellnessSleepRecords)
+    .where(
+      and(
+        eq(wellnessSleepRecords.userId, userId),
+        gte(wellnessSleepRecords.bedtime, new Date(dateFrom)),
+        lte(wellnessSleepRecords.bedtime, new Date(dateTo + "T23:59:59.999Z")),
+      ),
+    )
+    .groupBy(sql`${wellnessSleepRecords.bedtime}::date`)
+    .orderBy(sql`${wellnessSleepRecords.bedtime}::date`);
+}
+
+export async function getSleepBestDay(userId: string) {
+  const [result] = await db
+    .select({
+      date: sql<string>`${wellnessSleepRecords.bedtime}::date`,
+      totalHours: sql<string>`coalesce(round(sum(extract(epoch from ${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime}) / 3600)::numeric, 1)::text, '0')`,
+      avgQuality: sql<string>`coalesce(round(avg(${wellnessSleepRecords.quality})::numeric, 1)::text, '0')`,
+    })
+    .from(wellnessSleepRecords)
+    .where(eq(wellnessSleepRecords.userId, userId))
+    .groupBy(sql`${wellnessSleepRecords.bedtime}::date`)
+    .orderBy(sql`avg(${wellnessSleepRecords.quality}) desc nulls last`)
+    .limit(1);
+  return result ?? null;
+}
+
+export async function getSleepWorstDay(userId: string) {
+  const [result] = await db
+    .select({
+      date: sql<string>`${wellnessSleepRecords.bedtime}::date`,
+      totalHours: sql<string>`coalesce(round(sum(extract(epoch from ${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime}) / 3600)::numeric, 1)::text, '0')`,
+      avgQuality: sql<string>`coalesce(round(avg(${wellnessSleepRecords.quality})::numeric, 1)::text, '0')`,
+    })
+    .from(wellnessSleepRecords)
+    .where(eq(wellnessSleepRecords.userId, userId))
+    .groupBy(sql`${wellnessSleepRecords.bedtime}::date`)
+    .orderBy(sql`avg(${wellnessSleepRecords.quality}) asc`)
+    .limit(1);
+  return result ?? null;
+}
+
+// ── User Preferences ──
+
+export async function upsertUserPreference(
+  userId: string,
+  input: Partial<typeof wellnessUserPreferences.$inferInsert>,
+) {
+  const [pref] = await db
+    .insert(wellnessUserPreferences)
+    .values({ userId, ...input })
+    .onConflictDoUpdate({
+      target: [wellnessUserPreferences.userId],
+      set: { ...input, updatedAt: new Date() },
+    })
+    .returning();
+  return pref;
+}
+
+export async function getUserPreference(userId: string) {
+  const [pref] = await db
+    .select()
+    .from(wellnessUserPreferences)
+    .where(eq(wellnessUserPreferences.userId, userId))
+    .limit(1);
+  return pref ?? null;
 }
 
 // ── Hydration Entries ──

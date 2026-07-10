@@ -1,5 +1,5 @@
 import { db } from "@/core/database";
-import { integrityCommitments, integrityCommitmentEvents, integrityDailyCheckins } from "./schema";
+import { integrityCommitments, integrityCommitmentEvents, integrityDailyCheckins, integrityDailySnapshots } from "./schema";
 import { eq, and, isNull, desc, asc, count, gte, lte, inArray, sql } from "drizzle-orm";
 
 export type Commitment = typeof integrityCommitments.$inferSelect;
@@ -8,6 +8,8 @@ export type CommitmentEvent = typeof integrityCommitmentEvents.$inferSelect;
 export type CreateEventInput = typeof integrityCommitmentEvents.$inferInsert;
 export type DailyCheckin = typeof integrityDailyCheckins.$inferSelect;
 export type CreateCheckinInput = typeof integrityDailyCheckins.$inferInsert;
+export type DailySnapshot = typeof integrityDailySnapshots.$inferSelect;
+export type CreateSnapshotInput = typeof integrityDailySnapshots.$inferInsert;
 
 export async function getCommitments(
   userId: string,
@@ -140,9 +142,12 @@ export async function upsertCheckin(input: CreateCheckinInput & { id?: string })
     const result = await db
       .update(integrityDailyCheckins)
       .set({
-        blockers: input.blockers,
-        improvement: input.improvement,
-        reflection: input.reflection,
+        accomplishments: input.accomplishments ?? null,
+        excuses: input.excuses ?? null,
+        distractions: input.distractions ?? null,
+        proudOf: input.proudOf ?? null,
+        improvement: input.improvement ?? null,
+        excuseTags: input.excuseTags ?? null,
         updatedAt: new Date(),
       })
       .where(eq(integrityDailyCheckins.id, input.id))
@@ -266,6 +271,97 @@ export async function getDayOfWeekDistribution(userId: string) {
   }
 
   return dayCounts;
+}
+
+export async function getSnapshot(userId: string, date: string) {
+  const result = await db
+    .select()
+    .from(integrityDailySnapshots)
+    .where(
+      and(
+        eq(integrityDailySnapshots.userId, userId),
+        eq(integrityDailySnapshots.date, date),
+      ),
+    )
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function getLatestSnapshot(userId: string) {
+  const result = await db
+    .select()
+    .from(integrityDailySnapshots)
+    .where(eq(integrityDailySnapshots.userId, userId))
+    .orderBy(desc(integrityDailySnapshots.date))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function upsertSnapshot(input: CreateSnapshotInput & { id?: string }) {
+  if (input.id) {
+    const result = await db
+      .update(integrityDailySnapshots)
+      .set({
+        score: input.score,
+        streak: input.streak,
+        level: input.level,
+        levelTitle: input.levelTitle,
+        subScores: input.subScores,
+        commitmentRate: input.commitmentRate,
+        isAllCompleted: input.isAllCompleted,
+        updatedAt: new Date(),
+      })
+      .where(eq(integrityDailySnapshots.id, input.id))
+      .returning();
+    return result[0];
+  }
+  const result = await db.insert(integrityDailySnapshots).values(input).returning();
+  return result[0];
+}
+
+export async function getSnapshotsInRange(userId: string, dateFrom: string, dateTo: string) {
+  return db
+    .select()
+    .from(integrityDailySnapshots)
+    .where(
+      and(
+        eq(integrityDailySnapshots.userId, userId),
+        gte(integrityDailySnapshots.date, dateFrom),
+        lte(integrityDailySnapshots.date, dateTo),
+      ),
+    )
+    .orderBy(asc(integrityDailySnapshots.date));
+}
+
+export async function getExcuseTagDistribution(userId: string, dateFrom?: string, dateTo?: string) {
+  const conditions = [eq(integrityDailyCheckins.userId, userId)];
+
+  if (dateFrom) conditions.push(gte(integrityDailyCheckins.date, dateFrom));
+  if (dateTo) conditions.push(lte(integrityDailyCheckins.date, dateTo));
+
+  const results = await db
+    .select({
+      date: integrityDailyCheckins.date,
+      excuseTags: integrityDailyCheckins.excuseTags,
+    })
+    .from(integrityDailyCheckins)
+    .where(and(...conditions))
+    .orderBy(desc(integrityDailyCheckins.date));
+
+  const tagCounts: Record<string, number> = {};
+  for (const row of results) {
+    if (row.excuseTags) {
+      for (const tag of row.excuseTags) {
+        tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
+      }
+    }
+  }
+
+  const sorted = Object.entries(tagCounts)
+    .map(([tag, count]) => ({ tag, count }))
+    .sort((a, b) => b.count - a.count);
+
+  return sorted;
 }
 
 export async function getLinkedCommitments(userId: string, entityType: string, entityId: string) {

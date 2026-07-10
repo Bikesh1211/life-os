@@ -34,6 +34,7 @@ export const eventTypeEnum = pgEnum("commitment_event_type", [
   "missed",
   "cancelled",
   "reminder_sent",
+  "milestone_reached",
 ]);
 
 export const integrityCommitments = pgTable("integrity_commitments", {
@@ -78,9 +79,27 @@ export const integrityDailyCheckins = pgTable("integrity_daily_checkins", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id").notNull(),
   date: text("date").notNull(),
-  blockers: text("blockers"),
+  accomplishments: text("accomplishments"),
+  excuses: text("excuses"),
+  distractions: text("distractions"),
+  proudOf: text("proud_of"),
   improvement: text("improvement"),
-  reflection: text("reflection"),
+  excuseTags: text("excuse_tags").array(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const integrityDailySnapshots = pgTable("integrity_daily_snapshots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  date: text("date").notNull(),
+  score: integer("score").notNull(),
+  streak: integer("streak").default(0).notNull(),
+  level: integer("level").default(1).notNull(),
+  levelTitle: text("level_title"),
+  subScores: text("sub_scores"),
+  commitmentRate: integer("commitment_rate").default(0),
+  isAllCompleted: text("is_all_completed").default("false"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
