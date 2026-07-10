@@ -51,10 +51,17 @@ export const createSleepRecordSchema = z.object({
   wakeTime: z.string().datetime(),
   quality: z.number().int().min(1).max(10).optional(),
   interruptions: z.number().int().min(0).default(0),
+  sleepLatencyMinutes: z.number().int().min(0).max(480).optional(),
+  moodAfterWaking: z.string().max(50).optional(),
+  energyLevel: z.number().int().min(1).max(5).optional(),
   notes: z.string().max(2000).optional(),
 });
 
 export const updateSleepRecordSchema = createSleepRecordSchema.partial();
+
+export const sleepGoalSchema = z.object({
+  sleepGoalHours: z.number().int().min(1).max(24),
+});
 
 export const createHydrationEntrySchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -308,6 +315,9 @@ export async function createSleepRecord(userId: string, params: CreateSleepRecor
     wakeTime: new Date(validated.wakeTime),
     quality: validated.quality,
     interruptions: validated.interruptions,
+    sleepLatencyMinutes: validated.sleepLatencyMinutes,
+    moodAfterWaking: validated.moodAfterWaking,
+    energyLevel: validated.energyLevel,
     notes: validated.notes,
   });
 
@@ -329,6 +339,9 @@ export async function updateSleepRecord(
   if (validated.wakeTime !== undefined) updateData.wakeTime = new Date(validated.wakeTime);
   if (validated.quality !== undefined) updateData.quality = validated.quality;
   if (validated.interruptions !== undefined) updateData.interruptions = validated.interruptions;
+  if (validated.sleepLatencyMinutes !== undefined) updateData.sleepLatencyMinutes = validated.sleepLatencyMinutes;
+  if (validated.moodAfterWaking !== undefined) updateData.moodAfterWaking = validated.moodAfterWaking;
+  if (validated.energyLevel !== undefined) updateData.energyLevel = validated.energyLevel;
   if (validated.notes !== undefined) updateData.notes = validated.notes;
   return repo.updateSleepRecord(id, userId, updateData);
 }
@@ -337,6 +350,386 @@ export const getSleepRecords = cache(async (userId: string, filters: AnalyticsFi
   const { dateFrom, dateTo } = getDateRange(filters);
   return repo.getSleepRecords(userId, { dateFrom, dateTo });
 });
+
+// ── Sleep Dashboard ──
+
+export async function getSleepDashboard(userId: string) {
+  const today = new Date().toISOString().slice(0, 10);
+  const todayStart = `${today}T00:00:00.000Z`;
+  const todayEnd = `${today}T23:59:59.999Z`;
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+
+  const [
+    todaysRecords,
+    weeklyRecords,
+    monthlyRecords,
+    stats,
+    preference,
+  ] = await Promise.all([
+    repo.getSleepRecordsByDateRange(userId, todayStart, todayEnd),
+    repo.getSleepRecordsByDateRange(userId, weekAgo, todayEnd),
+    repo.getSleepRecordsByDateRange(userId, monthAgo, todayEnd),
+    repo.getSleepStatistics(userId),
+    repo.getUserPreference(userId),
+  ]);
+
+  const sleepGoalHours = preference?.sleepGoalHours ?? 8;
+  const statsRow = stats?.[0] ?? null;
+
+  const mainSleep = todaysRecords.length > 0
+    ? todaysRecords.reduce((longest, r) => {
+        const dur = r.wakeTime.getTime() - r.bedtime.getTime();
+        const longDur = longest.wakeTime.getTime() - longest.bedtime.getTime();
+        return dur > longDur ? r : longest;
+      }, todaysRecords[0])
+    : null;
+
+  const totalSleepMs = todaysRecords.reduce((sum, r) => sum + (r.wakeTime.getTime() - r.bedtime.getTime()), 0);
+  const totalSleepHours = Math.round((totalSleepMs / 3600000) * 100) / 100;
+
+  const goalPercentage = Math.min(100, Math.round((totalSleepHours / sleepGoalHours) * 100));
+  const remainingHours = Math.max(0, sleepGoalHours - totalSleepHours);
+
+  const sleepQuality = mainSleep?.quality ?? null;
+
+  // Weekly stats
+  const weekHours = weeklyRecords.reduce((sum, r) => sum + (r.wakeTime.getTime() - r.bedtime.getTime()), 0) / 3600000;
+  const avgSleepThisWeek = weeklyRecords.length > 0 ? Math.round((weekHours / weeklyRecords.length) * 10) / 10 : 0;
+
+  // Monthly stats
+  const monthHours = monthlyRecords.reduce((sum, r) => sum + (r.wakeTime.getTime() - r.bedtime.getTime()), 0) / 3600000;
+  const avgSleepThisMonth = monthlyRecords.length > 0 ? Math.round((monthHours / monthlyRecords.length) * 10) / 10 : 0;
+
+  // Streak
+  const streak = await getSleepStreak(userId, sleepGoalHours);
+
+  return {
+    totalSleepHours,
+    totalSleepMinutes: Math.round(totalSleepHours * 60),
+    bedTime: mainSleep?.bedtime ?? null,
+    wakeTime: mainSleep?.wakeTime ?? null,
+    sleepQuality: sleepQuality ? sleepQuality * 10 : null,
+    goalPercentage,
+    remainingHours: Math.round(remainingHours * 10) / 10,
+    sleepGoalHours,
+    avgSleepThisWeek,
+    avgSleepThisMonth,
+    currentStreak: streak.current,
+    longestStreak: streak.longest,
+    totalNights: statsRow?.totalNights ?? 0,
+    mainSleepId: mainSleep?.id ?? null,
+  };
+}
+
+export async function getSleepStreak(userId: string, sleepGoalHours: number) {
+  const allRecords = await repo.getSleepRecordsByDateRange(
+    userId,
+    "2000-01-01",
+    new Date().toISOString().slice(0, 10) + "T23:59:59.999Z",
+  );
+
+  const dailyTotals = new Map<string, number>();
+  for (const r of allRecords) {
+    const dateKey = r.bedtime.toISOString().slice(0, 10);
+    const hours = (r.wakeTime.getTime() - r.bedtime.getTime()) / 3600000;
+    dailyTotals.set(dateKey, (dailyTotals.get(dateKey) ?? 0) + hours);
+  }
+
+  const sortedDates = [...dailyTotals.entries()]
+    .filter(([_, hours]) => hours >= sleepGoalHours)
+    .map(([date]) => date)
+    .sort()
+    .reverse();
+
+  let current = 0;
+  let longest = 0;
+  let streak = 0;
+  const today = new Date().toISOString().slice(0, 10);
+
+  for (let i = 0; i < sortedDates.length; i++) {
+    if (i === 0 && sortedDates[i] === today) {
+      current = 1;
+      streak = 1;
+    } else if (i > 0) {
+      const prev = new Date(sortedDates[i - 1]);
+      const curr = new Date(sortedDates[i]);
+      const diffDays = Math.round((prev.getTime() - curr.getTime()) / 86400000);
+      if (diffDays === 1) {
+        streak++;
+        if (sortedDates[i] <= today) current = streak;
+      } else {
+        streak = 1;
+      }
+    }
+    longest = Math.max(longest, streak);
+  }
+
+  return { current, longest };
+}
+
+export async function getSleepAnalytics(userId: string, filters: AnalyticsFilterParams = {}) {
+  const { dateFrom, dateTo } = getDateRange(filters);
+  const dailyTotals = await repo.getSleepDailyTotals(userId, dateFrom, dateTo);
+
+  return dailyTotals.map((d) => ({
+    date: d.date,
+    totalHours: parseFloat(d.totalHours),
+    avgQuality: d.avgQuality ? parseFloat(d.avgQuality) : null,
+    sessionCount: d.count,
+    bedtime: d.bedtime,
+    wakeTime: d.wakeTime,
+  }));
+}
+
+export async function getSleepStatistics(userId: string) {
+  const statsArr = await repo.getSleepStatistics(userId);
+  const stats = statsArr?.[0] ?? null;
+  if (!stats || Number(stats.totalNights) === 0) {
+    return {
+      totalSleptHours: 0,
+      totalNights: 0,
+      longestSleepHours: 0,
+      shortestSleepHours: 0,
+      avgBedTime: "--:--",
+      avgWakeTime: "--:--",
+      avgQuality: 0,
+      bestDay: null,
+      worstDay: null,
+      consistencyScore: 0,
+    };
+  }
+
+  const [bestDay, worstDay] = await Promise.all([
+    repo.getSleepBestDay(userId),
+    repo.getSleepWorstDay(userId),
+  ]);
+
+  const avgBedHour = parseFloat(stats.avgBedtimeHour);
+  const avgWakeHour = parseFloat(stats.avgWakeTimeHour);
+
+  const formatHour = (hour: number) => {
+    const h = Math.floor(hour);
+    const m = Math.round((hour - h) * 60);
+    const period = h >= 12 ? "PM" : "AM";
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${m.toString().padStart(2, "0")} ${period}`;
+  };
+
+  // Consistency score: coefficient of variation (lower = more consistent)
+  const { dateFrom: monthAgo } = getDateRange({ period: "month" });
+  const monthlyRecords = await repo.getSleepRecordsByDateRange(
+    userId,
+    monthAgo,
+    new Date().toISOString().slice(0, 10) + "T23:59:59.999Z",
+  );
+
+  const durations = monthlyRecords.map((r) => (r.wakeTime.getTime() - r.bedtime.getTime()) / 3600000);
+  let consistencyScore = 0;
+  if (durations.length > 1) {
+    const avg = durations.reduce((s, d) => s + d, 0) / durations.length;
+    const stdDev = Math.sqrt(durations.reduce((s, d) => s + (d - avg) ** 2, 0) / durations.length);
+    const cv = stdDev / avg;
+    consistencyScore = Math.max(0, Math.min(100, Math.round((1 - cv) * 100)));
+  } else if (durations.length === 1) {
+    consistencyScore = 50;
+  }
+
+  return {
+    totalSleptHours: parseFloat(stats.totalSleptHours),
+    totalNights: stats.totalNights,
+    longestSleepHours: parseFloat(stats.longestSleepHours),
+    shortestSleepHours: parseFloat(stats.shortestSleepHours),
+    avgBedTime: formatHour(avgBedHour),
+    avgWakeTime: formatHour(avgWakeHour),
+    avgQuality: stats.avgQuality ? parseFloat(stats.avgQuality) : 0,
+    bestDay: bestDay
+      ? { date: bestDay.date, totalHours: parseFloat(bestDay.totalHours), quality: bestDay.avgQuality ? parseFloat(bestDay.avgQuality) : null }
+      : null,
+    worstDay: worstDay
+      ? { date: worstDay.date, totalHours: parseFloat(worstDay.totalHours), quality: worstDay.avgQuality ? parseFloat(worstDay.avgQuality) : null }
+      : null,
+    consistencyScore,
+  };
+}
+
+export async function getSleepInsights(userId: string): Promise<WellnessInsight[]> {
+  const today = new Date().toISOString().slice(0, 10);
+  const todayEnd = `${today}T23:59:59.999Z`;
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+  const monthAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+  const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10);
+
+  const [weeklyRecords, monthlyRecords, preference] = await Promise.all([
+    repo.getSleepRecordsByDateRange(userId, weekAgo, todayEnd),
+    repo.getSleepRecordsByDateRange(userId, monthAgo, todayEnd),
+    repo.getUserPreference(userId),
+  ]);
+
+  const sleepGoal = preference?.sleepGoalHours ?? 8;
+  const insights: WellnessInsight[] = [];
+
+  if (weeklyRecords.length === 0) {
+    insights.push({
+      type: "info",
+      message: "Start logging your sleep to get personalized insights.",
+      category: "sleep",
+    });
+    return insights;
+  }
+
+  const dailyTotals = new Map<string, { totalMs: number; qualities: number[] }>();
+  for (const r of weeklyRecords) {
+    const dateKey = r.bedtime.toISOString().slice(0, 10);
+    const existing = dailyTotals.get(dateKey) ?? { totalMs: 0, qualities: [] };
+    existing.totalMs += r.wakeTime.getTime() - r.bedtime.getTime();
+    if (r.quality) existing.qualities.push(r.quality);
+    dailyTotals.set(dateKey, existing);
+  }
+
+  const sortedDays = [...dailyTotals.entries()].sort(([a], [b]) => a.localeCompare(b));
+
+  // Yesterday comparison
+  if (sortedDays.length >= 2) {
+    const today = sortedDays[sortedDays.length - 1];
+    const yesterday = sortedDays[sortedDays.length - 2];
+    const todayHours = today[1].totalMs / 3600000;
+    const yesterdayHours = yesterday[1].totalMs / 3600000;
+    const diff = todayHours - yesterdayHours;
+    if (Math.abs(diff) >= 0.5) {
+      insights.push({
+        type: diff > 0 ? "positive" : "negative",
+        message: `You slept ${Math.abs(diff).toFixed(1)} ${diff > 0 ? "more" : "less"} hours than yesterday.`,
+        category: "sleep",
+      });
+    }
+  }
+
+  // Goal streak
+  const goalDays = sortedDays.filter(([_, data]) => data.totalMs / 3600000 >= sleepGoal);
+  if (goalDays.length >= 6) {
+    insights.push({
+      type: "positive",
+      message: `You've reached your sleep goal (${sleepGoal}h) for ${goalDays.length} consecutive days!`,
+      category: "sleep",
+    });
+  } else if (goalDays.length >= 3) {
+    insights.push({
+      type: "info",
+      message: `You've reached your sleep goal (${sleepGoal}h) for ${goalDays.length} days this week.`,
+      category: "sleep",
+    });
+  }
+
+  // Average bed/wake times
+  const bedHours = weeklyRecords.map((r) => r.bedtime.getHours() + r.bedtime.getMinutes() / 60);
+  const wakeHours = weeklyRecords.map((r) => r.wakeTime.getHours() + r.wakeTime.getMinutes() / 60);
+  const avgBed = bedHours.reduce((s, h) => s + h, 0) / bedHours.length;
+  const avgWake = wakeHours.reduce((s, h) => s + h, 0) / wakeHours.length;
+
+  const formatHour = (hour: number) => {
+    const h = Math.floor(hour);
+    const m = Math.round((hour - h) * 60);
+    const period = h >= 12 ? "PM" : "AM";
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${m.toString().padStart(2, "0")} ${period}`;
+  };
+
+  insights.push({
+    type: "info",
+    message: `Your average bedtime this week is ${formatHour(avgBed)}.`,
+    category: "sleep",
+  });
+
+  insights.push({
+    type: "info",
+    message: `Your average wake-up time this week is ${formatHour(avgWake)}.`,
+    category: "sleep",
+  });
+
+  // Optimal bedtime analysis: check if quality is better when going to bed early
+  const earlyBed = weeklyRecords.filter((r) => r.bedtime.getHours() < 23);
+  const lateBed = weeklyRecords.filter((r) => r.bedtime.getHours() >= 23);
+  if (earlyBed.length >= 2 && lateBed.length >= 2) {
+    const earlyQuality = earlyBed.reduce((s, r) => s + (r.quality ?? 5), 0) / earlyBed.length;
+    const lateQuality = lateBed.reduce((s, r) => s + (r.quality ?? 5), 0) / lateBed.length;
+    if (earlyQuality > lateQuality + 1) {
+      insights.push({
+        type: "positive",
+        message: "You sleep better when you go to bed before 11 PM.",
+        category: "sleep",
+      });
+    }
+  }
+
+  // Sleep debt (below goal days)
+  const belowGoalDays = sortedDays.filter(([_, data]) => data.totalMs / 3600000 < sleepGoal);
+  if (belowGoalDays.length > 0) {
+    const totalDebtHours = belowGoalDays.reduce((debt, [_, data]) => {
+      return debt + (sleepGoal - data.totalMs / 3600000);
+    }, 0);
+    if (totalDebtHours >= 1) {
+      insights.push({
+        type: "negative",
+        message: `You've accumulated ${totalDebtHours.toFixed(1)} hours of sleep debt this week.`,
+        category: "sleep",
+      });
+    }
+  }
+
+  // Consistency
+  const qualities = weeklyRecords.filter((r) => r.quality).map((r) => r.quality as number);
+  if (qualities.length >= 3) {
+    const avgQ = qualities.reduce((s, q) => s + q, 0) / qualities.length;
+    const allHigh = qualities.every((q) => q >= 7);
+    if (allHigh) {
+      insights.push({
+        type: "positive",
+        message: `Excellent consistency this week! Average quality: ${avgQ.toFixed(1)}/10.`,
+        category: "sleep",
+      });
+    }
+  }
+
+  // Monthly comparison
+  const twoWeekRecords = await repo.getSleepRecordsByDateRange(userId, twoWeeksAgo, todayEnd);
+  const twoWeekQualities = twoWeekRecords.filter((r) => r.quality).map((r) => r.quality as number);
+  if (twoWeekQualities.length >= 4) {
+    const recentQualities = qualities.slice(-3);
+    const olderQualities = twoWeekQualities.slice(0, 3);
+    if (recentQualities.length >= 2 && olderQualities.length >= 2) {
+      const recentAvg = recentQualities.reduce((s, q) => s + q, 0) / recentQualities.length;
+      const olderAvg = olderQualities.reduce((s, q) => s + q, 0) / olderQualities.length;
+      if (recentAvg > olderAvg + 1) {
+        insights.push({
+          type: "positive",
+          message: "Your sleep quality is improving compared to last week!",
+          category: "sleep",
+        });
+      } else if (recentAvg < olderAvg - 1) {
+        insights.push({
+          type: "negative",
+          message: "Your sleep quality has declined compared to last week.",
+          category: "sleep",
+        });
+      }
+    }
+  }
+
+  return insights;
+}
+
+// ── Sleep Preferences ──
+
+export async function getSleepGoal(userId: string) {
+  const pref = await repo.getUserPreference(userId);
+  return { sleepGoalHours: pref?.sleepGoalHours ?? 8 };
+}
+
+export async function upsertSleepGoal(userId: string, sleepGoalHours: number) {
+  const validated = sleepGoalSchema.parse({ sleepGoalHours });
+  return repo.upsertUserPreference(userId, validated);
+}
 
 // ── Hydration ──
 

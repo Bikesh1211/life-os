@@ -34,6 +34,10 @@ export const wellnessSleepRecords = pgTable("wellness_sleep_records", {
   wakeTime: timestamp("wake_time", { withTimezone: true }).notNull(),
   quality: integer("quality"),
   interruptions: integer("interruptions").default(0).notNull(),
+  sleepLatencyMinutes: integer("sleep_latency_minutes"),
+  moodAfterWaking: text("mood_after_waking"),
+  energyLevel: integer("energy_level"),
+  importSource: text("import_source"),
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -41,7 +45,18 @@ export const wellnessSleepRecords = pgTable("wellness_sleep_records", {
   userBedtimeIdx: index("idx_wellness_sleep_user_time").on(table.userId, table.bedtime),
 }));
 
-// ── 3. Hydration Entry ──
+// ── 3. User Preferences (single-row per user) ──
+export const wellnessUserPreferences = pgTable("wellness_user_preferences", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  sleepGoalHours: integer("sleep_goal_hours").default(8).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userUniq: uniqueIndex("idx_wellness_prefs_user").on(table.userId),
+}));
+
+// ── 4. Hydration Entry ──
 export const wellnessHydrationEntries = pgTable("wellness_hydration_entries", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: text("user_id").notNull(),
