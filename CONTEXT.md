@@ -301,6 +301,32 @@ A rule-generated observation about the user's wellness patterns, surfaced on the
 
 *Avoid*: AI, coach, assistant (when referring to v1 rule-based insights — use "Insight" instead)
 
+**Discipline System**:
+The flagship user-facing identity of Integrity OS, at `/discipline`. The technical module remains `src/modules/integrity/` and owns the same tables. Every user-facing term uses "Discipline" — Discipline Score, Discipline Streak, Discipline Level. The route `/integrity` permanently redirects to `/discipline`.
+
+**Discipline Score**:
+A 0–100 computed metric that extends the Integrity Score algorithm with delegated sub-scores from 7 weighted factors: Commitments (30%), Habits (15%), Tasks (15%), Sleep (10%), Exercise (10%), Journaling (10%), Goals (10%). Each external plugin exposes data through its service layer — score computations are in the Integrity service. Strengthened with a capped streak bonus (min(currentStreak × 0.5, 15)). Final clamped to [0, 100]. No stored score — computed on-read via daily snapshots cached in `integrity_daily_snapshots`.
+
+**Discipline Streak (All-or-Nothing)**:
+A stricter streak than Integrity's per-day streak. Counts consecutive days where every single commitment for that day was completed (completed_unverified or completed_verified). If any commitment is missed/failed/pending, the streak breaks. Used for the Discipline dashboard UI and score bonus calculation. Distinct from the existing Integrity Streak (any completion = counted day), which remains available for internal analytics.
+
+**Daily Accountability Journal**:
+The Integrity Daily Check-in, extended with 5 guided prompts: accomplishments, excuses, distractions, proudOf, improvement. Plus `excuseTags` (text array from predefined list: overslept, procrastinated, social-media, gaming, netflix, poor-planning, low-energy, unexpected-work, illness, family-commitment, weather, forgot, other). One entry per user per date.
+
+**Discipline Level**:
+A cosmetic/vanity title displayed on the Discipline dashboard, derived from the Discipline Score. 7 levels: Beginner (0+), Consistent (30+), Focused (50+), Disciplined (65+), Iron Mind (78+), Elite Performer (88+), Life Master (95+). Does not affect Gamification levels, XP, or other progression systems.
+
+**Excuse Tracker**:
+A predefined list of common failure reasons (`excuseTags` on the daily check-in) with aggregate reports showing the most common excuses. Reports generated from `integrity_daily_checkins.excuseTags` data.
+
+**Discipline Milestone**:
+Stored as `milestone_reached` events in the commitment event log (`integrity_commitment_events`). Fired when thresholds are hit: 7-day streak, 30-day streak, Life Master score. Metadata JSONB stores the milestone type/type/value. Powers the Discipline Timeline view.
+
+**Discipline Snapshot**:
+A daily cached row in `integrity_daily_snapshots` storing the computed score, streak, level, sub-scores (JSONB), commitment rate, and all-completed status. Computed on first dashboard visit of the day or when a commitment status changes. Enables fast dashboard loads and historical score analytics.
+
+*Avoid*: Rebuilding a parallel commitment engine in a new plugin — extend Integrity OS instead. Avoid creating separate discipline score logic — it's the Integrity score with a broader algorithm. Avoid LLM dependency in v1 — use rule-based insights. Avoid building Focus Mode in v1 — defer to v2. Avoid duplicating Gamification challenges — seed discipline challenges in the Gamification module. Avoid creating a separate progress levels system — Discipline Levels are cosmetic titles only.
+
 **Grooming Activity**:
 A personal care routine activity tracked within Wellness at `/wellness/grooming`. Each Grooming Activity is a Habit (from the Habits plugin) enriched with grooming-specific metadata in `wellness_habit_enrichment` where `wellnessType: "grooming"`. Enrichment stores `groomingCategory`, `icon`, `color`, `preferredTime`, `estimatedDurationMinutes`, `sortOrder`, `isArchived`, and `reminderConfig` (JSONB, unused in v1). Users can add, edit, delete, archive, and reorder activities. Default activities are seeded from `GROOMING_DEFAULT_TEMPLATES` on first visit. Completions are stored as Habit completions with `metadata` (JSONB) for mood, energy, cleanliness, confidence, photo URLs, and rating.
 

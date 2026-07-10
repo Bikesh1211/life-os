@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import * as repo from "./repository";
 import { getTasks } from "@/modules/tasks";
 import { getGoals } from "@/modules/goals";
+import { EXCUSE_TAGS, DISCIPLINE_LEVELS, SCORE_WEIGHTS } from "./constants";
 
 export const commitmentCategories = [
   "personal",
@@ -51,9 +52,16 @@ export const updateCommitmentSchema = createCommitmentSchema.partial().extend({
 
 export const createCheckinSchema = z.object({
   date: z.string(),
-  blockers: z.string().optional(),
+  accomplishments: z.string().optional(),
+  excuses: z.string().optional(),
+  distractions: z.string().optional(),
+  proudOf: z.string().optional(),
   improvement: z.string().optional(),
-  reflection: z.string().optional(),
+  excuseTags: z.array(z.enum(EXCUSE_TAGS)).optional(),
+});
+
+export const disciplineDashboardSchema = z.object({
+  period: z.enum(["today", "week", "month", "year"]).default("today"),
 });
 
 export type CreateCommitmentInput = z.infer<typeof createCommitmentSchema>;
@@ -397,15 +405,26 @@ export async function getCheckin(userId: string, date: string) {
 
 export async function upsertCheckin(
   userId: string,
-  input: { date: string; blockers?: string; improvement?: string; reflection?: string },
+  input: {
+    date: string;
+    accomplishments?: string;
+    excuses?: string;
+    distractions?: string;
+    proudOf?: string;
+    improvement?: string;
+    excuseTags?: readonly string[];
+  },
 ) {
   const existing = await repo.getCheckin(userId, input.date);
   const data = {
     userId,
     date: input.date,
-    blockers: input.blockers ?? null,
+    accomplishments: input.accomplishments ?? null,
+    excuses: input.excuses ?? null,
+    distractions: input.distractions ?? null,
+    proudOf: input.proudOf ?? null,
     improvement: input.improvement ?? null,
-    reflection: input.reflection ?? null,
+    excuseTags: input.excuseTags ? [...input.excuseTags] : null,
     id: existing?.id,
   };
   return repo.upsertCheckin(data);
@@ -626,4 +645,393 @@ export async function getStreaks(userId: string) {
     current: calculateCurrentStreak(all),
     longest: calculateLongestStreak(all),
   };
+}
+
+export function calculateAllOrNothingStreak(commitments: repo.Commitment[]): number {
+  const byDate = new Map<string, repo.Commitment[]>();
+
+  for (const c of commitments) {
+    const dateKey = dayjs(c.createdAt).format("YYYY-MM-DD");
+    if (!byDate.has(dateKey)) byDate.set(dateKey, []);
+    byDate.get(dateKey)!.push(c);
+  }
+
+  const sortedDates = [...byDate.keys()].sort().reverse();
+  if (sortedDates.length === 0) return 0;
+
+  const today = dayjs().format("YYYY-MM-DD");
+  let streak = 0;
+
+  for (const date of sortedDates) {
+    const daysAgo = dayjs(today).diff(dayjs(date), "day");
+    if (daysAgo > streak) break;
+
+    const dayCommitments = byDate.get(date)!;
+    const allCompleted = dayCommitments.every(
+      (c) => c.status === "completed_unverified" || c.status === "completed_verified",
+    );
+
+    if (allCompleted) {
+      streak++;
+    } else {
+      if (streak === 0 && date === today) continue;
+      break;
+    }
+  }
+
+  return streak;
+}
+
+export function calculateLongestAllOrNothingStreak(commitments: repo.Commitment[]): number {
+  const byDate = new Map<string, repo.Commitment[]>();
+
+  for (const c of commitments) {
+    const dateKey = dayjs(c.createdAt).format("YYYY-MM-DD");
+    if (!byDate.has(dateKey)) byDate.set(dateKey, []);
+    byDate.get(dateKey)!.push(c);
+  }
+
+  const sortedDates = [...byDate.keys()].sort();
+  if (sortedDates.length === 0) return 0;
+
+  let longest = 0;
+  let current = 0;
+
+  for (let i = 0; i < sortedDates.length; i++) {
+    const date = sortedDates[i];
+    const dayCommitments = byDate.get(date)!;
+    const allCompleted = dayCommitments.every(
+      (c) => c.status === "completed_unverified" || c.status === "completed_verified",
+    );
+
+    if (i > 0) {
+      const prevDate = sortedDates[i - 1];
+      const diff = dayjs(date).diff(dayjs(prevDate), "day");
+      if (diff !== 1) current = 0;
+    }
+
+    if (allCompleted) {
+      current++;
+      if (current > longest) longest = current;
+    } else {
+      current = 0;
+    }
+  }
+
+  return longest;
+}
+
+export function getDisciplineLevel(score: number): { level: number; title: string } {
+  let result: { level: number; title: string } = { level: 1, title: "Beginner" };
+  for (const l of DISCIPLINE_LEVELS) {
+    if (score >= l.minScore) result = { level: l.level, title: l.title };
+  }
+  return result;
+}
+
+export async function calculateDisciplineScore(userId: string): Promise<{
+  score: number;
+  subScores: Record<string, number>;
+  commitmentRate: number;
+  isAllCompleted: boolean;
+}> {
+  const all = await repo.getAllCommitmentsForUser(userId);
+  const subScores: Record<string, number> = {};
+
+  // Commitments (30%) — based on promise ratio
+  const completed = all.filter(
+    (c) => c.status === "completed_unverified" || c.status === "completed_verified",
+  );
+  const failed = all.filter((c) => c.status === "failed" || c.status === "missed");
+  const totalResolved = completed.length + failed.length;
+  const promiseRatio = totalResolved > 0 ? completed.length / totalResolved : 1;
+  const commitmentScore = Math.round(promiseRatio * 100);
+  subScores.commitments = commitmentScore;
+
+  // Check if all today's commitments are completed (all-or-nothing)
+  const today = dayjs().format("YYYY-MM-DD");
+  const todayCommitments = all.filter(
+    (c) => dayjs(c.createdAt).format("YYYY-MM-DD") === today,
+  );
+  const pendingToday = todayCommitments.filter(
+    (c) => c.status === "pending" || c.status === "in_progress",
+  );
+  const isAllCompleted = todayCommitments.length > 0 && pendingToday.length === 0;
+
+  // Habits (15%) — read from Habits service
+  let habitScore = 0;
+  try {
+    const { getDashboard } = await import("@/modules/habits");
+    const habitDashboard = await getDashboard(userId, { period: "week" });
+    if (habitDashboard && habitDashboard.completionRate !== undefined) {
+      habitScore = Math.round(habitDashboard.completionRate);
+    }
+  } catch {
+    habitScore = 0;
+  }
+  subScores.habits = habitScore;
+
+  // Tasks (15%) — read from Tasks service
+  let taskScore = 0;
+  try {
+    const taskStats = await getTasks(userId, { status: "done" });
+    const allTasks = await getTasks(userId, {});
+    const totalTasks = allTasks.length;
+    const doneTasks = taskStats.length;
+    taskScore = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
+  } catch {
+    taskScore = 0;
+  }
+  subScores.tasks = taskScore;
+
+  // Sleep (10%) — read from Wellness
+  let sleepScore = 0;
+  try {
+    const { getSleepRecords } = await import("@/modules/wellness");
+    const lastWeek = dayjs().subtract(7, "day").format("YYYY-MM-DD");
+    const records = await getSleepRecords(userId, { dateFrom: lastWeek });
+    if (records.length > 0) {
+      const avgQuality = records.reduce((s: number, r: any) => s + (r.quality ?? 0), 0) / records.length;
+      sleepScore = Math.round((avgQuality / 10) * 100);
+    }
+  } catch {
+    sleepScore = 0;
+  }
+  subScores.sleep = sleepScore;
+
+  // Journaling (10%) — read from Journal service
+  let journalScore = 0;
+  try {
+    const { getJournalStats } = await import("@/modules/journal");
+    const stats = await getJournalStats(userId);
+    if (stats && stats.totalEntries !== undefined) {
+      const journalEntriesLast30 = stats.recentEntries?.length ?? 0;
+      journalScore = Math.round(Math.min((journalEntriesLast30 / 30) * 100, 100));
+    }
+  } catch {
+    journalScore = 0;
+  }
+  subScores.journaling = journalScore;
+
+  // Goals (10%) — read from Goals service
+  let goalScore = 0;
+  try {
+    const goals = await getGoals(userId);
+    const active = goals.filter((g: any) => g.status === "active");
+    if (active.length > 0) {
+      const avgProgress = active.reduce((s: number, g: any) => s + (g.progress ?? 0), 0) / active.length;
+      goalScore = Math.round(avgProgress);
+    }
+  } catch {
+    goalScore = 0;
+  }
+  subScores.goals = goalScore;
+
+  // Exercise (10%) — from Timeline activity entries
+  let exerciseScore = 0;
+  try {
+    const { getTimelineEvents } = await import("@/modules/timeline");
+    const events = await getTimelineEvents(userId);
+    const weekAgo = dayjs().subtract(7, "day");
+    const recentEvents = events.filter((e: any) =>
+      e.createdAt && dayjs(e.createdAt).isAfter(weekAgo),
+    );
+    const exerciseEntries = recentEvents.filter((e: any) =>
+      e.category === "health" || (e.activityType && e.activityType.toString().toLowerCase().includes("exercise")),
+    );
+    exerciseScore = Math.round(Math.min((exerciseEntries.length / 14) * 100, 100));
+  } catch {
+    exerciseScore = 0;
+  }
+  subScores.exercise = exerciseScore;
+
+  // Calculate weighted score
+  const weightedScore =
+    (subScores.commitments * SCORE_WEIGHTS.commitments) +
+    (subScores.habits * SCORE_WEIGHTS.habits) +
+    (subScores.tasks * SCORE_WEIGHTS.tasks) +
+    (subScores.sleep * SCORE_WEIGHTS.sleep) +
+    (subScores.exercise * SCORE_WEIGHTS.exercise) +
+    (subScores.journaling * SCORE_WEIGHTS.journaling) +
+    (subScores.goals * SCORE_WEIGHTS.goals);
+
+  // Streak bonus (capped)
+  const currentStreak = calculateAllOrNothingStreak(all);
+  const streakBonus = Math.min(currentStreak * 0.5, 15);
+
+  const score = Math.max(0, Math.min(100, Math.round(weightedScore + streakBonus)));
+  const commitmentRate = totalResolved > 0 ? Math.round((completed.length / totalResolved) * 100) : 100;
+
+  return { score, subScores, commitmentRate, isAllCompleted };
+}
+
+export async function getDisciplineDashboard(userId: string, period: string = "today") {
+  const all = await repo.getAllCommitmentsForUser(userId);
+
+  const currentStreak = calculateCurrentStreak(all);
+  const longestStreak = calculateLongestStreak(all);
+  const allOrNothingStreak = calculateAllOrNothingStreak(all);
+  const longestAllOrNothingStreak = calculateLongestAllOrNothingStreak(all);
+
+  const { score, subScores, commitmentRate, isAllCompleted } = await calculateDisciplineScore(userId);
+  const level = getDisciplineLevel(score);
+
+  const today = dayjs().format("YYYY-MM-DD");
+  const todayCheckin = await repo.getCheckin(userId, today);
+
+  // Days stayed consistent (days with all commitments completed)
+  const byDate = new Map<string, repo.Commitment[]>();
+  for (const c of all) {
+    const dateKey = dayjs(c.createdAt).format("YYYY-MM-DD");
+    if (!byDate.has(dateKey)) byDate.set(dateKey, []);
+    byDate.get(dateKey)!.push(c);
+  }
+  const daysConsistent = [...byDate.entries()].filter(([_, commitments]) =>
+    commitments.every(
+      (c) => c.status === "completed_unverified" || c.status === "completed_verified",
+    ),
+  ).length;
+
+  const missedCount = all.filter((c) => c.status === "missed").length;
+  const failedCount = all.filter((c) => c.status === "failed").length;
+  const totalMissed = missedCount + failedCount;
+
+  // Monthly improvement
+  const thisMonth = dayjs().startOf("month");
+  const lastMonth = thisMonth.subtract(1, "month");
+  const thisMonthCommitments = all.filter((c) => dayjs(c.createdAt).isAfter(thisMonth));
+  const lastMonthCommitments = all.filter(
+    (c) =>
+      dayjs(c.createdAt).isAfter(lastMonth) && dayjs(c.createdAt).isBefore(thisMonth),
+  );
+
+  const thisMonthCompleted = thisMonthCommitments.filter(
+    (c) => c.status === "completed_unverified" || c.status === "completed_verified",
+  ).length;
+  const lastMonthCompleted = lastMonthCommitments.filter(
+    (c) => c.status === "completed_unverified" || c.status === "completed_verified",
+  ).length;
+
+  const thisMonthRate = thisMonthCommitments.length > 0
+    ? thisMonthCompleted / thisMonthCommitments.length
+    : 0;
+  const lastMonthRate = lastMonthCommitments.length > 0
+    ? lastMonthCompleted / lastMonthCommitments.length
+    : 0;
+  const monthlyImprovement = Math.round((thisMonthRate - lastMonthRate) * 100);
+
+  // Weekly rating
+  const weekStart = dayjs().startOf("week");
+  const weekCommitments = all.filter((c) => dayjs(c.createdAt).isAfter(weekStart));
+  const weekCompleted = weekCommitments.filter(
+    (c) => c.status === "completed_unverified" || c.status === "completed_verified",
+  ).length;
+  const weeklyRating = weekCommitments.length > 0
+    ? Math.round((weekCompleted / weekCommitments.length) * 100)
+    : 0;
+
+  const recentEvents = await repo.getRecentEvents(userId, 20);
+
+  return {
+    disciplineScore: score,
+    subScores,
+    currentStreak: allOrNothingStreak,
+    longestStreak: longestAllOrNothingStreak,
+    daysConsistent,
+    missedCommitments: totalMissed,
+    weeklyRating,
+    monthlyImprovement,
+    level: level.level,
+    levelTitle: level.title,
+    commitmentRate,
+    isAllCompleted,
+    todayCheckin: todayCheckin ?? null,
+    upcomingDeadlines: all
+      .filter((c) => {
+        if (!c.dueDate || c.status === "completed_verified" || c.status === "completed_unverified" || c.status === "cancelled") return false;
+        return dayjs(c.dueDate).isAfter(dayjs());
+      })
+      .sort((a, b) => {
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return dayjs(a.dueDate).diff(dayjs(b.dueDate));
+      })
+      .slice(0, 10),
+    recentEvents,
+  };
+}
+
+export async function getExcuseTagDistribution(
+  userId: string,
+  dateFrom?: string,
+  dateTo?: string,
+) {
+  return repo.getExcuseTagDistribution(userId, dateFrom, dateTo);
+}
+
+export async function computeDailySnapshot(userId: string) {
+  const today = dayjs().format("YYYY-MM-DD");
+  const existing = await repo.getSnapshot(userId, today);
+
+  const { score, subScores, commitmentRate, isAllCompleted } = await calculateDisciplineScore(userId);
+  const all = await repo.getAllCommitmentsForUser(userId);
+  const streak = calculateAllOrNothingStreak(all);
+  const level = getDisciplineLevel(score);
+
+  const data = {
+    userId,
+    date: today,
+    score,
+    streak,
+    level: level.level,
+    levelTitle: level.title,
+    subScores: JSON.stringify(subScores),
+    commitmentRate,
+    isAllCompleted: String(isAllCompleted),
+    id: existing?.id,
+  };
+
+  const snapshot = await repo.upsertSnapshot(data);
+
+  // Check for milestones
+  const events = await repo.getRecentEvents(userId, 200);
+  const milestoneEvents = events.filter((e) => e.eventType === "milestone_reached");
+
+  // 7-day streak milestone
+  if (streak === 7 && !milestoneEvents.some((e) => {
+    const m = e.metadata ? JSON.parse(e.metadata) : {};
+    return m.type === "streak_7_days";
+  })) {
+    await repo.createEvent({
+      commitmentId: "00000000-0000-0000-0000-000000000000",
+      eventType: "milestone_reached",
+      metadata: JSON.stringify({ type: "streak_7_days", title: "First Week Completed", streak }),
+    });
+  }
+
+  // 30-day streak milestone
+  if (streak === 30 && !milestoneEvents.some((e) => {
+    const m = e.metadata ? JSON.parse(e.metadata) : {};
+    return m.type === "streak_30_days";
+  })) {
+    await repo.createEvent({
+      commitmentId: "00000000-0000-0000-0000-000000000000",
+      eventType: "milestone_reached",
+      metadata: JSON.stringify({ type: "streak_30_days", title: "30-Day Streak!", streak }),
+    });
+  }
+
+  // Score milestones
+  if (score >= 95 && !milestoneEvents.some((e) => {
+    const m = e.metadata ? JSON.parse(e.metadata) : {};
+    return m.type === "score_life_master";
+  })) {
+    await repo.createEvent({
+      commitmentId: "00000000-0000-0000-0000-000000000000",
+      eventType: "milestone_reached",
+      metadata: JSON.stringify({ type: "score_life_master", title: "Life Master Achieved", score }),
+    });
+  }
+
+  return snapshot;
 }
