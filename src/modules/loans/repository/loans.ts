@@ -51,11 +51,18 @@ export async function getLoans(filters: LoanFilters) {
   const orderBy = (() => {
     switch (filters.sortBy) {
       case "amount":
-        return filters.sortOrder === "asc" ? asc(loans.principalAmount) : desc(loans.principalAmount);
+      case "amount_high":
+        return desc(loans.principalAmount);
+      case "amount_low":
+        return asc(loans.principalAmount);
       case "due_date":
-        return filters.sortOrder === "asc" ? asc(loans.dueDate) : desc(loans.dueDate);
+      case "due_soon":
+        return asc(loans.dueDate);
       case "loan_date":
-        return filters.sortOrder === "asc" ? asc(loans.loanDate) : desc(loans.loanDate);
+      case "newest":
+        return desc(loans.loanDate);
+      case "oldest":
+        return asc(loans.loanDate);
       default:
         return desc(loans.createdAt);
     }

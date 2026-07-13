@@ -16,7 +16,7 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") ?? undefined;
     const search = searchParams.get("search") ?? undefined;
     const sortBy = searchParams.get("sortBy") ?? undefined;
-    const sortOrder = searchParams.get("sortOrder") as "asc" | "desc" | undefined;
+    const sortOrder = searchParams.get("sortOrder") ?? undefined;
     const limit = searchParams.get("limit") ? Number(searchParams.get("limit")) : 50;
     const offset = searchParams.get("offset") ? Number(searchParams.get("offset")) : 0;
     const includeArchived = searchParams.get("includeArchived") === "true";
@@ -41,16 +41,17 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const userId = await getCurrentUserId();
-  if (!userId) return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Authentication required" } }, { status: 401 });
-
   try {
+    const userId = await getCurrentUserId();
+    if (!userId) return NextResponse.json({ error: { code: "UNAUTHORIZED", message: "Authentication required" } }, { status: 401 });
+
     const body = await req.json();
     const loan = await createLoan(userId, body);
     return NextResponse.json(loan, { status: 201 });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Invalid request";
     const details = error instanceof Error ? error.stack ?? undefined : undefined;
-    return NextResponse.json({ error: { code: "VALIDATION_ERROR", message, details } }, { status: 400 });
+    const code = (error instanceof Error && error.message.includes("ZodError")) ? "VALIDATION_ERROR" : "INTERNAL_ERROR";
+    return NextResponse.json({ error: { code, message, details } }, { status: 500 });
   }
 }
