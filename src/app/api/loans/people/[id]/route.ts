@@ -5,24 +5,29 @@ import { getConnection } from "@/modules/network/service";
 import { getLoansByConnectionId } from "@/modules/loans/repository/loans";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const userId = await getCurrentUserId();
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return new NextResponse("Unauthorized", { status: 401 });
 
-  const { id: connectionId } = await params;
+    const { id: connectionId } = await params;
 
-  const [connection, loanSummary] = await Promise.all([
-    getConnection(connectionId, userId),
-    getPersonLoanSummary(connectionId, userId),
-  ]);
+    const [connection, loanSummary] = await Promise.all([
+      getConnection(connectionId, userId),
+      getPersonLoanSummary(connectionId, userId),
+    ]);
 
-  if (!connection) return new NextResponse("Not found", { status: 404 });
+    if (!connection) return new NextResponse("Not found", { status: 404 });
 
-  return NextResponse.json({
-    id: connection.id,
-    name: connection.name,
-    phone: connection.phone,
-    email: connection.email,
-    profilePictureUrl: connection.profilePictureUrl,
-    ...loanSummary,
-  });
+    return NextResponse.json({
+      id: connection.id,
+      name: connection.name,
+      phone: connection.phone,
+      email: connection.email,
+      profilePictureUrl: connection.profilePictureUrl,
+      ...loanSummary,
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Invalid request";
+    return NextResponse.json({ error: { code: "INTERNAL_ERROR", message } }, { status: 500 });
+  }
 }
