@@ -1,24 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Stack, Text, Group, Button, ActionIcon, Tooltip,
-  Loader, Center, ScrollArea, Paper, Select, Slider,
-  Divider, Kbd,
+  Loader, Center, Text, Box, Group, ActionIcon, Tooltip,
+  Paper, Stack, Slider, Select,
 } from "@mantine/core";
-import { useDisclosure, useLocalStorage, useHotkeys, useFullscreen } from "@mantine/hooks";
+import { useFullscreen } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  IconBook2, IconList, IconSettings, IconSun, IconMoon,
-  IconZoomIn, IconZoomOut, IconMaximize, IconMinimize,
-  IconArrowLeft, IconArrowRight, IconBookmark, IconBookmarkFilled,
-  IconHighlight, IconPhoto, IconEye, IconTypography,
-  IconLayoutDistributeHorizontal, IconCircleArrowLeft,
-  IconCircleArrowRight, IconX, IconChevronLeft,
-  IconChevronRight, IconStar, IconStarFilled,
+  IconArrowLeft, IconChevronLeft, IconChevronRight,
+  IconMaximize, IconMinimize, IconTypography, IconBookmark, IconBookmarkFilled,
+  IconX, IconList,
 } from "@tabler/icons-react";
 import { Editor } from "@/components/editor";
 
@@ -34,33 +29,29 @@ type Book = {
   id: string;
   title: string;
   subtitle: string | null;
-  authorByline: string | null;
-  coverUrl: string | null;
   wordCount: number;
 };
 
 type Bookmark = {
   id: string;
   chapterId: string;
-  label: string | null;
-  color: string;
 };
 
-const readingThemes = [
-  { value: "light", label: "Light", icon: IconSun, bg: "#ffffff", color: "#1a1a1a" },
-  { value: "sepia", label: "Sepia", icon: IconPhoto, bg: "#f5e6c8", color: "#5b4636" },
-  { value: "dark", label: "Dark", icon: IconMoon, bg: "#1a1a2e", color: "#e0e0e0" },
-  { value: "oled", label: "OLED", icon: IconMoon, bg: "#000000", color: "#e0e0e0" },
-  { value: "paper", label: "Paper", icon: IconBook2, bg: "#f0ece4", color: "#3d3229" },
-  { value: "cream", label: "Cream", icon: IconBook2, bg: "#faf3e0", color: "#4a3b32" },
+const THEMES = [
+  { value: "light", bg: "#ffffff", text: "#1a1a1a", border: "#e5e7eb" },
+  { value: "sepia", bg: "#f5e6c8", text: "#5b4636", border: "#d4c5a9" },
+  { value: "dark", bg: "#1a1a2e", text: "#e0e0e0", border: "#2d2d44" },
+  { value: "oled", bg: "#000000", text: "#e0e0e0", border: "#1f1f1f" },
+  { value: "paper", bg: "#f0ece4", text: "#3d3229", border: "#ddd6c8" },
+  { value: "cream", bg: "#faf3e0", text: "#4a3b32", border: "#e8dcc8" },
 ];
 
-const fontFamilies = [
-  { value: "georgia", label: "Georgia" },
-  { value: "garamond", label: "Garamond" },
-  { value: "merriweather", label: "Merriweather" },
-  { value: "lora", label: "Lora" },
-  { value: "system", label: "System UI" },
+const FONTS = [
+  { value: "Georgia, serif", label: "Georgia" },
+  { value: "Garamond, serif", label: "Garamond" },
+  { value: "Merriweather, serif", label: "Merriweather" },
+  { value: "Lora, serif", label: "Lora" },
+  { value: "system-ui, sans-serif", label: "System UI" },
   { value: "serif", label: "Serif" },
 ];
 
@@ -68,48 +59,23 @@ export function ReaderContent() {
   const params = useParams<{ id: string }>();
   const bookId = params.id;
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { toggle: toggleFullscreen, fullscreen } = useFullscreen();
-
-  const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
-  const [showToc, { toggle: toggleToc }] = useDisclosure(false);
-  const [showSettings, { toggle: toggleSettings }] = useDisclosure(false);
-  const [selectedBookmark, setSelectedBookmark] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const progressSavedRef = useRef(false);
 
-  const [readerTheme, setReaderTheme] = useLocalStorage<string>({
-    key: "reader-theme",
-    defaultValue: "sepia",
-  });
-  const [fontSize, setFontSize] = useLocalStorage<number>({
-    key: "reader-font-size",
-    defaultValue: 18,
-  });
-  const [fontFamily, setFontFamily] = useLocalStorage<string>({
-    key: "reader-font-family",
-    defaultValue: "georgia",
-  });
-  const [lineHeight, setLineHeight] = useLocalStorage<number>({
-    key: "reader-line-height",
-    defaultValue: 1.8,
-  });
-  const [pageWidth, setPageWidth] = useLocalStorage<number>({
-    key: "reader-page-width",
-    defaultValue: 720,
-  });
-  const [showDropCaps, setShowDropCaps] = useLocalStorage<boolean>({
-    key: "reader-drop-caps",
-    defaultValue: true,
-  });
+  const [chapterIndex, setChapterIndex] = useState(0);
+  const [showToc, setShowToc] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  useHotkeys([
-    ["ArrowLeft", () => handleChapterChange(currentChapterIndex - 1)],
-    ["ArrowRight", () => handleChapterChange(currentChapterIndex + 1)],
-    ["t", () => toggleToc()],
-    ["s", () => toggleSettings()],
-    ["f", () => toggleFullscreen()],
-    ["Escape", () => { if (fullscreen) toggleFullscreen(); }],
-  ]);
+  const [theme, setTheme] = useState(() => localStorage.getItem("reader-theme") || "sepia");
+  const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem("reader-font-size")) || 18);
+  const [fontFamily, setFontFamily] = useState(() => localStorage.getItem("reader-font-family") || "Georgia, serif");
+  const [lineHeight, setLineHeight] = useState(() => Number(localStorage.getItem("reader-line-height")) || 1.8);
+  const [pageWidth, setPageWidth] = useState(() => Number(localStorage.getItem("reader-page-width")) || 720);
+
+  const saveLocal = useCallback((key: string, value: unknown) => {
+    localStorage.setItem(key, String(value));
+  }, []);
 
   const { data: book, isLoading: bookLoading } = useQuery({
     queryKey: ["book", bookId],
@@ -141,75 +107,50 @@ export function ReaderContent() {
     enabled: !!bookId,
   });
 
-  const saveProgressMutation = useMutation({
-    mutationFn: async (chapterId: string) => {
-      const scrollEl = scrollRef.current;
-      const scrollPosition = scrollEl?.scrollTop ?? 0;
-      const maxScroll = (scrollEl?.scrollHeight ?? 1) - (scrollEl?.clientHeight ?? 1);
-      const percentage = maxScroll > 0 ? Math.round((scrollPosition / maxScroll) * 100) : 0;
-
-      await fetch(`/api/books/${bookId}/progress`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chapterId, scrollPosition, percentage }),
-      });
-    },
-  });
-
-  const addBookmarkMutation = useMutation({
-    mutationFn: async (chapterId: string) => {
+  const addBookmark = useMutation({
+    mutationFn: async () => {
+      if (!chapter) return;
       const res = await fetch(`/api/books/${bookId}/bookmarks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          chapterId,
-          position: { chapterIndex: currentChapterIndex },
-          label: `Chapter ${currentChapterIndex + 1}`,
+          chapterId: chapter.id,
+          position: { chapterIndex },
+          label: `Chapter ${chapterIndex + 1}`,
         }),
       });
       if (!res.ok) throw new Error("Failed to add bookmark");
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bookmarks", bookId] });
       notifications.show({ title: "Bookmarked", message: "Bookmark added", color: "green" });
     },
   });
 
-  const currentChapter = chapters?.[currentChapterIndex];
-  const totalWords = chapters?.reduce((s, c) => s + c.wordCount, 0) ?? 0;
-  const wordsRead = chapters?.slice(0, currentChapterIndex + 1).reduce((s, c) => s + c.wordCount, 0) ?? 0;
-  const progress = totalWords > 0 ? Math.round((wordsRead / totalWords) * 100) : 0;
+  const chapter = chapters?.[chapterIndex];
+  const colors = THEMES.find((t) => t.value === theme) ?? THEMES[0];
+  const hasBookmark = bookmarks?.some((b) => b.chapterId === chapter?.id);
 
-  const currentTheme = readingThemes.find((t) => t.value === readerTheme)!;
-  const hasBookmark = bookmarks?.some((b) => b.chapterId === currentChapter?.id);
-
-  const handleChapterChange = useCallback((newIndex: number) => {
-    const chapters_ = chapters;
-    if (!chapters_) return;
-    if (newIndex < 0 || newIndex >= chapters_.length) return;
-
-    if (currentChapter && !progressSavedRef.current) {
-      saveProgressMutation.mutate(currentChapter.id);
-      progressSavedRef.current = true;
-    }
-    progressSavedRef.current = false;
-    setCurrentChapterIndex(newIndex);
+  const goTo = useCallback((i: number) => {
+    if (!chapters) return;
+    const next = Math.max(0, Math.min(i, chapters.length - 1));
+    setChapterIndex(next);
+    setShowToc(false);
+    setShowSettings(false);
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [chapters, currentChapter, saveProgressMutation]);
+  }, [chapters]);
 
   useEffect(() => {
-    if (currentChapter && scrollRef.current) {
-      scrollRef.current.scrollTop = 0;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") goTo(chapterIndex - 1);
+      if (e.key === "ArrowRight") goTo(chapterIndex + 1);
+      if (e.key === "f" || e.key === "F") toggleFullscreen();
+      if (e.key === "Escape") { setShowToc(false); setShowSettings(false); }
     }
-  }, [currentChapter?.id]);
-
-  useEffect(() => {
-    if (fullscreen) {
-      document.documentElement.requestFullscreen?.().catch(() => {});
-    } else {
-      document.exitFullscreen?.().catch(() => {});
-    }
-  }, [fullscreen]);
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [chapterIndex, goTo, toggleFullscreen]);
 
   if (bookLoading || chaptersLoading) {
     return <Center h="100vh"><Loader size="lg" /></Center>;
@@ -218,496 +159,152 @@ export function ReaderContent() {
   if (!book || !chapters || chapters.length === 0) {
     return (
       <Center h="100vh">
-        <Stack align="center" gap="md">
-          <IconBook2 size={48} stroke={1.5} opacity={0.3} />
-          <Text c="dimmed">
-            {!book ? "Book not found" : "No chapters to read"}
-          </Text>
-        </Stack>
+        <Text c="dimmed">{!book ? "Book not found" : "No chapters to read"}</Text>
       </Center>
     );
   }
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        background: currentTheme.bg,
-        color: currentTheme.color,
-        transition: "background-color 0.3s, color 0.3s",
-      }}
-    >
-      {/* Top toolbar */}
-      <Group
-        px="md"
-        py={6}
-        justify="space-between"
-        style={{
-          borderBottom: "1px solid",
-          borderColor: readerTheme === "dark" || readerTheme === "oled"
-            ? "#333" : "rgba(0,0,0,0.08)",
-          flexShrink: 0,
-          userSelect: "none",
-        }}
-      >
+    <Box style={{ height: "100vh", display: "flex", flexDirection: "column", background: colors.bg, color: colors.text, transition: "background 0.3s" }}>
+      <Group px="md" py={6} justify="space-between" style={{ borderBottom: `1px solid ${colors.border}`, flexShrink: 0 }}>
         <Group gap={4}>
-          <Tooltip label="Back to library">
-            <ActionIcon
-              variant="subtle"
-              size="sm"
-              onClick={() => router.push("/creator-studio/books")}
-              style={{ color: currentTheme.color }}
-            >
+          <Tooltip label="Back">
+            <ActionIcon variant="subtle" size="sm" onClick={() => router.push("/creator-studio/books")} style={{ color: colors.text }}>
               <IconArrowLeft size={16} />
             </ActionIcon>
           </Tooltip>
-          <Text size="sm" fw={500} lineClamp={1} style={{ maxWidth: 200 }}>
-            {book.title}
-          </Text>
-          {book.subtitle && (
-            <Text size="xs" c="dimmed" lineClamp={1} style={{ opacity: 0.6 }}>
-              — {book.subtitle}
-            </Text>
-          )}
+          <Text size="sm" fw={500} lineClamp={1} style={{ maxWidth: 200 }}>{book.title}</Text>
         </Group>
-
         <Group gap={4}>
-          <Tooltip label="Table of contents (T)">
-            <ActionIcon
-              variant="subtle"
-              size="sm"
-              onClick={toggleToc}
-              style={{ color: currentTheme.color }}
-            >
+          <Tooltip label="Chapters">
+            <ActionIcon variant={showToc ? "filled" : "subtle"} size="sm" onClick={() => { setShowToc((v) => !v); setShowSettings(false); }} style={{ color: colors.text }}>
               <IconList size={16} />
             </ActionIcon>
           </Tooltip>
-
-          <Tooltip label="Reading settings (S)">
-            <ActionIcon
-              variant={showSettings ? "filled" : "subtle"}
-              size="sm"
-              onClick={toggleSettings}
-              style={{ color: currentTheme.color }}
-            >
+          <Tooltip label="Settings">
+            <ActionIcon variant={showSettings ? "filled" : "subtle"} size="sm" onClick={() => { setShowSettings((v) => !v); setShowToc(false); }} style={{ color: colors.text }}>
               <IconTypography size={16} />
             </ActionIcon>
           </Tooltip>
-
-          <Tooltip label={fullscreen ? "Exit" : "Fullscreen (F)"}>
-            <ActionIcon
-              variant="subtle"
-              size="sm"
-              onClick={toggleFullscreen}
-              style={{ color: currentTheme.color }}
-            >
+          <Tooltip label={fullscreen ? "Exit fullscreen" : "Fullscreen"}>
+            <ActionIcon variant="subtle" size="sm" onClick={toggleFullscreen} style={{ color: colors.text }}>
               {fullscreen ? <IconMinimize size={16} /> : <IconMaximize size={16} />}
             </ActionIcon>
           </Tooltip>
         </Group>
       </Group>
 
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Table of Contents sidebar */}
-        <AnimatePresence>
-          {showToc && (
-            <motion.div
-              initial={{ width: 0, opacity: 0 }}
-              animate={{ width: 260, opacity: 1 }}
-              exit={{ width: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              style={{
-                overflow: "hidden",
-                borderRight: "1px solid",
-                borderColor: readerTheme === "dark" || readerTheme === "oled"
-                  ? "#333" : "rgba(0,0,0,0.08)",
-                flexShrink: 0,
-              }}
-            >
-              <Paper
-                p="sm"
-                style={{
-                  width: 260,
-                  height: "100%",
-                  background: "transparent",
-                  overflow: "auto",
-                }}
-              >
-                <Group justify="space-between" mb="sm">
-                  <Text size="sm" fw={600}>Contents</Text>
-                  <ActionIcon variant="subtle" size="sm" onClick={toggleToc}>
-                    <IconX size={14} />
-                  </ActionIcon>
-                </Group>
-
-                {/* Progress */}
-                <Paper p="xs" radius="sm" mb="md" style={{
-                  background: readerTheme === "dark" || readerTheme === "oled"
-                    ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)"
-                }}>
-                  <Group justify="space-between" mb={4}>
-                    <Text size="xs" c="dimmed">Progress</Text>
-                    <Text size="xs" fw={600}>{progress}%</Text>
+      <Box style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+        <Box style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          {showSettings && (
+            <Paper p="md" withBorder={false} style={{ background: "transparent", borderBottom: `1px solid ${colors.border}` }}>
+              <Group gap="xl" wrap="wrap" justify="center">
+                <Stack gap={4} align="center">
+                  <Text size="xs" c="dimmed">Theme</Text>
+                  <Group gap={4}>
+                    {THEMES.map((t) => (
+                      <Tooltip key={t.value} label={t.value}>
+                        <Paper
+                          p={4} radius="sm"
+                          withBorder={theme === t.value}
+                          style={{ width: 28, height: 28, cursor: "pointer", background: t.bg, border: theme === t.value ? `2px solid ${colors.text}` : `1px solid ${t.border}` }}
+                          onClick={() => { setTheme(t.value); saveLocal("reader-theme", t.value); }}
+                        />
+                      </Tooltip>
+                    ))}
                   </Group>
-                  <div style={{
-                    height: 3,
-                    borderRadius: 2,
-                    background: readerTheme === "dark" || readerTheme === "oled"
-                      ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
-                  }}>
-                    <div style={{
-                      width: `${progress}%`,
-                      height: "100%",
-                      borderRadius: 2,
-                      background: currentTheme.color,
-                      opacity: 0.5,
-                      transition: "width 0.3s",
-                    }} />
-                  </div>
-                </Paper>
-
-                <Stack gap={2}>
-                  {chapters.map((chapter, i) => (
-                    <Paper
-                      key={chapter.id}
-                      p="xs"
-                      radius="sm"
-                      style={{
-                        cursor: "pointer",
-                        background: i === currentChapterIndex
-                          ? readerTheme === "dark" || readerTheme === "oled"
-                            ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"
-                          : undefined,
-                        borderLeft: i === currentChapterIndex ? `2px solid ${currentTheme.color}` : "2px solid transparent",
-                      }}
-                      onClick={() => {
-                        handleChapterChange(i);
-                        if (window.innerWidth < 768) toggleToc();
-                      }}
-                    >
-                      <Text size="sm" fw={i === currentChapterIndex ? 600 : 400}>
-                        {chapter.title}
-                      </Text>
-                      <Text size="xs" style={{ opacity: 0.5 }}>
-                        {chapter.wordCount.toLocaleString()} words
-                      </Text>
-                    </Paper>
-                  ))}
                 </Stack>
-              </Paper>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Main reading area */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          {/* Settings panel */}
-          <AnimatePresence>
-            {showSettings && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                style={{
-                  overflow: "hidden",
-                  borderBottom: "1px solid",
-                  borderColor: readerTheme === "dark" || readerTheme === "oled"
-                    ? "#333" : "rgba(0,0,0,0.08)",
-                }}
-              >
-                <Paper p="md" style={{ background: "transparent" }}>
-                  <Group gap="xl" wrap="wrap" justify="center">
-                    {/* Theme */}
-                    <Stack gap={4} align="center">
-                      <Text size="xs" c="dimmed">Theme</Text>
-                      <Group gap={4}>
-                        {readingThemes.map((theme) => (
-                          <Tooltip key={theme.value} label={theme.label}>
-                            <Paper
-                              p={4}
-                              radius="sm"
-                              withBorder={readerTheme === theme.value}
-                              style={{
-                                cursor: "pointer",
-                                background: theme.bg,
-                                width: 28,
-                                height: 28,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                border: readerTheme === theme.value
-                                  ? `2px solid ${currentTheme.color}`
-                                  : `1px solid ${readerTheme === "dark" || readerTheme === "oled" ? "#444" : "#ddd"}`,
-                              }}
-                              onClick={() => setReaderTheme(theme.value)}
-                            >
-                              <div style={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: "50%",
-                                background: theme.color,
-                              }} />
-                            </Paper>
-                          </Tooltip>
-                        ))}
-                      </Group>
-                    </Stack>
-
-                    {/* Font */}
-                    <Stack gap={4} align="center">
-                      <Text size="xs" c="dimmed">Font</Text>
-                      <Select
-                        size="xs"
-                        value={fontFamily}
-                        onChange={(v) => v && setFontFamily(v)}
-                        data={fontFamilies}
-                        style={{ width: 130 }}
-                      />
-                    </Stack>
-
-                    {/* Font size */}
-                    <Stack gap={4} align="center">
-                      <Text size="xs" c="dimmed">Size</Text>
-                      <Group gap={4}>
-                        <ActionIcon
-                          variant="subtle"
-                          size="sm"
-                          onClick={() => setFontSize(Math.max(12, fontSize - 2))}
-                          disabled={fontSize <= 12}
-                        >
-                          <IconZoomOut size={14} />
-                        </ActionIcon>
-                        <Text size="xs" style={{ minWidth: 30, textAlign: "center" }}>
-                          {fontSize}px
-                        </Text>
-                        <ActionIcon
-                          variant="subtle"
-                          size="sm"
-                          onClick={() => setFontSize(Math.min(36, fontSize + 2))}
-                          disabled={fontSize >= 36}
-                        >
-                          <IconZoomIn size={14} />
-                        </ActionIcon>
-                      </Group>
-                    </Stack>
-
-                    {/* Line height */}
-                    <Stack gap={4} align="center">
-                      <Text size="xs" c="dimmed">Spacing</Text>
-                      <Slider
-                        value={lineHeight}
-                        onChange={setLineHeight}
-                        min={1.2}
-                        max={2.4}
-                        step={0.1}
-                        size="xs"
-                        style={{ width: 80 }}
-                      />
-                    </Stack>
-
-                    {/* Page width */}
-                    <Stack gap={4} align="center">
-                      <Text size="xs" c="dimmed">Width</Text>
-                      <Slider
-                        value={pageWidth}
-                        onChange={setPageWidth}
-                        min={600}
-                        max={900}
-                        step={20}
-                        size="xs"
-                        style={{ width: 80 }}
-                      />
-                    </Stack>
-
-                    {/* Drop caps */}
-                    <Stack gap={4} align="center">
-                      <Text size="xs" c="dimmed">Drop Caps</Text>
-                      <ActionIcon
-                        variant={showDropCaps ? "filled" : "subtle"}
-                        size="sm"
-                        onClick={() => setShowDropCaps(!showDropCaps)}
-                      >
-                        <IconStarFilled size={14} />
-                      </ActionIcon>
-                    </Stack>
+                <Stack gap={4} align="center">
+                  <Text size="xs" c="dimmed">Font</Text>
+                  <Select size="xs" value={fontFamily} onChange={(v) => { if (v) { setFontFamily(v); saveLocal("reader-font-family", v); } }} data={FONTS} style={{ width: 130 }} />
+                </Stack>
+                <Stack gap={4} align="center">
+                  <Text size="xs" c="dimmed">Size</Text>
+                  <Group gap={4}>
+                    <ActionIcon variant="subtle" size="sm" disabled={fontSize <= 12} onClick={() => { setFontSize((s) => { const n = Math.max(12, s - 2); saveLocal("reader-font-size", n); return n; }); }}><IconChevronLeft size={14} /></ActionIcon>
+                    <Text size="xs" style={{ minWidth: 30, textAlign: "center" }}>{fontSize}px</Text>
+                    <ActionIcon variant="subtle" size="sm" disabled={fontSize >= 36} onClick={() => { setFontSize((s) => { const n = Math.min(36, s + 2); saveLocal("reader-font-size", n); return n; }); }}><IconChevronRight size={14} /></ActionIcon>
                   </Group>
-                </Paper>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </Stack>
+                <Stack gap={4} align="center">
+                  <Text size="xs" c="dimmed">Spacing</Text>
+                  <Slider value={lineHeight} onChange={(v) => { setLineHeight(v); saveLocal("reader-line-height", v); }} min={1.2} max={2.4} step={0.1} size="xs" style={{ width: 80 }} />
+                </Stack>
+                <Stack gap={4} align="center">
+                  <Text size="xs" c="dimmed">Width</Text>
+                  <Slider value={pageWidth} onChange={(v) => { setPageWidth(v); saveLocal("reader-page-width", v); }} min={600} max={900} step={20} size="xs" style={{ width: 80 }} />
+                </Stack>
+              </Group>
+            </Paper>
+          )}
 
-          {/* Chapter content */}
-          <ScrollArea
-            style={{ flex: 1 }}
-            viewportRef={scrollRef}
-            onScrollPositionChange={() => {
-              progressSavedRef.current = false;
-            }}
-          >
+          <Box ref={scrollRef} style={{ flex: 1, overflow: "auto" }}>
             <AnimatePresence mode="wait">
               <motion.div
-                key={currentChapter?.id ?? "empty"}
+                key={chapter?.id ?? "empty"}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                transition={{ duration: 0.2 }}
               >
-                <div style={{
-                  maxWidth: pageWidth,
-                  margin: "0 auto",
-                  padding: "48px 24px 80px",
-                  fontFamily: fontFamily === "georgia" ? "Georgia, serif"
-                    : fontFamily === "garamond" ? "'EB Garamond', Garamond, serif"
-                    : fontFamily === "merriweather" ? "Merriweather, Georgia, serif"
-                    : fontFamily === "lora" ? "Lora, Georgia, serif"
-                    : fontFamily === "serif" ? "serif"
-                    : undefined,
-                }}>
-                  {/* Chapter title with optional decorative divider */}
+                <div style={{ maxWidth: pageWidth, margin: "0 auto", padding: "48px 24px 80px", fontFamily }}>
                   <div style={{ textAlign: "center", marginBottom: 40 }}>
-                    <Text
-                      style={{
-                        fontFamily: fontFamily === "georgia" ? "Georgia, serif"
-                          : fontFamily === "garamond" ? "'EB Garamond', Garamond, serif"
-                          : fontFamily === "merriweather" ? "Merriweather, Georgia, serif"
-                          : fontFamily === "lora" ? "Lora, Georgia, serif"
-                          : fontFamily === "serif" ? "serif"
-                          : undefined,
-                        fontSize: fontSize + 10,
-                        lineHeight: 1.3,
-                        fontWeight: 700,
-                        letterSpacing: "0.01em",
-                      }}
-                    >
-                      {currentChapter?.title}
-                    </Text>
-                    <div style={{
-                      marginTop: 20,
-                      width: 60,
-                      height: 1,
-                      background: currentTheme.color,
-                      opacity: 0.3,
-                      marginLeft: "auto",
-                      marginRight: "auto",
-                    }} />
+                    <Text style={{ fontSize: fontSize + 10, fontWeight: 700, lineHeight: 1.3 }}>{chapter?.title}</Text>
+                    <div style={{ margin: "20px auto 0", width: 60, height: 1, background: colors.text, opacity: 0.3 }} />
                   </div>
-
-                  {/* Chapter content */}
-                  <div
-                    style={{
-                      fontSize,
-                      lineHeight,
-                      letterSpacing: "0.005em",
-                    }}
-                    className={showDropCaps ? "reader-drop-caps" : ""}
-                  >
-                    {currentChapter && (
-                      <Editor
-                        key={currentChapter.id}
-                        content={currentChapter.content}
-                        editable={false}
-                        showToolbar={false}
-                        minHeight="auto"
-                      />
-                    )}
+                  <div style={{ fontSize, lineHeight }}>
+                    {chapter && <Editor key={chapter.id} content={chapter.content} editable={false} showToolbar={false} minHeight="auto" />}
                   </div>
-
-                  {/* Chapter end separator */}
-                  <div style={{
-                    textAlign: "center",
-                    marginTop: 48,
-                    marginBottom: 24,
-                    opacity: 0.3,
-                    fontSize: 20,
-                    letterSpacing: 8,
-                  }}>
-                    • • •
-                  </div>
+                  <div style={{ textAlign: "center", marginTop: 48, opacity: 0.3, fontSize: 20, letterSpacing: 8 }}>• • •</div>
                 </div>
               </motion.div>
             </AnimatePresence>
-          </ScrollArea>
+          </Box>
+        </Box>
 
-          {/* Bottom navigation */}
-          <Paper
-            p="sm"
-            style={{
-              borderTop: "1px solid",
-              borderColor: readerTheme === "dark" || readerTheme === "oled"
-                ? "#333" : "rgba(0,0,0,0.08)",
-              background: readerTheme === "oled" ? "#000" : undefined,
-            }}
-          >
-            <Group justify="space-between" wrap="nowrap">
-              <Group gap={4}>
-                {currentChapterIndex > 0 ? (
-                  <Button
-                    variant="subtle"
-                    size="sm"
-                    leftSection={<IconChevronLeft size={16} />}
-                    onClick={() => handleChapterChange(currentChapterIndex - 1)}
-                    style={{ color: currentTheme.color }}
-                  >
-                    Previous
-                  </Button>
-                ) : (
-                  <div style={{ width: 100 }} />
-                )}
-              </Group>
-
-              <Group gap="md">
-                <Text size="xs" style={{ opacity: 0.5, textAlign: "center" }}>
-                  {currentChapterIndex + 1} / {chapters.length}
-                </Text>
-
-                <Paper
-                  px="sm"
-                  py={2}
-                  radius="xl"
-                  style={{
-                    background: readerTheme === "dark" || readerTheme === "oled"
-                      ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
-                    fontSize: 11,
-                  }}
-                >
-                  {progress}%
-                </Paper>
-              </Group>
-
-              <Group gap={4}>
-                <Tooltip label="Bookmark">
-                  <ActionIcon
-                    variant={hasBookmark ? "filled" : "subtle"}
-                    size="sm"
-                    onClick={() => {
-                      if (currentChapter) addBookmarkMutation.mutate(currentChapter.id);
-                    }}
-                    style={{ color: currentTheme.color }}
-                  >
-                    {hasBookmark ? <IconBookmarkFilled size={14} /> : <IconBookmark size={14} />}
-                  </ActionIcon>
-                </Tooltip>
-
-                {currentChapterIndex < chapters.length - 1 ? (
-                  <Button
-                    variant="subtle"
-                    size="sm"
-                    rightSection={<IconChevronRight size={16} />}
-                    onClick={() => handleChapterChange(currentChapterIndex + 1)}
-                    style={{ color: currentTheme.color }}
-                  >
-                    Next
-                  </Button>
-                ) : (
-                  <div style={{ width: 100 }} />
-                )}
-              </Group>
+        {showToc && (
+          <Paper style={{ width: 260, borderLeft: `1px solid ${colors.border}`, overflow: "auto", flexShrink: 0, background: colors.bg }} p="sm">
+            <Group justify="space-between" mb="sm">
+              <Text size="sm" fw={600}>Chapters</Text>
+              <ActionIcon variant="subtle" size="sm" onClick={() => setShowToc(false)}><IconX size={14} /></ActionIcon>
             </Group>
+            <Stack gap={2}>
+              {chapters.map((ch, i) => (
+                <Paper key={ch.id} p="xs" radius="sm" style={{ cursor: "pointer", background: i === chapterIndex ? "rgba(128,128,128,0.1)" : undefined, borderLeft: i === chapterIndex ? `2px solid ${colors.text}` : "2px solid transparent" }} onClick={() => goTo(i)}>
+                  <Text size="sm" fw={i === chapterIndex ? 600 : 400}>{ch.title}</Text>
+                  <Text size="xs" opacity={0.5}>{ch.wordCount.toLocaleString()} words</Text>
+                </Paper>
+              ))}
+            </Stack>
           </Paper>
-        </div>
-      </div>
-    </div>
+        )}
+      </Box>
+
+      <Paper p="sm" style={{ borderTop: `1px solid ${colors.border}`, background: colors.bg, flexShrink: 0 }}>
+        <Group justify="space-between" wrap="nowrap">
+          <Group gap={4}>
+            {chapterIndex > 0 ? (
+              <ActionIcon variant="subtle" onClick={() => goTo(chapterIndex - 1)} style={{ color: colors.text }}><IconChevronLeft size={18} /></ActionIcon>
+            ) : <Box style={{ width: 36 }} />}
+          </Group>
+          <Group gap="md">
+            <Text size="xs" opacity={0.5}>{chapterIndex + 1} / {chapters.length}</Text>
+            <Paper px="sm" py={2} radius="xl" style={{ background: "rgba(128,128,128,0.1)", fontSize: 11 }}>
+              {Math.round(((chapterIndex + 1) / chapters.length) * 100)}%
+            </Paper>
+            <Tooltip label="Bookmark">
+              <ActionIcon variant={hasBookmark ? "filled" : "subtle"} size="sm" color={hasBookmark ? "yellow" : "gray"} onClick={() => addBookmark.mutate()} style={{ color: colors.text }}>
+                {hasBookmark ? <IconBookmarkFilled size={14} /> : <IconBookmark size={14} />}
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+          <Group gap={4}>
+            {chapterIndex < chapters.length - 1 ? (
+              <ActionIcon variant="subtle" onClick={() => goTo(chapterIndex + 1)} style={{ color: colors.text }}><IconChevronRight size={18} /></ActionIcon>
+            ) : <Box style={{ width: 36 }} />}
+          </Group>
+        </Group>
+      </Paper>
+    </Box>
   );
 }
