@@ -1,4 +1,12 @@
-export { journalEntries, journalInsights, moodEnum } from "./schema";
+export {
+  journalEntries,
+  journalInsights,
+  journalVersions,
+  journalBookmarks,
+  journalHighlights,
+  journalWritingSessions,
+  moodEnum,
+} from "./schema";
 export {
   createJournalEntry,
   getJournalEntry,
@@ -7,7 +15,31 @@ export {
   deleteJournalEntry,
   getJournalStats,
   getJournalCoverageForUser,
+  saveJournalEntryVersion,
+  getJournalEntryVersions,
+  restoreJournalEntryVersion,
+  addBookmark,
+  getEntryBookmarksForUser,
+  removeBookmark,
+  addHighlight,
+  getEntryHighlightsForUser,
+  modifyHighlight,
+  removeHighlight,
+  startJournalWritingSession,
+  stopJournalWritingSession,
+  getJournalEntrySessions,
+  getJournalSessionStats,
+  exportEntryAsMarkdown,
+  exportEntryAsJson,
 } from "./service";
-export type { CreateEntryParams, UpdateEntryParams, JournalFiltersParams } from "./service";
-export type { JournalEntry } from "./repository";
+export type {
+  CreateEntryParams,
+  UpdateEntryParams,
+  JournalFiltersParams,
+  CreateVersionParams,
+  CreateBookmarkParams,
+  CreateHighlightParams,
+  UpdateHighlightParams,
+} from "./service";
+export type { JournalEntry, JournalVersion, JournalBookmark, JournalHighlight, JournalWritingSession } from "./repository";
 export { computeStreak, computeReadingTime, formatDate, getMoodEmoji, getMoodColor } from "./utils";

@@ -12,6 +12,20 @@ import {
   getMoodDistribution,
   getCommonTags,
   getJournalCoverage,
+  createVersion,
+  getEntryVersions,
+  getVersionById,
+  createBookmark,
+  getEntryBookmarks,
+  deleteBookmark,
+  createHighlight,
+  getEntryHighlights,
+  updateHighlight,
+  deleteHighlight,
+  createWritingSession,
+  endWritingSession,
+  getEntrySessions,
+  getSessionStats,
   type CreateJournalEntryInput,
   type JournalFilters,
 } from "./repository";
@@ -133,5 +147,177 @@ export async function getJournalStats(userId: string) {
     recentEntries,
     moodDistribution,
     commonTags,
+  };
+}
+
+// ── Journal Versions ──
+
+export const createVersionSchema = z.object({
+  note: z.string().max(500).optional(),
+});
+
+export type CreateVersionParams = z.infer<typeof createVersionSchema>;
+
+export async function saveJournalEntryVersion(entryId: string, userId: string, params: CreateVersionParams) {
+  const entry = await getEntryById(entryId, userId);
+  if (!entry) return null;
+
+  const wordCount = countWords(entry.content ?? "");
+  const version = await createVersion({
+    entryId: entry.id,
+    content: entry.content ?? "",
+    title: entry.title,
+    wordCount,
+    note: params.note,
+  });
+  return version;
+}
+
+export async function getJournalEntryVersions(entryId: string) {
+  return getEntryVersions(entryId);
+}
+
+export async function restoreJournalEntryVersion(versionId: string, entryId: string, userId: string) {
+  const version = await getVersionById(versionId);
+  if (!version || version.entryId !== entryId) return null;
+
+  const entry = await getEntryById(entryId, userId);
+  if (!entry) return null;
+
+  return updateEntry(entryId, userId, {
+    content: version.content,
+    title: version.title,
+  });
+}
+
+// ── Journal Bookmarks ──
+
+export const createBookmarkSchema = z.object({
+  position: z.any(),
+  excerpt: z.string().max(500).optional(),
+  label: z.string().max(100).optional(),
+  color: z.string().max(50).optional(),
+});
+
+export type CreateBookmarkParams = z.infer<typeof createBookmarkSchema>;
+
+export async function addBookmark(userId: string, entryId: string, params: CreateBookmarkParams) {
+  const validated = createBookmarkSchema.parse(params);
+  return createBookmark({
+    userId,
+    entryId,
+    position: validated.position,
+    excerpt: validated.excerpt,
+    label: validated.label,
+    color: validated.color,
+  });
+}
+
+export async function getEntryBookmarksForUser(userId: string, entryId: string) {
+  return getEntryBookmarks(userId, entryId);
+}
+
+export async function removeBookmark(id: string, userId: string) {
+  return deleteBookmark(id, userId);
+}
+
+// ── Journal Highlights ──
+
+export const createHighlightSchema = z.object({
+  position: z.any(),
+  text: z.string().min(1).max(2000),
+  color: z.string().max(50).optional(),
+  note: z.string().max(1000).optional(),
+});
+
+export const updateHighlightSchema = z.object({
+  color: z.string().max(50).optional(),
+  note: z.string().max(1000).optional(),
+});
+
+export type CreateHighlightParams = z.infer<typeof createHighlightSchema>;
+export type UpdateHighlightParams = z.infer<typeof updateHighlightSchema>;
+
+export async function addHighlight(userId: string, entryId: string, params: CreateHighlightParams) {
+  const validated = createHighlightSchema.parse(params);
+  return createHighlight({
+    userId,
+    entryId,
+    position: validated.position,
+    text: validated.text,
+    color: validated.color,
+    note: validated.note,
+  });
+}
+
+export async function getEntryHighlightsForUser(userId: string, entryId: string) {
+  return getEntryHighlights(userId, entryId);
+}
+
+export async function modifyHighlight(id: string, userId: string, params: UpdateHighlightParams) {
+  const validated = updateHighlightSchema.parse(params);
+  return updateHighlight(id, userId, validated);
+}
+
+export async function removeHighlight(id: string, userId: string) {
+  return deleteHighlight(id, userId);
+}
+
+// ── Journal Writing Sessions ──
+
+export async function startJournalWritingSession(userId: string, entryId: string) {
+  return createWritingSession({ userId, entryId, startedAt: new Date() });
+}
+
+export async function stopJournalWritingSession(id: string, userId: string, wordsAdded: number) {
+  return endWritingSession(id, userId, new Date(), wordsAdded);
+}
+
+export async function getJournalEntrySessions(entryId: string, userId: string) {
+  return getEntrySessions(entryId, userId);
+}
+
+export async function getJournalSessionStats(userId: string) {
+  return getSessionStats(userId);
+}
+
+// ── Export ──
+
+function countWords(content: string): number {
+  if (!content) return 0;
+  return content.trim().split(/\s+/).filter(Boolean).length;
+}
+
+export async function exportEntryAsMarkdown(entryId: string, userId: string) {
+  const entry = await getEntryById(entryId, userId);
+  if (!entry) return null;
+
+  const date = (entry.eventDate ?? entry.createdAt).toISOString().split("T")[0];
+  const mood = entry.mood ? `*Mood:* ${entry.mood}\n` : "";
+  const tags = entry.tags?.length ? `*Tags:* ${entry.tags.join(", ")}\n` : "";
+  const score = entry.reflectionScore ? `*Reflection:* ${entry.reflectionScore}/10\n` : "";
+
+  return `# ${entry.title}
+
+*Date:* ${date}
+${mood}${tags}${score}
+---
+${entry.content ?? ""}
+`;
+}
+
+export async function exportEntryAsJson(entryId: string, userId: string) {
+  const entry = await getEntryById(entryId, userId);
+  if (!entry) return null;
+
+  return {
+    title: entry.title,
+    date: (entry.eventDate ?? entry.createdAt).toISOString(),
+    mood: entry.mood,
+    tags: entry.tags,
+    reflectionScore: entry.reflectionScore,
+    isPinned: entry.isPinned,
+    isPrivate: entry.isPrivate,
+    content: entry.content,
   };
 }
