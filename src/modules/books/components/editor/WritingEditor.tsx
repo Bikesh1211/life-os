@@ -1,18 +1,23 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  AppShell, Group, Stack, Text, Button, ActionIcon, Tooltip,
+  Group, Stack, Text, Button, ActionIcon, Tooltip,
   TextInput, Loader, Center, Badge, Paper, ScrollArea, Menu,
+  Kbd, Divider,
 } from "@mantine/core";
-import { useDisclosure } from "@mantine/hooks";
+import { useDisclosure, useHotkeys, useFullscreen } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import {
   IconFiles, IconPlus, IconTrash, IconDotsVertical, IconArrowLeft,
   IconArrowRight, IconEye, IconDeviceFloppy, IconMaximize, IconMinimize,
-  IconGripVertical, IconWriting, IconBook2,
+  IconWriting, IconBook2, IconList, IconListTree, IconUsers,
+  IconNotebook, IconSearch, IconSettings, IconChevronLeft,
+  IconChevronRight, IconLayoutSidebarRightCollapse,
+  IconLayoutSidebarLeftCollapse, IconLayout2, IconSun,
+  IconMoon, IconArticle,
 } from "@tabler/icons-react";
 import { Editor } from "@/components/editor";
 import { useAutosave } from "../../hooks/use-autosave";
@@ -33,20 +38,84 @@ type Chapter = {
 type Book = {
   id: string;
   title: string;
+  subtitle: string | null;
   status: string;
   wordCount: number;
   chapterCount: number;
 };
 
+function OutlineSidebar({ content }: { content: Record<string, unknown> | null }) {
+  const headings = useMemo(() => {
+    if (!content) return [];
+    const items: { level: number; text: string }[] = [];
+    const walk = (node: Record<string, unknown>) => {
+      if (node.type === "heading" && typeof node.level === "number" && typeof node.text === "string") {
+        items.push({ level: node.level, text: node.text });
+      }
+      if (node.content && Array.isArray(node.content)) {
+        node.content.forEach((child: unknown) => walk(child as Record<string, unknown>));
+      }
+    };
+    walk(content);
+    return items;
+  }, [content]);
+
+  if (headings.length === 0) {
+    return (
+      <Stack align="center" gap="xs" p="md">
+        <IconListTree size={20} opacity={0.3} />
+        <Text size="xs" c="dimmed">No headings yet</Text>
+      </Stack>
+    );
+  }
+
+  return (
+    <Stack gap={2} p="xs">
+      <Text size="xs" fw={600} c="dimmed" mb="xs" px="xs">OUTLINE</Text>
+      {headings.map((h, i) => (
+        <Text
+          key={i}
+          size="xs"
+          lineClamp={1}
+          pl={h.level * 12}
+          style={{
+            cursor: "pointer",
+            padding: "4px 6px",
+            borderRadius: 4,
+            fontSize: h.level === 1 ? 13 : 12,
+            fontWeight: h.level === 1 ? 600 : 400,
+          }}
+        >
+          {h.text}
+        </Text>
+      ))}
+    </Stack>
+  );
+}
+
 export function WritingEditor() {
   const params = useParams<{ id: string }>();
   const bookId = params.id;
+  const router = useRouter();
   const queryClient = useQueryClient();
+  const { toggle: toggleFullscreen, fullscreen } = useFullscreen();
+
+  const [chapterSidebar, { toggle: toggleChapterSidebar }] = useDisclosure(true);
+  const [outlineSidebar, { toggle: toggleOutlineSidebar }] = useDisclosure(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [sidebarOpened, { toggle: toggleSidebar }] = useDisclosure(true);
+  const [zenMode, setZenMode] = useState(false);
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null);
   const [chapterTitle, setChapterTitle] = useState("");
   const contentRef = useRef<Record<string, unknown>>({ type: "doc", content: [] });
+
+  useHotkeys([
+    ["mod+Shift+e", () => toggleChapterSidebar()],
+    ["mod+Shift+o", () => toggleOutlineSidebar()],
+    ["mod+Shift+f", () => setFocusMode((v) => !v)],
+    ["mod+Shift+z", () => setZenMode((v) => !v)],
+    ["mod+Shift+s", () => flushAutosave()],
+    ["mod+Shift+n", () => createChapterMutation.mutate()],
+  ]);
 
   const { data: book, isLoading: bookLoading } = useQuery({
     queryKey: ["book", bookId],
@@ -115,9 +184,7 @@ export function WritingEditor() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-chapters", bookId] });
       queryClient.invalidateQueries({ queryKey: ["book", bookId] });
-      if (selectedChapterId) {
-        setSelectedChapterId(null);
-      }
+      setSelectedChapterId(null);
       notifications.show({ title: "Deleted", message: "Chapter deleted", color: "green" });
     },
     onError: () => {
@@ -167,6 +234,8 @@ export function WritingEditor() {
     3000,
   );
 
+  const currentIndex = chapters?.findIndex((c) => c.id === selectedChapterId) ?? -1;
+
   if (bookLoading || chaptersLoading) {
     return <Center h="100vh"><Loader size="lg" /></Center>;
   }
@@ -175,113 +244,288 @@ export function WritingEditor() {
     return <Center h="100vh"><Text c="dimmed">Book not found</Text></Center>;
   }
 
+  if (zenMode) {
+    return (
+      <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+        <Group px="md" py={4} justify="space-between">
+          <Text size="xs" c="dimmed">{book.title}</Text>
+          <Group gap={4}>
+            <Badge size="xs" variant="light">
+              {selectedChapter?.wordCount.toLocaleString()} words
+            </Badge>
+            <Tooltip label="Exit zen mode (⌘⇧Z)">
+              <ActionIcon variant="subtle" size="sm" onClick={() => setZenMode(false)}>
+                <IconMaximize size={14} />
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Group>
+        <div style={{ flex: 1, overflow: "auto", padding: "0 15%" }}>
+          {selectedChapter ? (
+            <Editor
+              key={selectedChapter.id}
+              content={selectedChapter.content}
+              onChange={handleContentChange}
+              minHeight="100%"
+              placeholder="Start writing..."
+            />
+          ) : (
+            <Center h="100%">
+              <Stack align="center" gap="md">
+                <IconWriting size={48} stroke={1.5} opacity={0.3} />
+                <Text c="dimmed">No chapter selected</Text>
+              </Stack>
+            </Center>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <AppShell
-      navbar={{
-        width: 280,
-        breakpoint: "sm",
-        collapsed: { desktop: !sidebarOpened, mobile: !sidebarOpened },
-      }}
-      padding={0}
-    >
-      <AppShell.Navbar p="sm" style={{ borderRight: "1px solid var(--mantine-color-default-border)" }}>
-        <Group justify="space-between" mb="md">
-          <Text fw={600} size="sm" lineClamp={1}>{book.title}</Text>
-          <Tooltip label="Close sidebar">
-            <ActionIcon variant="subtle" size="sm" onClick={toggleSidebar}>
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* Top bar */}
+      <Group
+        px="md"
+        py={6}
+        justify="space-between"
+        style={{
+          borderBottom: "1px solid var(--mantine-color-default-border)",
+          flexShrink: 0,
+          background: focusMode ? "transparent" : undefined,
+        }}
+      >
+        <Group gap={4}>
+          <Tooltip label="Back to library">
+            <ActionIcon
+              variant="subtle"
+              size="sm"
+              onClick={() => router.push("/creator-studio/books")}
+            >
               <IconArrowLeft size={16} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Text size="sm" fw={500} lineClamp={1} maw={200}>
+            {book.title}
+          </Text>
+
+          <Divider orientation="vertical" />
+
+          <Tooltip label="Chapter sidebar (⌘⇧E)">
+            <ActionIcon
+              variant={chapterSidebar ? "filled" : "subtle"}
+              size="sm"
+              onClick={toggleChapterSidebar}
+            >
+              <IconFiles size={14} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip label="Outline (⌘⇧O)">
+            <ActionIcon
+              variant={outlineSidebar ? "filled" : "subtle"}
+              size="sm"
+              onClick={toggleOutlineSidebar}
+            >
+              <IconListTree size={14} />
             </ActionIcon>
           </Tooltip>
         </Group>
 
-        <Button
-          fullWidth
-          variant="light"
-          size="sm"
-          leftSection={<IconPlus size={16} />}
-          onClick={() => createChapterMutation.mutate()}
-          mb="md"
-          loading={createChapterMutation.isPending}
-        >
-          Add Chapter
-        </Button>
+        <Group gap={4}>
+          {selectedChapter && (
+            <>
+              <Badge size="sm" variant="light" color="gray">
+                {selectedChapter.wordCount.toLocaleString()} words
+              </Badge>
+              <Group gap={2}>
+                <Tooltip label="Previous chapter">
+                  <ActionIcon
+                    variant="subtle"
+                    size="sm"
+                    disabled={currentIndex <= 0}
+                    onClick={() => {
+                      flushAutosave();
+                      if (chapters && currentIndex > 0) {
+                        setSelectedChapterId(chapters[currentIndex - 1].id);
+                      }
+                    }}
+                  >
+                    <IconChevronLeft size={14} />
+                  </ActionIcon>
+                </Tooltip>
+                <Text size="xs" c="dimmed" style={{ minWidth: 40, textAlign: "center" }}>
+                  {currentIndex + 1}/{chapters?.length ?? 0}
+                </Text>
+                <Tooltip label="Next chapter">
+                  <ActionIcon
+                    variant="subtle"
+                    size="sm"
+                    disabled={currentIndex >= (chapters?.length ?? 0) - 1}
+                    onClick={() => {
+                      flushAutosave();
+                      if (chapters && currentIndex < chapters.length - 1) {
+                        setSelectedChapterId(chapters[currentIndex + 1].id);
+                      }
+                    }}
+                  >
+                    <IconChevronRight size={14} />
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
+            </>
+          )}
 
-        <ScrollArea style={{ flex: 1 }}>
-          <Stack gap={4}>
-            {chapters?.map((chapter, i) => (
-              <Paper
-                key={chapter.id}
-                p="xs"
-                withBorder={selectedChapterId === chapter.id}
-                style={{
-                  cursor: "pointer",
-                  background: selectedChapterId === chapter.id
-                    ? "var(--mantine-color-default-hover)"
-                    : undefined,
-                }}
-                onClick={() => {
-                  if (selectedChapterId) flushAutosave();
-                  setSelectedChapterId(chapter.id);
-                }}
-              >
-                <Group justify="space-between" wrap="nowrap">
-                  <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
-                    <IconFiles size={14} opacity={0.4} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <Text size="sm" lineClamp={1}>{chapter.title}</Text>
-                      <Text size="xs" c="dimmed">{chapter.wordCount} words</Text>
-                    </div>
-                  </Group>
-                  <Menu withinPortal position="right-start">
-                    <Menu.Target>
-                      <ActionIcon
-                        variant="subtle"
-                        size="xs"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <IconDotsVertical size={12} />
-                      </ActionIcon>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Item
-                        color="red"
-                        leftSection={<IconTrash size={14} />}
-                        onClick={() => deleteChapterMutation.mutate(chapter.id)}
-                      >
-                        Delete
-                      </Menu.Item>
-                    </Menu.Dropdown>
-                  </Menu>
-                </Group>
-              </Paper>
-            ))}
-          </Stack>
-        </ScrollArea>
-      </AppShell.Navbar>
+          <Divider orientation="vertical" />
 
-      <AppShell.Main>
-        <Stack gap={0} h="100vh">
-          <Group
-            px="md"
-            py="xs"
-            justify="space-between"
+          <Tooltip label="Save now (⌘⇧S)">
+            <ActionIcon variant="subtle" size="sm" onClick={() => flushAutosave()}>
+              <IconDeviceFloppy size={14} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip label="Focus mode (⌘⇧F)">
+            <ActionIcon
+              variant={focusMode ? "filled" : "subtle"}
+              size="sm"
+              onClick={() => setFocusMode(!focusMode)}
+            >
+              <IconMinimize size={14} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip label="Zen mode (⌘⇧Z)">
+            <ActionIcon
+              variant={zenMode ? "filled" : "subtle"}
+              size="sm"
+              onClick={() => setZenMode(true)}
+            >
+              <IconArticle size={14} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip label={fullscreen ? "Exit fullscreen" : "Fullscreen"}>
+            <ActionIcon
+              variant="subtle"
+              size="sm"
+              onClick={toggleFullscreen}
+            >
+              {fullscreen ? <IconMinimize size={14} /> : <IconMaximize size={14} />}
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip label="Read mode">
+            <ActionIcon
+              variant="subtle"
+              size="sm"
+              onClick={() => {
+                flushAutosave();
+                router.push(`/creator-studio/books/${bookId}/read`);
+              }}
+            >
+              <IconEye size={14} />
+            </ActionIcon>
+          </Tooltip>
+        </Group>
+      </Group>
+
+      {/* Main editor area */}
+      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+        {/* Chapter sidebar */}
+        {chapterSidebar && (
+          <Paper
             style={{
-              borderBottom: "1px solid var(--mantine-color-default-border)",
-              background: focusMode ? "transparent" : undefined,
+              width: 260,
+              borderRight: "1px solid var(--mantine-color-default-border)",
+              display: "flex",
+              flexDirection: "column",
+              flexShrink: 0,
             }}
           >
-            <Group gap="xs">
-              <Tooltip label="Toggle sidebar">
+            <Group px="sm" py="xs" justify="space-between">
+              <Text size="xs" fw={600} c="dimmed">CHAPTERS</Text>
+              <Tooltip label="New chapter (⌘⇧N)">
                 <ActionIcon
-                  variant="subtle"
+                  variant="light"
                   size="sm"
-                  onClick={toggleSidebar}
+                  onClick={() => createChapterMutation.mutate()}
+                  loading={createChapterMutation.isPending}
                 >
-                  <IconArrowRight size={16} />
+                  <IconPlus size={14} />
                 </ActionIcon>
               </Tooltip>
+            </Group>
 
-              {selectedChapter ? (
+            <ScrollArea style={{ flex: 1 }}>
+              <Stack gap={2} px={4}>
+                {chapters?.map((chapter, i) => (
+                  <Paper
+                    key={chapter.id}
+                    p="xs"
+                    radius="sm"
+                    withBorder={selectedChapterId === chapter.id}
+                    style={{
+                      cursor: "pointer",
+                      background: selectedChapterId === chapter.id
+                        ? "var(--mantine-color-default-hover)"
+                        : undefined,
+                    }}
+                    onClick={() => {
+                      if (selectedChapterId) flushAutosave();
+                      setSelectedChapterId(chapter.id);
+                    }}
+                  >
+                    <Group justify="space-between" wrap="nowrap">
+                      <Group gap="xs" wrap="nowrap" style={{ flex: 1, minWidth: 0 }}>
+                        <IconFiles size={12} opacity={0.4} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <Text size="sm" lineClamp={1}>{chapter.title}</Text>
+                          <Text size="xs" c="dimmed">{chapter.wordCount.toLocaleString()} words</Text>
+                        </div>
+                      </Group>
+                      <Menu withinPortal position="right-start">
+                        <Menu.Target>
+                          <ActionIcon
+                            variant="subtle"
+                            size="xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <IconDotsVertical size={12} />
+                          </ActionIcon>
+                        </Menu.Target>
+                        <Menu.Dropdown>
+                          <Menu.Item
+                            color="red"
+                            leftSection={<IconTrash size={14} />}
+                            onClick={() => deleteChapterMutation.mutate(chapter.id)}
+                          >
+                            Delete
+                          </Menu.Item>
+                        </Menu.Dropdown>
+                      </Menu>
+                    </Group>
+                  </Paper>
+                ))}
+              </Stack>
+            </ScrollArea>
+          </Paper>
+        )}
+
+        {/* Editor */}
+        <div style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}>
+          {selectedChapter ? (
+            <>
+              {/* Chapter title input */}
+              <div style={{
+                padding: focusMode ? "24px 20% 0" : "8px 16px 0",
+                flexShrink: 0,
+              }}>
                 <TextInput
                   value={chapterTitle}
                   onChange={(e) => {
@@ -289,74 +533,68 @@ export function WritingEditor() {
                     updateTitleMutation.mutate(e.currentTarget.value);
                   }}
                   variant="unstyled"
-                  size="sm"
-                  style={{ minWidth: 200 }}
+                  size="xl"
                   placeholder="Chapter title..."
+                  styles={{
+                    input: {
+                      fontWeight: 700,
+                      fontSize: 24,
+                      lineHeight: 1.3,
+                    },
+                  }}
                 />
-              ) : (
-                <Text size="sm" c="dimmed">No chapter selected</Text>
-              )}
-            </Group>
+              </div>
 
-            <Group gap="xs">
-              {selectedChapter && (
-                <Badge size="sm" variant="light">
-                  {selectedChapter.wordCount.toLocaleString()} words
-                </Badge>
-              )}
-              <Tooltip label="Save now">
-                <ActionIcon
-                  variant="subtle"
-                  size="sm"
-                  onClick={() => flushAutosave()}
-                >
-                  <IconDeviceFloppy size={16} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label={focusMode ? "Exit focus mode" : "Focus mode"}>
-                <ActionIcon
-                  variant="subtle"
-                  size="sm"
-                  onClick={() => setFocusMode(!focusMode)}
-                >
-                  {focusMode ? <IconMinimize size={16} /> : <IconMaximize size={16} />}
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          </Group>
+              <div style={{
+                flex: 1,
+                overflow: "auto",
+                padding: focusMode ? "0 20%" : "0",
+              }}>
+                <Editor
+                  key={selectedChapter.id}
+                  content={selectedChapter.content}
+                  onChange={handleContentChange}
+                  minHeight="100%"
+                  placeholder="Start writing..."
+                />
+              </div>
+            </>
+          ) : (
+            <Center h="100%">
+              <Stack align="center" gap="md">
+                <IconWriting size={48} stroke={1.5} opacity={0.3} />
+                <Text c="dimmed">
+                  {chapters?.length === 0
+                    ? "Start by adding a chapter"
+                    : "Select a chapter to edit"}
+                </Text>
+                {chapters?.length === 0 && (
+                  <Button
+                    leftSection={<IconPlus size={18} />}
+                    onClick={() => createChapterMutation.mutate()}
+                  >
+                    Add First Chapter
+                  </Button>
+                )}
+              </Stack>
+            </Center>
+          )}
+        </div>
 
-          <div style={{ flex: 1, overflow: "auto", padding: focusMode ? "0 20%" : "0" }}>
-            {selectedChapter ? (
-              <Editor
-                key={selectedChapter.id}
-                content={selectedChapter.content}
-                onChange={handleContentChange}
-                minHeight="calc(100vh - 120px)"
-                placeholder="Start writing..."
-              />
-            ) : (
-              <Center h="100%">
-                <Stack align="center" gap="md">
-                  <IconWriting size={48} stroke={1.5} opacity={0.3} />
-                  <Text c="dimmed">
-                    {chapters?.length === 0
-                      ? "Start by adding a chapter"
-                      : "Select a chapter to edit"}
-                  </Text>
-                  {chapters?.length === 0 && (
-                    <Button
-                      leftSection={<IconPlus size={18} />}
-                      onClick={() => createChapterMutation.mutate()}
-                    >
-                      Add First Chapter
-                    </Button>
-                  )}
-                </Stack>
-              </Center>
-            )}
-          </div>
-        </Stack>
-      </AppShell.Main>
-    </AppShell>
+        {/* Outline sidebar */}
+        {outlineSidebar && selectedChapter && (
+          <Paper
+            style={{
+              width: 220,
+              borderLeft: "1px solid var(--mantine-color-default-border)",
+              flexShrink: 0,
+              overflow: "auto",
+            }}
+          >
+            <OutlineSidebar content={selectedChapter.content} />
+          </Paper>
+        )}
+      </div>
+    </div>
   );
 }

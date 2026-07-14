@@ -13,6 +13,13 @@ export async function GET(request: NextRequest) {
       const val = searchParams.get(key);
       if (val) filters[key] = val;
     }
+
+    const view = searchParams.get("view");
+    if (view === "trash") filters.includeTrashed = true;
+    else if (view === "drafts") filters.status = "draft";
+    else if (view === "published") filters.status = "published";
+    else if (view === "archive") filters.status = "archived";
+
     const tags = searchParams.get("tags");
     if (tags) filters.tags = tags.split(",");
     const limit = searchParams.get("limit");
