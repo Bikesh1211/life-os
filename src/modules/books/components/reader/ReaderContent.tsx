@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { Loader, Center, Text, Box, Stack, Group, Tooltip, ActionIcon, Slider, Select, Paper, Modal, ScrollArea } from "@mantine/core";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { Loader, Center, Text, Box, Stack, Group, Tooltip, ActionIcon, Slider, Select, Paper, Modal, ScrollArea, TextInput } from "@mantine/core";
 import { useFullscreen } from "@mantine/hooks";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { AnimatePresence, motion } from "framer-motion";
-import { IconX, IconCheck } from "@tabler/icons-react";
+import { IconX, IconCheck, IconSearch } from "@tabler/icons-react";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 import { Editor } from "@/components/editor";
 import { ReaderToolbar } from "./ReaderToolbar";
@@ -89,6 +89,16 @@ export function ReaderContent() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [chaptersOpen, setChaptersOpen] = useState(false);
+  const [chapterQuery, setChapterQuery] = useState("");
+  const chapterSearchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (chaptersOpen) {
+      setTimeout(() => chapterSearchRef.current?.focus(), 100);
+    } else {
+      setChapterQuery("");
+    }
+  }, [chaptersOpen]);
 
   const [theme, setTheme] = useState<ReaderTheme>("sepia");
   const [fontSize, setFontSize] = useState(18);
@@ -198,6 +208,13 @@ export function ReaderContent() {
       return next;
     });
   }, []);
+
+  const filteredChapters = useMemo(() => {
+    if (!chapters) return [];
+    const q = chapterQuery.toLowerCase().trim();
+    if (!q) return chapters;
+    return chapters.filter((ch) => ch.title.toLowerCase().includes(q));
+  }, [chapters, chapterQuery]);
 
   const currentChapter = chapters?.[chapterIndex] ?? null;
   const hasBookmark = bookmarks?.some((b) => b.chapterId === currentChapter?.id) ?? false;
@@ -445,43 +462,62 @@ export function ReaderContent() {
       <Modal
         opened={chaptersOpen}
         onClose={() => setChaptersOpen(false)}
-        title={book?.title ?? "Chapters"}
+        title="Chapters"
         size="md"
         closeButtonProps={{ icon: <IconX size={16} /> }}
         scrollAreaComponent={ScrollArea}
       >
-        <Stack gap={4}>
-          {chapters.map((ch, i) => {
-            const isCurrent = i === chapterIndex;
-            const isBookmarked = bookmarks?.some((b) => b.chapterId === ch.id);
-            return (
-              <Paper
-                key={ch.id}
-                p="sm"
-                radius="sm"
-                style={{
-                  cursor: "pointer",
-                  background: isCurrent ? "var(--mantine-color-brand-light)" : undefined,
-                  border: isCurrent ? "1px solid var(--mantine-color-brand-filled)" : "1px solid transparent",
-                  transition: "background 0.15s",
-                }}
-                onClick={() => goToChapter(i)}
-              >
-                <Group justify="space-between" wrap="nowrap">
-                  <Box style={{ flex: 1, minWidth: 0 }}>
-                    <Text size="sm" fw={isCurrent ? 600 : 400} lineClamp={1}>
-                      {isCurrent && <IconCheck size={14} style={{ display: "inline", marginRight: 4, verticalAlign: -2 }} />}
-                      {ch.title}
-                    </Text>
-                    <Text size="xs" opacity={0.5}>{ch.wordCount.toLocaleString()} words</Text>
+        <Stack gap="md">
+          <TextInput
+            ref={chapterSearchRef}
+            placeholder="Search chapters..."
+            value={chapterQuery}
+            onChange={(e) => setChapterQuery(e.currentTarget.value)}
+            leftSection={<IconSearch size={16} />}
+            rightSection={chapterQuery ? <IconX size={14} className="cursor-pointer" onClick={() => setChapterQuery("")} /> : undefined}
+          />
+
+          <ScrollArea h={400}>
+            {filteredChapters.length === 0 && chapterQuery && (
+              <Text size="sm" c="dimmed" ta="center" py="xl">
+                No chapters match your search
+              </Text>
+            )}
+            {filteredChapters.length === 0 && !chapterQuery && (
+              <Text size="sm" c="dimmed" ta="center" py="xl">
+                This book has no chapters yet
+              </Text>
+            )}
+            <Stack gap="xs">
+              {filteredChapters.map((ch, i) => {
+                const globalIndex = chapters?.indexOf(ch) ?? i;
+                const isCurrent = globalIndex === chapterIndex;
+                const isBookmarked = bookmarks?.some((b) => b.chapterId === ch.id);
+                return (
+                  <Box
+                    key={ch.id}
+                    className="cursor-pointer rounded-lg border border-gray-100 p-3 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                    onClick={() => { goToChapter(globalIndex); setChaptersOpen(false); }}
+                  >
+                    <Group justify="space-between" wrap="nowrap">
+                      <Box style={{ flex: 1, minWidth: 0 }}>
+                        <Text size="sm" fw={600}>
+                          {isCurrent && <IconCheck size={14} style={{ display: "inline", marginRight: 4, verticalAlign: -2 }} />}
+                          {ch.title}
+                        </Text>
+                        <Text size="xs" c="dimmed" lineClamp={1}>
+                          {ch.wordCount.toLocaleString()} words
+                        </Text>
+                      </Box>
+                      {isBookmarked && (
+                        <Text size="xs" c="yellow" style={{ flexShrink: 0 }}>Bookmarked</Text>
+                      )}
+                    </Group>
                   </Box>
-                  {isBookmarked && (
-                    <Text size="xs" c="yellow" style={{ flexShrink: 0 }}>Bookmarked</Text>
-                  )}
-                </Group>
-              </Paper>
-            );
-          })}
+                );
+              })}
+            </Stack>
+          </ScrollArea>
         </Stack>
       </Modal>
     </Box>
