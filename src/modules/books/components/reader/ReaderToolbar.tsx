@@ -12,6 +12,7 @@ import {
   IconTypography,
   IconBookmark,
   IconBookmarkFilled,
+  IconList,
 } from "@tabler/icons-react";
 
 type ReaderToolbarProps = {
@@ -28,6 +29,7 @@ type ReaderToolbarProps = {
   onToggleTheme: () => void;
   onToggleSettings: () => void;
   onToggleBookmark: () => void;
+  onToggleChapters: () => void;
   onClose: () => void;
 };
 
@@ -45,6 +47,7 @@ export function ReaderToolbar({
   onToggleTheme,
   onToggleSettings,
   onToggleBookmark,
+  onToggleChapters,
   onClose,
 }: ReaderToolbarProps) {
   return (
@@ -52,7 +55,7 @@ export function ReaderToolbar({
       className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/90 backdrop-blur-lg dark:bg-gray-950/90"
       style={{ borderColor: "var(--mantine-color-default-border)", margin: 0, padding: 0 }}
     >
-      <Group justify="space-between" px="md" py="sm" wrap="nowrap">
+      <Group justify="space-between" px="sm" py="sm" wrap="nowrap">
         <Group gap={2} wrap="nowrap">
           <Tooltip label="Close (Esc)">
             <ActionIcon variant="subtle" color="gray" size="md" onClick={onClose}>
@@ -72,7 +75,7 @@ export function ReaderToolbar({
         </Group>
 
         <Group gap="xs" wrap="nowrap" style={{ flex: 1, justifyContent: "center" }}>
-          <Text size="sm" c="dimmed" className="truncate max-w-[300px]">
+          <Text size="sm" c="dimmed" className="truncate max-w-[300px] hidden sm:block">
             {currentChapterTitle}
           </Text>
           <Text size="xs" c="gray" className="opacity-50">
@@ -101,6 +104,12 @@ export function ReaderToolbar({
           <Tooltip label="Settings (S)">
             <ActionIcon variant="subtle" color="gray" size="md" onClick={onToggleSettings}>
               <IconTypography size={18} />
+            </ActionIcon>
+          </Tooltip>
+
+          <Tooltip label="Chapters">
+            <ActionIcon variant="subtle" color="gray" size="md" onClick={onToggleChapters}>
+              <IconList size={18} />
             </ActionIcon>
           </Tooltip>
 

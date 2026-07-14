@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Loader, Center, Text, Box, Stack, Group, Tooltip, ActionIcon, Slider, Select, Paper } from "@mantine/core";
+import { Loader, Center, Text, Box, Stack, Group, Tooltip, ActionIcon, Slider, Select, Paper, Modal, ScrollArea } from "@mantine/core";
 import { useFullscreen } from "@mantine/hooks";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { AnimatePresence, motion } from "framer-motion";
-import { IconX } from "@tabler/icons-react";
+import { IconX, IconCheck } from "@tabler/icons-react";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 import { Editor } from "@/components/editor";
 import { ReaderToolbar } from "./ReaderToolbar";
@@ -88,12 +88,14 @@ export function ReaderContent() {
   const [[chapterIndex, direction], setChapterIndex] = useState([0, 0]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [chaptersOpen, setChaptersOpen] = useState(false);
 
   const [theme, setTheme] = useState<ReaderTheme>("sepia");
   const [fontSize, setFontSize] = useState(18);
   const [lineHeight, setLineHeight] = useState(1.8);
   const [pageWidth, setPageWidth] = useState(720);
   const [fontFamily, setFontFamily] = useState("Georgia, serif");
+
   useEffect(() => {
     setTheme((localStorage.getItem(LS_THEME_KEY) as ReaderTheme) || "sepia");
     setFontSize(Number(localStorage.getItem(LS_FONT_SIZE_KEY)) || 18);
@@ -176,6 +178,12 @@ export function ReaderContent() {
     [chapterIndex, totalChapters],
   );
 
+  const goToChapter = useCallback((index: number) => {
+    setChapterIndex([index, index > chapterIndex ? 1 : -1]);
+    setSettingsOpen(false);
+    setChaptersOpen(false);
+  }, [chapterIndex]);
+
   const handleToggleBookmark = useCallback(() => {
     const ch = chapters?.[chapterIndex];
     if (!ch) return;
@@ -196,7 +204,7 @@ export function ReaderContent() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (searchOpen) return;
+      if (searchOpen || chaptersOpen) return;
       switch (e.key) {
         case "ArrowRight":
           paginate(1);
@@ -230,11 +238,15 @@ export function ReaderContent() {
         case "B":
           handleToggleBookmark();
           break;
+        case "l":
+        case "L":
+          setChaptersOpen((v) => !v);
+          break;
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [paginate, totalChapters, searchOpen, router, toggleFullscreen, cycleTheme, settingsOpen, handleToggleBookmark]);
+  }, [paginate, totalChapters, searchOpen, chaptersOpen, router, toggleFullscreen, cycleTheme, settingsOpen, handleToggleBookmark]);
 
   const colors = READER_THEMES[theme];
 
@@ -263,10 +275,10 @@ export function ReaderContent() {
       }}
       className="overflow-hidden"
     >
-      <div className="flex h-full items-center justify-center px-4 pb-16 pt-4">
+      <div className="flex h-full items-center justify-center px-2 sm:px-4 pb-16 pt-2 sm:pt-4">
         <div className="relative h-full w-full" style={{ maxWidth: pageWidth + 80 }}>
           <div
-            className="relative h-full w-full overflow-hidden rounded-xl shadow-sm"
+            className="relative h-full w-full overflow-hidden rounded-none sm:rounded-xl shadow-sm"
             style={{
               backgroundColor: colors.bg,
               border: `1px solid ${colors.border}`,
@@ -288,21 +300,21 @@ export function ReaderContent() {
                 className="absolute inset-0"
               >
                 <div
-                  className="mx-auto flex h-full w-full flex-col px-6 py-10 sm:px-10 sm:py-14"
+                  className="mx-auto flex h-full w-full flex-col px-4 sm:px-10 py-6 sm:py-14"
                   style={{
-                    maxWidth: pageWidth,
+                    maxWidth: "100%",
                     color: colors.text,
                   }}
                 >
                   <Text
                     size="sm"
                     className="mb-2 tracking-wide"
-                    style={{ color: colors.muted, fontSize: fontSize - 4 }}
+                    style={{ color: colors.muted, fontSize: Math.max(12, fontSize - 4) }}
                   >
                     {currentChapter?.title ?? ""}
                   </Text>
                   <div
-                    className="mb-6 h-px"
+                    className="mb-4 sm:mb-6 h-px"
                     style={{
                       background: `linear-gradient(to right, ${colors.border}, ${colors.border}88, transparent)`,
                     }}
@@ -322,9 +334,11 @@ export function ReaderContent() {
                 withBorder
                 style={{
                   position: "absolute",
-                  top: 12,
-                  right: 12,
-                  width: 300,
+                  top: 8,
+                  right: 8,
+                  width: "min(300px, calc(100vw - 16px))",
+                  maxHeight: "calc(100% - 16px)",
+                  overflow: "auto",
                   zIndex: 50,
                   backgroundColor: colors.bg,
                   color: colors.text,
@@ -422,10 +436,54 @@ export function ReaderContent() {
         onToggleSearch={() => setSearchOpen((p) => !p)}
         onToggleFullscreen={toggleFullscreen}
         onToggleTheme={cycleTheme}
-        onToggleSettings={() => setSettingsOpen((v) => !v)}
+        onToggleSettings={() => { setSettingsOpen((v) => !v); setChaptersOpen(false); }}
         onToggleBookmark={handleToggleBookmark}
+        onToggleChapters={() => { setChaptersOpen((v) => !v); setSettingsOpen(false); }}
         onClose={() => router.push("/creator-studio/books")}
       />
+
+      <Modal
+        opened={chaptersOpen}
+        onClose={() => setChaptersOpen(false)}
+        title={book?.title ?? "Chapters"}
+        size="md"
+        closeButtonProps={{ icon: <IconX size={16} /> }}
+        scrollAreaComponent={ScrollArea}
+      >
+        <Stack gap={4}>
+          {chapters.map((ch, i) => {
+            const isCurrent = i === chapterIndex;
+            const isBookmarked = bookmarks?.some((b) => b.chapterId === ch.id);
+            return (
+              <Paper
+                key={ch.id}
+                p="sm"
+                radius="sm"
+                style={{
+                  cursor: "pointer",
+                  background: isCurrent ? "var(--mantine-color-brand-light)" : undefined,
+                  border: isCurrent ? "1px solid var(--mantine-color-brand-filled)" : "1px solid transparent",
+                  transition: "background 0.15s",
+                }}
+                onClick={() => goToChapter(i)}
+              >
+                <Group justify="space-between" wrap="nowrap">
+                  <Box style={{ flex: 1, minWidth: 0 }}>
+                    <Text size="sm" fw={isCurrent ? 600 : 400} lineClamp={1}>
+                      {isCurrent && <IconCheck size={14} style={{ display: "inline", marginRight: 4, verticalAlign: -2 }} />}
+                      {ch.title}
+                    </Text>
+                    <Text size="xs" opacity={0.5}>{ch.wordCount.toLocaleString()} words</Text>
+                  </Box>
+                  {isBookmarked && (
+                    <Text size="xs" c="yellow" style={{ flexShrink: 0 }}>Bookmarked</Text>
+                  )}
+                </Group>
+              </Paper>
+            );
+          })}
+        </Stack>
+      </Modal>
     </Box>
   );
 }
