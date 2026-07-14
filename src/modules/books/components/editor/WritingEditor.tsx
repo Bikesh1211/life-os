@@ -20,7 +20,6 @@ import {
   IconMoon, IconArticle,
 } from "@tabler/icons-react";
 import { Editor } from "@/components/editor";
-import { useAutosave } from "../../hooks/use-autosave";
 import type { EditorChangeHandler } from "@/components/editor";
 
 type Chapter = {
@@ -113,7 +112,7 @@ export function WritingEditor() {
     ["mod+Shift+o", () => toggleOutlineSidebar()],
     ["mod+Shift+f", () => setFocusMode((v) => !v)],
     ["mod+Shift+z", () => setZenMode((v) => !v)],
-    ["mod+Shift+s", () => flushAutosave()],
+    ["mod+Shift+s", () => saveChapter()],
     ["mod+Shift+n", () => createChapterMutation.mutate()],
   ]);
 
@@ -192,9 +191,9 @@ export function WritingEditor() {
     },
   });
 
-  const saveChapter = useCallback(async (content: Record<string, unknown>) => {
+  const saveChapter = useCallback(async () => {
     if (!selectedChapterId) return;
-    const body: Record<string, unknown> = { content, title: chapterTitle };
+    const body: Record<string, unknown> = { content: contentRef.current, title: chapterTitle };
     const res = await fetch(`/api/books/${bookId}/chapters/${selectedChapterId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -225,13 +224,6 @@ export function WritingEditor() {
       contentRef.current = json as Record<string, unknown>;
     },
     [],
-  );
-
-  const { flush: flushAutosave } = useAutosave(
-    `chapter-${selectedChapterId}`,
-    contentRef.current,
-    saveChapter,
-    3000,
   );
 
   const currentIndex = chapters?.findIndex((c) => c.id === selectedChapterId) ?? -1;
@@ -346,7 +338,6 @@ export function WritingEditor() {
                     size="sm"
                     disabled={currentIndex <= 0}
                     onClick={() => {
-                      flushAutosave();
                       if (chapters && currentIndex > 0) {
                         setSelectedChapterId(chapters[currentIndex - 1].id);
                       }
@@ -364,7 +355,6 @@ export function WritingEditor() {
                     size="sm"
                     disabled={currentIndex >= (chapters?.length ?? 0) - 1}
                     onClick={() => {
-                      flushAutosave();
                       if (chapters && currentIndex < chapters.length - 1) {
                         setSelectedChapterId(chapters[currentIndex + 1].id);
                       }
@@ -380,7 +370,7 @@ export function WritingEditor() {
           <Divider orientation="vertical" />
 
           <Tooltip label="Save now (⌘⇧S)">
-            <ActionIcon variant="subtle" size="sm" onClick={() => flushAutosave()}>
+            <ActionIcon variant="subtle" size="sm" onClick={() => saveChapter()}>
               <IconDeviceFloppy size={14} />
             </ActionIcon>
           </Tooltip>
@@ -420,7 +410,6 @@ export function WritingEditor() {
               variant="subtle"
               size="sm"
               onClick={() => {
-                flushAutosave();
                 router.push(`/creator-studio/books/${bookId}/read`);
               }}
             >
@@ -472,7 +461,6 @@ export function WritingEditor() {
                         : undefined,
                     }}
                     onClick={() => {
-                      if (selectedChapterId) flushAutosave();
                       setSelectedChapterId(chapter.id);
                     }}
                   >
