@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, boolean, pgEnum, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, integer, boolean, jsonb, pgEnum, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const moodEnum = pgEnum("journal_mood", [
@@ -53,3 +53,81 @@ export const journalInsights = pgTable("journal_insights", {
   aiReflection: text("ai_reflection"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const journalVersions = pgTable(
+  "journal_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => journalEntries.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    title: text("title").notNull(),
+    wordCount: integer("word_count").default(0).notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    entryVersionsIdx: index("idx_journal_versions_entry").on(table.entryId, table.createdAt.desc()),
+  }),
+);
+
+export const journalBookmarks = pgTable(
+  "journal_bookmarks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => journalEntries.id, { onDelete: "cascade" }),
+    position: jsonb("position").notNull(),
+    excerpt: text("excerpt"),
+    label: text("label"),
+    color: text("color").default("yellow"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userEntryBookmarksIdx: index("idx_journal_bookmarks_entry").on(table.userId, table.entryId),
+    userBookmarksCreatedIdx: index("idx_journal_bookmarks_created").on(table.userId, table.createdAt.desc()),
+  }),
+);
+
+export const journalHighlights = pgTable(
+  "journal_highlights",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => journalEntries.id, { onDelete: "cascade" }),
+    position: jsonb("position").notNull(),
+    text: text("text").notNull(),
+    color: text("color").default("yellow"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userEntryHighlightsIdx: index("idx_journal_highlights_entry").on(table.userId, table.entryId),
+    highlightsColorIdx: index("idx_journal_highlights_color").on(table.userId, table.color),
+  }),
+);
+
+export const journalWritingSessions = pgTable(
+  "journal_writing_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    entryId: uuid("entry_id")
+      .notNull()
+      .references(() => journalEntries.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    durationSeconds: integer("duration_seconds"),
+    wordsAdded: integer("words_added").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    entrySessionsIdx: index("idx_journal_sessions_entry").on(table.entryId, table.startedAt.desc()),
+    userSessionsDateIdx: index("idx_journal_sessions_user_date").on(table.userId, table.startedAt),
+  }),
+);
