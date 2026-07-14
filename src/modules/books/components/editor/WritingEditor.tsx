@@ -204,21 +204,6 @@ export function WritingEditor() {
     queryClient.invalidateQueries({ queryKey: ["book", bookId] });
   }, [selectedChapterId, bookId, chapterTitle, queryClient]);
 
-  const updateTitleMutation = useMutation({
-    mutationFn: async (title: string) => {
-      if (!selectedChapterId) return;
-      const res = await fetch(`/api/books/${bookId}/chapters/${selectedChapterId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
-      });
-      if (!res.ok) throw new Error("Failed to update title");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["book-chapters", bookId] });
-    },
-  });
-
   const handleContentChange = useCallback<EditorChangeHandler>(
     (json) => {
       contentRef.current = json as Record<string, unknown>;
@@ -516,10 +501,7 @@ export function WritingEditor() {
               }}>
                 <TextInput
                   value={chapterTitle}
-                  onChange={(e) => {
-                    setChapterTitle(e.currentTarget.value);
-                    updateTitleMutation.mutate(e.currentTarget.value);
-                  }}
+                  onChange={(e) => setChapterTitle(e.currentTarget.value)}
                   variant="unstyled"
                   size="xl"
                   placeholder="Chapter title..."
