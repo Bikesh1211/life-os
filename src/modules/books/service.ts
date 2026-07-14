@@ -52,9 +52,41 @@ import {
   type CreateProgressInput,
   type CreateBookmarkInput,
   type CreateHighlightInput,
+  createCharacter,
+  getCharactersForBook,
+  getCharacterById,
+  updateCharacter,
+  deleteCharacter,
+  createResearchNote,
+  getResearchNotesForBook,
+  getResearchNoteById,
+  updateResearchNote,
+  deleteResearchNote,
+  linkChapterToCharacter,
+  getCharactersForChapter,
+  unlinkChapterCharacter,
+  linkChapterToResearchNote,
+  getResearchNotesForChapter,
+  unlinkChapterResearchNote,
+  createWritingSession,
+  updateWritingSession,
+  getWritingSessionsForBook,
+  getWritingSessionById,
+  getWritingSessionStats,
+  type CreateCharacterInput,
+  type CreateResearchNoteInput,
+  type CreateChapterCharacterInput,
+  type CreateChapterResearchNoteInput,
+  type CreateWritingSessionInput,
 } from "./repository";
 
 const bookStatuses = ["draft", "published", "archived"] as const;
+const bookTypes = [
+  "novel", "fantasy", "romance", "science-fiction", "horror",
+  "mystery", "thriller", "self-help", "business", "technical",
+  "biography", "memoir", "poetry", "research", "journal",
+  "educational", "cookbook", "childrens-book", "custom",
+] as const;
 const collaboratorRoles = ["owner", "editor", "commenter", "viewer"] as const;
 
 export const createBookSchema = z.object({
@@ -64,6 +96,7 @@ export const createBookSchema = z.object({
   authorByline: z.string().max(200).optional(),
   language: z.string().max(10).default("en"),
   isbn: z.string().max(20).optional(),
+  bookType: z.enum(bookTypes).optional(),
   genre: z.string().max(100).optional(),
   tags: z.array(z.string().max(50)).max(30).default([]),
   keywords: z.array(z.string().max(50)).max(30).default([]),
@@ -76,6 +109,11 @@ export const createBookSchema = z.object({
   series: z.string().max(200).optional(),
   readingLevel: z.string().max(100).optional(),
   ageRating: z.string().max(50).optional(),
+  targetWordCount: z.number().int().min(0).optional(),
+  targetChapterCount: z.number().int().min(0).optional(),
+  dailyWritingGoal: z.number().int().min(0).optional(),
+  weeklyGoal: z.number().int().min(0).optional(),
+  deadline: z.string().datetime().optional(),
   status: z.enum(bookStatuses).default("draft"),
   isListed: z.boolean().default(true),
   publishAt: z.string().datetime().optional(),
@@ -165,6 +203,52 @@ export const updateHighlightSchema = z.object({
   note: z.string().max(2000).optional(),
 });
 
+export const createCharacterSchema = z.object({
+  bookId: z.string().uuid(),
+  name: z.string().min(1).max(300),
+  imageUrl: z.string().max(2000).optional(),
+  age: z.string().max(100).optional(),
+  personality: z.string().max(10000).optional(),
+  background: z.string().max(10000).optional(),
+  appearance: z.string().max(5000).optional(),
+  goals: z.string().max(5000).optional(),
+  notes: z.string().max(10000).optional(),
+  color: z.string().max(20).optional(),
+});
+
+export const updateCharacterSchema = createCharacterSchema.partial().omit({ bookId: true });
+
+export const createResearchNoteSchema = z.object({
+  bookId: z.string().uuid(),
+  title: z.string().min(1).max(500),
+  content: z.string().max(50000).optional(),
+  sourceType: z.string().max(100).optional(),
+  sourceUrl: z.string().max(2000).optional(),
+  tags: z.array(z.string().max(50)).max(30).default([]),
+});
+
+export const updateResearchNoteSchema = createResearchNoteSchema.partial().omit({ bookId: true });
+
+export const linkChapterCharacterSchema = z.object({
+  chapterId: z.string().uuid(),
+  characterId: z.string().uuid(),
+  position: z.any().optional(),
+});
+
+export const linkChapterResearchNoteSchema = z.object({
+  chapterId: z.string().uuid(),
+  noteId: z.string().uuid(),
+});
+
+export const createWritingSessionSchema = z.object({
+  bookId: z.string().uuid(),
+  chapterId: z.string().uuid().nullable().optional(),
+  startedAt: z.string().datetime(),
+  endedAt: z.string().datetime().optional(),
+  durationSeconds: z.number().int().min(0).optional(),
+  wordsAdded: z.number().int().min(0).default(0),
+});
+
 function countWordsFromDoc(doc: { type?: string; content?: unknown[]; text?: string }): number {
   if (!doc) return 0;
   let wordCount = 0;
@@ -194,15 +278,48 @@ export type UpsertProgressParams = z.infer<typeof upsertProgressSchema>;
 export type CreateBookmarkParams = z.infer<typeof createBookmarkSchema>;
 export type CreateHighlightParams = z.infer<typeof createHighlightSchema>;
 export type UpdateHighlightParams = z.infer<typeof updateHighlightSchema>;
+export type CreateCharacterParams = z.infer<typeof createCharacterSchema>;
+export type UpdateCharacterParams = z.infer<typeof updateCharacterSchema>;
+export type CreateResearchNoteParams = z.infer<typeof createResearchNoteSchema>;
+export type UpdateResearchNoteParams = z.infer<typeof updateResearchNoteSchema>;
+export type LinkChapterCharacterParams = z.infer<typeof linkChapterCharacterSchema>;
+export type LinkChapterResearchNoteParams = z.infer<typeof linkChapterResearchNoteSchema>;
+export type CreateWritingSessionParams = z.infer<typeof createWritingSessionSchema>;
 
 export async function createNewBook(userId: string, params: CreateBookParams) {
   const validated = createBookSchema.parse(params);
-  const input = {
+  const input: CreateBookInput = {
     userId,
-    ...validated,
+    title: validated.title,
+    subtitle: validated.subtitle ?? null,
+    description: validated.description ?? null,
+    authorByline: validated.authorByline ?? null,
+    language: validated.language,
+    isbn: validated.isbn ?? null,
+    bookType: validated.bookType ?? null,
+    genre: validated.genre ?? null,
+    tags: validated.tags,
+    keywords: validated.keywords,
+    coverUrl: validated.coverUrl ?? null,
+    bannerUrl: validated.bannerUrl ?? null,
+    copyright: validated.copyright ?? null,
+    license: validated.license ?? null,
+    publisher: validated.publisher ?? null,
+    edition: validated.edition ?? null,
+    series: validated.series ?? null,
+    readingLevel: validated.readingLevel ?? null,
+    ageRating: validated.ageRating ?? null,
+    targetWordCount: validated.targetWordCount ?? null,
+    targetChapterCount: validated.targetChapterCount ?? null,
+    dailyWritingGoal: validated.dailyWritingGoal ?? null,
+    weeklyGoal: validated.weeklyGoal ?? null,
+    deadline: validated.deadline ? new Date(validated.deadline) : null,
+    status: validated.status,
+    isListed: validated.isListed,
+    publishAt: validated.publishAt ? new Date(validated.publishAt) : null,
     wordCount: 0,
     chapterCount: 0,
-  } as CreateBookInput;
+  };
   return createBook(input);
 }
 
@@ -224,7 +341,13 @@ export async function getBook(id: string, userId: string) {
 
 export async function updateExistingBook(id: string, userId: string, params: UpdateBookParams) {
   const validated = updateBookSchema.parse(params);
-  return updateBook(id, userId, validated as Partial<CreateBookInput>);
+  const { deadline, publishAt, ...rest } = validated;
+  const input: Partial<CreateBookInput> = {
+    ...rest,
+    deadline: deadline !== undefined ? (deadline ? new Date(deadline) : null) : undefined,
+    publishAt: publishAt !== undefined ? (publishAt ? new Date(publishAt) : null) : undefined,
+  };
+  return updateBook(id, userId, input);
 }
 
 export async function removeBook(id: string, userId: string) {
@@ -503,6 +626,109 @@ export async function exportBookAsJson(bookId: string, userId: string) {
     })),
     exportedAt: new Date().toISOString(),
   };
+}
+
+// Characters
+export async function addCharacter(userId: string, params: CreateCharacterParams) {
+  const validated = createCharacterSchema.parse(params);
+  const input: CreateCharacterInput = { userId, ...validated, bookId: validated.bookId };
+  return createCharacter(input);
+}
+
+export async function getCharacters(bookId: string) {
+  return getCharactersForBook(bookId);
+}
+
+export async function modifyCharacter(id: string, params: UpdateCharacterParams) {
+  const validated = updateCharacterSchema.parse(params);
+  return updateCharacter(id, validated);
+}
+
+export async function removeCharacter(id: string) {
+  return deleteCharacter(id);
+}
+
+// Research Notes
+export async function addResearchNote(userId: string, params: CreateResearchNoteParams) {
+  const validated = createResearchNoteSchema.parse(params);
+  const input: CreateResearchNoteInput = { userId, ...validated, bookId: validated.bookId };
+  return createResearchNote(input);
+}
+
+export async function getResearchNotes(bookId: string) {
+  return getResearchNotesForBook(bookId);
+}
+
+export async function modifyResearchNote(id: string, params: UpdateResearchNoteParams) {
+  const validated = updateResearchNoteSchema.parse(params);
+  return updateResearchNote(id, validated);
+}
+
+export async function removeResearchNote(id: string) {
+  return deleteResearchNote(id);
+}
+
+// Chapter-Character linking
+export async function linkCharacterToChapter(userId: string, params: LinkChapterCharacterParams) {
+  const validated = linkChapterCharacterSchema.parse(params);
+  const input: CreateChapterCharacterInput = { ...validated, position: validated.position ?? null };
+  return linkChapterToCharacter(input);
+}
+
+export async function getChapterCharacters(chapterId: string) {
+  return getCharactersForChapter(chapterId);
+}
+
+export async function unlinkCharacterFromChapter(chapterId: string, characterId: string) {
+  return unlinkChapterCharacter(chapterId, characterId);
+}
+
+// Chapter-Research Note linking
+export async function linkResearchNoteToChapter(params: LinkChapterResearchNoteParams) {
+  const validated = linkChapterResearchNoteSchema.parse(params);
+  return linkChapterToResearchNote(validated as CreateChapterResearchNoteInput);
+}
+
+export async function getChapterResearchNotes(chapterId: string) {
+  return getResearchNotesForChapter(chapterId);
+}
+
+export async function unlinkResearchNoteFromChapter(chapterId: string, noteId: string) {
+  return unlinkChapterResearchNote(chapterId, noteId);
+}
+
+// Writing Sessions
+export async function startWritingSession(userId: string, params: Omit<CreateWritingSessionParams, 'endedAt' | 'durationSeconds'>) {
+  const validated = createWritingSessionSchema.parse({ ...params, startedAt: new Date().toISOString() });
+  const input: CreateWritingSessionInput = {
+    userId,
+    bookId: validated.bookId,
+    chapterId: validated.chapterId ?? null,
+    startedAt: new Date(validated.startedAt),
+    wordsAdded: validated.wordsAdded,
+  };
+  return createWritingSession(input);
+}
+
+export async function endWritingSession(id: string, params: { wordsAdded: number }) {
+  const now = new Date();
+  const session = await getWritingSessionById(id);
+  if (!session) return null;
+
+  const durationSeconds = Math.round((now.getTime() - new Date(session.startedAt).getTime()) / 1000);
+  return updateWritingSession(id, {
+    endedAt: now,
+    durationSeconds,
+    wordsAdded: params.wordsAdded,
+  });
+}
+
+export async function getBookSessions(bookId: string, opts?: { from?: Date; to?: Date }) {
+  return getWritingSessionsForBook(bookId, opts);
+}
+
+export async function getSessionStats(userId: string) {
+  return getWritingSessionStats(userId);
 }
 
 function extractTextFromDoc(doc: { type?: string; content?: unknown[]; text?: string }): string {

@@ -10,6 +10,7 @@ import {
   IconBuildingBank,
   IconRepeat,
   IconReportAnalytics,
+  IconCoin,
 } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { CardGridSkeleton } from "@/components/ui/loading-skeleton";
@@ -27,6 +28,7 @@ const tabs = [
   { value: "budgets", label: "Budgets", icon: IconPigMoney },
   { value: "accounts", label: "Accounts", icon: IconBuildingBank },
   { value: "subscriptions", label: "Subscriptions", icon: IconRepeat },
+  { value: "loans", label: "Loans", icon: IconCoin, href: "/finance/loans" },
   { value: "analytics", label: "Analytics", icon: IconReportAnalytics },
 ];
 
@@ -42,6 +44,10 @@ export function FinanceContent() {
   const handleTabChange = useCallback(
     (value: string | null) => {
       if (!value) return;
+      if (value === "loans") {
+        router.push("/finance/loans", { scroll: false });
+        return;
+      }
       const params = new URLSearchParams(searchParams.toString());
       if (value === "dashboard") {
         params.delete("tab");

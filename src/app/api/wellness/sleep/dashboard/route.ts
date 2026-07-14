@@ -10,6 +10,7 @@ export async function GET() {
     const dashboard = await getSleepDashboard(userId);
     return NextResponse.json(dashboard);
   } catch (error) {
+    console.error("[DEBUG-d1] getSleepDashboard error:", error);
     return NextResponse.json({ error: "Failed to fetch sleep dashboard" }, { status: 500 });
   }
 }

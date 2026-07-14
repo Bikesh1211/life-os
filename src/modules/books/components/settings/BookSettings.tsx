@@ -5,18 +5,48 @@ import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Paper, Stack, TextInput, Textarea, Select, Switch, Group, Button,
-  Text, Title, Loader, Center, SimpleGrid, Badge, Tabs, NumberInput,
+  Text, Title, Loader, Center, SimpleGrid, TagsInput, Tabs, NumberInput,
+  Divider,
 } from "@mantine/core";
+import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconDownload } from "@tabler/icons-react";
+import { IconDownload, IconUsers, IconNotebook, IconTargetArrow } from "@tabler/icons-react";
 import { CollaboratorList } from "./CollaboratorList";
+import { CharacterManager } from "../characters/CharacterManager";
+import { ResearchNotesPanel } from "../research/ResearchNotesPanel";
 
-const genres = [
-  "Fiction", "Non-Fiction", "Science Fiction", "Fantasy", "Mystery",
-  "Romance", "Thriller", "Horror", "Biography", "History", "Science",
-  "Technology", "Philosophy", "Self-Help", "Poetry", "Drama", "Comedy",
-  "Adventure", "Children", "Education", "Other",
+const bookTypes = [
+  { value: "novel", label: "Novel" },
+  { value: "fantasy", label: "Fantasy" },
+  { value: "romance", label: "Romance" },
+  { value: "science-fiction", label: "Science Fiction" },
+  { value: "horror", label: "Horror" },
+  { value: "mystery", label: "Mystery" },
+  { value: "thriller", label: "Thriller" },
+  { value: "self-help", label: "Self Help" },
+  { value: "business", label: "Business" },
+  { value: "technical", label: "Technical" },
+  { value: "biography", label: "Biography" },
+  { value: "memoir", label: "Memoir" },
+  { value: "poetry", label: "Poetry" },
+  { value: "research", label: "Research" },
+  { value: "journal", label: "Journal" },
+  { value: "educational", label: "Educational" },
+  { value: "cookbook", label: "Cookbook" },
+  { value: "childrens-book", label: "Children's Book" },
+  { value: "custom", label: "Custom" },
+];
+
+const languages = [
+  { value: "en", label: "English" },
+  { value: "es", label: "Spanish" },
+  { value: "fr", label: "French" },
+  { value: "de", label: "German" },
+  { value: "hi", label: "Hindi" },
+  { value: "zh", label: "Chinese" },
+  { value: "ja", label: "Japanese" },
+  { value: "other", label: "Other" },
 ];
 
 type BookData = {
@@ -27,6 +57,7 @@ type BookData = {
   authorByline: string | null;
   coverUrl: string | null;
   bannerUrl: string | null;
+  bookType: string | null;
   genre: string | null;
   language: string;
   isbn: string | null;
@@ -42,6 +73,11 @@ type BookData = {
   license: string | null;
   readingLevel: string | null;
   ageRating: string | null;
+  targetWordCount: number | null;
+  targetChapterCount: number | null;
+  dailyWritingGoal: number | null;
+  weeklyGoal: number | null;
+  deadline: string | null;
   wordCount: number;
   chapterCount: number;
 };
@@ -67,10 +103,12 @@ export function BookSettings() {
       subtitle: "",
       authorByline: "",
       description: "",
+      bookType: "",
       genre: "",
       language: "en",
       isbn: "",
       coverUrl: "",
+      bannerUrl: "",
       publisher: "",
       edition: "",
       series: "",
@@ -80,8 +118,13 @@ export function BookSettings() {
       ageRating: "",
       status: "draft" as "draft" | "published" | "archived",
       isListed: true,
-      tags: "",
-      keywords: "",
+      tags: [] as string[],
+      keywords: [] as string[],
+      targetWordCount: undefined as number | undefined,
+      targetChapterCount: undefined as number | undefined,
+      dailyWritingGoal: undefined as number | undefined,
+      weeklyGoal: undefined as number | undefined,
+      deadline: undefined as Date | undefined,
     },
   });
 
@@ -116,10 +159,12 @@ export function BookSettings() {
       subtitle: book.subtitle ?? "",
       authorByline: book.authorByline ?? "",
       description: book.description ?? "",
+      bookType: book.bookType ?? "",
       genre: book.genre ?? "",
       language: book.language,
       isbn: book.isbn ?? "",
       coverUrl: book.coverUrl ?? "",
+      bannerUrl: book.bannerUrl ?? "",
       publisher: book.publisher ?? "",
       edition: book.edition ?? "",
       series: book.series ?? "",
@@ -129,8 +174,13 @@ export function BookSettings() {
       ageRating: book.ageRating ?? "",
       status: book.status,
       isListed: book.isListed,
-      tags: book.tags?.join(", ") ?? "",
-      keywords: book.keywords?.join(", ") ?? "",
+      tags: book.tags ?? [],
+      keywords: book.keywords ?? [],
+      targetWordCount: book.targetWordCount ?? undefined,
+      targetChapterCount: book.targetChapterCount ?? undefined,
+      dailyWritingGoal: book.dailyWritingGoal ?? undefined,
+      weeklyGoal: book.weeklyGoal ?? undefined,
+      deadline: book.deadline ? new Date(book.deadline) : undefined,
     });
   }, [book]);
 
@@ -145,14 +195,14 @@ export function BookSettings() {
   const handleSave = (values: typeof form.values) => {
     updateMutation.mutate({
       ...values,
-      tags: values.tags.split(",").map((t: string) => t.trim()).filter(Boolean),
-      keywords: values.keywords.split(",").map((t: string) => t.trim()).filter(Boolean),
       subtitle: values.subtitle || null,
       authorByline: values.authorByline || null,
       description: values.description || null,
+      bookType: values.bookType || null,
       genre: values.genre || null,
       isbn: values.isbn || null,
       coverUrl: values.coverUrl || null,
+      bannerUrl: values.bannerUrl || null,
       publisher: values.publisher || null,
       edition: values.edition || null,
       series: values.series || null,
@@ -160,31 +210,26 @@ export function BookSettings() {
       license: values.license || null,
       readingLevel: values.readingLevel || null,
       ageRating: values.ageRating || null,
+      targetWordCount: values.targetWordCount || null,
+      targetChapterCount: values.targetChapterCount || null,
+      dailyWritingGoal: values.dailyWritingGoal || null,
+      weeklyGoal: values.weeklyGoal || null,
+      deadline: values.deadline?.toISOString() || null,
     });
   };
 
-  const handleExport = async (format: "markdown" | "json") => {
+  const handleExport = async (format: "markdown" | "json" | "html" | "txt") => {
     try {
       const res = await fetch(`/api/books/${bookId}/export/${format}`);
       if (!res.ok) throw new Error("Export failed");
-      if (format === "markdown") {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${book.title.replace(/[^a-zA-Z0-9]/g, "_")}.md`;
-        a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        const data = await res.json();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${book.title.replace(/[^a-zA-Z0-9]/g, "_")}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
+      const blob = await res.blob();
+      const ext = format === "markdown" ? "md" : format === "html" ? "html" : format === "txt" ? "txt" : "json";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${book.title.replace(/[^a-zA-Z0-9]/g, "_")}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
       notifications.show({ title: "Exported", message: `Exported as ${format}`, color: "green" });
     } catch {
       notifications.show({ title: "Error", message: "Export failed", color: "red" });
@@ -195,8 +240,11 @@ export function BookSettings() {
     <Tabs defaultValue="metadata">
       <Tabs.List mb="md">
         <Tabs.Tab value="metadata">Metadata</Tabs.Tab>
+        <Tabs.Tab value="goals" leftSection={<IconTargetArrow size={14} />}>Goals</Tabs.Tab>
         <Tabs.Tab value="publishing">Publishing</Tabs.Tab>
         <Tabs.Tab value="collaborators">Collaborators</Tabs.Tab>
+        <Tabs.Tab value="characters" leftSection={<IconUsers size={14} />}>Characters</Tabs.Tab>
+        <Tabs.Tab value="research" leftSection={<IconNotebook size={14} />}>Research</Tabs.Tab>
         <Tabs.Tab value="export">Export</Tabs.Tab>
       </Tabs.List>
 
@@ -212,31 +260,69 @@ export function BookSettings() {
               <TextInput label="Author Byline" {...form.getInputProps("authorByline")} />
               <Textarea label="Description" minRows={3} autosize {...form.getInputProps("description")} />
               <SimpleGrid cols={2}>
-                <Select label="Genre" data={genres} clearable searchable {...form.getInputProps("genre")} />
-                <Select
-                  label="Language"
-                  data={[
-                    { value: "en", label: "English" },
-                    { value: "es", label: "Spanish" },
-                    { value: "fr", label: "French" },
-                    { value: "de", label: "German" },
-                    { value: "hi", label: "Hindi" },
-                    { value: "zh", label: "Chinese" },
-                    { value: "ja", label: "Japanese" },
-                    { value: "other", label: "Other" },
-                  ]}
-                  {...form.getInputProps("language")}
-                />
+                <Select label="Book Type" data={bookTypes} clearable searchable {...form.getInputProps("bookType")} />
+                <TextInput label="Genre" {...form.getInputProps("genre")} />
               </SimpleGrid>
               <SimpleGrid cols={2}>
+                <Select label="Language" data={languages} {...form.getInputProps("language")} />
                 <TextInput label="ISBN" {...form.getInputProps("isbn")} />
-                <TextInput label="Cover Image URL" {...form.getInputProps("coverUrl")} />
               </SimpleGrid>
+              <TextInput label="Cover Image URL" {...form.getInputProps("coverUrl")} />
+              <TextInput label="Banner Image URL" {...form.getInputProps("bannerUrl")} />
               <Group justify="flex-end" mt="md">
                 <Button type="submit" loading={updateMutation.isPending}>Save Changes</Button>
               </Group>
             </Stack>
           </form>
+        </Paper>
+      </Tabs.Panel>
+
+      <Tabs.Panel value="goals">
+        <Paper withBorder p="xl" radius="md" maw={700}>
+          <Stack gap="md">
+            <Title order={4}>Writing Goals</Title>
+            <Text size="sm" c="dimmed">
+              {book.wordCount.toLocaleString()} words written · {book.chapterCount} chapters
+            </Text>
+            <SimpleGrid cols={2}>
+              <NumberInput
+                label="Target Word Count"
+                min={0}
+                step={1000}
+                {...form.getInputProps("targetWordCount")}
+              />
+              <NumberInput
+                label="Target Chapter Count"
+                min={0}
+                {...form.getInputProps("targetChapterCount")}
+              />
+            </SimpleGrid>
+            <SimpleGrid cols={2}>
+              <NumberInput
+                label="Daily Writing Goal (words)"
+                min={0}
+                step={100}
+                {...form.getInputProps("dailyWritingGoal")}
+              />
+              <NumberInput
+                label="Weekly Goal (words)"
+                min={0}
+                step={500}
+                {...form.getInputProps("weeklyGoal")}
+              />
+            </SimpleGrid>
+            <DatePickerInput
+              label="Completion Deadline"
+              placeholder="Pick a date"
+              clearable
+              {...form.getInputProps("deadline")}
+            />
+            <Group justify="flex-end" mt="md">
+              <Button onClick={() => handleSave(form.values)} loading={updateMutation.isPending}>
+                Save Goals
+              </Button>
+            </Group>
+          </Stack>
         </Paper>
       </Tabs.Panel>
 
@@ -271,13 +357,8 @@ export function BookSettings() {
               <TextInput label="Copyright" {...form.getInputProps("copyright")} />
               <TextInput label="License" {...form.getInputProps("license")} />
             </SimpleGrid>
-            <TextInput label="Tags (comma separated)" {...form.getInputProps("tags")} />
-            <TextInput label="Keywords (comma separated)" {...form.getInputProps("keywords")} />
-            <Group gap="xs">
-              <Text size="sm" c="dimmed">{book.wordCount.toLocaleString()} words</Text>
-              <Text size="sm" c="dimmed">·</Text>
-              <Text size="sm" c="dimmed">{book.chapterCount} chapters</Text>
-            </Group>
+            <TagsInput label="Tags" {...form.getInputProps("tags")} />
+            <TagsInput label="Keywords" {...form.getInputProps("keywords")} />
             <Group justify="flex-end" mt="md">
               <Button onClick={() => handleSave(form.values)} loading={updateMutation.isPending}>
                 Save Changes
@@ -291,30 +372,35 @@ export function BookSettings() {
         <CollaboratorList bookId={bookId} />
       </Tabs.Panel>
 
+      <Tabs.Panel value="characters">
+        <CharacterManager bookId={bookId} />
+      </Tabs.Panel>
+
+      <Tabs.Panel value="research">
+        <ResearchNotesPanel bookId={bookId} />
+      </Tabs.Panel>
+
       <Tabs.Panel value="export">
         <Paper withBorder p="xl" radius="md" maw={700}>
           <Stack gap="md">
             <Title order={4}>Export Book</Title>
             <Text size="sm" c="dimmed">
-              Export your book as Markdown or JSON. Markdown is good for editing in other tools.
-              JSON is a complete lossless export including chapter-level ProseMirror content.
+              Export your book in various formats.
             </Text>
-            <Group>
-              <Button
-                variant="light"
-                leftSection={<IconDownload size={18} />}
-                onClick={() => handleExport("markdown")}
-              >
-                Export as Markdown
+            <SimpleGrid cols={2}>
+              <Button variant="light" leftSection={<IconDownload size={16} />} onClick={() => handleExport("markdown")}>
+                Markdown
               </Button>
-              <Button
-                variant="light"
-                leftSection={<IconDownload size={18} />}
-                onClick={() => handleExport("json")}
-              >
-                Export as JSON
+              <Button variant="light" leftSection={<IconDownload size={16} />} onClick={() => handleExport("html")}>
+                HTML
               </Button>
-            </Group>
+              <Button variant="light" leftSection={<IconDownload size={16} />} onClick={() => handleExport("txt")}>
+                Plain Text
+              </Button>
+              <Button variant="light" leftSection={<IconDownload size={16} />} onClick={() => handleExport("json")}>
+                JSON
+              </Button>
+            </SimpleGrid>
           </Stack>
         </Paper>
       </Tabs.Panel>

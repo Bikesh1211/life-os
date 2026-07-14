@@ -8,6 +8,11 @@ export {
   bookReadingProgress,
   bookBookmarks,
   bookHighlights,
+  bookCharacters,
+  bookResearchNotes,
+  bookChapterCharacters,
+  bookChapterResearchNotes,
+  bookWritingSessions,
 } from "./schema";
 
 export {
@@ -52,6 +57,24 @@ export {
   searchAllBooks,
   exportBookAsMarkdown,
   exportBookAsJson,
+  addCharacter,
+  getCharacters,
+  modifyCharacter,
+  removeCharacter,
+  addResearchNote,
+  getResearchNotes,
+  modifyResearchNote,
+  removeResearchNote,
+  linkCharacterToChapter,
+  getChapterCharacters,
+  unlinkCharacterFromChapter,
+  linkResearchNoteToChapter,
+  getChapterResearchNotes,
+  unlinkResearchNoteFromChapter,
+  startWritingSession,
+  endWritingSession,
+  getBookSessions,
+  getSessionStats,
 } from "./service";
 
 export {
@@ -69,6 +92,13 @@ export {
   createHighlightSchema,
   updateHighlightSchema,
   upsertProgressSchema,
+  createCharacterSchema,
+  updateCharacterSchema,
+  createResearchNoteSchema,
+  updateResearchNoteSchema,
+  linkChapterCharacterSchema,
+  linkChapterResearchNoteSchema,
+  createWritingSessionSchema,
 } from "./service";
 
 export type {
@@ -83,6 +113,13 @@ export type {
   CreateBookmarkParams,
   CreateHighlightParams,
   UpdateHighlightParams,
+  CreateCharacterParams,
+  UpdateCharacterParams,
+  CreateResearchNoteParams,
+  UpdateResearchNoteParams,
+  LinkChapterCharacterParams,
+  LinkChapterResearchNoteParams,
+  CreateWritingSessionParams,
 } from "./service";
 
 export type {

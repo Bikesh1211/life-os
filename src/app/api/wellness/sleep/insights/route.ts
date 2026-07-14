@@ -10,6 +10,7 @@ export async function GET() {
     const insights = await getSleepInsights(userId);
     return NextResponse.json(insights);
   } catch (error) {
+    console.error("[DEBUG-i1] getSleepInsights error:", error);
     return NextResponse.json({ error: "Failed to fetch sleep insights" }, { status: 500 });
   }
 }

@@ -11,6 +11,11 @@ import {
   bookReadingProgress,
   bookBookmarks,
   bookHighlights,
+  bookCharacters,
+  bookResearchNotes,
+  bookChapterCharacters,
+  bookChapterResearchNotes,
+  bookWritingSessions,
 } from "./schema";
 
 export type Book = typeof books.$inferSelect;
@@ -32,6 +37,11 @@ export type CreateCommentInput = typeof bookComments.$inferInsert;
 export type CreateProgressInput = typeof bookReadingProgress.$inferInsert;
 export type CreateBookmarkInput = typeof bookBookmarks.$inferInsert;
 export type CreateHighlightInput = typeof bookHighlights.$inferInsert;
+export type CreateCharacterInput = typeof bookCharacters.$inferInsert;
+export type CreateResearchNoteInput = typeof bookResearchNotes.$inferInsert;
+export type CreateChapterCharacterInput = typeof bookChapterCharacters.$inferInsert;
+export type CreateChapterResearchNoteInput = typeof bookChapterResearchNotes.$inferInsert;
+export type CreateWritingSessionInput = typeof bookWritingSessions.$inferInsert;
 
 export async function createBook(input: CreateBookInput) {
   const [book] = await db.insert(books).values(input).returning();
@@ -48,11 +58,13 @@ export async function getBooksForUser(
     sortOrder?: "asc" | "desc";
     limit?: number;
     offset?: number;
+    includeTrashed?: boolean;
   } = {},
 ) {
+  const isTrash = opts.includeTrashed;
   const conditions: SQL[] = [
     eq(books.userId, userId),
-    isNull(books.deletedAt),
+    isTrash ? sql`${books.deletedAt} is not null` : isNull(books.deletedAt),
   ];
 
   if (opts.status) conditions.push(eq(books.status, opts.status as never));
@@ -128,6 +140,8 @@ export async function getBookDashboardStats(userId: string) {
       status: books.status,
       count: sql<number>`count(*)`,
       totalWords: sql<number>`coalesce(sum(${books.wordCount}), 0)`,
+      goalWords: sql<number>`coalesce(sum(${books.targetWordCount}), 0)`,
+      booksWithGoals: sql<number>`count(*) filter (where ${books.targetWordCount} is not null)`,
     })
     .from(books)
     .where(and(eq(books.userId, userId), isNull(books.deletedAt)))
@@ -136,7 +150,10 @@ export async function getBookDashboardStats(userId: string) {
   const totalBooks = items.reduce((s, i) => s + Number(i.count), 0);
   const draftBooks = items.find((i) => i.status === "draft");
   const publishedBooks = items.find((i) => i.status === "published");
+  const archivedBooks = items.find((i) => i.status === "archived");
   const totalWords = items.reduce((s, i) => s + Number(i.totalWords), 0);
+  const totalGoalWords = items.reduce((s, i) => s + Number(i.goalWords), 0);
+  const totalBooksWithGoals = items.reduce((s, i) => s + Number(i.booksWithGoals), 0);
   const totalChapters = await db
     .select({ count: sql<number>`count(*)` })
     .from(bookChapters)
@@ -144,12 +161,24 @@ export async function getBookDashboardStats(userId: string) {
     .where(and(eq(books.userId, userId), isNull(books.deletedAt)))
     .then((r) => Number(r[0]?.count ?? 0));
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [wordsToday] = await db
+    .select({ words: sql<number>`coalesce(sum(${bookWritingSessions.wordsAdded}), 0)` })
+    .from(bookWritingSessions)
+    .where(and(eq(bookWritingSessions.userId, userId), gte(bookWritingSessions.startedAt, today)));
+
   return {
-    totalBooks,
+    totalBooks: Number(totalBooks),
     draftBooks: Number(draftBooks?.count ?? 0),
     publishedBooks: Number(publishedBooks?.count ?? 0),
-    totalWords,
-    totalChapters,
+    archivedBooks: Number(archivedBooks?.count ?? 0),
+    totalWords: Number(totalWords),
+    totalChapters: Number(totalChapters),
+    totalGoalWords: Number(totalGoalWords),
+    booksWithGoals: Number(totalBooksWithGoals),
+    wordsToday: Number(wordsToday?.words ?? 0),
   };
 }
 
@@ -474,4 +503,204 @@ export async function searchBooks(
     .offset(opts.offset ?? 0);
 
   return { books: bookResults, chapters: chapterResults };
+}
+
+// Characters
+export async function createCharacter(input: CreateCharacterInput) {
+  const [character] = await db.insert(bookCharacters).values(input).returning();
+  return character;
+}
+
+export async function getCharactersForBook(bookId: string) {
+  return db
+    .select()
+    .from(bookCharacters)
+    .where(eq(bookCharacters.bookId, bookId))
+    .orderBy(asc(bookCharacters.name));
+}
+
+export async function getCharacterById(id: string) {
+  const [character] = await db
+    .select()
+    .from(bookCharacters)
+    .where(eq(bookCharacters.id, id));
+  return character ?? null;
+}
+
+export async function updateCharacter(id: string, input: Partial<CreateCharacterInput>) {
+  const [character] = await db
+    .update(bookCharacters)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(bookCharacters.id, id))
+    .returning();
+  return character ?? null;
+}
+
+export async function deleteCharacter(id: string) {
+  const [character] = await db
+    .delete(bookCharacters)
+    .where(eq(bookCharacters.id, id))
+    .returning();
+  return character ?? null;
+}
+
+// Research Notes
+export async function createResearchNote(input: CreateResearchNoteInput) {
+  const [note] = await db.insert(bookResearchNotes).values(input).returning();
+  return note;
+}
+
+export async function getResearchNotesForBook(bookId: string) {
+  return db
+    .select()
+    .from(bookResearchNotes)
+    .where(eq(bookResearchNotes.bookId, bookId))
+    .orderBy(desc(bookResearchNotes.createdAt));
+}
+
+export async function getResearchNoteById(id: string) {
+  const [note] = await db
+    .select()
+    .from(bookResearchNotes)
+    .where(eq(bookResearchNotes.id, id));
+  return note ?? null;
+}
+
+export async function updateResearchNote(id: string, input: Partial<CreateResearchNoteInput>) {
+  const [note] = await db
+    .update(bookResearchNotes)
+    .set({ ...input, updatedAt: new Date() })
+    .where(eq(bookResearchNotes.id, id))
+    .returning();
+  return note ?? null;
+}
+
+export async function deleteResearchNote(id: string) {
+  const [note] = await db
+    .delete(bookResearchNotes)
+    .where(eq(bookResearchNotes.id, id))
+    .returning();
+  return note ?? null;
+}
+
+// Chapter-Character linking
+export async function linkChapterToCharacter(input: CreateChapterCharacterInput) {
+  const [link] = await db.insert(bookChapterCharacters).values(input).returning();
+  return link;
+}
+
+export async function getCharactersForChapter(chapterId: string) {
+  return db
+    .select({ character: bookCharacters })
+    .from(bookChapterCharacters)
+    .innerJoin(bookCharacters, eq(bookChapterCharacters.characterId, bookCharacters.id))
+    .where(eq(bookChapterCharacters.chapterId, chapterId));
+}
+
+export async function unlinkChapterCharacter(chapterId: string, characterId: string) {
+  const [link] = await db
+    .delete(bookChapterCharacters)
+    .where(and(eq(bookChapterCharacters.chapterId, chapterId), eq(bookChapterCharacters.characterId, characterId)))
+    .returning();
+  return link ?? null;
+}
+
+// Chapter-Research Note linking
+export async function linkChapterToResearchNote(input: CreateChapterResearchNoteInput) {
+  const [link] = await db.insert(bookChapterResearchNotes).values(input).returning();
+  return link;
+}
+
+export async function getResearchNotesForChapter(chapterId: string) {
+  return db
+    .select({ note: bookResearchNotes })
+    .from(bookChapterResearchNotes)
+    .innerJoin(bookResearchNotes, eq(bookChapterResearchNotes.noteId, bookResearchNotes.id))
+    .where(eq(bookChapterResearchNotes.chapterId, chapterId));
+}
+
+export async function unlinkChapterResearchNote(chapterId: string, noteId: string) {
+  const [link] = await db
+    .delete(bookChapterResearchNotes)
+    .where(and(eq(bookChapterResearchNotes.chapterId, chapterId), eq(bookChapterResearchNotes.noteId, noteId)))
+    .returning();
+  return link ?? null;
+}
+
+// Writing Sessions
+export async function createWritingSession(input: CreateWritingSessionInput) {
+  const [session] = await db.insert(bookWritingSessions).values(input).returning();
+  return session;
+}
+
+export async function getWritingSessionById(id: string) {
+  const [session] = await db
+    .select()
+    .from(bookWritingSessions)
+    .where(eq(bookWritingSessions.id, id));
+  return session ?? null;
+}
+
+export async function updateWritingSession(id: string, input: Partial<CreateWritingSessionInput>) {
+  const [session] = await db
+    .update(bookWritingSessions)
+    .set(input)
+    .where(eq(bookWritingSessions.id, id))
+    .returning();
+  return session ?? null;
+}
+
+export async function getWritingSessionsForBook(
+  bookId: string,
+  opts: { from?: Date; to?: Date; limit?: number } = {},
+) {
+  const conditions: SQL[] = [eq(bookWritingSessions.bookId, bookId)];
+  if (opts.from) conditions.push(gte(bookWritingSessions.startedAt, opts.from));
+  if (opts.to) conditions.push(lte(bookWritingSessions.startedAt, opts.to));
+
+  return db
+    .select()
+    .from(bookWritingSessions)
+    .where(and(...conditions))
+    .orderBy(desc(bookWritingSessions.startedAt))
+    .limit(opts.limit ?? 100);
+}
+
+export async function getWritingSessionStats(userId: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const weekStart = new Date(today);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+
+  const [todayStats] = await db
+    .select({
+      words: sql<number>`coalesce(sum(${bookWritingSessions.wordsAdded}), 0)`,
+      sessions: sql<number>`count(*)`,
+      seconds: sql<number>`coalesce(sum(${bookWritingSessions.durationSeconds}), 0)`,
+    })
+    .from(bookWritingSessions)
+    .where(and(eq(bookWritingSessions.userId, userId), gte(bookWritingSessions.startedAt, today)));
+
+  const [weekStats] = await db
+    .select({
+      words: sql<number>`coalesce(sum(${bookWritingSessions.wordsAdded}), 0)`,
+      sessions: sql<number>`count(*)`,
+      seconds: sql<number>`coalesce(sum(${bookWritingSessions.durationSeconds}), 0)`,
+    })
+    .from(bookWritingSessions)
+    .where(and(eq(bookWritingSessions.userId, userId), gte(bookWritingSessions.startedAt, weekStart)));
+
+  return {
+    today: {
+      words: Number(todayStats?.words ?? 0),
+      sessions: Number(todayStats?.sessions ?? 0),
+      seconds: Number(todayStats?.seconds ?? 0),
+    },
+    thisWeek: {
+      words: Number(weekStats?.words ?? 0),
+      sessions: Number(weekStats?.sessions ?? 0),
+      seconds: Number(weekStats?.seconds ?? 0),
+    },
+  };
 }

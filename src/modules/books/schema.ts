@@ -14,6 +14,7 @@ export const books = pgTable(
     authorByline: text("author_byline"),
     language: text("language").default("en"),
     isbn: text("isbn"),
+    bookType: text("book_type"),
     genre: text("genre"),
     tags: text("tags").array().default([]).notNull(),
     keywords: text("keywords").array().default([]).notNull(),
@@ -26,6 +27,13 @@ export const books = pgTable(
     series: text("series"),
     readingLevel: text("reading_level"),
     ageRating: text("age_rating"),
+
+    // Writing goals
+    targetWordCount: integer("target_word_count"),
+    targetChapterCount: integer("target_chapter_count"),
+    dailyWritingGoal: integer("daily_writing_goal"),
+    weeklyGoal: integer("weekly_goal"),
+    deadline: timestamp("deadline", { withTimezone: true }),
 
     // Publishing
     status: text("status", { enum: ["draft", "published", "archived"] })
@@ -135,6 +143,119 @@ export const bookCollaborators = pgTable(
   (table) => ({
     bookCollabIdx: index("idx_book_collaborators_book").on(table.bookId, table.userId),
     userCollabIdx: index("idx_book_collaborators_user").on(table.userId),
+  }),
+);
+
+export const bookCharacters = pgTable(
+  "book_characters",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bookId: uuid("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+
+    name: text("name").notNull(),
+    imageUrl: text("image_url"),
+    age: text("age"),
+    personality: text("personality"),
+    background: text("background"),
+    appearance: text("appearance"),
+    goals: text("goals"),
+    notes: text("notes"),
+    color: text("color"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    bookCharactersIdx: index("idx_book_characters_book").on(table.bookId, table.name),
+    userCharactersIdx: index("idx_book_characters_user").on(table.userId),
+  }),
+);
+
+export const bookResearchNotes = pgTable(
+  "book_research_notes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bookId: uuid("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull(),
+
+    title: text("title").notNull(),
+    content: text("content"),
+    sourceType: text("source_type"),
+    sourceUrl: text("source_url"),
+    tags: text("tags").array().default([]).notNull(),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    bookResearchNotesIdx: index("idx_book_research_notes_book").on(table.bookId, table.createdAt.desc()),
+  }),
+);
+
+export const bookChapterCharacters = pgTable(
+  "book_chapter_characters",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => bookChapters.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => bookCharacters.id, { onDelete: "cascade" }),
+    position: jsonb("position"),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    chapterCharactersIdx: index("idx_book_chapter_characters_chapter").on(table.chapterId),
+    characterChapterIdx: index("idx_book_chapter_characters_character").on(table.characterId),
+  }),
+);
+
+export const bookChapterResearchNotes = pgTable(
+  "book_chapter_research_notes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => bookChapters.id, { onDelete: "cascade" }),
+    noteId: uuid("note_id")
+      .notNull()
+      .references(() => bookResearchNotes.id, { onDelete: "cascade" }),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    chapterNotesIdx: index("idx_book_chapter_research_chapter").on(table.chapterId),
+    noteChapterIdx: index("idx_book_chapter_research_note").on(table.noteId),
+  }),
+);
+
+export const bookWritingSessions = pgTable(
+  "book_writing_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    bookId: uuid("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id").references(() => bookChapters.id, { onDelete: "set null" }),
+    userId: text("user_id").notNull(),
+
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    durationSeconds: integer("duration_seconds"),
+    wordsAdded: integer("words_added").default(0).notNull(),
+
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    bookSessionsIdx: index("idx_book_sessions_book").on(table.bookId, table.startedAt.desc()),
+    userSessionsDateIdx: index("idx_book_sessions_user_date").on(table.userId, table.startedAt),
   }),
 );
 
