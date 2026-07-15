@@ -31,7 +31,6 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
         classNames={{
           navbar: cn(
             "border-0 bg-transparent",
-            "pt-1.5 pb-1.5 pl-1.5",
           ),
           main: "sidebar-main",
         }}
@@ -57,7 +56,7 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <SidebarContent showBrand={false} showBottomCollapse={false} />
+              <SidebarContent showCollapse={false} />
             </div>
           </div>
         </MobileDrawer>
