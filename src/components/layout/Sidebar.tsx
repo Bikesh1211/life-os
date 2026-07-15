@@ -912,7 +912,6 @@ export const Sidebar = memo(function Sidebar() {
           )}
           style={{  
             background: "var(--mantine-color-body)",
-            border: "1px solid var(--mantine-color-default-border)",
             boxShadow: "var(--shadow-sidebar)",
             marginBottom:"60px"
           }}
