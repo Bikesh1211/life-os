@@ -58,6 +58,7 @@ import {
   IconTags,
   IconHourglassEmpty,
   IconBriefcase,
+  IconMinus,
 } from "@tabler/icons-react";
 
 export type NavItem = {
@@ -341,6 +342,13 @@ export const navigation: NavGroup[] = [
         description: "Track your habits",
         icon: IconRepeat,
         featureId: "habits",
+      },
+      {
+        label: "Curb",
+        route: "/curb",
+        description: "Reduce bad habits",
+        icon: IconMinus,
+        featureId: "curb",
       },
       {
         label: "Health",

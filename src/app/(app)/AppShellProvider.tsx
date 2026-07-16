@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, createContext, useContext, useCallback, useEffect, type ReactNode } from "react";
+import { useHotkeys } from "@mantine/hooks";
 
 const COLLAPSED_KEY = "life-os:sidebar-collapsed";
 
@@ -70,6 +71,8 @@ export function AppShellNavbarProvider({ children }: { children: ReactNode }) {
     setCollapsedState(v);
     saveCollapsed(v);
   }, []);
+
+  useHotkeys([["mod+\\", toggle]]);
 
   return (
     <AppShellContext.Provider
