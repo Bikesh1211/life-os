@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Stack, Title, Group, Button, Tabs } from "@mantine/core";
 import {
@@ -38,6 +38,15 @@ export function TasksContent({ taskSummary, initialTasks, defaultTab = "dashboar
   );
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("create") === "true") {
+      setShowCreate(true);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("create");
+      router.replace(`/tasks${params.toString() ? `?${params}` : ""}`, { scroll: false });
+    }
+  }, [searchParams, router]);
 
   const handleTabChange = useCallback(
     (value: string | null) => {
