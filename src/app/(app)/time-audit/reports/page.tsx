@@ -16,6 +16,8 @@ import {
 import { IconDownload, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
 import dayjs from "dayjs";
+import isoWeek from "dayjs/plugin/isoWeek";
+dayjs.extend(isoWeek);
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState<string | null>("week");

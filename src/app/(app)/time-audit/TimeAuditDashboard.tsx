@@ -48,6 +48,8 @@ import {
 } from "recharts";
 
 import dayjs from "dayjs";
+import isoWeek from "dayjs/plugin/isoWeek";
+dayjs.extend(isoWeek);
 import { TimeAuditQuickAdd } from "./TimeAuditQuickAdd";
 import { TimeAuditTimerCard } from "./TimeAuditTimerCard";
 
