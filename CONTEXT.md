@@ -633,3 +633,54 @@ A computed-on-read summary card pinned at the top of the Overview dashboard tab.
 A CSV export of time entries filtered by date range. Accessed via the `/time-audit/reports` page. Supports daily, weekly, monthly, and custom date range exports. PDF and Excel deferred to v2.
 
 *Avoid*: AI, ML, prediction, recommendation (when referring to v1 deterministic analytics — no AI features in v1 AI features deferred to v2)
+
+**Strategy** (plugin):
+The personal operating manual module at `src/modules/strategy/`. Route is `/strategy`. Feature ID is `strategy`. Owns a user's personal handbook — how they think, work, make decisions, and live. Built as an expansion of the existing Strategy skeleton which previously had stub tabs for Vision, Decisions, and Principles. Sub-routes: Single page at `/strategy` with tab-driven sections. All data is user-scoped.
+
+*Avoid*: Personal Operating Manual (the user-facing product name is "Operating Manual" or "Manual"; "Strategy" is the internal module name)
+
+**Operating Manual**:
+The user-facing name for the Strategy plugin. A living document where the user documents their personal framework — values, principles, rules, vision, boundaries, energy patterns, work style. Displayed as "Operating Manual" in navigation and UI but served by the `strategy` module internally.
+
+**Manual Section**:
+A named, typed block of content within the Operating Manual. Stored in `strategy_sections` with a polymorphic model — all sections share one table, differentiated by `sectionType`, with typed content stored as JSONB. Section types: `about_me`, `core_values`, `life_principles`, `strengths`, `weaknesses`, `long_term_vision`, `rules`, `boundaries`, `energy_patterns`, `work_style`, `reflection_notes`, `review_schedule`. Each section is validatable by a section-type-specific Zod schema.
+
+**About Me**:
+A single-row section type on the Operating Manual containing the user's identity: full name, personal mission, life motto, biography, current focus, and personal identity statement. One row per user.
+
+**Core Value**:
+A multi-row section within the Operating Manual. Each value has a name, description, why-it-matters text, real-life examples, and a sort order for drag-reordering by importance. Examples: Integrity, Growth, Learning, Family, Freedom, Discipline.
+
+**Life Principle**:
+A multi-row section within the Operating Manual. Each principle supports rich text content, categorization, a pin flag, and a sort order. Examples: "Always finish what you start", "Prioritize health before work."
+
+**Strength**:
+A multi-row section within the Operating Manual. Each strength has a title, description, real-life examples, and a strategy for using it more effectively.
+
+**Weakness**:
+A multi-row section within the Operating Manual. Each weakness has a title, description, triggers, and an improvement strategy.
+
+**Long-Term Vision**:
+A section within the Operating Manual containing 8 fixed sub-sections: Career, Health, Finance, Relationships, Learning, Lifestyle, Personal Growth, Legacy. Each sub-section is rich text with optional images.
+
+**Rule**:
+A multi-row section within the Operating Manual. A single unified concept covering both behavioral rules and decision-making rules, discriminated by `category`: `decision`, `behavior`, `boundary`, `ritual`. Each rule has priority, examples, and notes.
+
+*Avoid*: Personal Rules (use Rule with category instead); Decision-Making Rules (use Rule with category `decision`)
+
+**Boundary**:
+A section within the Operating Manual with 3 fixed categories: Work (working hours, communication rules, availability), Personal (privacy, family time, rest time), Digital (social media limits, phone usage, notification rules).
+
+**Energy Pattern**:
+A multi-row section within the Operating Manual covering both energy-increasing and energy-decreasing activities, discriminated by `impact`: `booster` or `drain`. Each pattern has a description, rating (1-10), frequency, and notes.
+
+*Avoid*: Energy Booster / Energy Drain (merge both into Energy Pattern)
+
+**Work Style**:
+A single-row section within the Operating Manual containing structured preference fields: best working hours, deep work duration, preferred meeting length, communication style, learning style, planning style, focus environment, collaboration preference, remote/office preference. Includes free-form notes.
+
+**Reflection Note**:
+A multi-row section within the Operating Manual for ongoing personal reflections. Supports rich text, markdown, images, and attachments. Less structured than Journal entries — these are cumulative notes on the user's self-understanding journey.
+
+**Manual Version**:
+A snapshot of the entire Operating Manual JSON document at a point in time. Stored in `strategy_versions`. Created on significant edits. Supports restoring any previous version.

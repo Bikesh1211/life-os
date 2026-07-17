@@ -408,7 +408,7 @@ export const navigation: NavGroup[] = [
         featureId: "goals",
       },
       {
-        label: "Strategy",
+        label: "Operating Manual",
         route: "/strategy",
         description: "Life strategy",
         icon: IconChess,
