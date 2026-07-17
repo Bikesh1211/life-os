@@ -10,7 +10,6 @@ import {
   Avatar,
   AppShellHeader,
   Tooltip,
-  Kbd,
 } from "@mantine/core";
 import { useSupabase } from "@/infrastructure/providers/supabase-provider";
 import {
@@ -24,7 +23,6 @@ import {
   IconMenu2,
   IconTrophy,
   IconSearch,
-  IconCommand,
 } from "@tabler/icons-react";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -117,14 +115,16 @@ export function Header() {
         <Group gap={4} wrap="nowrap">
           {/* Search / Command Palette */}
           <Tooltip label="Search (⌘K)">
-            <ActionIcon
-              variant="subtle"
-              size="md"
+            <button
               onClick={openSpotlight}
-              className="text-gray-500 dark:text-gray-400 hidden sm:flex"
+              className="hidden sm:flex items-center gap-2 h-8 rounded-lg border border-gray-200/70 dark:border-white/[0.08] bg-gray-50/60 dark:bg-white/[0.03] px-3 text-xs text-gray-400 dark:text-gray-500 transition-all hover:border-gray-300 dark:hover:border-white/[0.15] hover:bg-gray-100/60 dark:hover:bg-white/[0.06] cursor-text active:scale-[0.99]"
             >
-              <IconSearch size={18} />
-            </ActionIcon>
+              <IconSearch size={14} strokeWidth={1.5} className="flex-shrink-0" />
+              <span>Search</span>
+              <kbd className="flex-shrink-0 inline-flex items-center gap-px px-1.5 py-0.5 text-[9px] font-medium rounded-md border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.04] text-gray-400 dark:text-gray-500 leading-none">
+                <span className="text-[8px]">⌘</span>K
+              </kbd>
+            </button>
           </Tooltip>
 
           {/* Gamification Level */}

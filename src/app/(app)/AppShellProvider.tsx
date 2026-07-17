@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, createContext, useContext, useCallback, useEffect, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useHotkeys } from "@mantine/hooks";
 
 const COLLAPSED_KEY = "life-os:sidebar-collapsed";
 
@@ -33,6 +35,7 @@ function saveCollapsed(v: boolean) {
 }
 
 export function AppShellNavbarProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [opened, setOpened] = useState(true);
   const [collapsed, setCollapsedState] = useState(false);
   const [mobileOpened, setMobileOpened] = useState(false);
@@ -70,6 +73,14 @@ export function AppShellNavbarProvider({ children }: { children: ReactNode }) {
     setCollapsedState(v);
     saveCollapsed(v);
   }, []);
+
+  useHotkeys([
+    ["mod+\\", toggle],
+    ["mod+Shift+J", () => router.push("/journal/new")],
+    ["mod+Shift+K", () => router.push("/tasks?create=true")],
+    ["mod+Shift+H", () => router.push("/habits?action=log")],
+    ["mod+Shift+L", () => router.push("/timeline?create=true")],
+  ]);
 
   return (
     <AppShellContext.Provider

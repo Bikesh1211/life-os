@@ -560,8 +560,6 @@ An auto-created transaction in the Expenses plugin when a loan is disbursed or r
 An external URL (not a file upload) attached to a Loan or Repayment. Stored as `text[]` columns (`attachments` on loans, `receiptUrl` on repayments). Users paste links to receipts, loan agreements, screenshots, or voice notes hosted externally (Google Drive, Dropbox, etc.). No file upload infrastructure in v1 — matches the existing pattern across Tech Gear, Network, and Integrity plugins.
 
 *Avoid*: Upload, File Upload, Storage (in v1 — defer to cross-app file upload infrastructure)
-<<<<<<< Updated upstream
-=======
 
 **Curb** (plugin):
 The personal bad habits reduction tracker at `src/modules/curb/`. Route group is `/curb/*`. Feature ID is `curb`. Owns all reduction-tracking data — habits being curbed, increment logs, categories, triggers, moods, target limits, clean streaks, and analytics. Distinct from the Habits plugin which tracks positive behaviors to increase. Curb is about awareness and gradual reduction of unwanted behaviors. Sub-routes: Dashboard (`/curb`), Habits (`/curb/habits`), Calendar (`/curb/calendar`), Timeline (`/curb/timeline`), Analytics (`/curb/analytics`), Insights (`/curb/insights`). Tab layout uses the Habits-style query-param pattern (`?tab=`).

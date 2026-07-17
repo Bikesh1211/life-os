@@ -52,6 +52,15 @@ export function TimelineContent({ events, defaultTab = "story" }: Props) {
   const [editingEvent, setEditingEvent] = useState<EventWithDuration | null>(null);
   const [localEvents, setLocalEvents] = useState<EventWithDuration[]>(events);
 
+  useEffect(() => {
+    if (searchParams.get("create") === "true") {
+      setCreateOpened(true);
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("create");
+      router.replace(`/timeline${params.toString() ? `?${params}` : ""}`, { scroll: false });
+    }
+  }, [searchParams, router]);
+
   const handleTabChange = useCallback(
     (value: string | null) => {
       setActiveTab(value);
