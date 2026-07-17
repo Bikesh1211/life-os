@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Tabs } from "@mantine/core";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Stack, Tabs, Skeleton } from "@mantine/core";
 import {
   IconLayoutDashboard,
   IconList,
@@ -11,12 +11,13 @@ import {
   IconReportAnalytics,
   IconBulb,
 } from "@tabler/icons-react";
-import { DashboardTab } from "./components/DashboardTab";
-import { HabitsTab } from "./components/HabitsTab";
-import { CalendarTab } from "./components/CalendarTab";
-import { TimelineTab } from "./components/TimelineTab";
-import { AnalyticsTab } from "./components/AnalyticsTab";
-import { InsightsTab } from "./components/InsightsTab";
+
+const DashboardTab = lazy(() => import("./components/DashboardTab").then(m => ({ default: m.DashboardTab })));
+const HabitsTab = lazy(() => import("./components/HabitsTab").then(m => ({ default: m.HabitsTab })));
+const CalendarTab = lazy(() => import("./components/CalendarTab").then(m => ({ default: m.CalendarTab })));
+const TimelineTab = lazy(() => import("./components/TimelineTab").then(m => ({ default: m.TimelineTab })));
+const AnalyticsTab = lazy(() => import("./components/AnalyticsTab").then(m => ({ default: m.AnalyticsTab })));
+const InsightsTab = lazy(() => import("./components/InsightsTab").then(m => ({ default: m.InsightsTab })));
 
 const tabs = [
   { value: "dashboard", label: "Dashboard", icon: IconLayoutDashboard },
@@ -27,8 +28,17 @@ const tabs = [
   { value: "insights", label: "Insights", icon: IconBulb },
 ];
 
+function TabFallback() {
+  return (
+    <Stack gap="md">
+      <Skeleton height={40} width={300} />
+      <Skeleton height={140} />
+      <Skeleton height={320} />
+    </Stack>
+  );
+}
+
 export function CurbContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
     searchParams.get("tab") ?? "dashboard",
@@ -52,9 +62,9 @@ export function CurbContent() {
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/curb${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/curb${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (
@@ -69,27 +79,39 @@ export function CurbContent() {
         </Tabs.List>
 
         <Tabs.Panel value="dashboard" pt="md">
-          <DashboardTab />
+          <Suspense fallback={<TabFallback />}>
+            <DashboardTab />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="habits" pt="md">
-          <HabitsTab />
+          <Suspense fallback={<TabFallback />}>
+            <HabitsTab />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="calendar" pt="md">
-          <CalendarTab />
+          <Suspense fallback={<TabFallback />}>
+            <CalendarTab />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="timeline" pt="md">
-          <TimelineTab />
+          <Suspense fallback={<TabFallback />}>
+            <TimelineTab />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="analytics" pt="md">
-          <AnalyticsTab />
+          <Suspense fallback={<TabFallback />}>
+            <AnalyticsTab />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="insights" pt="md">
-          <InsightsTab />
+          <Suspense fallback={<TabFallback />}>
+            <InsightsTab />
+          </Suspense>
         </Tabs.Panel>
       </Tabs>
     </Stack>

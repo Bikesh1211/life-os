@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Stack, Tabs } from "@mantine/core";
 import {
   IconPlane,
@@ -58,7 +58,6 @@ const tabs = [
 ];
 
 export function TravelContent({ dashboardData, dashboardLoading, defaultTab = "dashboard" }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
     searchParams.get("tab") ?? defaultTab,
@@ -74,9 +73,9 @@ export function TravelContent({ dashboardData, dashboardLoading, defaultTab = "d
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/travel${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/travel${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (

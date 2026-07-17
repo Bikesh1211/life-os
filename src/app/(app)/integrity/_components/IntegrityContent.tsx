@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, lazy, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Tabs, Skeleton, Stack } from "@mantine/core";
 import {
   IconDashboard,
@@ -33,7 +33,6 @@ function TabFallback() {
 }
 
 export function IntegrityContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") ?? "dashboard";
 
@@ -47,9 +46,9 @@ export function IntegrityContent() {
         params.set("tab", value);
       }
       const qs = params.toString();
-      router.replace(`/integrity${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/integrity${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (

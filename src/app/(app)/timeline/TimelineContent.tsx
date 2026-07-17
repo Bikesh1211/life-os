@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import {
   Stack,
   Title,
@@ -43,7 +43,6 @@ type Props = {
 };
 
 export function TimelineContent({ events, defaultTab = "story" }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
     searchParams.get("tab") ?? defaultTab,
@@ -57,9 +56,9 @@ export function TimelineContent({ events, defaultTab = "story" }: Props) {
       setCreateOpened(true);
       const params = new URLSearchParams(searchParams.toString());
       params.delete("create");
-      router.replace(`/timeline${params.toString() ? `?${params}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/timeline${params.toString() ? `?${params}` : ""}`);
     }
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   const handleTabChange = useCallback(
     (value: string | null) => {
@@ -71,9 +70,9 @@ export function TimelineContent({ events, defaultTab = "story" }: Props) {
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/timeline${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/timeline${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   const handleRefresh = useCallback(async () => {

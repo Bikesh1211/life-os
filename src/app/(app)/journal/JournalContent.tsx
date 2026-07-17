@@ -54,9 +54,9 @@ export function JournalContent({ entries, streak, stats, defaultTab = "browse" }
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/journal${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/journal${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   const handleRefresh = useCallback(async () => {

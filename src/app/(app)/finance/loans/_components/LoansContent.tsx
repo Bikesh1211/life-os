@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, lazy, Suspense, useState, useEffect } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { Tabs, Stack, SimpleGrid, Group, Text, Button, Modal } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
@@ -36,7 +36,6 @@ function TabFallback() {
 }
 
 export function LoansContent() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") ?? "dashboard";
@@ -78,9 +77,9 @@ export function LoansContent() {
         params.set("tab", value);
       }
       const qs = params.toString();
-      router.replace(`/finance/loans${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/finance/loans${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   const fmt = (n: number) =>

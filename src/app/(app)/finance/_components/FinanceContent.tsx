@@ -55,7 +55,7 @@ export function FinanceContent() {
         params.set("tab", value);
       }
       const qs = params.toString();
-      router.replace(`/finance${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/finance${qs ? `?${qs}` : ""}`);
     },
     [router, searchParams],
   );

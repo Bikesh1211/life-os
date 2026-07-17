@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Title, Group, Button, Tabs } from "@mantine/core";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Stack, Title, Group, Button, Tabs, Skeleton } from "@mantine/core";
 import {
   IconChecklist,
   IconCalendarDue,
@@ -13,16 +13,17 @@ import {
   IconFocusCentered,
   IconPlus,
 } from "@tabler/icons-react";
-import { DashboardContent } from "./DashboardContent";
-import { TodayContent } from "./today/TodayContent";
-import { InboxContent } from "./inbox/InboxContent";
-import { ProjectsContent } from "./projects/ProjectsContent";
-import { ProjectDetailContent } from "./projects/ProjectDetailContent";
-import { UpcomingContent } from "./upcoming/UpcomingContent";
-import { RecurringContent } from "./recurring/RecurringContent";
-import { LabelsContent } from "./labels/LabelsContent";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { TaskFormModal } from "@/modules/tasks/components/TaskFormModal";
+
+const DashboardContent = lazy(() => import("./DashboardContent").then(m => ({ default: m.DashboardContent })));
+const TodayContent = lazy(() => import("./today/TodayContent").then(m => ({ default: m.TodayContent })));
+const InboxContent = lazy(() => import("./inbox/InboxContent").then(m => ({ default: m.InboxContent })));
+const ProjectsContent = lazy(() => import("./projects/ProjectsContent").then(m => ({ default: m.ProjectsContent })));
+const ProjectDetailContent = lazy(() => import("./projects/ProjectDetailContent").then(m => ({ default: m.ProjectDetailContent })));
+const UpcomingContent = lazy(() => import("./upcoming/UpcomingContent").then(m => ({ default: m.UpcomingContent })));
+const RecurringContent = lazy(() => import("./recurring/RecurringContent").then(m => ({ default: m.RecurringContent })));
+const LabelsContent = lazy(() => import("./labels/LabelsContent").then(m => ({ default: m.LabelsContent })));
 
 type Props = {
   taskSummary?: any;
@@ -30,8 +31,17 @@ type Props = {
   defaultTab?: string;
 };
 
+function TabFallback() {
+  return (
+    <Stack gap="md">
+      <Skeleton height={40} width={300} />
+      <Skeleton height={140} />
+      <Skeleton height={320} />
+    </Stack>
+  );
+}
+
 export function TasksContent({ taskSummary, initialTasks, defaultTab = "dashboard" }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
     searchParams.get("tab") ?? defaultTab,
@@ -44,9 +54,9 @@ export function TasksContent({ taskSummary, initialTasks, defaultTab = "dashboar
       setShowCreate(true);
       const params = new URLSearchParams(searchParams.toString());
       params.delete("create");
-      router.replace(`/tasks${params.toString() ? `?${params}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/tasks${params.toString() ? `?${params}` : ""}`);
     }
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   const handleTabChange = useCallback(
     (value: string | null) => {
@@ -59,9 +69,9 @@ export function TasksContent({ taskSummary, initialTasks, defaultTab = "dashboar
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/tasks${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/tasks${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (
@@ -107,39 +117,53 @@ export function TasksContent({ taskSummary, initialTasks, defaultTab = "dashboar
         </Tabs.List>
 
         <Tabs.Panel value="dashboard" pt="md">
-          <DashboardContent taskSummary={taskSummary} initialTasks={initialTasks} hideHeader />
+          <Suspense fallback={<TabFallback />}>
+            <DashboardContent taskSummary={taskSummary} initialTasks={initialTasks} hideHeader />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="today" pt="md">
-          <TodayContent hideHeader />
+          <Suspense fallback={<TabFallback />}>
+            <TodayContent hideHeader />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="inbox" pt="md">
-          <InboxContent hideHeader />
+          <Suspense fallback={<TabFallback />}>
+            <InboxContent hideHeader />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="projects" pt="md">
-          {selectedProjectId ? (
-            <ProjectDetailContent
-              projectId={selectedProjectId}
-              hideHeader
-              onBack={() => setSelectedProjectId(null)}
-            />
-          ) : (
-            <ProjectsContent hideHeader onProjectSelect={setSelectedProjectId} />
-          )}
+          <Suspense fallback={<TabFallback />}>
+            {selectedProjectId ? (
+              <ProjectDetailContent
+                projectId={selectedProjectId}
+                hideHeader
+                onBack={() => setSelectedProjectId(null)}
+              />
+            ) : (
+              <ProjectsContent hideHeader onProjectSelect={setSelectedProjectId} />
+            )}
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="upcoming" pt="md">
-          <UpcomingContent hideHeader />
+          <Suspense fallback={<TabFallback />}>
+            <UpcomingContent hideHeader />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="recurring" pt="md">
-          <RecurringContent hideHeader />
+          <Suspense fallback={<TabFallback />}>
+            <RecurringContent hideHeader />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="labels" pt="md">
-          <LabelsContent hideHeader />
+          <Suspense fallback={<TabFallback />}>
+            <LabelsContent hideHeader />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="focus-mode" pt="md">

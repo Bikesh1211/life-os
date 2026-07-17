@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Tabs } from "@mantine/core";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Stack, Tabs, Skeleton } from "@mantine/core";
 import { IconReportAnalytics, IconFlame, IconBulb } from "@tabler/icons-react";
-import { AnalyticsPage } from "@/modules/habits/components/analytics/AnalyticsPage";
-import { StreaksPanel } from "./components/StreaksPanel";
-import { InsightsPanel } from "./components/InsightsPanel";
 import { HabitQuickLogModal } from "./components/HabitQuickLogModal";
+
+const AnalyticsPage = lazy(() => import("@/modules/habits/components/analytics/AnalyticsPage").then(m => ({ default: m.AnalyticsPage })));
+const StreaksPanel = lazy(() => import("./components/StreaksPanel").then(m => ({ default: m.StreaksPanel })));
+const InsightsPanel = lazy(() => import("./components/InsightsPanel").then(m => ({ default: m.InsightsPanel })));
 
 type Props = {
   defaultTab?: string;
@@ -19,8 +20,17 @@ const tabs = [
   { value: "insights", label: "Insights", icon: IconBulb },
 ];
 
+function TabFallback() {
+  return (
+    <Stack gap="md">
+      <Skeleton height={40} width={300} />
+      <Skeleton height={140} />
+      <Skeleton height={320} />
+    </Stack>
+  );
+}
+
 export function HabitsContent({ defaultTab = "dashboard" }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
     searchParams.get("tab") ?? defaultTab,
@@ -32,9 +42,9 @@ export function HabitsContent({ defaultTab = "dashboard" }: Props) {
       setShowLog(true);
       const params = new URLSearchParams(searchParams.toString());
       params.delete("action");
-      router.replace(`/habits${params.toString() ? `?${params}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/habits${params.toString() ? `?${params}` : ""}`);
     }
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   const handleTabChange = useCallback(
     (value: string | null) => {
@@ -46,9 +56,9 @@ export function HabitsContent({ defaultTab = "dashboard" }: Props) {
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/habits${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/habits${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (
@@ -64,15 +74,21 @@ export function HabitsContent({ defaultTab = "dashboard" }: Props) {
           </Tabs.List>
 
           <Tabs.Panel value="dashboard" pt="md">
-            <AnalyticsPage />
+            <Suspense fallback={<TabFallback />}>
+              <AnalyticsPage />
+            </Suspense>
           </Tabs.Panel>
 
           <Tabs.Panel value="streaks" pt="md">
-            <StreaksPanel />
+            <Suspense fallback={<TabFallback />}>
+              <StreaksPanel />
+            </Suspense>
           </Tabs.Panel>
 
           <Tabs.Panel value="insights" pt="md">
-            <InsightsPanel />
+            <Suspense fallback={<TabFallback />}>
+              <InsightsPanel />
+            </Suspense>
           </Tabs.Panel>
         </Tabs>
       </Stack>

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Tabs } from "@mantine/core";
+import { useState, useCallback, lazy, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Stack, Tabs, Skeleton } from "@mantine/core";
 import { IconRepeat, IconCopy, IconCalendarTime, IconReportAnalytics } from "@tabler/icons-react";
-import { RoutinesDashboardPanel } from "./components/RoutinesDashboardPanel";
-import { RoutinesTemplatesPanel } from "./components/RoutinesTemplatesPanel";
-import { RoutinesTimelinePanel } from "./components/RoutinesTimelinePanel";
-import { RoutinesAnalyticsPanel } from "./components/RoutinesAnalyticsPanel";
+
+const RoutinesDashboardPanel = lazy(() => import("./components/RoutinesDashboardPanel").then(m => ({ default: m.RoutinesDashboardPanel })));
+const RoutinesTemplatesPanel = lazy(() => import("./components/RoutinesTemplatesPanel").then(m => ({ default: m.RoutinesTemplatesPanel })));
+const RoutinesTimelinePanel = lazy(() => import("./components/RoutinesTimelinePanel").then(m => ({ default: m.RoutinesTimelinePanel })));
+const RoutinesAnalyticsPanel = lazy(() => import("./components/RoutinesAnalyticsPanel").then(m => ({ default: m.RoutinesAnalyticsPanel })));
 
 type Props = {
   defaultTab?: string;
@@ -20,8 +21,17 @@ const tabs = [
   { value: "analytics", label: "Analytics", icon: IconReportAnalytics },
 ];
 
+function TabFallback() {
+  return (
+    <Stack gap="md">
+      <Skeleton height={40} width={300} />
+      <Skeleton height={140} />
+      <Skeleton height={320} />
+    </Stack>
+  );
+}
+
 export function RoutinesContent({ defaultTab = "dashboard" }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
     searchParams.get("tab") ?? defaultTab,
@@ -37,9 +47,9 @@ export function RoutinesContent({ defaultTab = "dashboard" }: Props) {
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/routines${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/routines${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (
@@ -54,19 +64,27 @@ export function RoutinesContent({ defaultTab = "dashboard" }: Props) {
         </Tabs.List>
 
         <Tabs.Panel value="dashboard" pt="md">
-          <RoutinesDashboardPanel />
+          <Suspense fallback={<TabFallback />}>
+            <RoutinesDashboardPanel />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="templates" pt="md">
-          <RoutinesTemplatesPanel />
+          <Suspense fallback={<TabFallback />}>
+            <RoutinesTemplatesPanel />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="timeline" pt="md">
-          <RoutinesTimelinePanel />
+          <Suspense fallback={<TabFallback />}>
+            <RoutinesTimelinePanel />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="analytics" pt="md">
-          <RoutinesAnalyticsPanel />
+          <Suspense fallback={<TabFallback />}>
+            <RoutinesAnalyticsPanel />
+          </Suspense>
         </Tabs.Panel>
       </Tabs>
     </Stack>

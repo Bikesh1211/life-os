@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, lazy, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Tabs, Skeleton, Stack, Container, Title } from "@mantine/core";
 import {
   IconBriefcase,
@@ -43,7 +43,6 @@ function TabFallback() {
 }
 
 export function CareerContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") ?? "dashboard";
 
@@ -57,9 +56,9 @@ export function CareerContent() {
         params.set("tab", value);
       }
       const qs = params.toString();
-      router.replace(`/career${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/career${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (

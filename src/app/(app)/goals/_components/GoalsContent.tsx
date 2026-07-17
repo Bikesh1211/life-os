@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, lazy, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Tabs, Skeleton, Stack } from "@mantine/core";
 import {
   IconTarget,
@@ -36,7 +36,6 @@ function TabFallback() {
 }
 
 export function GoalsContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") ?? "overview";
 
@@ -50,9 +49,9 @@ export function GoalsContent() {
         params.set("tab", value);
       }
       const qs = params.toString();
-      router.replace(`/goals${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/goals${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (

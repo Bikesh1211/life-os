@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Tabs, Container } from "@mantine/core";
+import { useState, useCallback, lazy, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Stack, Tabs, Container, Skeleton } from "@mantine/core";
 import { IconLayoutDashboard, IconDeviceLaptop, IconComponents, IconTools } from "@tabler/icons-react";
-import { TechGearDashboardPanel } from "./components/TechGearDashboardPanel";
-import { TechGearItemsContent } from "./items/TechGearItemsContent";
-import { TechSetupsPanel } from "./components/TechSetupsPanel";
-import { TechMaintenancePanel } from "./components/TechMaintenancePanel";
+
+const TechGearDashboardPanel = lazy(() => import("./components/TechGearDashboardPanel").then(m => ({ default: m.TechGearDashboardPanel })));
+const TechGearItemsContent = lazy(() => import("./items/TechGearItemsContent").then(m => ({ default: m.TechGearItemsContent })));
+const TechSetupsPanel = lazy(() => import("./components/TechSetupsPanel").then(m => ({ default: m.TechSetupsPanel })));
+const TechMaintenancePanel = lazy(() => import("./components/TechMaintenancePanel").then(m => ({ default: m.TechMaintenancePanel })));
 
 type Props = {
   defaultTab?: string;
@@ -20,8 +21,17 @@ const tabs = [
   { value: "maintenance", label: "Maintenance", icon: IconTools },
 ];
 
+function TabFallback() {
+  return (
+    <Stack gap="md">
+      <Skeleton height={40} width={300} />
+      <Skeleton height={140} />
+      <Skeleton height={320} />
+    </Stack>
+  );
+}
+
 export function TechGearContent({ defaultTab = "dashboard" }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
     searchParams.get("tab") ?? defaultTab,
@@ -37,9 +47,9 @@ export function TechGearContent({ defaultTab = "dashboard" }: Props) {
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/inventory/tech-gear${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/inventory/tech-gear${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (
@@ -55,19 +65,27 @@ export function TechGearContent({ defaultTab = "dashboard" }: Props) {
           </Tabs.List>
 
           <Tabs.Panel value="dashboard" pt="md">
-            <TechGearDashboardPanel />
+            <Suspense fallback={<TabFallback />}>
+              <TechGearDashboardPanel />
+            </Suspense>
           </Tabs.Panel>
 
           <Tabs.Panel value="items" pt="md">
-            <TechGearItemsContent />
+            <Suspense fallback={<TabFallback />}>
+              <TechGearItemsContent />
+            </Suspense>
           </Tabs.Panel>
 
           <Tabs.Panel value="setups" pt="md">
-            <TechSetupsPanel />
+            <Suspense fallback={<TabFallback />}>
+              <TechSetupsPanel />
+            </Suspense>
           </Tabs.Panel>
 
           <Tabs.Panel value="maintenance" pt="md">
-            <TechMaintenancePanel />
+            <Suspense fallback={<TabFallback />}>
+              <TechMaintenancePanel />
+            </Suspense>
           </Tabs.Panel>
         </Tabs>
       </Stack>

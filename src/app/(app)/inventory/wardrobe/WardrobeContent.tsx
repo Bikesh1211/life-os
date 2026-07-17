@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Tabs, Container } from "@mantine/core";
+import { useState, useCallback, lazy, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Stack, Tabs, Container, Skeleton } from "@mantine/core";
 import { IconLayoutDashboard, IconShirt, IconPalette, IconBackpack, IconChartBar } from "@tabler/icons-react";
-import { WardrobeDashboardPanel } from "./components/WardrobeDashboardPanel";
-import { WardrobeItemsContent } from "./items/WardrobeItemsContent";
-import { WardrobeOutfitsPanel } from "./components/WardrobeOutfitsPanel";
-import { WardrobePackingPanel } from "./components/WardrobePackingPanel";
-import { WardrobeAnalyticsPanel } from "./components/WardrobeAnalyticsPanel";
+
+const WardrobeDashboardPanel = lazy(() => import("./components/WardrobeDashboardPanel").then(m => ({ default: m.WardrobeDashboardPanel })));
+const WardrobeItemsContent = lazy(() => import("./items/WardrobeItemsContent").then(m => ({ default: m.WardrobeItemsContent })));
+const WardrobeOutfitsPanel = lazy(() => import("./components/WardrobeOutfitsPanel").then(m => ({ default: m.WardrobeOutfitsPanel })));
+const WardrobePackingPanel = lazy(() => import("./components/WardrobePackingPanel").then(m => ({ default: m.WardrobePackingPanel })));
+const WardrobeAnalyticsPanel = lazy(() => import("./components/WardrobeAnalyticsPanel").then(m => ({ default: m.WardrobeAnalyticsPanel })));
 
 type Props = {
   defaultTab?: string;
@@ -22,8 +23,17 @@ const tabs = [
   { value: "analytics", label: "Analytics", icon: IconChartBar },
 ];
 
+function TabFallback() {
+  return (
+    <Stack gap="md">
+      <Skeleton height={40} width={300} />
+      <Skeleton height={140} />
+      <Skeleton height={320} />
+    </Stack>
+  );
+}
+
 export function WardrobeContent({ defaultTab = "dashboard" }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
     searchParams.get("tab") ?? defaultTab,
@@ -39,9 +49,9 @@ export function WardrobeContent({ defaultTab = "dashboard" }: Props) {
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/inventory/wardrobe${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/inventory/wardrobe${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (
@@ -57,23 +67,33 @@ export function WardrobeContent({ defaultTab = "dashboard" }: Props) {
           </Tabs.List>
 
           <Tabs.Panel value="dashboard" pt="md">
-            <WardrobeDashboardPanel />
+            <Suspense fallback={<TabFallback />}>
+              <WardrobeDashboardPanel />
+            </Suspense>
           </Tabs.Panel>
 
           <Tabs.Panel value="items" pt="md">
-            <WardrobeItemsContent />
+            <Suspense fallback={<TabFallback />}>
+              <WardrobeItemsContent />
+            </Suspense>
           </Tabs.Panel>
 
           <Tabs.Panel value="outfits" pt="md">
-            <WardrobeOutfitsPanel />
+            <Suspense fallback={<TabFallback />}>
+              <WardrobeOutfitsPanel />
+            </Suspense>
           </Tabs.Panel>
 
           <Tabs.Panel value="packing" pt="md">
-            <WardrobePackingPanel />
+            <Suspense fallback={<TabFallback />}>
+              <WardrobePackingPanel />
+            </Suspense>
           </Tabs.Panel>
 
           <Tabs.Panel value="analytics" pt="md">
-            <WardrobeAnalyticsPanel />
+            <Suspense fallback={<TabFallback />}>
+              <WardrobeAnalyticsPanel />
+            </Suspense>
           </Tabs.Panel>
         </Tabs>
       </Stack>

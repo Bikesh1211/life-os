@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Stack, Tabs, SimpleGrid, Title, Group, Button, Text } from "@mantine/core";
 import {
   IconDashboard,
@@ -28,7 +28,6 @@ const tabs = [
 ];
 
 export function CountdownContent({ defaultTab = "dashboard" }: Props) {
-  const router = useRouter();
   const sp = useSearchParams();
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
   const [activeTab, setActiveTab] = useState<string | null>(sp.get("tab") ?? defaultTab);
@@ -58,8 +57,8 @@ export function CountdownContent({ defaultTab = "dashboard" }: Props) {
     if (value && value !== "dashboard") { params.set("tab", value); }
     else { params.delete("tab"); }
     const qs = params.toString();
-    router.replace(`/countdown${qs ? `?${qs}` : ""}`, { scroll: false });
-  }, [router, sp]);
+    window.history.replaceState(null, "", `/countdown${qs ? `?${qs}` : ""}`);
+  }, [sp]);
 
   const nearest = events.length > 0
     ? events.filter((e: EnrichedCountdownEvent) => e.status === "pending" && e.progress && !e.progress.isPast)

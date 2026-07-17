@@ -1,22 +1,23 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Tabs } from "@mantine/core";
+import { useState, useCallback, lazy, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Stack, Tabs, Skeleton } from "@mantine/core";
 import {
   IconUsers, IconUserPlus, IconCake, IconCoffee, IconPlane,
   IconPhotoHeart, IconGift, IconCalendarEvent, IconTimelineEvent, IconReportAnalytics,
 } from "@tabler/icons-react";
-import { ConnectionsContent } from "@/modules/network/components/ConnectionsContent";
-import { MeetupsContent } from "@/modules/network/components/MeetupsContent";
-import { TripsContent } from "@/modules/network/components/TripsContent";
-import { MemoriesContent } from "@/modules/network/components/MemoriesContent";
-import { GiftsContent } from "@/modules/network/components/GiftsContent";
-import { EventsContent } from "@/modules/network/components/EventsContent";
-import { NetworkOverviewPanel } from "./components/NetworkOverviewPanel";
-import { NetworkBirthdaysPanel } from "./components/NetworkBirthdaysPanel";
-import { NetworkTimelinePanel } from "./components/NetworkTimelinePanel";
-import { NetworkInsightsPanel } from "./components/NetworkInsightsPanel";
+
+const ConnectionsContent = lazy(() => import("@/modules/network/components/ConnectionsContent").then(m => ({ default: m.ConnectionsContent })));
+const MeetupsContent = lazy(() => import("@/modules/network/components/MeetupsContent").then(m => ({ default: m.MeetupsContent })));
+const TripsContent = lazy(() => import("@/modules/network/components/TripsContent").then(m => ({ default: m.TripsContent })));
+const MemoriesContent = lazy(() => import("@/modules/network/components/MemoriesContent").then(m => ({ default: m.MemoriesContent })));
+const GiftsContent = lazy(() => import("@/modules/network/components/GiftsContent").then(m => ({ default: m.GiftsContent })));
+const EventsContent = lazy(() => import("@/modules/network/components/EventsContent").then(m => ({ default: m.EventsContent })));
+const NetworkOverviewPanel = lazy(() => import("./components/NetworkOverviewPanel").then(m => ({ default: m.NetworkOverviewPanel })));
+const NetworkBirthdaysPanel = lazy(() => import("./components/NetworkBirthdaysPanel").then(m => ({ default: m.NetworkBirthdaysPanel })));
+const NetworkTimelinePanel = lazy(() => import("./components/NetworkTimelinePanel").then(m => ({ default: m.NetworkTimelinePanel })));
+const NetworkInsightsPanel = lazy(() => import("./components/NetworkInsightsPanel").then(m => ({ default: m.NetworkInsightsPanel })));
 
 type Props = {
   defaultTab?: string;
@@ -35,8 +36,17 @@ const tabs = [
   { value: "insights", label: "Insights", icon: IconReportAnalytics },
 ];
 
+function TabFallback() {
+  return (
+    <Stack gap="md">
+      <Skeleton height={40} width={300} />
+      <Skeleton height={140} />
+      <Skeleton height={320} />
+    </Stack>
+  );
+}
+
 export function NetworkContent({ defaultTab = "overview" }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
     searchParams.get("tab") ?? defaultTab,
@@ -52,9 +62,9 @@ export function NetworkContent({ defaultTab = "overview" }: Props) {
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/network${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/network${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (
@@ -69,43 +79,63 @@ export function NetworkContent({ defaultTab = "overview" }: Props) {
         </Tabs.List>
 
         <Tabs.Panel value="overview" pt="md">
-          <NetworkOverviewPanel />
+          <Suspense fallback={<TabFallback />}>
+            <NetworkOverviewPanel />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="connections" pt="md">
-          <ConnectionsContent />
+          <Suspense fallback={<TabFallback />}>
+            <ConnectionsContent />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="birthdays" pt="md">
-          <NetworkBirthdaysPanel />
+          <Suspense fallback={<TabFallback />}>
+            <NetworkBirthdaysPanel />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="meetups" pt="md">
-          <MeetupsContent />
+          <Suspense fallback={<TabFallback />}>
+            <MeetupsContent />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="trips" pt="md">
-          <TripsContent />
+          <Suspense fallback={<TabFallback />}>
+            <TripsContent />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="memories" pt="md">
-          <MemoriesContent />
+          <Suspense fallback={<TabFallback />}>
+            <MemoriesContent />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="gifts" pt="md">
-          <GiftsContent />
+          <Suspense fallback={<TabFallback />}>
+            <GiftsContent />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="events" pt="md">
-          <EventsContent />
+          <Suspense fallback={<TabFallback />}>
+            <EventsContent />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="timeline" pt="md">
-          <NetworkTimelinePanel />
+          <Suspense fallback={<TabFallback />}>
+            <NetworkTimelinePanel />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="insights" pt="md">
-          <NetworkInsightsPanel />
+          <Suspense fallback={<TabFallback />}>
+            <NetworkInsightsPanel />
+          </Suspense>
         </Tabs.Panel>
       </Tabs>
     </Stack>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Tabs } from "@mantine/core";
+import { useState, useCallback, lazy, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { Stack, Tabs, Skeleton } from "@mantine/core";
 import { IconDeviceTv, IconArticle, IconBrandBlogger, IconVideo, IconFilePencil } from "@tabler/icons-react";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
-import { LibraryContent } from "@/modules/books/components/library/LibraryContent";
+
+const LibraryContent = lazy(() => import("@/modules/books/components/library/LibraryContent").then(m => ({ default: m.LibraryContent })));
 
 type Props = {
   defaultTab?: string;
@@ -19,8 +20,17 @@ const tabs = [
   { value: "books", label: "Books", icon: IconFilePencil },
 ];
 
+function TabFallback() {
+  return (
+    <Stack gap="md">
+      <Skeleton height={40} width={300} />
+      <Skeleton height={140} />
+      <Skeleton height={320} />
+    </Stack>
+  );
+}
+
 export function CreatorStudioContent({ defaultTab = "overview" }: Props) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<string | null>(
     searchParams.get("tab") ?? defaultTab,
@@ -36,9 +46,9 @@ export function CreatorStudioContent({ defaultTab = "overview" }: Props) {
         params.delete("tab");
       }
       const qs = params.toString();
-      router.replace(`/creator-studio${qs ? `?${qs}` : ""}`, { scroll: false });
+      window.history.replaceState(null, "", `/creator-studio${qs ? `?${qs}` : ""}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   return (
@@ -53,23 +63,33 @@ export function CreatorStudioContent({ defaultTab = "overview" }: Props) {
         </Tabs.List>
 
         <Tabs.Panel value="overview" pt="md">
-          <FeaturePlaceholder title="Creator Studio" description="Write articles, blog posts, vlog scripts and books" icon={IconDeviceTv} />
+          <Suspense fallback={<TabFallback />}>
+            <FeaturePlaceholder title="Creator Studio" description="Write articles, blog posts, vlog scripts and books" icon={IconDeviceTv} />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="articles" pt="md">
-          <FeaturePlaceholder title="Articles" description="Write and manage articles" icon={IconArticle} />
+          <Suspense fallback={<TabFallback />}>
+            <FeaturePlaceholder title="Articles" description="Write and manage articles" icon={IconArticle} />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="blog-posts" pt="md">
-          <FeaturePlaceholder title="Blog Posts" description="Manage your blog posts" icon={IconBrandBlogger} />
+          <Suspense fallback={<TabFallback />}>
+            <FeaturePlaceholder title="Blog Posts" description="Manage your blog posts" icon={IconBrandBlogger} />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="vlog-scripts" pt="md">
-          <FeaturePlaceholder title="Vlog Scripts" description="Create video scripts" icon={IconVideo} />
+          <Suspense fallback={<TabFallback />}>
+            <FeaturePlaceholder title="Vlog Scripts" description="Create video scripts" icon={IconVideo} />
+          </Suspense>
         </Tabs.Panel>
 
         <Tabs.Panel value="books" pt="md">
-          <LibraryContent />
+          <Suspense fallback={<TabFallback />}>
+            <LibraryContent />
+          </Suspense>
         </Tabs.Panel>
       </Tabs>
     </Stack>
