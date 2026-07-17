@@ -230,6 +230,13 @@ export const navigation: NavGroup[] = [
             icon: IconBooks,
             featureId: "courses",
           },
+          {
+            label: "English",
+            route: "/learning?tab=english",
+            description: "Vocabulary building & quizzes",
+            icon: IconSearch,
+            featureId: "english_mastery",
+          },
         ],
       },
       {
