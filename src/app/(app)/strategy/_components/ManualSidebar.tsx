@@ -1,6 +1,7 @@
 "use client";
 
-import { Stack, NavLink, Text, useComputedColorScheme } from "@mantine/core";
+import { memo } from "react";
+import { NavLink, Text, useComputedColorScheme } from "@mantine/core";
 import {
   IconDashboard,
   IconUser,
@@ -80,7 +81,7 @@ type Props = {
   onSectionChange: (section: string) => void;
 };
 
-export function ManualSidebar({ activeSection, onSectionChange }: Props) {
+export const ManualSidebar = memo(function ManualSidebar({ activeSection, onSectionChange }: Props) {
   const isDark = useComputedColorScheme() === "dark";
 
   return (
@@ -115,4 +116,4 @@ export function ManualSidebar({ activeSection, onSectionChange }: Props) {
       ))}
     </nav>
   );
-}
+});

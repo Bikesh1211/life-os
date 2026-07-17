@@ -1,34 +1,36 @@
 "use client";
 
-import { useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useCallback, useMemo, memo } from "react";
+import { useSearchParams } from "next/navigation";
 import { Stack, Title, Text, ScrollArea } from "@mantine/core";
 import { ManualSidebar } from "./ManualSidebar";
-import { EditorsRouter } from "./EditorsRouter";
-import type { StrategySection, SectionType } from "@/modules/strategy";
+import EditorsRouter from "./EditorsRouter";
+import type { StrategySection } from "@/modules/strategy";
 
 type Props = {
   sections: StrategySection[];
 };
 
-export function StrategyContent({ sections }: Props) {
-  const router = useRouter();
+export const StrategyContent = memo(function StrategyContent({ sections }: Props) {
   const searchParams = useSearchParams();
-  const activeSection = searchParams.get("section") ?? "dashboard";
+  const initialSection = searchParams.get("section") ?? "dashboard";
+  const [activeSection, setActiveSection] = useState(initialSection);
 
-  const handleSectionChange = useCallback(
-    (section: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (section === "dashboard") {
-        params.delete("section");
-      } else {
-        params.set("section", section);
-      }
-      const qs = params.toString();
-      router.replace(`/strategy${qs ? `?${qs}` : ""}`, { scroll: false });
-    },
-    [router, searchParams],
-  );
+  const sectionMap = useMemo(() => {
+    const map = new Map<string, StrategySection[]>();
+    for (const s of sections) {
+      const list = map.get(s.sectionType) ?? [];
+      list.push(s);
+      map.set(s.sectionType, list);
+    }
+    return map;
+  }, [sections]);
+
+  const handleSectionChange = useCallback((section: string) => {
+    setActiveSection(section);
+    const url = section === "dashboard" ? "/strategy" : `/strategy?section=${section}`;
+    window.history.replaceState(null, "", url);
+  }, []);
 
   return (
     <div style={{ display: "flex", gap: 24, height: "calc(100vh - 100px)" }}>
@@ -40,9 +42,9 @@ export function StrategyContent({ sections }: Props) {
           <Text c="dimmed" size="sm">
             Your personal handbook — how you think, work, make decisions, and live.
           </Text>
-          <EditorsRouter activeSection={activeSection} sections={sections} onSectionChange={handleSectionChange} />
+          <EditorsRouter activeSection={activeSection} sectionMap={sectionMap} />
         </Stack>
       </ScrollArea>
     </div>
   );
-}
+});
