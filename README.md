@@ -35,21 +35,32 @@ All data is scoped to `userId` (Supabase Auth user ID).
 | Plugin | Route | Purpose |
 |--------|-------|---------|
 | Timeline | `/timeline/*` | Daily activity tracker & life milestone manager |
+| Music | `/music/*` | Music tracking, listening history & collections |
+| Movies | `/movies/*` | Movie, TV & anime tracking |
+| Journal | `/journal` | Personal journaling & reflection |
 | Expenses | `/finance/*` | Personal finance tracker |
-| Music | `/music/*` | Music tracking & listening history |
+| Loans | `/finance/loans/*` | Lending & borrowing tracker |
+| Time Audit | `/time-audit` | Time tracking, analytics & productivity |
+| Habits | `/habits/*` | Habit tracking & analytics |
+| Curb | `/curb/*` | Bad habit reduction tracker |
+| Tasks | `/tasks/*` | Task management |
+| Goals | `/goals/*` | Life goal tracking |
+| Routines | `/routines/*`, `/calendar` | Daily schedule & planner |
 | Notes | `/notes` | Quick capture notes |
 | Knowledge Vault | `/knowledge/*` | Personal knowledge management |
-| Routines | `/routines/*`, `/calendar` | Daily schedule & planner |
-| Goals | `/goals/*` | Life goal tracking |
+| Reading | `/reading` | Reading list & progress tracker |
+| Books | `/creator-studio/books/*` | Book writing & publishing |
+| Career | `/career/*` | Professional career management |
 | Wellness | `/wellness` | Mood, sleep, hydration, self-care |
-| Habits | `/habits/*` | Habit tracking & analytics |
-| Tasks | `/tasks/*` | Task management |
-| Journal | `/journal` | Journal entries |
+| Health | `/health/*` | Vitals, fitness & nutrition |
+| Network | `/network/*` | Personal relationships & connections |
 | Travel | `/travel/*` | Trip planning & travel log |
-| Reading | `/reading` | Reading list & tracking |
+| Countdown | `/countdown/*` | Event countdowns & anticipation |
 | Tech Gear | `/inventory/tech-gear` | Tech asset inventory |
 | Wardrobe | `/wardrobe` | Clothing inventory |
-| Gamification | (internal) | XP, levels, achievements |
+| Integrity / Discipline | `/integrity`, `/discipline` | Personal accountability & commitments |
+| Feedback | `/feedback` | User feedback & bug reports |
+| Gamification | (internal) | XP, levels, achievements, badges |
 
 ## Getting Started
 
@@ -142,15 +153,33 @@ src/
 ├── hooks/                  # Shared React hooks
 ├── infrastructure/         # Providers, prefetching, etc.
 ├── modules/                # Plugins (one directory each)
+│   ├── books/
+│   ├── career/
+│   ├── countdown/
+│   ├── curb/
 │   ├── dashboard/
 │   ├── expenses/
+│   ├── feedback/
+│   ├── goals/
 │   ├── habits/
+│   ├── health/
+│   ├── integrity/
+│   ├── journal/
 │   ├── knowledge/
+│   ├── loans/
+│   ├── movies/
 │   ├── music/
+│   ├── network/
 │   ├── notes/
+│   ├── reading/
 │   ├── routines/
 │   ├── tasks/
+│   ├── tech-gear/
+│   ├── time-audit/
 │   ├── timeline/
+│   ├── travel/
+│   ├── wardrobe/
+│   ├── wellness/
 │   └── ...
 └── stores/                 # Zustand stores
 ```
