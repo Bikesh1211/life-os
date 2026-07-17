@@ -432,7 +432,7 @@ function EntryList({ entries: externalEntries, entriesLoading, onEntriesChange }
                         </Text>
                       )}
                       {e.durationMinutes && (
-                        <Text size="xs" c="dimmed">· {e.durationMinutes}m</Text>
+                        <Text size="xs" c="dimmed">· {e.durationMinutes >= 60 ? `${Math.floor(e.durationMinutes / 60)}h ${e.durationMinutes % 60}m` : `${e.durationMinutes}m`}</Text>
                       )}
                     </Group>
                   </div>
