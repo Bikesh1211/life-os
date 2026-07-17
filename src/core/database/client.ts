@@ -25,6 +25,7 @@ import * as careerSchema from "@/modules/career/schema";
 import * as loansSchema from "@/modules/loans/schema";
 import * as booksSchema from "@/modules/books/schema";
 import * as curbSchema from "@/modules/curb/schema";
+import * as timeAuditSchema from "@/modules/time-audit/schema";
 import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -66,6 +67,7 @@ export const db = drizzle(queryClient, {
      ...loansSchema,
       ...booksSchema,
       ...curbSchema,
+      ...timeAuditSchema,
     coreTags,
     coreTaggings,
     sidebarPreferences,
