@@ -6,7 +6,7 @@ import {
   timeBudgets,
   timeUserPreferences,
 } from "./schema";
-import { eq, and, isNull, desc, asc, sql, gte, lte, inArray, SQL } from "drizzle-orm";
+import { eq, and, isNull, desc, asc, sql, gte, lte, inArray, ne, or, lt, gt, SQL } from "drizzle-orm";
 
 export type TimeEntry = typeof timeEntries.$inferSelect;
 export type CreateTimeEntryInput = typeof timeEntries.$inferInsert;
@@ -85,6 +85,22 @@ export async function deleteEntry(id: string, userId: string) {
     .where(and(eq(timeEntries.id, id), eq(timeEntries.userId, userId), isNull(timeEntries.deletedAt)))
     .returning();
   return entry ?? null;
+}
+
+export async function getOverlappingEntries(
+  userId: string,
+  startTime: Date,
+  endTime: Date | null,
+  excludeId?: string,
+) {
+  const conditions: SQL[] = [
+    eq(timeEntries.userId, userId),
+    isNull(timeEntries.deletedAt),
+    lt(timeEntries.startTime, endTime ?? new Date("2100-01-01")),
+    sql`(${isNull(timeEntries.endTime)} OR ${gt(timeEntries.endTime, startTime)})`,
+  ];
+  if (excludeId) conditions.push(ne(timeEntries.id, excludeId));
+  return db.select().from(timeEntries).where(and(...conditions)).limit(5);
 }
 
 export async function getEntriesByDateRange(userId: string, dateFrom: Date, dateTo: Date) {

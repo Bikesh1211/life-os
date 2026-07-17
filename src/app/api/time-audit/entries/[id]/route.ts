@@ -35,6 +35,12 @@ export async function PUT(request: Request, { params }: Props) {
         { status: 400 },
       );
     }
+    if ((error as any)?.code === "OVERLAP") {
+      return NextResponse.json(
+        { error: "Time overlap", conflicts: (error as any).conflicts },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: "Failed to update entry" }, { status: 500 });
   }
 }

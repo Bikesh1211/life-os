@@ -52,6 +52,12 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    if ((error as any)?.code === "OVERLAP") {
+      return NextResponse.json(
+        { error: "Time overlap", conflicts: (error as any).conflicts },
+        { status: 409 },
+      );
+    }
     return NextResponse.json({ error: "Failed to process timer action" }, { status: 500 });
   }
 }

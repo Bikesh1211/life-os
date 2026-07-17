@@ -99,6 +99,26 @@ export async function ensureDefaultCategories(userId: string) {
 
 // ─── Time Entries ──────────────────────────────────────────────
 
+async function checkTimeOverlap(
+  userId: string,
+  startTime: Date,
+  endTime: Date | null,
+  excludeId?: string,
+) {
+  const conflicts = await repo.getOverlappingEntries(userId, startTime, endTime, excludeId);
+  if (conflicts.length > 0) {
+    throw Object.assign(new Error("Time entry overlaps with an existing entry"), {
+      code: "OVERLAP",
+      conflicts: conflicts.map((c) => ({
+        id: c.id,
+        title: c.title,
+        startTime: c.startTime.toISOString(),
+        endTime: c.endTime?.toISOString() ?? null,
+      })),
+    });
+  }
+}
+
 export async function createTimeEntry(userId: string, params: CreateEntryParams) {
   const validated = createEntrySchema.parse(params);
   const durationMinutes =
@@ -109,6 +129,10 @@ export async function createTimeEntry(userId: string, params: CreateEntryParams)
             60000,
         )
       : undefined);
+
+  const startDate = new Date(validated.startTime);
+  const endDate = validated.endTime ? new Date(validated.endTime) : null;
+  await checkTimeOverlap(userId, startDate, endDate);
 
   const entry = await repo.createEntry({
     userId,
@@ -165,13 +189,24 @@ export async function getTimeEntry(id: string, userId: string) {
 export async function updateTimeEntry(id: string, userId: string, params: UpdateEntryParams) {
   const validated = updateEntrySchema.parse(params);
   const input: Record<string, unknown> = { ...validated };
-  if (validated.startTime) input.startTime = new Date(validated.startTime);
-  if (validated.endTime) input.endTime = new Date(validated.endTime);
+  if (validated.startTime) {
+    input.startTime = new Date(validated.startTime);
+  }
+  if (validated.endTime) {
+    input.endTime = new Date(validated.endTime);
+  }
   if (validated.startTime && validated.endTime) {
     input.durationMinutes = Math.round(
       (new Date(validated.endTime).getTime() - new Date(validated.startTime).getTime()) / 60000,
     );
   }
+
+  if (validated.startTime) {
+    const startDate = new Date(validated.startTime);
+    const endDate = validated.endTime ? new Date(validated.endTime) : null;
+    await checkTimeOverlap(userId, startDate, endDate, id);
+  }
+
   return repo.updateEntry(id, userId, input);
 }
 
@@ -223,6 +258,8 @@ export async function duplicateTimeEntry(id: string, userId: string) {
 export async function startTimer(userId: string, params: StartTimerParams) {
   const validated = startTimerSchema.parse(params);
   const now = new Date();
+
+  await checkTimeOverlap(userId, now, null);
 
   const entry = await repo.createEntry({
     userId,
