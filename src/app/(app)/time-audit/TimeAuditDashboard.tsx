@@ -281,6 +281,14 @@ function EntryList({ entries: externalEntries, entriesLoading, onEntriesChange }
   const [completing, setCompleting] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; field: "startTime" | "endTime" } | null>(null);
   const [editingValue, setEditingValue] = useState("");
+  const [overlapError, setOverlapError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (overlapError) {
+      const t = setTimeout(() => setOverlapError(null), 5000);
+      return () => clearTimeout(t);
+    }
+  }, [overlapError]);
 
   const handleComplete = async (entry: any) => {
     if (entry.endTime) return;
@@ -317,11 +325,20 @@ function EntryList({ entries: externalEntries, entriesLoading, onEntriesChange }
     } else if (field === "endTime") {
       body.durationMinutes = Math.max(1, Math.round((updated.toDate().getTime() - new Date(entry.startTime).getTime()) / 60000));
     }
-    await fetch(`/api/time-audit/entries/${entry.id}`, {
+    const res = await fetch(`/api/time-audit/entries/${entry.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (res.status === 409) {
+      const data = await res.json();
+      const conflict = data.conflicts?.[0];
+      setOverlapError(conflict
+        ? `Conflicts with "${conflict.title}"`
+        : "Time overlaps with an existing entry");
+      setEditing(null);
+      return;
+    }
     onEntriesChange((prev: any[]) =>
       prev.map((e: any) => (e.id === entry.id ? { ...e, ...body } : e)),
     );
@@ -353,6 +370,11 @@ function EntryList({ entries: externalEntries, entriesLoading, onEntriesChange }
 
   return (
     <Stack gap="md">
+      {overlapError && (
+        <Text size="xs" c="red">
+          {overlapError}
+        </Text>
+      )}
       {Object.entries(grouped).length === 0 && <EmptyState message="No entries yet. Start tracking your time!" />}
       {Object.entries(grouped).map(([date, dayEntries]) => (
         <div key={date}>

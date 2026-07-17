@@ -21,6 +21,7 @@ import {
   IconPlayerTrackNextFilled,
   IconClock,
 } from "@tabler/icons-react";
+import dayjs from "dayjs";
 
 type TimeCategory = { id: string; name: string; icon: string; color: string };
 
@@ -60,6 +61,7 @@ export function TimeAuditTimerCard({ categories, onCreated }: TimerCardProps) {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Fetch active timer on mount
@@ -96,6 +98,7 @@ export function TimeAuditTimerCard({ categories, onCreated }: TimerCardProps) {
   const handleStart = useCallback(async () => {
     if (!title.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/time-audit/entries/active", {
         method: "POST",
@@ -106,12 +109,21 @@ export function TimeAuditTimerCard({ categories, onCreated }: TimerCardProps) {
           categoryId: categoryId || undefined,
         }),
       });
+      if (res.status === 409) {
+        const data = await res.json();
+        const conflict = data.conflicts?.[0];
+        setError(conflict
+          ? `Conflicts with "${conflict.title}" (${dayjs(conflict.startTime).format("HH:mm")}${conflict.endTime ? ` – ${dayjs(conflict.endTime).format("HH:mm")}` : " – running"})`
+          : "Time overlaps with an existing entry");
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setTimerData(data);
         setElapsed(data.currentElapsedSeconds ?? 0);
         setTitle("");
         setCategoryId(null);
+        setError(null);
       }
     } finally {
       setLoading(false);
@@ -326,8 +338,13 @@ export function TimeAuditTimerCard({ categories, onCreated }: TimerCardProps) {
           >
             <IconPlayerPlayFilled size={18} />
           </ActionIcon>
-        </Group>
-      </Stack>
+          </Group>
+          {error && (
+            <Text size="xs" c="red">
+              {error}
+            </Text>
+          )}
+        </Stack>
     </Paper>
   );
 }

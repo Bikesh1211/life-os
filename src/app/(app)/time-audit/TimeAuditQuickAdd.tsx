@@ -32,11 +32,13 @@ export function TimeAuditQuickAdd({ categories, onCreated }: QuickAddProps) {
   const [endTime, setEndTime] = useState("");
   const [isBillable, setIsBillable] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleCreate = useCallback(async () => {
     if (!title.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const now = dayjs();
       const startDateTime = dayjs(`${now.format("YYYY-MM-DD")}T${startTime}`).toISOString();
@@ -55,6 +57,14 @@ export function TimeAuditQuickAdd({ categories, onCreated }: QuickAddProps) {
           isBillable,
         }),
       });
+      if (res.status === 409) {
+        const data = await res.json();
+        const conflict = data.conflicts?.[0];
+        setError(conflict
+          ? `Conflicts with "${conflict.title}" (${dayjs(conflict.startTime).format("HH:mm")}${conflict.endTime ? ` – ${dayjs(conflict.endTime).format("HH:mm")}` : " – running"})`
+          : "Time overlaps with an existing entry");
+        return;
+      }
       if (res.ok) {
         setTitle("");
         setCategoryId(null);
@@ -62,6 +72,7 @@ export function TimeAuditQuickAdd({ categories, onCreated }: QuickAddProps) {
         setEndTime("");
         setIsBillable(false);
         setExpanded(false);
+        setError(null);
         onCreated();
       }
     } finally {
@@ -133,6 +144,11 @@ export function TimeAuditQuickAdd({ categories, onCreated }: QuickAddProps) {
 
         <Collapse in={!!title}>
           <Stack gap="xs">
+            {error && (
+              <Text size="xs" c="red">
+                {error}
+              </Text>
+            )}
             <Group gap="sm">
               <Select
                 placeholder="Category"
