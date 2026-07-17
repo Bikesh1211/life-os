@@ -13,7 +13,8 @@ import {
   Switch,
   Box,
 } from "@mantine/core";
-import { IconArrowRight, IconPlus, IconX, IconClock } from "@tabler/icons-react";
+import { TimeInput } from "@mantine/dates";
+import { IconArrowRight, IconPlus, IconX } from "@tabler/icons-react";
 import dayjs from "dayjs";
 
 type TimeCategory = { id: string; name: string; icon: string; color: string };
@@ -145,27 +146,24 @@ export function TimeAuditQuickAdd({ categories, onCreated }: QuickAddProps) {
               />
 
               <Group gap={4}>
-                <IconClock size={14} />
-                <TextInput
+                <TimeInput
                   label="Start"
                   value={startTime}
                   onChange={(e) => setStartTime(e.currentTarget.value)}
                   size="xs"
                   variant="filled"
-                  style={{ width: 80 }}
+                  style={{ width: 100 }}
                 />
               </Group>
 
               <Group gap={4}>
-                <IconClock size={14} />
-                <TextInput
+                <TimeInput
                   label="End"
-                  placeholder="(optional)"
                   value={endTime}
                   onChange={(e) => setEndTime(e.currentTarget.value)}
                   size="xs"
                   variant="filled"
-                  style={{ width: 80 }}
+                  style={{ width: 100 }}
                 />
               </Group>
 

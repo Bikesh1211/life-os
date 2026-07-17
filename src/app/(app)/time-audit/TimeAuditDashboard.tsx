@@ -18,8 +18,11 @@ import {
   Container,
   Center,
   Loader,
+  Modal,
+  Button,
   useComputedColorScheme,
 } from "@mantine/core";
+import { TimeInput } from "@mantine/dates";
 import {
   IconClock,
   IconCalendar,
@@ -31,6 +34,8 @@ import {
   IconTargetArrow,
   IconStar,
   IconFlame,
+  IconTrash,
+  IconPlayerStopFilled,
 } from "@tabler/icons-react";
 import {
   PieChart,
@@ -395,6 +400,11 @@ function TimelineTab({ categories: cats, refreshKey, period }: { categories: Tim
 function EntryList({ refreshKey, period }: { refreshKey: number; period: string }) {
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [completing, setCompleting] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ id: string; field: "startTime" | "endTime" } | null>(null);
+  const [editingValue, setEditingValue] = useState("");
 
   useEffect(() => {
     setLoading(true);
@@ -404,6 +414,66 @@ function EntryList({ refreshKey, period }: { refreshKey: number; period: string 
       .then((data) => { setEntries(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, [refreshKey, period]);
+
+  const handleComplete = async (entry: any) => {
+    if (entry.endTime) return;
+    setCompleting(entry.id);
+    try {
+      const now = new Date();
+      const durationMinutes = Math.max(1, Math.round((now.getTime() - new Date(entry.startTime).getTime()) / 60000));
+      const res = await fetch(`/api/time-audit/entries/${entry.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ endTime: now.toISOString(), durationMinutes }),
+      });
+      if (res.ok) {
+        setEntries((prev) =>
+          prev.map((e) => (e.id === entry.id ? { ...e, endTime: now.toISOString(), durationMinutes } : e)),
+        );
+      }
+    } finally {
+      setCompleting(null);
+    }
+  };
+
+  const handleTimeUpdate = async (entry: any, field: "startTime" | "endTime") => {
+    if (!editingValue || !/^\d{2}:\d{2}$/.test(editingValue)) {
+      setEditing(null);
+      return;
+    }
+    const date = dayjs(entry[field]);
+    const [h, m] = editingValue.split(":").map(Number);
+    const updated = date.hour(h).minute(m).second(0).millisecond(0);
+    const body: Record<string, string | number> = { [field]: updated.toISOString() };
+    if (field === "startTime" && entry.endTime) {
+      body.durationMinutes = Math.max(1, Math.round((new Date(entry.endTime).getTime() - updated.toDate().getTime()) / 60000));
+    } else if (field === "endTime") {
+      body.durationMinutes = Math.max(1, Math.round((updated.toDate().getTime() - new Date(entry.startTime).getTime()) / 60000));
+    }
+    await fetch(`/api/time-audit/entries/${entry.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setEntries((prev) =>
+      prev.map((e) => (e.id === entry.id ? { ...e, ...body } : e)),
+    );
+    setEditing(null);
+  };
+
+  const handleDelete = async () => {
+    if (!confirmId) return;
+    setDeleting(confirmId);
+    setConfirmId(null);
+    try {
+      const res = await fetch(`/api/time-audit/entries/${confirmId}`, { method: "DELETE" });
+      if (res.ok) {
+        setEntries((prev) => prev.filter((e) => e.id !== confirmId));
+      }
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   if (loading) return <Text size="sm" c="dimmed">Loading...</Text>;
 
@@ -426,17 +496,83 @@ function EntryList({ refreshKey, period }: { refreshKey: number; period: string 
                 <Group justify="space-between">
                   <div>
                     <Text size="sm" fw={500}>{e.title}</Text>
-                    <Text size="xs" c="dimmed">
-                      {dayjs(e.startTime).format("HH:mm")}
-                      {e.endTime ? ` – ${dayjs(e.endTime).format("HH:mm")}` : " – running"}
-                      {e.durationMinutes ? ` · ${e.durationMinutes}m` : ""}
-                    </Text>
+                    <Group gap={4} mt={2}>
+                      {editing?.id === e.id && editing?.field === "startTime" ? (
+                        <TimeInput
+                          size="xs"
+                          value={editingValue}
+                          onChange={(v) => setEditingValue(v.currentTarget.value)}
+                          onBlur={() => handleTimeUpdate(e, "startTime")}
+                          autoFocus
+                        />
+                      ) : (
+                        <Text
+                          size="xs"
+                          c="dimmed"
+                          style={{ cursor: "pointer", textDecoration: "underline dotted" }}
+                          onClick={() => {
+                            setEditing({ id: e.id, field: "startTime" });
+                            setEditingValue(dayjs(e.startTime).format("HH:mm"));
+                          }}
+                        >
+                          {dayjs(e.startTime).format("HH:mm")}
+                        </Text>
+                      )}
+                      <Text size="xs" c="dimmed">–</Text>
+                      {editing?.id === e.id && editing?.field === "endTime" ? (
+                        <TimeInput
+                          size="xs"
+                          value={editingValue}
+                          onChange={(v) => setEditingValue(v.currentTarget.value)}
+                          onBlur={() => handleTimeUpdate(e, "endTime")}
+                          autoFocus
+                        />
+                      ) : (
+                        <Text
+                          size="xs"
+                          c="dimmed"
+                          style={{ cursor: "pointer", textDecoration: "underline dotted" }}
+                          onClick={() => {
+                            if (e.endTime) {
+                              setEditing({ id: e.id, field: "endTime" });
+                              setEditingValue(dayjs(e.endTime).format("HH:mm"));
+                            }
+                          }}
+                        >
+                          {e.endTime ? dayjs(e.endTime).format("HH:mm") : "running"}
+                        </Text>
+                      )}
+                      {e.durationMinutes && (
+                        <Text size="xs" c="dimmed">· {e.durationMinutes}m</Text>
+                      )}
+                    </Group>
                   </div>
                   <Group gap={6}>
                     {e.isBillable && <Badge size="sm" variant="light" color="green">$</Badge>}
                     {e.tags?.slice(0, 2).map((t: string) => (
                       <Badge key={t} size="sm" variant="light">{t}</Badge>
                     ))}
+                    {!e.endTime && (
+                      <ActionIcon
+                        variant="filled"
+                        color="green"
+                        size="sm"
+                        radius="md"
+                        loading={completing === e.id}
+                        onClick={() => handleComplete(e)}
+                      >
+                        <IconPlayerStopFilled size={12} />
+                      </ActionIcon>
+                    )}
+                    <ActionIcon
+                      variant="subtle"
+                      color="red"
+                      size="sm"
+                      loading={deleting === e.id}
+                      onClick={() => setConfirmId(e.id)}
+                    >
+                      <IconTrash size={14} />
+                    </ActionIcon>
                   </Group>
                 </Group>
               </Paper>
@@ -444,6 +580,25 @@ function EntryList({ refreshKey, period }: { refreshKey: number; period: string 
           </Stack>
         </div>
       ))}
+
+      <Modal
+        opened={!!confirmId}
+        onClose={() => setConfirmId(null)}
+        title="Delete entry?"
+        size="sm"
+      >
+        <Text size="sm" mb="lg">
+          This will permanently delete this time entry. This action cannot be undone.
+        </Text>
+        <Group justify="flex-end" gap="sm">
+          <Button variant="default" onClick={() => setConfirmId(null)}>
+            Cancel
+          </Button>
+          <Button color="red" onClick={handleDelete} loading={!!deleting}>
+            Delete
+          </Button>
+        </Group>
+      </Modal>
     </Stack>
   );
 }
