@@ -1,56 +1,50 @@
 "use client";
 
-import { useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Tabs } from "@mantine/core";
-import { IconChess, IconEye, IconScale, IconCompass } from "@tabler/icons-react";
-import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
+import { useState, useCallback, useMemo, memo } from "react";
+import { useSearchParams } from "next/navigation";
+import { Stack, Title, Text, ScrollArea } from "@mantine/core";
+import { ManualSidebar } from "./ManualSidebar";
+import EditorsRouter from "./EditorsRouter";
+import type { StrategySection } from "@/modules/strategy";
 
-const tabs = [
-  { value: "vision", label: "Vision", icon: IconEye },
-  { value: "decisions", label: "Decisions", icon: IconScale },
-  { value: "principles", label: "Principles", icon: IconCompass },
-];
+type Props = {
+  sections: StrategySection[];
+};
 
-export function StrategyContent() {
-  const router = useRouter();
+export const StrategyContent = memo(function StrategyContent({ sections }: Props) {
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") ?? "vision";
+  const initialSection = searchParams.get("section") ?? "dashboard";
+  const [activeSection, setActiveSection] = useState(initialSection);
 
-  const handleTabChange = useCallback(
-    (value: string | null) => {
-      if (!value) return;
-      const params = new URLSearchParams(searchParams.toString());
-      if (value === "vision") {
-        params.delete("tab");
-      } else {
-        params.set("tab", value);
-      }
-      const qs = params.toString();
-      router.replace(`/strategy${qs ? `?${qs}` : ""}`, { scroll: false });
-    },
-    [router, searchParams],
-  );
+  const sectionMap = useMemo(() => {
+    const map = new Map<string, StrategySection[]>();
+    for (const s of sections) {
+      const list = map.get(s.sectionType) ?? [];
+      list.push(s);
+      map.set(s.sectionType, list);
+    }
+    return map;
+  }, [sections]);
+
+  const handleSectionChange = useCallback((section: string) => {
+    setActiveSection(section);
+    const url = section === "dashboard" ? "/strategy" : `/strategy?section=${section}`;
+    window.history.replaceState(null, "", url);
+  }, []);
 
   return (
-    <Tabs value={activeTab} onChange={handleTabChange} keepMounted={false}>
-      <Tabs.List mb="lg">
-        {tabs.map((tab) => (
-          <Tabs.Tab key={tab.value} value={tab.value} leftSection={<tab.icon size={18} />}>
-            {tab.label}
-          </Tabs.Tab>
-        ))}
-      </Tabs.List>
+    <div style={{ display: "flex", gap: 24, height: "calc(100vh - 100px)" }}>
+      <ManualSidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
 
-      <Tabs.Panel value="vision">
-        <FeaturePlaceholder title="Vision" description="Define your life vision" icon={IconEye} />
-      </Tabs.Panel>
-      <Tabs.Panel value="decisions">
-        <FeaturePlaceholder title="Decisions" description="Decision log and reflections" icon={IconScale} />
-      </Tabs.Panel>
-      <Tabs.Panel value="principles">
-        <FeaturePlaceholder title="Principles" description="Your life principles" icon={IconCompass} />
-      </Tabs.Panel>
-    </Tabs>
+      <ScrollArea style={{ flex: 1, height: "100%" }} offsetScrollbars>
+        <Stack gap="xl" style={{ maxWidth: 800, margin: "0 auto", paddingBottom: 60 }}>
+          <Title order={2}>Operating Manual</Title>
+          <Text c="dimmed" size="sm">
+            Your personal handbook — how you think, work, make decisions, and live.
+          </Text>
+          <EditorsRouter activeSection={activeSection} sectionMap={sectionMap} />
+        </Stack>
+      </ScrollArea>
+    </div>
   );
-}
+});
