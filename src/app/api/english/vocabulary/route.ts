@@ -1,5 +1,3 @@
-"use server";
-
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/core/auth";
 import { getVocabulary, addWord } from "@/modules/english";
@@ -36,6 +34,9 @@ export async function POST(request: Request) {
     if (!wordId) return NextResponse.json({ error: "wordId is required" }, { status: 400 });
 
     const result = await addWord(userId, wordId);
+    if ("error" in result) {
+      return NextResponse.json(result, { status: 409 });
+    }
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: "Failed to add word" }, { status: 500 });

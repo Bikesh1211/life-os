@@ -72,11 +72,15 @@ export default function VocabularyPanel() {
 
   const addMutation = useMutation({
     mutationFn: async (wordId: string) => {
-      await fetch("/api/english/vocabulary", {
+      const res = await fetch("/api/english/vocabulary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wordId }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error ?? "Failed to add word");
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["english", "vocabulary"] });
