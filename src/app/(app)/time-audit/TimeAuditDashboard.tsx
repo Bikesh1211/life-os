@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Stack,
   Group,
@@ -9,16 +9,15 @@ import {
   SimpleGrid,
   Title,
   Badge,
-  Card,
   Progress,
   Tabs,
   Table,
-  ScrollArea,
-  Tooltip,
   ActionIcon,
   ThemeIcon,
-  Select,
+  SegmentedControl,
   Container,
+  Center,
+  Loader,
 } from "@mantine/core";
 import {
   IconClock,
@@ -31,7 +30,6 @@ import {
   IconTargetArrow,
   IconStar,
   IconFlame,
-  IconPlayerPlayFilled,
 } from "@tabler/icons-react";
 import {
   PieChart,
@@ -63,6 +61,7 @@ type Comparison = { week: { currentMinutes: number; previousMinutes: number; cha
 type WeeklySummary = { totalHours: number; totalSessions: number; mostUsedCategory: { name: string; minutes: number } | null; longestSession: number; averageDailyHours: number; categoryBreakdown: { categoryId: string | null; name: string; minutes: number; sessions: number }[] };
 type ProductivityStats = { totalHours: number; totalSessions: number; averageDailyHours: number; averageWeeklyHours: number; averageMonthlyHours: number; averageSessionDuration: number; consecutiveTrackingDays: number; longestTrackingStreak: number; todayHours: number; weekHours: number; monthHours: number };
 type Project = { id: string; title: string; color: string };
+type Distribution = { byCategory: CategoryDistribution[]; byDay: DayDistribution[] };
 
 type Props = {
   defaultTab: string;
@@ -70,7 +69,7 @@ type Props = {
   today: DashboardMetrics;
   week: DashboardMetrics;
   month: DashboardMetrics;
-  distribution: { byCategory: CategoryDistribution[]; byDay: DayDistribution[] };
+  distribution: Distribution;
   trend: TrendData[];
   comparison: Comparison;
   summary: WeeklySummary;
@@ -78,6 +77,64 @@ type Props = {
   budgets: BudgetProgress[];
   projects: Project[];
 };
+
+const PERIODS = [
+  { value: "today", label: "Today" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+  { value: "year", label: "This Year" },
+  { value: "all_time", label: "All Time" },
+] as const;
+
+function getPeriodDateRange(period: string): { dateFrom?: string; dateTo?: string } {
+  const now = dayjs();
+  switch (period) {
+    case "today":
+      return { dateFrom: now.startOf("day").toISOString(), dateTo: now.endOf("day").toISOString() };
+    case "week":
+      return { dateFrom: now.startOf("isoWeek").toISOString(), dateTo: now.endOf("isoWeek").toISOString() };
+    case "month":
+      return { dateFrom: now.startOf("month").toISOString(), dateTo: now.endOf("month").toISOString() };
+    case "year":
+      return { dateFrom: now.startOf("year").toISOString(), dateTo: now.endOf("year").toISOString() };
+    case "all_time":
+      return {};
+    default:
+      return { dateFrom: now.startOf("isoWeek").toISOString(), dateTo: now.endOf("isoWeek").toISOString() };
+  }
+}
+
+function buildEntryQuery(period: string, baseUrl: string): string {
+  const { dateFrom, dateTo } = getPeriodDateRange(period);
+  const params = new URLSearchParams();
+  if (dateFrom) params.set("dateFrom", dateFrom);
+  if (dateTo) params.set("dateTo", dateTo);
+  const qs = params.toString();
+  return qs ? `${baseUrl}?${qs}` : baseUrl;
+}
+
+function aggregateByPeriod(bars: { date: string; totalMinutes: number; sessionCount: number }[], period: string) {
+  if (period === "year" || period === "all_time") {
+    const grouped = new Map<string, { totalMinutes: number; sessionCount: number }>();
+    for (const b of bars) {
+      const key = period === "year" ? dayjs(b.date).format("MMM") : dayjs(b.date).format("MMM YY");
+      const existing = grouped.get(key) ?? { totalMinutes: 0, sessionCount: 0 };
+      existing.totalMinutes += b.totalMinutes;
+      existing.sessionCount += b.sessionCount;
+      grouped.set(key, existing);
+    }
+    return Array.from(grouped.entries()).map(([label, data]) => ({
+      day: label,
+      hours: Math.round((data.totalMinutes / 60) * 10) / 10,
+      fullDate: label,
+    }));
+  }
+  return bars.map((d) => ({
+    day: dayjs(d.date).format("ddd"),
+    hours: Math.round((d.totalMinutes / 60) * 10) / 10,
+    fullDate: d.date,
+  }));
+}
 
 const CATEGORY_COLORS = [
   "#4C6EF5", "#7C3AED", "#E64980", "#FA5252", "#FD7E14",
@@ -118,25 +175,32 @@ function MetricCard({ label, value, subtitle, icon: Icon, color, change }: {
   );
 }
 
-function OverviewTab({ today, week, month, distribution, trend, comparison, summary, stats, budgets, categories, onCreated }: Props & { onCreated: () => void }) {
+const PERIOD_LABEL: Record<string, string> = {
+  today: "Today", week: "This Week", month: "This Month", year: "This Year", all_time: "All Time",
+};
+
+function OverviewTab({
+  today, week, month, distribution, trend, comparison, summary, stats, budgets, categories,
+  onCreated, viewMetrics, viewDistribution, period, periodLoading,
+}: Props & { onCreated: () => void; viewMetrics: DashboardMetrics; viewDistribution: Distribution; period: string; periodLoading: boolean }) {
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-  const pieData = distribution.byCategory.map((c) => ({
+  const pieData = viewDistribution.byCategory.map((c) => ({
     name: categoryMap.get(c.categoryId ?? "")?.name ?? "Uncategorized",
     value: c.totalMinutes,
     color: categoryMap.get(c.categoryId ?? "")?.color ?? "gray",
   }));
 
-  const barData = distribution.byDay.map((d) => ({
-    day: dayjs(d.date).format("ddd"),
-    hours: Math.round((d.totalMinutes / 60) * 10) / 10,
-    fullDate: d.date,
-  }));
+  const barData = aggregateByPeriod(viewDistribution.byDay, period);
 
   const trendData = trend.map((t) => ({
     week: t.week,
     hours: Math.round((t.totalMinutes / 60) * 10) / 10,
   }));
+
+  const chartTitle = distribution.byDay.length > 0
+    ? `Time Breakdown (${PERIOD_LABEL[period] ?? period})`
+    : "Time Breakdown";
 
   return (
     <Stack gap="lg">
@@ -145,51 +209,72 @@ function OverviewTab({ today, week, month, distribution, trend, comparison, summ
         <TimeAuditTimerCard categories={categories} onCreated={onCreated} />
       </SimpleGrid>
 
+      {periodLoading ? (
+        <Center py="lg">
+          <Loader size="sm" />
+        </Center>
+      ) : (
+        <>
+          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+            <MetricCard
+              label={PERIOD_LABEL[period] ?? "Period"}
+              value={`${Math.round(viewMetrics.totalMinutes / 60 * 10) / 10}h`}
+              subtitle={`${viewMetrics.sessionCount} sessions`}
+              icon={IconClock}
+              color="blue"
+            />
+            <MetricCard label="Avg Session" value={`${viewMetrics.avgDuration}m`} icon={IconClock} color="orange" />
+            <MetricCard label="Best Session" value={`${viewMetrics.maxDuration}m`} subtitle={`Shortest: ${viewMetrics.minDuration}m`} icon={IconStar} color="yellow" />
+            <MetricCard label="Streak" value={`${stats.consecutiveTrackingDays} days`} subtitle={`Best: ${stats.longestTrackingStreak}`} icon={IconFlame} color="red" />
+          </SimpleGrid>
+
+          <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+            <MetricCard label="Today" value={`${Math.round(today.totalMinutes / 60 * 10) / 10}h`} subtitle={`${today.sessionCount} sessions`} icon={IconClock} color="blue" />
+            <MetricCard label="This Week" value={`${Math.round(week.totalMinutes / 60 * 10) / 10}h`} subtitle={`${week.sessionCount} sessions`} icon={IconCalendar} color="violet" change={comparison.week.change} />
+            <MetricCard label="This Month" value={`${Math.round(month.totalMinutes / 60 * 10) / 10}h`} subtitle={`${month.sessionCount} sessions`} icon={IconCalendarMonth} color="teal" change={comparison.month.change} />
+            <MetricCard label="Total All-Time" value={`${stats.totalHours}h`} subtitle={`${stats.totalSessions} sessions`} icon={IconStar} color="yellow" />
+          </SimpleGrid>
+        </>
+      )}
+
       <WeeklySummaryCard summary={summary} />
 
-      <SimpleGrid cols={{ base: 2, sm: 3, md: 6 }} spacing="md">
-        <MetricCard label="Today" value={`${Math.round(today.totalMinutes / 60 * 10) / 10}h`} subtitle={`${today.sessionCount} sessions`} icon={IconClock} color="blue" />
-        <MetricCard label="This Week" value={`${Math.round(week.totalMinutes / 60 * 10) / 10}h`} subtitle={`${week.sessionCount} sessions`} icon={IconCalendar} color="violet" change={comparison.week.change} />
-        <MetricCard label="This Month" value={`${Math.round(month.totalMinutes / 60 * 10) / 10}h`} subtitle={`${month.sessionCount} sessions`} icon={IconCalendarMonth} color="teal" change={comparison.month.change} />
-        <MetricCard label="Avg Session" value={`${week.avgDuration}m`} icon={IconClock} color="orange" />
-        <MetricCard label="Streak" value={`${stats.consecutiveTrackingDays} days`} subtitle={`Best: ${stats.longestTrackingStreak}`} icon={IconFlame} color="red" />
-        <MetricCard label="Total" value={`${stats.totalHours}h`} subtitle={`${stats.totalSessions} sessions`} icon={IconStar} color="yellow" />
-      </SimpleGrid>
+      {!periodLoading && (
+        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+          <ChartCard title="Time by Category" height={300}>
+            {pieData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, value }: any) => `${name} ${Math.round(value / 60 * 10) / 10}h`}>
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip formatter={((value: any) => `${Math.round(Number(value) / 60 * 10) / 10}h`) as any} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState message="No data" />
+            )}
+          </ChartCard>
 
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-        <ChartCard title="Time by Category" height={300}>
-          {pieData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, value }: any) => `${name} ${Math.round(value / 60 * 10) / 10}h`}>
-                  {pieData.map((_, i) => (
-                    <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip formatter={((value: any) => `${Math.round(Number(value) / 60 * 10) / 10}h`) as any} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyState message="No data this week" />
-          )}
-        </ChartCard>
-
-        <ChartCard title="Daily Hours (This Week)" height={300}>
-          {barData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--mantine-color-default-border)" />
-                <XAxis dataKey="day" stroke="var(--mantine-color-dimmed)" fontSize={12} />
-                <YAxis stroke="var(--mantine-color-dimmed)" fontSize={12} unit="h" />
-                <RechartsTooltip formatter={((value: any) => `${Number(value)}h`) as any} />
-                <Bar dataKey="hours" fill="var(--mantine-color-blue-6)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyState message="No entries this week" />
-          )}
-        </ChartCard>
-      </SimpleGrid>
+          <ChartCard title={chartTitle} height={300}>
+            {barData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={barData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--mantine-color-default-border)" />
+                  <XAxis dataKey="day" stroke="var(--mantine-color-dimmed)" fontSize={12} />
+                  <YAxis stroke="var(--mantine-color-dimmed)" fontSize={12} unit="h" />
+                  <RechartsTooltip formatter={((value: any) => `${Number(value)}h`) as any} />
+                  <Bar dataKey="hours" fill="var(--mantine-color-blue-6)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <EmptyState message="No entries" />
+            )}
+          </ChartCard>
+        </SimpleGrid>
+      )}
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
         <ChartCard title="Weekly Trend (Last 12 Weeks)" height={250}>
@@ -299,21 +384,22 @@ function WeeklySummaryCard({ summary }: { summary: WeeklySummary }) {
   );
 }
 
-function TimelineTab({ categories: cats, refreshKey }: { categories: TimeCategory[]; refreshKey: number }) {
-  return <EntryList refreshKey={refreshKey} />;
+function TimelineTab({ categories: cats, refreshKey, period }: { categories: TimeCategory[]; refreshKey: number; period: string }) {
+  return <EntryList refreshKey={refreshKey} period={period} />;
 }
 
-function EntryList({ refreshKey }: { refreshKey: number }) {
+function EntryList({ refreshKey, period }: { refreshKey: number; period: string }) {
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/time-audit/entries")
+    const url = buildEntryQuery(period, "/api/time-audit/entries");
+    fetch(url)
       .then((r) => r.json())
       .then((data) => { setEntries(data); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [refreshKey]);
+  }, [refreshKey, period]);
 
   if (loading) return <Text size="sm" c="dimmed">Loading...</Text>;
 
@@ -416,21 +502,22 @@ function CategoriesTab({ categories: cats, distribution }: { categories: TimeCat
   );
 }
 
-function ProjectsTab({ projects, refreshKey }: { projects: Project[]; refreshKey: number }) {
-  return <ProjectList projects={projects} refreshKey={refreshKey} />;
+function ProjectsTab({ projects, refreshKey, period }: { projects: Project[]; refreshKey: number; period: string }) {
+  return <ProjectList projects={projects} refreshKey={refreshKey} period={period} />;
 }
 
-function ProjectList({ projects: projectList, refreshKey }: { projects: Project[]; refreshKey: number }) {
+function ProjectList({ projects: projectList, refreshKey, period }: { projects: Project[]; refreshKey: number; period: string }) {
   const [entries, setEntries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/time-audit/entries")
+    const url = buildEntryQuery(period, "/api/time-audit/entries");
+    fetch(url)
       .then((r) => r.json())
       .then((data) => { setEntries(data); setLoading(false); })
       .catch(() => setLoading(false));
-  }, [refreshKey]);
+  }, [refreshKey, period]);
 
   const projectMap = new Map(projectList.map((p) => [p.id, p]));
   const projectTime = new Map<string, { title: string; color: string; totalMinutes: number; sessions: number; lastActivity: Date }>();
@@ -551,6 +638,23 @@ export function TimeAuditDashboard(props: Props) {
   const [refreshKey, setRefreshKey] = useState(0);
   const handleCreated = () => setRefreshKey((k) => k + 1);
 
+  const [period, setPeriod] = useState("week");
+  const [viewMetrics, setViewMetrics] = useState<DashboardMetrics>(props.week);
+  const [viewDistribution, setViewDistribution] = useState<Distribution>(props.distribution);
+  const [periodLoading, setPeriodLoading] = useState(false);
+
+  useEffect(() => {
+    setPeriodLoading(true);
+    fetch(`/api/time-audit/dashboard?period=${period}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setViewMetrics(data.metrics);
+        setViewDistribution(data.distribution);
+        setPeriodLoading(false);
+      })
+      .catch(() => setPeriodLoading(false));
+  }, [period]);
+
   return (
     <Container size="xl" py="md">
       <Group justify="space-between" mb="lg">
@@ -562,6 +666,15 @@ export function TimeAuditDashboard(props: Props) {
         </Group>
       </Group>
 
+      <Center mb="xl">
+        <SegmentedControl
+          value={period}
+          onChange={setPeriod}
+          data={PERIODS.map((p) => ({ value: p.value, label: p.label }))}
+          size="sm"
+        />
+      </Center>
+
       <Tabs defaultValue={props.defaultTab}>
         <Tabs.List mb="md">
           <Tabs.Tab value="overview" leftSection={<IconTrendingUp size={16} />}>Overview</Tabs.Tab>
@@ -571,11 +684,28 @@ export function TimeAuditDashboard(props: Props) {
           <Tabs.Tab value="budgets" leftSection={<IconTargetArrow size={16} />}>Budgets</Tabs.Tab>
         </Tabs.List>
 
-        <Tabs.Panel value="overview"><OverviewTab {...props} onCreated={handleCreated} /></Tabs.Panel>
-        <Tabs.Panel value="timeline"><TimelineTab categories={props.categories} refreshKey={refreshKey} /></Tabs.Panel>
-        <Tabs.Panel value="categories"><CategoriesTab categories={props.categories} distribution={props.distribution} /></Tabs.Panel>
-        <Tabs.Panel value="projects"><ProjectsTab projects={props.projects} refreshKey={refreshKey} /></Tabs.Panel>
-        <Tabs.Panel value="budgets"><BudgetsTab budgets={props.budgets} categories={props.categories} /></Tabs.Panel>
+        <Tabs.Panel value="overview">
+          <OverviewTab
+            {...props}
+            onCreated={handleCreated}
+            viewMetrics={viewMetrics}
+            viewDistribution={viewDistribution}
+            period={period}
+            periodLoading={periodLoading}
+          />
+        </Tabs.Panel>
+        <Tabs.Panel value="timeline">
+          <TimelineTab categories={props.categories} refreshKey={refreshKey} period={period} />
+        </Tabs.Panel>
+        <Tabs.Panel value="categories">
+          <CategoriesTab categories={props.categories} distribution={viewDistribution} />
+        </Tabs.Panel>
+        <Tabs.Panel value="projects">
+          <ProjectsTab projects={props.projects} refreshKey={refreshKey} period={period} />
+        </Tabs.Panel>
+        <Tabs.Panel value="budgets">
+          <BudgetsTab budgets={props.budgets} categories={props.categories} />
+        </Tabs.Panel>
       </Tabs>
     </Container>
   );
