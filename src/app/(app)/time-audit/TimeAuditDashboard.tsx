@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import {
   Stack,
   Group,
@@ -41,15 +42,8 @@ import {
   PieChart,
   Pie,
   Cell,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
-  LineChart,
-  Line,
 } from "recharts";
 
 import dayjs from "dayjs";
@@ -57,6 +51,8 @@ import isoWeek from "dayjs/plugin/isoWeek";
 dayjs.extend(isoWeek);
 import { TimeAuditQuickAdd } from "./TimeAuditQuickAdd";
 import { TimeAuditTimerCard } from "./TimeAuditTimerCard";
+
+const OverviewCharts = dynamic(() => import("./OverviewCharts"), { ssr: false });
 
 type TimeCategory = { id: string; name: string; icon: string; color: string };
 type DashboardMetrics = { totalMinutes: number; sessionCount: number; avgDuration: number; maxDuration: number; minDuration: number };
@@ -121,29 +117,6 @@ function buildEntryQuery(period: string, baseUrl: string): string {
   return qs ? `${baseUrl}?${qs}` : baseUrl;
 }
 
-function aggregateByPeriod(bars: { date: string; totalMinutes: number; sessionCount: number }[], period: string) {
-  if (period === "year" || period === "all_time") {
-    const grouped = new Map<string, { totalMinutes: number; sessionCount: number }>();
-    for (const b of bars) {
-      const key = period === "year" ? dayjs(b.date).format("MMM") : dayjs(b.date).format("MMM YY");
-      const existing = grouped.get(key) ?? { totalMinutes: 0, sessionCount: 0 };
-      existing.totalMinutes += b.totalMinutes;
-      existing.sessionCount += b.sessionCount;
-      grouped.set(key, existing);
-    }
-    return Array.from(grouped.entries()).map(([label, data]) => ({
-      day: label,
-      hours: Math.round((data.totalMinutes / 60) * 10) / 10,
-      fullDate: label,
-    }));
-  }
-  return bars.map((d) => ({
-    day: dayjs(d.date).format("ddd"),
-    hours: Math.round((d.totalMinutes / 60) * 10) / 10,
-    fullDate: d.date,
-  }));
-}
-
 const CATEGORY_COLORS = [
   "#4C6EF5", "#7C3AED", "#E64980", "#FA5252", "#FD7E14",
   "#FAB005", "#40C057", "#15AABF", "#1C7ED6", "#7950F2",
@@ -191,24 +164,6 @@ function OverviewTab({
   today, week, month, distribution, trend, comparison, summary, stats, budgets, categories,
   onCreated, viewMetrics, viewDistribution, period, periodLoading,
 }: Props & { onCreated: () => void; viewMetrics: DashboardMetrics; viewDistribution: Distribution; period: string; periodLoading: boolean }) {
-  const categoryMap = new Map(categories.map((c) => [c.id, c]));
-
-  const pieData = viewDistribution.byCategory.map((c) => ({
-    name: categoryMap.get(c.categoryId ?? "")?.name ?? "Uncategorized",
-    value: c.totalMinutes,
-    color: categoryMap.get(c.categoryId ?? "")?.color ?? "gray",
-  }));
-
-  const barData = aggregateByPeriod(viewDistribution.byDay, period);
-
-  const trendData = trend.map((t) => ({
-    week: t.week,
-    hours: Math.round((t.totalMinutes / 60) * 10) / 10,
-  }));
-
-  const chartTitle = distribution.byDay.length > 0
-    ? `Time Breakdown (${PERIOD_LABEL[period] ?? period})`
-    : "Time Breakdown";
 
   return (
     <Stack gap="lg">
@@ -248,97 +203,16 @@ function OverviewTab({
       <WeeklySummaryCard summary={summary} />
 
       {!periodLoading && (
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-          <ChartCard title="Time by Category" height={300}>
-            {pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} dataKey="value" label={({ name, value }: any) => `${name} ${Math.round(value / 60 * 10) / 10}h`}>
-                    {pieData.map((_, i) => (
-                      <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip formatter={((value: any) => `${Math.round(Number(value) / 60 * 10) / 10}h`) as any} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <EmptyState message="No data" />
-            )}
-          </ChartCard>
-
-          <ChartCard title={chartTitle} height={300}>
-            {barData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--mantine-color-default-border)" />
-                  <XAxis dataKey="day" stroke="var(--mantine-color-dimmed)" fontSize={12} />
-                  <YAxis stroke="var(--mantine-color-dimmed)" fontSize={12} unit="h" />
-                  <RechartsTooltip formatter={((value: any) => `${Number(value)}h`) as any} />
-                  <Bar dataKey="hours" fill="var(--mantine-color-blue-6)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <EmptyState message="No entries" />
-            )}
-          </ChartCard>
-        </SimpleGrid>
+        <OverviewCharts
+          byCategory={viewDistribution.byCategory}
+          byDay={viewDistribution.byDay}
+          trend={trend}
+          budgets={budgets}
+          categories={categories}
+          periodLabel={PERIOD_LABEL[period] ?? period}
+        />
       )}
-
-      <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
-        <ChartCard title="Weekly Trend (Last 12 Weeks)" height={250}>
-          {trendData.length > 0 ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--mantine-color-default-border)" />
-                <XAxis dataKey="week" stroke="var(--mantine-color-dimmed)" fontSize={10} />
-                <YAxis stroke="var(--mantine-color-dimmed)" fontSize={12} unit="h" />
-                <RechartsTooltip formatter={((value: any) => `${Number(value)}h`) as any} />
-                <Line type="monotone" dataKey="hours" stroke="var(--mantine-color-indigo-6)" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <EmptyState message="Not enough data for trend" />
-          )}
-        </ChartCard>
-
-        <ChartCard title="Budget Progress" height={250}>
-          {budgets.length > 0 ? (
-            <Stack gap="sm">
-              {budgets.slice(0, 6).map((b) => {
-                const cat = categoryMap.get(b.categoryId);
-                return (
-                  <div key={b.id}>
-                    <Group justify="space-between" mb={4}>
-                      <Text size="sm">{cat?.name ?? "Unknown"}</Text>
-                      <Text size="xs" c="dimmed">
-                        {Math.round(b.actualMinutes / 60 * 10) / 10}h / {Math.round(b.targetMinutes / 60 * 10) / 10}h
-                      </Text>
-                    </Group>
-                    <Progress
-                      value={Math.min(b.percentage, 100)}
-                      color={b.isExceeded ? "red" : "blue"}
-                      size="md"
-                      radius="md"
-                    />
-                  </div>
-                );
-              })}
-            </Stack>
-          ) : (
-            <EmptyState message="No budgets set" />
-          )}
-        </ChartCard>
-      </SimpleGrid>
     </Stack>
-  );
-}
-
-function ChartCard({ title, children, height }: { title: string; children: React.ReactNode; height?: number }) {
-  return (
-    <Paper withBorder p="md" radius="lg">
-      <Text size="sm" fw={600} mb="md">{title}</Text>
-      <div style={{ height: height ?? 300 }}>{children}</div>
-    </Paper>
   );
 }
 
@@ -393,27 +267,20 @@ function WeeklySummaryCard({ summary }: { summary: WeeklySummary }) {
   );
 }
 
-function TimelineTab({ categories: cats, refreshKey, period }: { categories: TimeCategory[]; refreshKey: number; period: string }) {
-  return <EntryList refreshKey={refreshKey} period={period} />;
+function TimelineTab({ categories: _cats, entries, entriesLoading, onEntriesChange }: {
+  categories: TimeCategory[]; entries: any[]; entriesLoading: boolean; onEntriesChange: React.Dispatch<React.SetStateAction<any[]>>;
+}) {
+  return <EntryList entries={entries} entriesLoading={entriesLoading} onEntriesChange={onEntriesChange} />;
 }
 
-function EntryList({ refreshKey, period }: { refreshKey: number; period: string }) {
-  const [entries, setEntries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+function EntryList({ entries: externalEntries, entriesLoading, onEntriesChange }: {
+  entries: any[]; entriesLoading: boolean; onEntriesChange: React.Dispatch<React.SetStateAction<any[]>>;
+}) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [completing, setCompleting] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; field: "startTime" | "endTime" } | null>(null);
   const [editingValue, setEditingValue] = useState("");
-
-  useEffect(() => {
-    setLoading(true);
-    const url = buildEntryQuery(period, "/api/time-audit/entries");
-    fetch(url)
-      .then((r) => r.json())
-      .then((data) => { setEntries(data); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [refreshKey, period]);
 
   const handleComplete = async (entry: any) => {
     if (entry.endTime) return;
@@ -427,8 +294,8 @@ function EntryList({ refreshKey, period }: { refreshKey: number; period: string 
         body: JSON.stringify({ endTime: now.toISOString(), durationMinutes }),
       });
       if (res.ok) {
-        setEntries((prev) =>
-          prev.map((e) => (e.id === entry.id ? { ...e, endTime: now.toISOString(), durationMinutes } : e)),
+        onEntriesChange((prev: any[]) =>
+          prev.map((e: any) => (e.id === entry.id ? { ...e, endTime: now.toISOString(), durationMinutes } : e)),
         );
       }
     } finally {
@@ -455,8 +322,8 @@ function EntryList({ refreshKey, period }: { refreshKey: number; period: string 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    setEntries((prev) =>
-      prev.map((e) => (e.id === entry.id ? { ...e, ...body } : e)),
+    onEntriesChange((prev: any[]) =>
+      prev.map((e: any) => (e.id === entry.id ? { ...e, ...body } : e)),
     );
     setEditing(null);
   };
@@ -468,16 +335,16 @@ function EntryList({ refreshKey, period }: { refreshKey: number; period: string 
     try {
       const res = await fetch(`/api/time-audit/entries/${confirmId}`, { method: "DELETE" });
       if (res.ok) {
-        setEntries((prev) => prev.filter((e) => e.id !== confirmId));
+        onEntriesChange((prev: any[]) => prev.filter((e: any) => e.id !== confirmId));
       }
     } finally {
       setDeleting(null);
     }
   };
 
-  if (loading) return <Text size="sm" c="dimmed">Loading...</Text>;
+  if (entriesLoading) return <Text size="sm" c="dimmed">Loading...</Text>;
 
-  const grouped = entries.reduce((acc: Record<string, any[]>, e: any) => {
+  const grouped = externalEntries.reduce((acc: Record<string, any[]>, e: any) => {
     const date = dayjs(e.startTime).format("YYYY-MM-DD");
     if (!acc[date]) acc[date] = [];
     acc[date].push(e);
@@ -661,22 +528,15 @@ function CategoriesTab({ categories: cats, distribution }: { categories: TimeCat
   );
 }
 
-function ProjectsTab({ projects, refreshKey, period }: { projects: Project[]; refreshKey: number; period: string }) {
-  return <ProjectList projects={projects} refreshKey={refreshKey} period={period} />;
+function ProjectsTab({ projects, entries, entriesLoading }: {
+  projects: Project[]; entries: any[]; entriesLoading: boolean;
+}) {
+  return <ProjectList projects={projects} entries={entries} entriesLoading={entriesLoading} />;
 }
 
-function ProjectList({ projects: projectList, refreshKey, period }: { projects: Project[]; refreshKey: number; period: string }) {
-  const [entries, setEntries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    const url = buildEntryQuery(period, "/api/time-audit/entries");
-    fetch(url)
-      .then((r) => r.json())
-      .then((data) => { setEntries(data); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [refreshKey, period]);
+function ProjectList({ projects: projectList, entries, entriesLoading }: {
+  projects: Project[]; entries: any[]; entriesLoading: boolean;
+}) {
 
   const projectMap = new Map(projectList.map((p) => [p.id, p]));
   const projectTime = new Map<string, { title: string; color: string; totalMinutes: number; sessions: number; lastActivity: Date }>();
@@ -704,7 +564,7 @@ function ProjectList({ projects: projectList, refreshKey, period }: { projects: 
     .map(([id, data]) => ({ id, ...data, percentage: Math.round((data.totalMinutes / allTimeMinutes) * 100) }))
     .sort((a, b) => b.totalMinutes - a.totalMinutes);
 
-  if (loading) return <Text size="sm" c="dimmed">Loading...</Text>;
+  if (entriesLoading) return <Text size="sm" c="dimmed">Loading...</Text>;
 
   return (
     <Paper withBorder p="md" radius="lg">
@@ -802,6 +662,10 @@ export function TimeAuditDashboard(props: Props) {
   const [viewDistribution, setViewDistribution] = useState<Distribution>(props.distribution);
   const [periodLoading, setPeriodLoading] = useState(false);
 
+  // Shared entries fetch — both Timeline and Projects tabs consume this
+  const [entries, setEntries] = useState<any[]>([]);
+  const [entriesLoading, setEntriesLoading] = useState(true);
+
   useEffect(() => {
     setPeriodLoading(true);
     fetch(`/api/time-audit/dashboard?period=${period}`)
@@ -813,6 +677,28 @@ export function TimeAuditDashboard(props: Props) {
       })
       .catch(() => setPeriodLoading(false));
   }, [period]);
+
+  // Background refresh when entries are created/stopped or period changes
+  useEffect(() => {
+    if (refreshKey === 0) return;
+    fetch(`/api/time-audit/dashboard?period=${period}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setViewMetrics(data.metrics);
+        setViewDistribution(data.distribution);
+      })
+      .catch(() => {});
+  }, [refreshKey, period]);
+
+  // Single entries fetch shared between Timeline and Projects tabs
+  useEffect(() => {
+    setEntriesLoading(true);
+    const url = buildEntryQuery(period, "/api/time-audit/entries");
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => { setEntries(data); setEntriesLoading(false); })
+      .catch(() => setEntriesLoading(false));
+  }, [refreshKey, period]);
 
   return (
     <Container size="xl" py="md">
@@ -854,13 +740,18 @@ export function TimeAuditDashboard(props: Props) {
           />
         </Tabs.Panel>
         <Tabs.Panel value="timeline">
-          <TimelineTab categories={props.categories} refreshKey={refreshKey} period={period} />
+          <TimelineTab
+            categories={props.categories}
+            entries={entries}
+            entriesLoading={entriesLoading}
+            onEntriesChange={setEntries}
+          />
         </Tabs.Panel>
         <Tabs.Panel value="categories">
           <CategoriesTab categories={props.categories} distribution={viewDistribution} />
         </Tabs.Panel>
         <Tabs.Panel value="projects">
-          <ProjectsTab projects={props.projects} refreshKey={refreshKey} period={period} />
+          <ProjectsTab projects={props.projects} entries={entries} entriesLoading={entriesLoading} />
         </Tabs.Panel>
         <Tabs.Panel value="budgets">
           <BudgetsTab budgets={props.budgets} categories={props.categories} />
