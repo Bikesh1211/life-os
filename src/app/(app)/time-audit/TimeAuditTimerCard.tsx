@@ -12,6 +12,7 @@ import {
   Badge,
   Progress,
   Box,
+  useComputedColorScheme,
 } from "@mantine/core";
 import {
   IconPlayerPlayFilled,
@@ -52,6 +53,7 @@ function formatElapsed(totalSeconds: number): string {
 }
 
 export function TimeAuditTimerCard({ categories, onCreated }: TimerCardProps) {
+  const isDark = useComputedColorScheme() === "dark";
   const [timerData, setTimerData] = useState<TimerData | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [title, setTitle] = useState("");
@@ -192,7 +194,8 @@ export function TimeAuditTimerCard({ categories, onCreated }: TimerCardProps) {
         withBorder
         p="md"
         radius="lg"
-        bg={isPaused ? "var(--mantine-color-yellow-0)" : "var(--mantine-color-green-0)"}
+        bg={isDark ? "dark.6" : isPaused ? "var(--mantine-color-yellow-0)" : "var(--mantine-color-green-0)"}
+        style={isDark ? { borderColor: isPaused ? "var(--mantine-color-yellow-8)" : "var(--mantine-color-green-8)" } : undefined}
       >
         <Stack gap="sm">
           <Group justify="space-between">

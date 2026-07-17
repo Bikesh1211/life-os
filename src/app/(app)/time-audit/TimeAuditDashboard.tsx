@@ -18,6 +18,7 @@ import {
   Container,
   Center,
   Loader,
+  useComputedColorScheme,
 } from "@mantine/core";
 import {
   IconClock,
@@ -343,8 +344,9 @@ function EmptyState({ message }: { message: string }) {
 }
 
 function WeeklySummaryCard({ summary }: { summary: WeeklySummary }) {
+  const isDark = useComputedColorScheme() === "dark";
   return (
-    <Paper withBorder p="md" radius="lg" bg="var(--mantine-color-blue-0)" style={{ borderColor: "var(--mantine-color-blue-3)" }}>
+    <Paper withBorder p="md" radius="lg" bg={isDark ? "dark.6" : "blue.0"}>
       <Group justify="space-between" mb="xs">
         <Group gap={8}>
           <ThemeIcon variant="light" color="blue" size="md" radius="xl">
