@@ -1,6 +1,6 @@
 import { db } from "@/core/database";
 import { goals, goalMilestones } from "./schema";
-import { eq, and, isNull, asc, inArray, desc, count } from "drizzle-orm";
+import { eq, and, isNull, asc, inArray, desc, count, sql } from "drizzle-orm";
 
 export type Goal = typeof goals.$inferSelect;
 export type CreateGoalInput = typeof goals.$inferInsert;
@@ -84,33 +84,27 @@ export async function deleteMilestone(milestoneId: string) {
 }
 
 export async function getGoalCounts(userId: string) {
-  const baseCondition = and(eq(goals.userId, userId), isNull(goals.deletedAt));
-
-  const [totalResult] = await db
-    .select({ value: count() })
+  const rows = await db
+    .select({
+      status: goals.status,
+      value: count(),
+    })
     .from(goals)
-    .where(baseCondition);
+    .where(and(eq(goals.userId, userId), isNull(goals.deletedAt)))
+    .groupBy(goals.status);
 
-  const [activeResult] = await db
-    .select({ value: count() })
-    .from(goals)
-    .where(and(baseCondition, eq(goals.status, "active" as any)));
-
-  const [completedResult] = await db
-    .select({ value: count() })
-    .from(goals)
-    .where(and(baseCondition, eq(goals.status, "completed" as any)));
-
-  const [draftResult] = await db
-    .select({ value: count() })
-    .from(goals)
-    .where(and(baseCondition, eq(goals.status, "draft" as any)));
+  let total = 0;
+  const counts: Record<string, number> = {};
+  for (const row of rows) {
+    counts[row.status as string] = Number(row.value);
+    total += Number(row.value);
+  }
 
   return {
-    total: Number(totalResult?.value ?? 0),
-    active: Number(activeResult?.value ?? 0),
-    completed: Number(completedResult?.value ?? 0),
-    draft: Number(draftResult?.value ?? 0),
+    total,
+    active: counts.active ?? 0,
+    completed: counts.completed ?? 0,
+    draft: counts.draft ?? 0,
   };
 }
 
@@ -123,7 +117,7 @@ export async function getRecentGoals(userId: string, limit = 5) {
     .limit(limit);
 }
 
-export async function getOverdueGoals(userId: string) {
+export async function getOverdueGoals(userId: string, limit = 10) {
   const now = new Date();
   return db
     .select()
@@ -133,7 +127,9 @@ export async function getOverdueGoals(userId: string) {
         eq(goals.userId, userId),
         eq(goals.status, "active" as any),
         isNull(goals.deletedAt),
+        sql`${goals.deadline} < now()`,
       ),
     )
-    .orderBy(asc(goals.deadline));
+    .orderBy(asc(goals.deadline))
+    .limit(limit);
 }

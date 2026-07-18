@@ -1,6 +1,6 @@
 import { db } from "@/core/database";
 import { timelineEvents, type categoryEnum, type importanceEnum, type recurrenceEnum } from "./schema";
-import { eq, and, isNull, desc, asc, inArray, sql } from "drizzle-orm";
+import { eq, and, isNull, desc, asc, inArray, sql, gte } from "drizzle-orm";
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -164,4 +164,32 @@ export async function getEventsByIds(ids: string[], userId: string) {
       ),
     )
     .orderBy(asc(timelineEvents.eventDate));
+}
+
+export async function getEventStatsForUser(userId: string) {
+  const [result] = await db
+    .select({
+      total: sql<number>`count(*)`,
+      past: sql<number>`count(*) filter (where ${timelineEvents.eventDate} < now())`,
+      future: sql<number>`count(*) filter (where ${timelineEvents.eventDate} >= now())`,
+      pinned: sql<number>`count(*) filter (where ${timelineEvents.isPinned} = true)`,
+    })
+    .from(timelineEvents)
+    .where(and(eq(timelineEvents.userId, userId), isNull(timelineEvents.deletedAt)));
+  return result!;
+}
+
+export async function getUpcomingEventsForUser(userId: string, limit = 5) {
+  return db
+    .select()
+    .from(timelineEvents)
+    .where(
+      and(
+        eq(timelineEvents.userId, userId),
+        isNull(timelineEvents.deletedAt),
+        gte(timelineEvents.eventDate, new Date()),
+      ),
+    )
+    .orderBy(asc(timelineEvents.eventDate))
+    .limit(limit);
 }

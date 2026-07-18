@@ -1,5 +1,8 @@
 import { z } from "zod";
 import dayjs from "dayjs";
+import { db } from "@/core/database";
+import { eq, and, isNull, count, sql } from "drizzle-orm";
+import { habits, habitCompletions } from "./schema";
 import * as repo from "./repository";
 import { createTimelineEvent } from "@/modules/timeline";
 
@@ -315,26 +318,38 @@ export async function logCompletion(
 }
 
 export async function getSummary(userId: string) {
-  const habits = await repo.getHabits(userId);
   const today = dayjs().format("YYYY-MM-DD");
-  const todayCompletions = await repo.getCompletions(userId, { dateFrom: today, dateTo: today });
+  const [habitRows, todayResult] = await Promise.all([
+    db.select({ count: count() }).from(habits).where(and(eq(habits.userId, userId), isNull(habits.deletedAt))),
+    db
+      .select({ count: count() })
+      .from(habitCompletions)
+      .where(and(eq(habitCompletions.userId, userId), eq(habitCompletions.completedDate, today))),
+  ]);
+
+  const habitCount = habitRows[0]?.count ?? 0;
+  const completedToday = Number(todayResult[0]?.count ?? 0);
 
   const allDates = await repo.getCompletionDates(userId);
   const overallStreak = calculateStreak(allDates);
 
-  const totalExpected = habits.reduce((sum, h) => {
-    if (h.frequency === "daily") return sum + 1;
-    if (h.frequency === "weekly") return sum + (1 / 7);
-    return sum + (1 / 30);
-  }, 0);
+  const totalExpectedResult = await db
+    .select({
+      daily: sql<number>`count(*) filter (where ${habits.frequency} = 'daily')`,
+      weekly: sql<number>`count(*) filter (where ${habits.frequency} = 'weekly')`,
+      monthly: sql<number>`count(*) filter (where ${habits.frequency} = 'monthly')`,
+    })
+    .from(habits)
+    .where(and(eq(habits.userId, userId), isNull(habits.deletedAt)));
+
+  const { daily = 0, weekly = 0, monthly = 0 } = totalExpectedResult[0] ?? {};
+  const totalExpected = Number(daily) + Number(weekly) / 7 + Number(monthly) / 30;
 
   return {
-    totalHabits: habits.length,
-    completedToday: todayCompletions.length,
-    pendingToday: Math.max(0, Math.ceil(totalExpected - todayCompletions.length)),
+    totalHabits: Number(habitCount ?? 0),
+    completedToday,
+    pendingToday: Math.max(0, Math.ceil(totalExpected - completedToday)),
     currentStreak: overallStreak.current,
     longestStreak: overallStreak.longest,
-    habits,
-    todayCompletions,
   };
 }

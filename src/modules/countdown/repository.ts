@@ -115,14 +115,16 @@ export async function getEventById(id: string, userId: string) {
   return event ?? null;
 }
 
-export async function getEventsForUser(userId: string, status?: string) {
+export async function getEventsForUser(userId: string, status?: string, limit?: number) {
   const conditions = [eq(countdownEvents.userId, userId), isNull(countdownEvents.deletedAt)];
   if (status) { conditions.push(eq(countdownEvents.status, status as any)); }
-  return db
+  const query = db
     .select(eventColumns)
     .from(countdownEvents)
     .where(and(...conditions))
-    .orderBy(desc(countdownEvents.eventDate));
+    .orderBy(asc(countdownEvents.eventDate));
+  if (limit) return query.limit(limit);
+  return query;
 }
 
 export async function updateEvent(id: string, userId: string, input: UpdateCountdownEventInput) {

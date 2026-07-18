@@ -6,6 +6,8 @@ import {
   updateEvent,
   deleteEvent,
   getEventsByDateRange,
+  getEventStatsForUser,
+  getUpcomingEventsForUser,
 } from "./repository";
 import type {
   TimelineEvent,
@@ -169,46 +171,17 @@ export async function deleteTimelineEvent(id: string, userId: string) {
 // ─── Dashboard data exports ──────────────────────────────────────
 
 export async function getUpcomingEvents(userId: string, limit = 5) {
-  const events = await getTimelineEvents(userId);
-  const now = dayjs();
-  return events
-    .filter((e) => {
-      const date = e.nextOccurrence ?? e.eventDate;
-      return dayjs(date).isAfter(now) || dayjs(date).isSame(now, "day");
-    })
-    .sort((a, b) => {
-      const aDate = a.nextOccurrence ?? a.eventDate;
-      const bDate = b.nextOccurrence ?? b.eventDate;
-      return dayjs(aDate).diff(dayjs(bDate));
-    })
-    .slice(0, limit);
+  const events = await getUpcomingEventsForUser(userId, limit);
+  return events.map(withComputedDuration);
 }
 
 export async function getLifeStats(userId: string) {
-  const events = await getTimelineEvents(userId);
-  const now = dayjs();
-  let total = events.length;
-  let past = 0;
-  let future = 0;
-  let pinned = 0;
-  let longest: (typeof events)[0] | null = null;
-
-  for (const event of events) {
-    const date = event.nextOccurrence ?? event.eventDate;
-    if (dayjs(date).isAfter(now)) {
-      future++;
-    } else {
-      past++;
-    }
-    if (event.isPinned) pinned++;
-    if (
-      !longest ||
-      Math.abs(dayjs(date).diff(now, "day")) >
-        Math.abs(dayjs(longest.nextOccurrence ?? longest.eventDate).diff(now, "day"))
-    ) {
-      longest = event;
-    }
-  }
-
-  return { total, past, future, pinned, longestRunning: longest };
+  const stats = await getEventStatsForUser(userId);
+  return {
+    total: stats.total,
+    past: stats.past,
+    future: stats.future,
+    pinned: stats.pinned,
+    longestRunning: null,
+  };
 }

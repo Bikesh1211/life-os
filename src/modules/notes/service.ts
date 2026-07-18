@@ -10,6 +10,7 @@ import {
   duplicateNote,
   getNoteCountForUser,
   getRecentNotesForUser,
+  getRecentNotesForUserDashboard,
   createTag,
   getTagsForUser,
   updateTag,
@@ -191,7 +192,7 @@ export async function toggleArchiveNote(id: string, userId: string) {
 export async function getNoteStats(userId: string) {
   const [totalNotes, recentNotes] = await Promise.all([
     getNoteCountForUser(userId),
-    getRecentNotesForUser(userId, 5),
+    getRecentNotesForUserDashboard(userId, 5),
   ]);
 
   return {
