@@ -684,3 +684,44 @@ A multi-row section within the Operating Manual for ongoing personal reflections
 
 **Manual Version**:
 A snapshot of the entire Operating Manual JSON document at a point in time. Stored in `strategy_versions`. Created on significant edits. Supports restoring any previous version.
+
+**Fitness OS** (plugin):
+The personal fitness & body transformation plugin at `src/modules/fitness/`. Route group is `/fitness/*`. Feature ID is `fitness`. Owns all fitness-domain tables — workout programs, exercise library, workout sessions, exercise sets, body measurements, personal records. Integrates with Wellness (reads sleep, hydration, nutrition via Wellness service layer) and Gamification (awards XP via Gamification service). Sub-routes: Dashboard (`/fitness`), Programs (`/fitness?tab=programs`), Workouts (`/fitness?tab=workouts`), Measurements (`/fitness?tab=measurements`), Progress (`/fitness?tab=progress`), Active Workout (`/fitness/workout`), Workout Detail (`/fitness/workout/[id]`), Program Detail (`/fitness/programs/[id]`).
+
+**Fitness Profile**:
+A single-row user settings record for the Fitness OS. Stored in `fitness_profiles`. Contains `heightCm`, `dateOfBirth`, `gender` (male/female/other), `activityLevel` (sedentary/light/moderate/active/very_active), `fitnessGoal` (lose_fat/build_muscle/maintain/improve_endurance/general_health), `targetWeightKg`, `weeklyWorkoutGoal` (default 4), `dailyCalorieGoal`, `dailyProteinGoal`, `dailyWaterGoalMl`. Every profile is scoped to a `userId`.
+
+*Avoid*: User Fitness Settings, Body Profile (use Fitness Profile)
+
+**Body Measurement**:
+A comprehensive body metrics snapshot at a point in time. Stored in `fitness_body_measurements`. Contains `date`, `weightKg`, `bodyFatPercentage`, `muscleMassKg`, `waistCm`, `hipsCm`, `chestCm`, `armsCm`, `thighsCm`, `neckCm`. Multiple measurements per day allowed. Distinct from Wellness weight entries (which are simple weight logs) — Fitness measurements are multi-metric batch snapshots.
+
+**Exercise Library**:
+A shared reference table (`fitness_exercise_library`) of exercises available for program building. Contains `name`, `muscleGroup` (chest/back/legs/shoulders/arms/core/full_body/cardio), `equipment` (barbell/dumbbell/machine/bodyweight/cable/bands/kettlebell/other), `forceType` (push/pull/static/isolation/compound), `difficulty` (beginner/intermediate/advanced), `instructions`, `videoUrl`, `isCardio`, `isBodyweight`. System-seeded with common exercises. Users cannot edit system exercises but can add custom exercises (userId-scoped, nullable on the row).
+
+**Workout Program**:
+A named structured training plan owned by a User. Stored in `fitness_workout_programs`. Contains `name`, `description`, `goal` (lose_fat/build_muscle/maintain/endurance/general), `daysPerWeek`, `durationWeeks`, `difficulty` (beginner/intermediate/advanced), `isActive`, `isTemplate` (for system templates). Programs contain Program Days which contain Program Exercises. Examples: "Push Pull Legs", "Upper/Lower Split", "5x5 StrongLifts".
+
+**Program Day**:
+A named day within a Workout Program. Stored in `fitness_program_days`. Contains `programId`, `dayNumber` (1-7), `name` (e.g., "Push Day", "Upper Body"), `sortOrder`. A program has 1-7 days.
+
+**Program Exercise**:
+An exercise assigned to a Program Day with target parameters. Stored in `fitness_program_exercises`. Contains `programDayId`, `exerciseId`, `targetSets`, `targetReps` (string, e.g. "8-12" or "5x5"), `targetWeightKg`, `restSeconds` (default 90), `sortOrder`. The same exercise can appear in multiple program days.
+
+**Workout Session**:
+A completed workout owned by a User. Stored in `fitness_workout_sessions`. Contains `date`, optional `programDayId`, `name` (auto-filled from program day), `startTime`, `endTime`, `durationMinutes`, `mood` (1-5), `energy` (1-5), `notes`, `isCompleted`. When created, auto-creates a Timeline Event via the Timeline service layer for cross-plugin visibility.
+
+**Exercise Set**:
+A single set within a Workout Session. Stored in `fitness_exercise_sets`. Contains `sessionId`, `exerciseId`, `exerciseName` (denormalized for display when library changes), `setNumber`, `reps`, `weightKg`, `rpe` (1-10 Rate of Perceived Exertion), `durationSeconds` (for cardio), `distanceMeters` (for cardio), `isWarmup`, `isDropSet`, `isFailure`. Multiple sets per exercise per session.
+
+**Personal Record**:
+A best achievement for an exercise, owned by a User. Stored in `fitness_personal_records`. Types: `one_rep_max`, `max_weight`, `max_reps`, `best_volume`, `best_time`, `best_distance`. Contains `value`, `reps`, `sessionId`, `achievedAt`. Automatically detected when a new set exceeds the existing PR for that exercise+type combination.
+
+**Fitness Volume**:
+Total weight lifted across all sets in a session, computed as `SUM(weightKg × reps)` per exercise or per session. Not stored — computed on-read. Drives the volume progression chart in the Progress tab.
+
+**Fitness Streak**:
+Consecutive days with at least one completed workout session. Computed on-read from `fitness_workout_sessions`. Displayed on the Overview dashboard. Also contributes to the Integrity/Discipline exercise sub-score via the Integrity service layer.
+
+**Fitness Workout Goal**:
+A user-configurable weekly target stored in `fitness_profiles.weeklyWorkoutGoal` (default 4). Goal completion percentage is computed on-read by comparing current week's workouts against the target. Also syncs to the Goals plugin via the Goals service layer when a user explicitly creates a fitness goal.

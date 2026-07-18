@@ -395,6 +395,13 @@ export const navigation: NavGroup[] = [
         ],
       },
       {
+        label: "Fitness",
+        route: "/fitness",
+        description: "Workout tracking, programs & body transformation",
+        icon: IconRun,
+        featureId: "fitness",
+      },
+      {
         label: "Travel",
         route: "/travel",
         description: "Plan, track & remember your travels",
