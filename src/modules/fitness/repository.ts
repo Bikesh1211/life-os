@@ -20,6 +20,7 @@ export type Exercise = typeof fitnessExerciseLibrary.$inferSelect;
 export type WorkoutProgram = typeof fitnessWorkoutPrograms.$inferSelect;
 export type ProgramDay = typeof fitnessProgramDays.$inferSelect;
 export type ProgramExercise = typeof fitnessProgramExercises.$inferSelect;
+export type ProgramExerciseWithName = ProgramExercise & { exerciseName: string };
 export type WorkoutSession = typeof fitnessWorkoutSessions.$inferSelect;
 export type ExerciseSet = typeof fitnessExerciseSets.$inferSelect;
 export type PersonalRecord = typeof fitnessPersonalRecords.$inferSelect;
@@ -390,6 +391,20 @@ export async function getProgramExercises(programDayId: string): Promise<Program
   return db
     .select(programExerciseColumns)
     .from(fitnessProgramExercises)
+    .where(eq(fitnessProgramExercises.programDayId, programDayId))
+    .orderBy(asc(fitnessProgramExercises.sortOrder));
+}
+
+export const programExerciseWithNameColumns = {
+  ...programExerciseColumns,
+  exerciseName: fitnessExerciseLibrary.name,
+};
+
+export async function getProgramExercisesWithLibrary(programDayId: string) {
+  return db
+    .select(programExerciseWithNameColumns)
+    .from(fitnessProgramExercises)
+    .leftJoin(fitnessExerciseLibrary, eq(fitnessProgramExercises.exerciseId, fitnessExerciseLibrary.id))
     .where(eq(fitnessProgramExercises.programDayId, programDayId))
     .orderBy(asc(fitnessProgramExercises.sortOrder));
 }

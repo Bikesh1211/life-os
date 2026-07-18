@@ -18,6 +18,7 @@ import {
   deleteProgramDay,
   createProgramExercise,
   getProgramExercises,
+  getProgramExercisesWithLibrary,
   deleteProgramExercise,
   createWorkoutSession,
   getWorkoutSessionById,
@@ -246,7 +247,7 @@ export const getProgramDaysWithExercises = cache(async (programId: string) => {
   const days = await getProgramDays(programId);
   const daysWithExercises = await Promise.all(
     days.map(async (day) => {
-      const exercises = await getProgramExercises(day.id);
+      const exercises = await getProgramExercisesWithLibrary(day.id);
       return { ...day, exercises };
     }),
   );
