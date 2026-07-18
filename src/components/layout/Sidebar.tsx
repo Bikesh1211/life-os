@@ -39,7 +39,7 @@ const SIDEBAR_COLLAPSED_W = 64;
 function UserProfile({ collapsed }: { collapsed: boolean }) {
   const { user } = useSupabase();
   const name = user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "User";
-  const email = user?.email ?? "";
+  // const email = user?.email ?? "";
   const avatar = user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? "";
 
   if (collapsed) {
@@ -63,9 +63,9 @@ function UserProfile({ collapsed }: { collapsed: boolean }) {
         <Text size="sm" fw={600} truncate className="text-gray-900 dark:text-white">
           {name}
         </Text>
-        <Text size="xs" c="dimmed" truncate>
+        {/* <Text size="xs" c="dimmed" truncate>
           {email}
-        </Text>
+        </Text> */}
       </div>
     </div>
   );
