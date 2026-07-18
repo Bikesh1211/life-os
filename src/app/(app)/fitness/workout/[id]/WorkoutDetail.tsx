@@ -9,7 +9,30 @@ type Props = {
   sessionId: string;
 };
 
-async function fetchSession(id: string) {
+type SessionData = {
+  id: string;
+  date: string;
+  name: string | null;
+  isCompleted: boolean;
+  durationMinutes: number | null;
+  mood: number | null;
+  energy: number | null;
+  notes: string | null;
+  volume: number | null;
+  sets: {
+    id: string;
+    exerciseName: string;
+    setNumber: number;
+    reps: number | null;
+    weightKg: number | null;
+    rpe: number | null;
+    isWarmup: boolean;
+    isDropSet: boolean;
+    isFailure: boolean;
+  }[];
+};
+
+async function fetchSession(id: string): Promise<SessionData> {
   const res = await fetch(`/api/fitness/workouts/${id}`);
   if (!res.ok) throw new Error("Failed to fetch workout");
   return res.json();
@@ -40,7 +63,7 @@ export function WorkoutDetail({ sessionId }: Props) {
     );
   }
 
-  const groupedSets = (data.sets ?? []).reduce<Record<string, any[]>>((acc, set: any) => {
+  const groupedSets = data.sets.reduce<Record<string, typeof data.sets>>((acc, set) => {
     if (!acc[set.exerciseName]) acc[set.exerciseName] = [];
     acc[set.exerciseName].push(set);
     return acc;
@@ -113,7 +136,7 @@ export function WorkoutDetail({ sessionId }: Props) {
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {sets.map((set: any, i: number) => (
+              {sets.map((set, i: number) => (
                 <Table.Tr key={set.id ?? i}>
                   <Table.Td>
                     <Text size="sm">{set.setNumber}</Text>

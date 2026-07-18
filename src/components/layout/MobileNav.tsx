@@ -22,7 +22,7 @@ interface Tab {
 const tabs: Tab[] = [
   { id: "dashboard", label: "Home", href: "/", icon: IconHome2 },
   { id: "finance", label: "Finance", href: "/finance", icon: IconCoin },
-  { id: "quick_note", label: "Quick Note", href: "/quick-note", icon: IconPlus },
+  { id: "notes", label: "Quick Note", href: "/quick-note", icon: IconPlus },
   { id: "timeline", label: "Timeline", href: "/timeline", icon: IconTimelineEvent },
   { id: "profile", label: "Profile", href: "/settings", icon: IconUser },
 ];
@@ -56,7 +56,7 @@ export function MobileNav() {
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             const Icon = tab.icon;
-            const isCenter = tab.id === "quick_note";
+            const isCenter = tab.id === "notes";
 
             if (isCenter) {
               return (
