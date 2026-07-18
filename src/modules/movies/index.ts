@@ -12,4 +12,4 @@ export {
   addFavoriteSchema, ratingSchema, watchlistSchema, quoteSchema, collectionSchema,
 } from "./service";
 
-export * as repo from "./repository";
+// Using named service exports above — repo barrel removed for tree-shaking
