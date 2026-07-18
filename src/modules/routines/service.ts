@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { z } from "zod";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -900,3 +901,148 @@ export async function updateItemStatus(
 export async function getDayMetrics(userId: string, date: string) {
   return repo.getDayMetrics(userId, date);
 }
+
+// ── Daily Planner ──
+
+export const dailyGoalSchema = z.object({
+  title: z.string().min(1).max(300),
+  isCompleted: z.boolean().default(false),
+  taskId: z.string().nullable().optional(),
+});
+
+export const dailyPrioritySchema = z.object({
+  title: z.string().min(1).max(300),
+  estimatedDuration: z.number().int().min(0).nullable().optional(),
+  status: z.enum(["pending", "in_progress", "completed", "skipped"]).default("pending"),
+  sortOrder: z.number().int().min(0).default(0),
+  taskId: z.string().nullable().optional(),
+});
+
+export const dailyNoteSchema = z.object({
+  content: z.string().optional(),
+});
+
+export async function setDailyGoal(userId: string, date: string, params: z.infer<typeof dailyGoalSchema>) {
+  const validated = dailyGoalSchema.parse(params);
+  return repo.upsertDailyGoal({
+    userId,
+    date,
+    title: validated.title,
+    isCompleted: validated.isCompleted,
+    taskId: validated.taskId ?? null,
+  });
+}
+
+export async function toggleDailyGoal(id: string, userId: string, isCompleted: boolean) {
+  return repo.updateDailyGoal(id, userId, { isCompleted, updatedAt: new Date() as any });
+}
+
+export const getDailyPlannerData = cache(async (userId: string, date: string) => {
+  const [goal, priorities, snapshot, note, dayPlan] = await Promise.all([
+    repo.getDailyGoal(userId, date),
+    repo.getDailyPriorities(userId, date),
+    repo.getDailyPlannerSnapshot(userId, date),
+    repo.getDailyNote(userId, date),
+    getDayPlan(userId, date).catch(() => ({ items: [], metrics: null })),
+  ]);
+
+  return { goal, priorities, snapshot, note, dayPlan };
+});
+
+export async function addDailyPriority(userId: string, date: string, params: z.infer<typeof dailyPrioritySchema>) {
+  const validated = dailyPrioritySchema.parse(params);
+  const priorities = await repo.getDailyPriorities(userId, date);
+  return repo.createDailyPriority({
+    userId,
+    date,
+    title: validated.title,
+    estimatedDuration: validated.estimatedDuration ?? null,
+    status: validated.status,
+    sortOrder: validated.sortOrder,
+    taskId: validated.taskId ?? null,
+  });
+}
+
+export async function updateDailyPriorityStatus(id: string, userId: string, status: string) {
+  return repo.updateDailyPriority(id, userId, { status, updatedAt: new Date() as any });
+}
+
+export async function removeDailyPriority(id: string, userId: string) {
+  return repo.deleteDailyPriority(id, userId);
+}
+
+export async function saveDailyNote(userId: string, date: string, params: z.infer<typeof dailyNoteSchema>) {
+  const validated = dailyNoteSchema.parse(params);
+  const existing = await repo.getDailyNote(userId, date);
+  if (existing) {
+    return repo.updateDailyNote(existing.id, userId, { content: validated.content ?? null, updatedAt: new Date() as any });
+  }
+  return repo.upsertDailyNote({ userId, date, content: validated.content ?? null });
+}
+
+export async function computeProductivityScore(userId: string, date: string) {
+  const data = await getDailyPlannerData(userId, date);
+  const { dayPlan, goal } = data;
+
+  const totalTasks = dayPlan?.metrics?.totalItems ?? 0;
+  const completedTasks = dayPlan?.metrics?.completedItems ?? 0;
+  const taskScore = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 25) : 0;
+
+  const goalScore = goal?.isCompleted ? 15 : 0;
+
+  const plannedHours = dayPlan?.metrics?.plannedHours ?? 0;
+  const plannedMinutes = plannedHours * 60;
+  const timeScore = plannedMinutes > 0 ? Math.min(20, Math.round((plannedMinutes / 480) * 20)) : 0;
+
+  const completionRate = dayPlan?.metrics?.completionRate ?? 0;
+  const completionScore = Math.round((completionRate / 100) * 20);
+
+  const focusScore = 0;
+
+  const habitScore = 0;
+
+  const rawScore = taskScore + goalScore + timeScore + completionScore + focusScore + habitScore;
+  const finalScore = Math.min(100, Math.max(0, rawScore));
+
+  const subScores = {
+    tasks: taskScore,
+    dailyGoal: goalScore,
+    timeManagement: timeScore,
+    completionRate: completionScore,
+    focus: focusScore,
+    habits: habitScore,
+  } as Record<string, number>;
+
+  const existing = await repo.getDailyPlannerSnapshot(userId, date);
+  if (existing) {
+    await repo.upsertDailyPlannerSnapshot({
+      userId,
+      date,
+      productivityScore: finalScore,
+      subScores: subScores as any,
+      tasksCompleted: completedTasks,
+      tasksTotal: totalTasks,
+      focusMinutes: 0,
+      habitsCompleted: 0,
+      habitsTotal: 0,
+      dailyGoalCompleted: goal?.isCompleted ?? false,
+    });
+  } else {
+    await repo.upsertDailyPlannerSnapshot({
+      userId,
+      date,
+      productivityScore: finalScore,
+      subScores: subScores as any,
+      tasksCompleted: completedTasks,
+      tasksTotal: totalTasks,
+      focusMinutes: 0,
+      habitsCompleted: 0,
+      habitsTotal: 0,
+      dailyGoalCompleted: goal?.isCompleted ?? false,
+    });
+  }
+
+  return { score: finalScore, subScores };
+}
+
+export type DailyPlannerData = Awaited<ReturnType<typeof getDailyPlannerData>>;

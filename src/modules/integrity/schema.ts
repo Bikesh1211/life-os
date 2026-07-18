@@ -85,6 +85,13 @@ export const integrityDailyCheckins = pgTable("integrity_daily_checkins", {
   proudOf: text("proud_of"),
   improvement: text("improvement"),
   excuseTags: text("excuse_tags").array(),
+  // End-of-day review fields
+  whatWentWell: text("what_went_well"),
+  biggestAchievement: text("biggest_achievement"),
+  lessonLearned: text("lesson_learned"),
+  howDoYouFeel: text("how_do_you_feel"),
+  dayRating: integer("day_rating"),
+  tomorrowPriorities: text("tomorrow_priorities").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

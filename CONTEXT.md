@@ -725,3 +725,23 @@ Consecutive days with at least one completed workout session. Computed on-read f
 
 **Fitness Workout Goal**:
 A user-configurable weekly target stored in `fitness_profiles.weeklyWorkoutGoal` (default 4). Goal completion percentage is computed on-read by comparing current week's workouts against the target. Also syncs to the Goals plugin via the Goals service layer when a user explicitly creates a fitness goal.
+
+**Daily Planner**:
+The enhanced daily planning experience at `/calendar`, owned by the Routines plugin. A complete daily operating system that guides users from planning their morning to reviewing their progress at night. Replaces the simpler `/calendar` view with sections for Daily Goal, Top 3 Priorities, Schedule Timeline (Grid/Agenda), Daily Notes, Productivity Score, and End-of-Day Review. Aggregates data from Tasks, Habits, Time Audit, Wellness, and Integrity plugins through their service layers.
+
+**Daily Goal**:
+A single main objective for a specific day, owned by a User. Stored in `daily_goals`. Can be freeform text or linked to an existing Task via `taskId`. Exactly one goal per user per date (upsert). Displayed prominently at the top of the Daily Planner.
+
+**Top Priority (MIT)**:
+One of three Most Important Tasks for a specific day, owned by a User. Stored in `daily_priorities`. Each priority has a title, optional estimated duration, status (pending/in_progress/completed/skipped), and sort order. Can link to a Task via `taskId`. Limited to 3 per day. Always displayed before the schedule timeline.
+
+**Daily Productivity Score**:
+A 0-100 computed metric for a specific day, stored in `daily_planner_snapshots`. Aggregates: tasks completed (25%), daily goal completion (15%), time management based on planned hours (20%), schedule completion rate (20%), focus time (10%), habits completed (10%). Sub-scores are stored as JSONB. Computed on-read with caching, follows the same pattern as `integrity_daily_snapshots` / `Discipline Snapshot`. Cached for fast dashboard loads, refreshed when the user completes an action that affects the score.
+
+**Daily Note (Planner)**:
+An ephemeral scratchpad note for a specific day, stored in `daily_notes`. One row per user per date (upsert). Contains only date-scoped content. Distinct from the Notes plugin — Notes are standalone persistent entries; Daily Notes are ephemeral scratchpad content tied to a specific day.
+
+**Daily Planner Snapshot**:
+A daily cached row in `daily_planner_snapshots` storing the computed productivity score, sub-scores (JSONB), task counts, focus minutes, habit counts, and daily goal completion status. Computed on first daily planner visit of the day or when tracked actions change.
+
+*Avoid*: Creating a new plugin for daily planning — the Daily Planner is an enhancement of the Routines plugin. Avoid building a separate focus timer — delegate to Time Audit. Avoid LLM dependency for insights in v1 — use rule-based aggregation.

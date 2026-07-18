@@ -5,6 +5,11 @@ export {
   routineExecutionItems,
   routineTemplates,
   routineTemplateItems,
+  dailyGoals,
+  dailyPriorities,
+  dailyPlannerSnapshots,
+  dailyNotes,
+  plannerPreferences,
 } from "./schema";
 export type {
   Routine,
@@ -13,6 +18,11 @@ export type {
   RoutineExecutionItem,
   RoutineTemplate,
   RoutineTemplateItem,
+  DailyGoal,
+  DailyPriority,
+  DailyPlannerSnapshot,
+  DailyNote,
+  PlannerPreferences,
 } from "./repository";
 export {
   getRoutines,
@@ -55,6 +65,18 @@ export {
   categoryEnum,
   priorityEnum,
   itemStatusEnum,
+  // Daily Planner
+  getDailyPlannerData,
+  setDailyGoal,
+  toggleDailyGoal,
+  addDailyPriority,
+  updateDailyPriorityStatus,
+  removeDailyPriority,
+  saveDailyNote,
+  computeProductivityScore,
+  dailyGoalSchema,
+  dailyPrioritySchema,
+  dailyNoteSchema,
 } from "./service";
 export type {
   CreateRoutineParams,
@@ -64,5 +86,6 @@ export type {
   UpdateAdhocItemParams,
   AnalyticsFilterParams,
   DayPlanItem,
+  DailyPlannerData,
 } from "./service";
 export { SYSTEM_TEMPLATES } from "./constants";
