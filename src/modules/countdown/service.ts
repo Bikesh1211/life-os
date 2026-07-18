@@ -197,9 +197,15 @@ function mapCountdownCategoryToTimeline(category: string): string {
   return map[category] ?? "personal";
 }
 
-export async function getCountdownEvents(userId: string, status?: string) {
-  const events = await getEventsForUser(userId, status);
+export async function getCountdownEvents(userId: string, status?: string, limit?: number) {
+  const events = await getEventsForUser(userId, status, limit);
   return events.map(enrichEvent);
+}
+
+export async function getNearestCountdownEvent(userId: string) {
+  const events = await getEventsForUser(userId, "pending", 1);
+  if (events.length === 0) return null;
+  return enrichEvent(events[0]);
 }
 
 export async function getCountdownEvent(id: string, userId: string) {

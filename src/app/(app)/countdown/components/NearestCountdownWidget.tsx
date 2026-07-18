@@ -15,7 +15,7 @@ export function NearestCountdownWidget() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/countdown?status=pending");
+        const res = await fetch("/api/countdown?status=pending&limit=5");
         if (res.ok) {
           const data: EnrichedCountdownEvent[] = await res.json();
           const upcoming = data

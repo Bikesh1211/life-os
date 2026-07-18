@@ -79,6 +79,18 @@ export const noteColumns = {
   deletedAt: notes.deletedAt,
 };
 
+const noteColumnsDashboard = {
+  id: notes.id,
+  title: notes.title,
+  category: notes.category,
+  tags: notes.tags,
+  isPinned: notes.isPinned,
+  color: notes.color,
+  priority: notes.priority,
+  createdAt: notes.createdAt,
+  updatedAt: notes.updatedAt,
+};
+
 // ── Notes ──
 
 export async function createNote(input: CreateNoteInput) {
@@ -250,6 +262,15 @@ export async function getNoteCountForUser(userId: string, status?: string) {
 export async function getRecentNotesForUser(userId: string, limit = 10) {
   return db
     .select(noteColumns)
+    .from(notes)
+    .where(and(eq(notes.userId, userId), isNull(notes.deletedAt), or(eq(notes.status, "published"), eq(notes.status, "draft"))))
+    .orderBy(desc(notes.updatedAt))
+    .limit(limit);
+}
+
+export async function getRecentNotesForUserDashboard(userId: string, limit = 5) {
+  return db
+    .select(noteColumnsDashboard)
     .from(notes)
     .where(and(eq(notes.userId, userId), isNull(notes.deletedAt), or(eq(notes.status, "published"), eq(notes.status, "draft"))))
     .orderBy(desc(notes.updatedAt))

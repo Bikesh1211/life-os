@@ -121,18 +121,15 @@ export async function deleteMilestone(milestoneId: string) {
 }
 
 export async function getOverview(userId: string) {
-  const [goalCounts, recent, overdue] = await Promise.all([
+  const [goalCounts, recent, overdueGoals] = await Promise.all([
     repo.getGoalCounts(userId),
     repo.getRecentGoals(userId),
-    repo.getOverdueGoals(userId),
+    repo.getOverdueGoals(userId, 10),
   ]);
-  const overdueList = overdue.filter(
-    (g) => g.deadline && new Date(g.deadline) < new Date(),
-  );
   return {
     ...goalCounts,
     recentGoals: recent,
-    overdueGoals: overdueList,
+    overdueGoals,
   };
 }
 

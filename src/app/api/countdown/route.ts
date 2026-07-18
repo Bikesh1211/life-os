@@ -9,7 +9,8 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status") || undefined;
-    const events = await getCountdownEvents(userId, status);
+    const limit = searchParams.get("limit") ? Number(searchParams.get("limit")) : undefined;
+    const events = await getCountdownEvents(userId, status, limit);
     return NextResponse.json(events);
   } catch (error) {
     console.error("[countdown:get]", error);
