@@ -118,11 +118,11 @@ export const navigation: NavGroup[] = [
     label: "Daily Life",
     items: [
       {
-        label: "Quick Notes",
+        label: "Notes",
         route: "/notes",
         description: "Capture ideas fast",
         icon: IconPencilBolt,
-        featureId: "quick_note",
+        featureId: "notes",
       },
       {
         label: "Journal",
@@ -393,6 +393,13 @@ export const navigation: NavGroup[] = [
             featureId: "sleep",
           },
         ],
+      },
+      {
+        label: "Fitness",
+        route: "/fitness",
+        description: "Workout tracking, programs & body transformation",
+        icon: IconRun,
+        featureId: "fitness",
       },
       {
         label: "Travel",

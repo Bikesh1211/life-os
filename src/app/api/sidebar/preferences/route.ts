@@ -18,7 +18,7 @@ export async function GET() {
 
   if (rows.length === 0) {
     return NextResponse.json({
-      favorites: ["dashboard", "quick_note", "timeline", "calendar"],
+      favorites: ["dashboard", "notes", "timeline", "calendar"],
       visibility: { hiddenGroups: [], hiddenItems: [] },
     });
   }

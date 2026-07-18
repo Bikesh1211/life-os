@@ -7,7 +7,7 @@ const STORAGE_KEY = "life-os:sidebar-favorites";
 
 export const DEFAULT_FAVORITES = [
   "dashboard",
-  "quick_note",
+  "notes",
   "expenses",
   "timeline",
   "journal",

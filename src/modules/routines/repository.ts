@@ -7,6 +7,11 @@ import {
   routineExecutionItems,
   routineTemplates,
   routineTemplateItems,
+  dailyGoals,
+  dailyPriorities,
+  dailyPlannerSnapshots,
+  dailyNotes,
+  plannerPreferences,
 } from "./schema";
 
 export type Routine = typeof routines.$inferSelect;
@@ -15,6 +20,11 @@ export type RoutineExecution = typeof routineExecutions.$inferSelect;
 export type RoutineExecutionItem = typeof routineExecutionItems.$inferSelect;
 export type RoutineTemplate = typeof routineTemplates.$inferSelect;
 export type RoutineTemplateItem = typeof routineTemplateItems.$inferSelect;
+export type DailyGoal = typeof dailyGoals.$inferSelect;
+export type DailyPriority = typeof dailyPriorities.$inferSelect;
+export type DailyPlannerSnapshot = typeof dailyPlannerSnapshots.$inferSelect;
+export type DailyNote = typeof dailyNotes.$inferSelect;
+export type PlannerPreferences = typeof plannerPreferences.$inferSelect;
 
 export type CreateRoutineInput = typeof routines.$inferInsert;
 export type CreateRoutineItemInput = typeof routineItems.$inferInsert;
@@ -22,6 +32,11 @@ export type CreateExecutionInput = typeof routineExecutions.$inferInsert;
 export type CreateExecutionItemInput = typeof routineExecutionItems.$inferInsert;
 export type CreateTemplateInput = typeof routineTemplates.$inferInsert;
 export type CreateTemplateItemInput = typeof routineTemplateItems.$inferInsert;
+export type CreateDailyGoalInput = typeof dailyGoals.$inferInsert;
+export type CreateDailyPriorityInput = typeof dailyPriorities.$inferInsert;
+export type CreateDailyPlannerSnapshotInput = typeof dailyPlannerSnapshots.$inferInsert;
+export type CreateDailyNoteInput = typeof dailyNotes.$inferInsert;
+export type CreatePlannerPreferencesInput = typeof plannerPreferences.$inferInsert;
 
 export type DayMetrics = Awaited<ReturnType<typeof getDayMetrics>>;
 
@@ -643,4 +658,151 @@ export async function getItemCompletionStats(userId: string, dateFrom: string, d
     skipped: Number(r.skipped),
     rate: Number(r.total) > 0 ? Math.round((Number(r.completed) / Number(r.total)) * 100) : 0,
   }));
+}
+
+// ── Daily Planner ──
+
+// Daily Goal
+export async function getDailyGoal(userId: string, date: string): Promise<DailyGoal | null> {
+  const [goal] = await db
+    .select()
+    .from(dailyGoals)
+    .where(and(eq(dailyGoals.userId, userId), eq(dailyGoals.date, date)))
+    .limit(1);
+  return goal ?? null;
+}
+
+export async function upsertDailyGoal(input: CreateDailyGoalInput): Promise<DailyGoal> {
+  const existing = await getDailyGoal(input.userId, input.date);
+  if (existing) {
+    const [goal] = await db
+      .update(dailyGoals)
+      .set({ title: input.title, isCompleted: input.isCompleted ?? false, taskId: input.taskId ?? null, updatedAt: new Date() })
+      .where(eq(dailyGoals.id, existing.id))
+      .returning();
+    return goal;
+  }
+  const [goal] = await db
+    .insert(dailyGoals)
+    .values(input)
+    .returning();
+  return goal;
+}
+
+export async function updateDailyGoal(id: string, userId: string, data: Partial<CreateDailyGoalInput>): Promise<DailyGoal | null> {
+  const [goal] = await db
+    .update(dailyGoals)
+    .set({ ...data, updatedAt: new Date() })
+    .where(and(eq(dailyGoals.id, id), eq(dailyGoals.userId, userId)))
+    .returning();
+  return goal ?? null;
+}
+
+// Daily Priorities
+export async function getDailyPriorities(userId: string, date: string): Promise<DailyPriority[]> {
+  return db
+    .select()
+    .from(dailyPriorities)
+    .where(and(eq(dailyPriorities.userId, userId), eq(dailyPriorities.date, date)))
+    .orderBy(asc(dailyPriorities.sortOrder));
+}
+
+export async function createDailyPriority(input: CreateDailyPriorityInput): Promise<DailyPriority> {
+  const [item] = await db
+    .insert(dailyPriorities)
+    .values(input)
+    .returning();
+  return item;
+}
+
+export async function updateDailyPriority(id: string, userId: string, data: Partial<CreateDailyPriorityInput>): Promise<DailyPriority | null> {
+  const [item] = await db
+    .update(dailyPriorities)
+    .set({ ...data, updatedAt: new Date() })
+    .where(and(eq(dailyPriorities.id, id), eq(dailyPriorities.userId, userId)))
+    .returning();
+  return item ?? null;
+}
+
+export async function deleteDailyPriority(id: string, userId: string): Promise<void> {
+  await db
+    .delete(dailyPriorities)
+    .where(and(eq(dailyPriorities.id, id), eq(dailyPriorities.userId, userId)));
+}
+
+// Daily Planner Snapshot
+export async function getDailyPlannerSnapshot(userId: string, date: string): Promise<DailyPlannerSnapshot | null> {
+  const [snapshot] = await db
+    .select()
+    .from(dailyPlannerSnapshots)
+    .where(and(eq(dailyPlannerSnapshots.userId, userId), eq(dailyPlannerSnapshots.date, date)))
+    .limit(1);
+  return snapshot ?? null;
+}
+
+export async function upsertDailyPlannerSnapshot(input: CreateDailyPlannerSnapshotInput): Promise<DailyPlannerSnapshot> {
+  const [snapshot] = await db
+    .insert(dailyPlannerSnapshots)
+    .values(input)
+    .returning();
+  return snapshot;
+}
+
+export async function getDailyPlannerSnapshotRange(userId: string, dateFrom: string, dateTo: string): Promise<DailyPlannerSnapshot[]> {
+  return db
+    .select()
+    .from(dailyPlannerSnapshots)
+    .where(and(eq(dailyPlannerSnapshots.userId, userId), gte(dailyPlannerSnapshots.date, dateFrom), lte(dailyPlannerSnapshots.date, dateTo)))
+    .orderBy(asc(dailyPlannerSnapshots.date));
+}
+
+// Daily Notes
+export async function getDailyNote(userId: string, date: string): Promise<DailyNote | null> {
+  const [note] = await db
+    .select()
+    .from(dailyNotes)
+    .where(and(eq(dailyNotes.userId, userId), eq(dailyNotes.date, date)))
+    .limit(1);
+  return note ?? null;
+}
+
+export async function upsertDailyNote(input: CreateDailyNoteInput): Promise<DailyNote> {
+  const [note] = await db
+    .insert(dailyNotes)
+    .values(input)
+    .returning();
+  return note;
+}
+
+export async function updateDailyNote(id: string, userId: string, data: Partial<CreateDailyNoteInput>): Promise<DailyNote | null> {
+  const [note] = await db
+    .update(dailyNotes)
+    .set({ ...data, updatedAt: new Date() })
+    .where(and(eq(dailyNotes.id, id), eq(dailyNotes.userId, userId)))
+    .returning();
+  return note ?? null;
+}
+
+// Planner Preferences
+export async function getPlannerPreferences(userId: string): Promise<PlannerPreferences | null> {
+  const [prefs] = await db
+    .select()
+    .from(plannerPreferences)
+    .where(eq(plannerPreferences.userId, userId))
+    .limit(1);
+  return prefs ?? null;
+}
+
+export async function upsertPlannerPreferences(input: CreatePlannerPreferencesInput): Promise<PlannerPreferences> {
+  const [prefs] = await db
+    .insert(plannerPreferences)
+    .values(input)
+    .returning();
+  return prefs;
+}
+
+export async function deletePlannerPreferences(userId: string): Promise<void> {
+  await db
+    .delete(plannerPreferences)
+    .where(eq(plannerPreferences.userId, userId));
 }

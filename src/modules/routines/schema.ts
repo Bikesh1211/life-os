@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, boolean, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, integer, boolean, jsonb, pgEnum } from "drizzle-orm/pg-core";
 
 export const routineScheduleTypeEnum = pgEnum("routine_schedule_type", [
   "daily",
@@ -113,4 +113,64 @@ export const routineTemplateItems = pgTable("routine_template_items", {
   order: integer("order").notNull().default(0),
   isOptional: boolean("is_optional").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ── Daily Planner tables ──
+
+export const dailyGoals = pgTable("daily_goals", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  date: text("date").notNull(),
+  title: text("title").notNull(),
+  isCompleted: boolean("is_completed").default(false).notNull(),
+  taskId: text("task_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const dailyPriorities = pgTable("daily_priorities", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  date: text("date").notNull(),
+  title: text("title").notNull(),
+  estimatedDuration: integer("estimated_duration"),
+  status: text("status").default("pending").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  taskId: text("task_id"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const dailyPlannerSnapshots = pgTable("daily_planner_snapshots", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  date: text("date").notNull(),
+  productivityScore: integer("productivity_score").notNull(),
+  subScores: jsonb("sub_scores").default({}).notNull(),
+  tasksCompleted: integer("tasks_completed").default(0).notNull(),
+  tasksTotal: integer("tasks_total").default(0).notNull(),
+  focusMinutes: integer("focus_minutes").default(0).notNull(),
+  habitsCompleted: integer("habits_completed").default(0).notNull(),
+  habitsTotal: integer("habits_total").default(0).notNull(),
+  dailyGoalCompleted: boolean("daily_goal_completed").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const dailyNotes = pgTable("daily_notes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: text("user_id").notNull(),
+  date: text("date").notNull(),
+  content: text("content"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const plannerPreferences = pgTable("planner_preferences", {
+  userId: text("user_id").primaryKey(),
+  morningReminderTime: text("morning_reminder_time"),
+  eveningReminderTime: text("evening_reminder_time"),
+  notificationConfig: jsonb("notification_config").default({}).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
