@@ -745,3 +745,20 @@ An ephemeral scratchpad note for a specific day, stored in `daily_notes`. One ro
 A daily cached row in `daily_planner_snapshots` storing the computed productivity score, sub-scores (JSONB), task counts, focus minutes, habit counts, and daily goal completion status. Computed on first daily planner visit of the day or when tracked actions change.
 
 *Avoid*: Creating a new plugin for daily planning — the Daily Planner is an enhancement of the Routines plugin. Avoid building a separate focus timer — delegate to Time Audit. Avoid LLM dependency for insights in v1 — use rule-based aggregation.
+
+**Travel Helper** (plugin):
+The personal route planning & navigation helper plugin at `src/modules/travel-helper/`. Route group is `/travel-helper/*`. Feature ID is `travel_helper`. Owns all route planning data — saved routes, waypoints, route history. Provides point-to-point and multi-waypoint route computation via OSRM (Open Source Routing Machine) with OSM data. Distinct from the Travel Journal plugin (`src/modules/travel/`) which records past trips — Travel Helper plans future routes. Routes are savable, favoritable, taggable, optionally dated, and auto-create Timeline Events on save. Sub-routes: Routes list (`/travel-helper?tab=routes`), Route Planner (`/travel-helper?tab=planner`). Uses Leaflet + react-leaflet for map rendering, Nominatim for geocoding, and the public OSRM demo server for routing. Supports driving, motorcycle, walking, and cycling modes. Motorcycle mode excludes motorways.
+
+**Travel Route**:
+A planned journey owned by a User. Stored in `travel_helper_routes`. Contains `name`, `description`, `origin` (JSONB: label, lat, lng, address), `destination` (JSONB), `waypoints` (JSONB array), `polyline`, `totalDistanceKm`, `totalDurationMinutes`, `transportMode` (driving/motorcycle/walking/cycling), optional `routeDate`, `isArchived`, `isFavorite`, `tags` (text array), `notes`, elevation metadata (`elevationMin`, `elevationMax`, `elevationGain`, `elevationLoss`), and `geometries` (raw OSRM GeoJSON for re-rendering). Every route is scoped to a `userId`. When created with a `routeDate`, a corresponding Timeline Event is auto-created via the Timeline service layer with `linkedEntityType: 'travel_route'`. Soft-deleted via `deletedAt`.
+
+**Waypoint**:
+A single stop on a Travel Route. Stored as a JSONB object on the route row (not a separate table). Contains `label`, `lat`, `lng`, optional `address`, and optional `notes`. Origin and destination are the first and last waypoints; intermediate waypoints are the route's via-points.
+
+**OSRM (Open Source Routing Machine)**:
+The routing engine used by Travel Helper. Accessed via the public demo server at `https://router.project-osrm.org/`. Supports driving, walking, and cycling profiles. Motorcycle routing uses the driving profile with `exclude=motorway` parameter. No API key required for basic personal usage — rate limited (≈1 req/s). Routes are computed server-side via the `POST /api/travel-helper/route` proxy endpoint, which forwards requests to OSRM and returns parsed results (distance, duration, GeoJSON geometry, turn-by-turn steps, elevation data).
+
+**Nominatim**:
+The geocoding service used by Travel Helper for place search. Accessed client-side directly from the OpenStreetMap Nominatim API. No API key required. Returns geocoding results (display name, lat, lng) for origin, destination, and waypoint search inputs.
+
+*Avoid*: Travel (when referring to Travel Helper — collides with the existing Travel Journal module at `src/modules/travel/`)
