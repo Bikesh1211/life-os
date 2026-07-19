@@ -30,6 +30,7 @@ export function InsightsTab() {
     setLoading(true);
     try {
       const res = await fetch(`/api/curb/insights?period=${period}`);
+      if (!res.ok) { setInsights([]); return; }
       const json = await res.json();
       setInsights(json);
     } finally {

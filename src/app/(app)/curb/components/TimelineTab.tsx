@@ -31,6 +31,7 @@ export function TimelineTab() {
     setLoading(true);
     try {
       const res = await fetch(`/api/curb/timeline?date=${date}`);
+      if (!res.ok) { setItems([]); return; }
       const json = await res.json();
       setItems(json);
     } finally {
