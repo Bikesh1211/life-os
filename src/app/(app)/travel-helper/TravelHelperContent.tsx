@@ -2,10 +2,12 @@
 
 import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import { Stack, Tabs } from "@mantine/core";
 import { IconRoute, IconMap2 } from "@tabler/icons-react";
 import { RoutesTab } from "./components/RoutesTab";
-import { PlannerTab } from "./components/PlannerTab";
+
+const PlannerTab = dynamic(() => import("./components/PlannerTab").then((m) => m.PlannerTab), { ssr: false });
 
 const tabs = [
   { value: "routes", label: "Routes", icon: IconRoute },

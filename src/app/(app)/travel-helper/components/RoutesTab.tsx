@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import dynamic from "next/dynamic";
 import {
   Stack,
   Group,
@@ -35,8 +36,9 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import type { RouteCard } from "@/modules/travel-helper";
-import { RouteDetail } from "./RouteDetail";
 import dayjs from "dayjs";
+
+const RouteDetail = dynamic(() => import("./RouteDetail").then((m) => m.RouteDetail), { ssr: false });
 
 const TRANSPORT_ICONS: Record<string, string> = {
   driving: "🚗",
