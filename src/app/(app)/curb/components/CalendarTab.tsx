@@ -44,6 +44,7 @@ export function CalendarTab() {
     setLoading(true);
     try {
       const res = await fetch(`/api/curb/calendar?year=${year}&month=${month}`);
+      if (!res.ok) { setData(null); return; }
       const json = await res.json();
       setData(json);
     } finally {

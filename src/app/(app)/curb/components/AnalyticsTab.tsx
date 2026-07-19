@@ -29,6 +29,7 @@ export function AnalyticsTab() {
     setLoading(true);
     try {
       const res = await fetch(`/api/curb/analytics?period=${period}`);
+      if (!res.ok) { setData(null); return; }
       const json = await res.json();
       setData(json);
     } finally {

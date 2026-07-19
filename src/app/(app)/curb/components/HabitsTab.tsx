@@ -125,6 +125,10 @@ export function HabitsTab() {
       fetch("/api/curb/categories"),
       fetch("/api/curb/timeline?date=" + new Date().toISOString().slice(0, 10)),
     ]);
+    if (!habitsRes.ok || !catsRes.ok || !logsRes.ok) {
+      setLoading(false);
+      return;
+    }
     const [habitsData, catsData, logsData] = await Promise.all([
       habitsRes.json(), catsRes.json(), logsRes.json(),
     ]);

@@ -39,8 +39,9 @@ export function DashboardTab() {
 
   useEffect(() => {
     fetch("/api/curb/dashboard")
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error("API error"); return r.json(); })
       .then(setData)
+      .catch(() => setData(null))
       .finally(() => setLoading(false));
   }, []);
 
