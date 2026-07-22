@@ -762,3 +762,48 @@ The routing engine used by Travel Helper. Accessed via the public demo server at
 The geocoding service used by Travel Helper for place search. Accessed client-side directly from the OpenStreetMap Nominatim API. No API key required. Returns geocoding results (display name, lat, lng) for origin, destination, and waypoint search inputs.
 
 *Avoid*: Travel (when referring to Travel Helper — collides with the existing Travel Journal module at `src/modules/travel/`)
+
+**Scripts** (plugin):
+The presentation, speech, and spoken-communication script studio at `src/modules/scripts/`. Route group is `/studio/*`. Feature ID is `scripts`. Owns all script data — scripts, sections, speaker notes, cue cards, practice sessions, structure templates, questions, action items, checklists, version history, and analytics. Designed for any spoken communication: presentations, speeches, meetings, standups, interviews, debates, podcasts, YouTube scripts, sales pitches, teaching, conferences, and more. Uses the shared Tiptap/ProseMirror editor component and delegates cross-cutting concerns to existing plugins via their service layers. Sub-routes: Dashboard (`/studio`), Scripts (`/studio/scripts`), Script Write (`/studio/scripts/[id]/write`), Script Present (`/studio/scripts/[id]/present`), Script Settings (`/studio/scripts/[id]/settings`), Script Practice (`/studio/scripts/[id]/practice`), Practice History (`/studio/practice`), Analytics (`/studio/analytics`).
+
+**Script**:
+A spoken-communication preparation document owned by a User. Contains `title`, `subtitle`, `categoryId` (FK to `script_categories`), `purpose`, `audience`, `venue`, `language`, `eventDate`, `eventTime`, `expectedDuration`, `speaker`, `organization`, `priority` (low/medium/high/critical), `difficulty` (easy/medium/hard), `visibility` (private/public), `status` (draft/practicing/ready/archived), and `notes`. Scoped to `userId`. Section-oriented model — content lives in child `script_sections` rows, not directly on the script. Scripts with an `eventDate` auto-create a Timeline Event via the Timeline service layer for cross-plugin visibility. Soft-deleted via `deletedAt`.
+
+*Avoid*: Speech (when meaning a Script — Script covers all spoken formats, not just speeches), Presentation (when meaning a Script — same reason)
+
+**Script Section**:
+A named, ordered segment within a Script. Stored in `script_sections`. Contains `scriptId`, `title`, `content` (ProseMirror JSON), `sortOrder`, `estimatedDurationSeconds`, and `wordCount`. Each section can have per-paragraph `speakerNotes` stored as a sidecar JSONB column (`script_speaker_notes`) keyed by ProseMirror node path. Enables section-level navigation, per-section timing, cue card generation, and presentation mode. Sections are created from Structure Templates (e.g., Introduction, Agenda, Main Topics for a Presentation template) or written from scratch.
+
+**Script Category**:
+A user-extensible organizing label for Scripts, stored in `script_categories`. Contains `name`, `icon`, `color`, `sortOrder`, `defaultTemplateId`, and `isArchived`. System-seeded with defaults: Presentation, Meeting, Speech, Daily Standup, Interview, Group Discussion, Seminar, Client Meeting, Sales Pitch, Product Demo, College Presentation, Teaching, Debate, Conference, Workshop, Podcast, Video Script, Custom. Users can add, edit, reorder, and archive categories. Not a DB enum — Zod-validated text. Follows the `curb_categories`/`time_categories` pattern.
+
+**Structure Template**:
+A pre-defined ordered list of section titles for a Script Category. Stored in `script_structure_templates` (reference data, not user-scoped). When a user creates a script in a category, the default template auto-populates the section list. Example: Presentation → [Introduction, Agenda, Main Topics, Examples, Summary, Questions, Closing]. Users can modify sections after creation — the template is a starting point, not enforced.
+
+**Speaker Note**:
+Metadata attached to a paragraph within a Script Section. Lightweight notes (pause point, smile, eye contact, gesture, slide reminder, voice emphasis) are stored as inline Tiptap marks on the ProseMirror document. Heavier notes (private note, confidence tip, timing note) are stored in a sidecar JSONB column on `script_speaker_notes`, indexed by ProseMirror node path. Visible in a sidebar panel during editing and as overlays in Presentation Mode.
+
+*Avoid*: Annotation (use Speaker Note — not tied to Book-style anchored comments)
+
+**Cue Card**:
+A computed-on-read compact view of a Script Section, containing key points, keywords, reminders, and slide numbers. Not a separate storage entity — generated from section content + speaker notes on-the-fly. Accessed within Presentation Mode via a "compact view" toggle. No dedicated table.
+
+**Practice Session**:
+A recorded rehearsal of a Script, owned by a User. Stored in `script_practice_sessions`. Contains `scriptId`, `practicedAt`, `durationSeconds`, `confidence` (1-10), `mistakes` (text array), `voiceQuality` (1-10), `eyeContact` (1-10), `bodyLanguageNotes` (free text), `rating` (1-10), `improvements` (free text), and `sectionsPracticed` (text array). Average practice score is computed on-read as average of confidence + rating + voiceQuality + eyeContact. Practice consistency and improvement trend are computed on-read from historical sessions.
+
+**Script Question**:
+A prepared audience question for a Script, owned by a User. Stored in `script_questions`. Contains `scriptId`, `question`, `suggestedAnswer`, `difficulty` (easy/medium/hard), `confidence` (1-10), and `status` (needs_practice/practiced/mastered). Enables Q&A preparation for interviews, viva, presentations, and pitches. Separate from Career OS Interview Prep — Script Questions are specific to one script's anticipated audience, not general interview preparation.
+
+**Script Action Item**:
+A to-do item derived from a Script, owned by a User. Stored in `script_action_items`. Contains `scriptId`, `text`, `isCompleted`, and `sortOrder`. Examples: "Practice 3 times", "Improve introduction", "Memorize closing", "Add statistics". Lightweight task tracking without linking to the Tasks plugin — these are script-specific, not general tasks.
+
+**Script Checklist**:
+A pre-delivery readiness template with system-seeded and user-added items. Stored in `script_checklist_templates` (system defaults: laptop charged, presentation file ready, internet checked, projector, water bottle, marker, remote, backup copy, microphone, dress checked). Users check items off on the delivery day. One checklist instance per script, derived from the template + user customizations.
+
+**Script Version**:
+A snapshot of a Script's full state (all sections, content, and metadata). Stored in `script_versions` as JSONB. Created on significant edits. Supports restoring any previous version. Follows the same pattern as `book_versions`.
+
+**Script Attachment**:
+An external URL attached to a Script (not a file upload — v1 defers file upload infrastructure). Stored as a `text[]` column on the script row. Users paste links to PDFs, PowerPoint files, images, reference links, or external notes. Matches the existing pattern across Tech Gear, Network, Integrity, and Loans plugins.
+
+*Avoid*: Upload, File Upload, Storage (in v1 — defer to cross-app file upload infrastructure)
