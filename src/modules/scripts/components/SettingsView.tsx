@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Stack, Group, Text, Button, Paper, Card, Title, Badge, TextInput,
@@ -8,7 +8,7 @@ import {
   Divider, Modal,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
-import { IconArrowLeft, IconTrash, IconHistory, IconStar, IconStarFilled } from "@tabler/icons-react";
+import { IconArrowLeft, IconTrash, IconHistory, IconStar, IconStarFilled, IconDeviceFloppy } from "@tabler/icons-react";
 
 type Script = {
   id: string;
@@ -52,10 +52,34 @@ export function SettingsView({ scriptId }: Props) {
   const [script, setScript] = useState<Script | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const [opened, { open, close }] = useDisclosure(false);
   const [versionNote, setVersionNote] = useState("");
   const [versions, setVersions] = useState<any[]>([]);
   const [showVersions, setShowVersions] = useState(false);
+
+  const pendingRef = useRef<Partial<Script>>({});
+  const savingRef = useRef(false);
+
+  const handleSave = useCallback(async () => {
+    const updates = pendingRef.current;
+    if (Object.keys(updates).length === 0) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      pendingRef.current = {};
+      await fetch(`/api/scripts/${scriptId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      setIsDirty(false);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }, [scriptId]);
 
   const loadScript = useCallback(async () => {
     const res = await fetch(`/api/scripts/${scriptId}`);
@@ -68,19 +92,11 @@ export function SettingsView({ scriptId }: Props) {
     fetch("/api/scripts/categories").then((r) => r.json()).then(setCategories);
   }, [loadScript]);
 
-  const handleSave = useCallback(async (updates: Partial<Script>) => {
-    setSaving(true);
-    try {
-      await fetch(`/api/scripts/${scriptId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(updates),
-      });
-      await loadScript();
-    } finally {
-      setSaving(false);
-    }
-  }, [scriptId, loadScript]);
+  const setField = useCallback(<K extends keyof Script>(key: K, value: Script[K]) => {
+    setScript((prev) => prev ? { ...prev, [key]: value } : prev);
+    (pendingRef.current as Record<string, unknown>)[key] = value;
+    setIsDirty(true);
+  }, []);
 
   const handleSaveVersion = useCallback(async () => {
     await fetch(`/api/scripts/${scriptId}/versions`, {
@@ -93,18 +109,41 @@ export function SettingsView({ scriptId }: Props) {
   }, [scriptId, versionNote, close]);
 
   const handleToggleFavorite = useCallback(async () => {
-    await handleSave({ isFavorite: !script?.isFavorite });
+    const next = !script?.isFavorite;
+    setScript((prev) => prev ? { ...prev, isFavorite: next } : prev);
+    pendingRef.current = { isFavorite: next };
+    await handleSave();
   }, [script, handleSave]);
 
   if (!script) return null;
 
+  const saveBadge = saving
+    ? <Badge variant="dot" color="yellow" size="sm">Saving...</Badge>
+    : isDirty
+      ? <Badge variant="dot" color="orange" size="sm">Unsaved</Badge>
+      : <Badge variant="dot" color="green" size="sm">Saved</Badge>;
+
   return (
     <Stack gap="md" p="md">
-      <Group>
-        <ActionIcon variant="subtle" onClick={() => router.push(`/studio/scripts/${scriptId}/write`)}>
-          <IconArrowLeft size={18} />
-        </ActionIcon>
-        <Title order={4}>Settings — {script.title}</Title>
+      <Group justify="space-between">
+        <Group>
+          <ActionIcon variant="subtle" onClick={() => router.push(`/studio/scripts/${scriptId}/write`)}>
+            <IconArrowLeft size={18} />
+          </ActionIcon>
+          <Title order={4}>Settings — {script.title}</Title>
+        </Group>
+        <Group>
+          {saveBadge}
+          <Button
+            size="compact-sm"
+            variant="light"
+            leftSection={<IconDeviceFloppy size={16} />}
+            onClick={handleSave}
+            disabled={!isDirty || saving}
+          >
+            Save
+          </Button>
+        </Group>
       </Group>
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
@@ -115,27 +154,24 @@ export function SettingsView({ scriptId }: Props) {
             <TextInput
               label="Title"
               value={script.title}
-              onChange={(e) => setScript({ ...script, title: e.currentTarget.value })}
-              onBlur={() => handleSave({ title: script.title })}
+              onChange={(e) => setField("title", e.currentTarget.value)}
             />
             <TextInput
               label="Subtitle"
               value={script.subtitle ?? ""}
-              onChange={(e) => setScript({ ...script, subtitle: e.currentTarget.value })}
-              onBlur={() => handleSave({ subtitle: script.subtitle })}
+              onChange={(e) => setField("subtitle", e.currentTarget.value || null)}
             />
             <Select
               label="Category"
               data={categories.map((c) => ({ value: c.id, label: c.name }))}
               value={script.categoryId}
-              onChange={(v) => handleSave({ categoryId: v ?? null })}
+              onChange={(v) => setField("categoryId", v ?? null)}
               clearable
             />
             <TextInput
               label="Purpose"
               value={script.purpose ?? ""}
-              onChange={(e) => setScript({ ...script, purpose: e.currentTarget.value })}
-              onBlur={() => handleSave({ purpose: script.purpose })}
+              onChange={(e) => setField("purpose", e.currentTarget.value || null)}
             />
           </Stack>
         </Paper>
@@ -148,25 +184,25 @@ export function SettingsView({ scriptId }: Props) {
               label="Status"
               data={["draft", "practicing", "ready", "archived"]}
               value={script.status}
-              onChange={(v) => handleSave({ status: v ?? "draft" })}
+              onChange={(v) => setField("status", v ?? "draft")}
             />
             <Select
               label="Priority"
               data={["low", "medium", "high", "critical"]}
               value={script.priority}
-              onChange={(v) => handleSave({ priority: v ?? "medium" })}
+              onChange={(v) => setField("priority", v ?? "medium")}
             />
             <Select
               label="Difficulty"
               data={["easy", "medium", "hard"]}
               value={script.difficulty}
-              onChange={(v) => handleSave({ difficulty: v ?? "medium" })}
+              onChange={(v) => setField("difficulty", v ?? "medium")}
             />
             <Select
               label="Visibility"
               data={["private", "public"]}
               value={script.visibility}
-              onChange={(v) => handleSave({ visibility: v ?? "private" })}
+              onChange={(v) => setField("visibility", v ?? "private")}
             />
           </Stack>
         </Paper>
@@ -178,32 +214,27 @@ export function SettingsView({ scriptId }: Props) {
             <TextInput
               label="Speaker"
               value={script.speaker ?? ""}
-              onChange={(e) => setScript({ ...script, speaker: e.currentTarget.value })}
-              onBlur={() => handleSave({ speaker: script.speaker })}
+              onChange={(e) => setField("speaker", e.currentTarget.value || null)}
             />
             <TextInput
               label="Venue"
               value={script.venue ?? ""}
-              onChange={(e) => setScript({ ...script, venue: e.currentTarget.value })}
-              onBlur={() => handleSave({ venue: script.venue })}
+              onChange={(e) => setField("venue", e.currentTarget.value || null)}
             />
             <TextInput
               label="Audience"
               value={script.audience ?? ""}
-              onChange={(e) => setScript({ ...script, audience: e.currentTarget.value })}
-              onBlur={() => handleSave({ audience: script.audience })}
+              onChange={(e) => setField("audience", e.currentTarget.value || null)}
             />
             <TextInput
               label="Organization"
               value={script.organization ?? ""}
-              onChange={(e) => setScript({ ...script, organization: e.currentTarget.value })}
-              onBlur={() => handleSave({ organization: script.organization })}
+              onChange={(e) => setField("organization", e.currentTarget.value || null)}
             />
             <TextInput
               label="Language"
               value={script.language}
-              onChange={(e) => setScript({ ...script, language: e.currentTarget.value })}
-              onBlur={() => handleSave({ language: script.language })}
+              onChange={(e) => setField("language", e.currentTarget.value)}
             />
           </Stack>
         </Paper>
@@ -216,13 +247,13 @@ export function SettingsView({ scriptId }: Props) {
               label="Event Date"
               type="datetime-local"
               value={script.eventDate ? new Date(script.eventDate).toISOString().slice(0, 16) : ""}
-              onChange={(e) => handleSave({ eventDate: e.currentTarget.value ? new Date(e.currentTarget.value).toISOString() : null })}
+              onChange={(e) => setField("eventDate", e.currentTarget.value ? new Date(e.currentTarget.value).toISOString() : null)}
             />
             <TextInput
               label="Expected Duration (minutes)"
               type="number"
               value={script.expectedDuration ?? ""}
-              onChange={(e) => handleSave({ expectedDuration: e.currentTarget.value ? parseInt(e.currentTarget.value) : null })}
+              onChange={(e) => setField("expectedDuration", e.currentTarget.value ? parseInt(e.currentTarget.value) : null)}
             />
           </Stack>
         </Paper>
@@ -234,13 +265,12 @@ export function SettingsView({ scriptId }: Props) {
             <TagsInput
               label="Tags"
               value={script.tags}
-              onChange={(v) => handleSave({ tags: v })}
+              onChange={(v) => setField("tags", v)}
             />
             <Textarea
               label="Notes"
               value={script.notes ?? ""}
-              onChange={(e) => setScript({ ...script, notes: e.currentTarget.value })}
-              onBlur={() => handleSave({ notes: script.notes })}
+              onChange={(e) => setField("notes", e.currentTarget.value || null)}
               minRows={3}
             />
           </Stack>
