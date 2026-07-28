@@ -16,7 +16,7 @@ export async function PUT(request: Request, { params }: Params) {
     const body = await request.json();
     const parsed = updateCollaboratorSchema.parse(body);
     const { collabId } = await params;
-    const collaborator = await modifyCollaborator(collabId, parsed);
+    const collaborator = await modifyCollaborator(collabId, userId, parsed);
     if (!collaborator) return NextResponse.json({ error: "Collaborator not found" }, { status: 404 });
     return NextResponse.json(collaborator);
   } catch (error: unknown) {
@@ -34,7 +34,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   if (!book) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { collabId } = await params;
-  const collaborator = await removeCollaborator(collabId);
+  const collaborator = await removeCollaborator(collabId, userId);
   if (!collaborator) return NextResponse.json({ error: "Collaborator not found" }, { status: 404 });
 
   return NextResponse.json({ success: true });

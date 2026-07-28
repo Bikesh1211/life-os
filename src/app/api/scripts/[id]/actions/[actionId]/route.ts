@@ -11,7 +11,7 @@ export async function PUT(request: Request, { params }: Params) {
   try {
     const body = await request.json();
     const { actionId } = await params;
-    const item = await modifyActionItem(actionId, body);
+    const item = await modifyActionItem(actionId, userId, body);
     if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(item);
   } catch (error: unknown) {
@@ -25,7 +25,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { actionId } = await params;
-  const item = await removeActionItem(actionId);
+  const item = await removeActionItem(actionId, userId);
   if (!item) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ success: true });
 }

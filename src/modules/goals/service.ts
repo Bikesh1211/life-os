@@ -93,8 +93,8 @@ export async function deleteGoal(userId: string, goalId: string) {
   return repo.deleteGoal(userId, goalId);
 }
 
-export async function getMilestones(goalId: string) {
-  return repo.getMilestones(goalId);
+export async function getMilestones(goalId: string, userId: string) {
+  return repo.getMilestones(goalId, userId);
 }
 
 export async function createMilestone(userId: string, input: CreateMilestoneInput) {
@@ -107,17 +107,21 @@ export async function createMilestone(userId: string, input: CreateMilestoneInpu
   });
 }
 
-export async function updateMilestone(milestoneId: string, input: UpdateMilestoneInput) {
+export async function updateMilestone(
+  milestoneId: string,
+  userId: string,
+  input: UpdateMilestoneInput,
+) {
   const data = updateMilestoneSchema.parse(input);
   const updateData: Record<string, any> = { ...data };
   if (data.targetDate !== undefined) {
     updateData.targetDate = data.targetDate ? new Date(data.targetDate) : null;
   }
-  return repo.updateMilestone(milestoneId, updateData);
+  return repo.updateMilestone(milestoneId, userId, updateData);
 }
 
-export async function deleteMilestone(milestoneId: string) {
-  return repo.deleteMilestone(milestoneId);
+export async function deleteMilestone(milestoneId: string, userId: string) {
+  return repo.deleteMilestone(milestoneId, userId);
 }
 
 export async function getOverview(userId: string) {

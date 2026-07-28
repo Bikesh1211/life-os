@@ -59,6 +59,7 @@ import {
   IconHourglassEmpty,
   IconBriefcase,
   IconMinus,
+  IconMicrophone2,
 } from "@tabler/icons-react";
 
 export type NavItem = {
@@ -245,6 +246,13 @@ export const navigation: NavGroup[] = [
         description: "Write articles, blog posts, vlog scripts & books",
         icon: IconDeviceTv,
         featureId: "creator_studio",
+      },
+      {
+        label: "Studio",
+        route: "/studio",
+        description: "Scripts, presentations & spoken-word prep",
+        icon: IconMicrophone2,
+        featureId: "scripts",
       },
       {
         label: "Library",

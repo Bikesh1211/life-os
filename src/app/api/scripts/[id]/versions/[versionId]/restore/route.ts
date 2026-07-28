@@ -10,7 +10,7 @@ export async function POST(_request: Request, { params }: Params) {
 
   try {
     const { versionId } = await params;
-    const result = await restoreVersion(versionId);
+    const result = await restoreVersion(versionId, userId);
     if (!result) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch {

@@ -1,4 +1,4 @@
-import { getCurrentUserId } from "@/core/auth";
+import { requireAuth } from "@/core/auth";
 import { getTaskStats } from "@/modules/tasks";
 import { getSummary as getHabitSummary } from "@/modules/habits";
 import { getOverview as getGoalOverview } from "@/modules/goals";
@@ -8,8 +8,7 @@ import { getDashboardSummary } from "@/modules/expenses";
 import { DashboardContent } from "./dashboard/DashboardContent";
 
 export default async function HomePage() {
-  const userId = await getCurrentUserId();
-  const userIdStr = userId!;
+  const userId = await requireAuth();
 
   const [
     taskSummary,
@@ -20,18 +19,18 @@ export default async function HomePage() {
     noteStats,
     financeSummary,
   ] = await Promise.all([
-    getTaskStats(userIdStr),
-    getHabitSummary(userIdStr),
-    getGoalOverview(userIdStr),
-    getLifeStats(userIdStr),
-    getUpcomingEvents(userIdStr, 5),
-    getNoteStats(userIdStr),
-    getDashboardSummary(userIdStr),
+    getTaskStats(userId),
+    getHabitSummary(userId),
+    getGoalOverview(userId),
+    getLifeStats(userId),
+    getUpcomingEvents(userId, 5),
+    getNoteStats(userId),
+    getDashboardSummary(userId),
   ]);
 
   return (
     <DashboardContent
-      userId={userIdStr}
+      userId={userId}
       taskSummary={taskSummary}
       habitSummary={habitSummary}
       goalOverview={goalOverview}

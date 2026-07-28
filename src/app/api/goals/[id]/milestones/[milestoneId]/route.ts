@@ -10,7 +10,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const { milestoneId } = await params;
     const body = await request.json();
     const parsed = updateMilestoneSchema.parse(body);
-    const milestone = await updateMilestone(milestoneId, parsed);
+    const milestone = await updateMilestone(milestoneId, userId, parsed);
     if (!milestone) return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
     return NextResponse.json(milestone);
   } catch (error) {
@@ -27,7 +27,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   try {
     const { milestoneId } = await params;
-    const milestone = await deleteMilestone(milestoneId);
+    const milestone = await deleteMilestone(milestoneId, userId);
     if (!milestone) return NextResponse.json({ error: "Milestone not found" }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch {

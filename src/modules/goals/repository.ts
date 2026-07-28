@@ -53,11 +53,26 @@ export async function deleteGoal(userId: string, goalId: string) {
   return result[0] ?? null;
 }
 
-export async function getMilestones(goalId: string) {
+/**
+ * Restricts a milestone query to milestones hanging off a goal the user owns.
+ * Applied as a subquery so ownership is enforced inside the same statement as
+ * the read/write — there is no window between check and use.
+ */
+function ownedByUser(userId: string) {
+  return inArray(
+    goalMilestones.goalId,
+    db
+      .select({ id: goals.id })
+      .from(goals)
+      .where(and(eq(goals.userId, userId), isNull(goals.deletedAt))),
+  );
+}
+
+export async function getMilestones(goalId: string, userId: string) {
   return db
     .select()
     .from(goalMilestones)
-    .where(eq(goalMilestones.goalId, goalId))
+    .where(and(eq(goalMilestones.goalId, goalId), ownedByUser(userId)))
     .orderBy(asc(goalMilestones.order));
 }
 
@@ -66,19 +81,23 @@ export async function createMilestone(input: CreateMilestoneInput) {
   return result[0];
 }
 
-export async function updateMilestone(milestoneId: string, input: Partial<CreateMilestoneInput>) {
+export async function updateMilestone(
+  milestoneId: string,
+  userId: string,
+  input: Partial<CreateMilestoneInput>,
+) {
   const result = await db
     .update(goalMilestones)
     .set({ ...input, updatedAt: new Date() })
-    .where(eq(goalMilestones.id, milestoneId))
+    .where(and(eq(goalMilestones.id, milestoneId), ownedByUser(userId)))
     .returning();
   return result[0] ?? null;
 }
 
-export async function deleteMilestone(milestoneId: string) {
+export async function deleteMilestone(milestoneId: string, userId: string) {
   const result = await db
     .delete(goalMilestones)
-    .where(eq(goalMilestones.id, milestoneId))
+    .where(and(eq(goalMilestones.id, milestoneId), ownedByUser(userId)))
     .returning();
   return result[0] ?? null;
 }

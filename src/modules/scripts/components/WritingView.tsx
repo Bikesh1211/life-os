@@ -16,6 +16,8 @@ import Link from "next/link";
 import { Editor } from "@/components/editor";
 import { reorderSectionsSchema } from "../service";
 
+const AUTOSAVE_INTERVAL = 15000;
+
 type Script = {
   id: string;
   title: string;
@@ -62,8 +64,76 @@ export function WritingView({ scriptId }: Props) {
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
-  const [activeNoteSection, setActiveNoteSection] = useState<string | null>(null);
+
+  const contentRef = useRef<Map<string, any>>(new Map());
+  const titleRef = useRef<Map<string, string>>(new Map());
+  const savingRef = useRef(false);
+
+  const flushContent = useCallback(async () => {
+    if (contentRef.current.size === 0) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const snapshot = new Map(contentRef.current);
+      contentRef.current.clear();
+      const promises: Promise<any>[] = [];
+      for (const [sectionId, content] of snapshot) {
+        promises.push(
+          fetch(`/api/scripts/${scriptId}/sections/${sectionId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content }),
+          }),
+        );
+      }
+      await Promise.all(promises);
+      if (titleRef.current.size === 0) setIsDirty(false);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }, [scriptId]);
+
+  const flushTitles = useCallback(async () => {
+    if (titleRef.current.size === 0) return;
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      const snapshot = new Map(titleRef.current);
+      titleRef.current.clear();
+      const promises: Promise<any>[] = [];
+      for (const [sectionId, title] of snapshot) {
+        promises.push(
+          fetch(`/api/scripts/${scriptId}/sections/${sectionId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title }),
+          }),
+        );
+      }
+      await Promise.all(promises);
+      if (contentRef.current.size === 0) setIsDirty(false);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }, [scriptId]);
+
+  const flushAll = useCallback(async () => {
+    await Promise.all([flushContent(), flushTitles()]);
+  }, [flushContent, flushTitles]);
+
+  useEffect(() => {
+    const interval = setInterval(flushContent, AUTOSAVE_INTERVAL);
+    return () => {
+      clearInterval(interval);
+      flushContent();
+    };
+  }, [flushContent]);
 
   const loadScript = useCallback(async () => {
     const res = await fetch(`/api/scripts/${scriptId}`);
@@ -81,34 +151,29 @@ export function WritingView({ scriptId }: Props) {
     loadScript();
   }, [loadScript]);
 
-  const handleContentChange = useCallback(async (sectionId: string, content: any) => {
-    setSaving(true);
-    try {
-      await fetch(`/api/scripts/${scriptId}/sections/${sectionId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
-      });
-      await loadScript();
-    } finally {
-      setSaving(false);
-    }
-  }, [scriptId, loadScript]);
+  const handleEditorChange = useCallback((sectionId: string, content: any) => {
+    contentRef.current.set(sectionId, content);
+    setIsDirty(true);
+  }, []);
 
-  const handleSectionTitleChange = useCallback(async (sectionId: string, title: string) => {
-    await fetch(`/api/scripts/${scriptId}/sections/${sectionId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
-    });
-    await loadScript();
-  }, [scriptId, loadScript]);
+  const handleSectionTitleChange = useCallback((sectionId: string, title: string) => {
+    setSections((prev) => prev.map((s) => s.id === sectionId ? { ...s, title } : s));
+    setSelectedSection((prev) => prev?.id === sectionId ? { ...prev, title } : prev);
+    titleRef.current.set(sectionId, title);
+    setIsDirty(true);
+  }, []);
 
   if (loading) return <Text>Loading...</Text>;
   if (!script) return <Text>Script not found</Text>;
 
   const totalWords = sections.reduce((sum, s) => sum + s.wordCount, 0);
   const totalEstDuration = sections.reduce((sum, s) => sum + s.estimatedDurationSeconds, 0);
+
+  const saveBadge = saving
+    ? <Badge variant="dot" color="yellow" size="sm">Saving...</Badge>
+    : isDirty
+      ? <Badge variant="dot" color="orange" size="sm">Unsaved</Badge>
+      : <Badge variant="dot" color="green" size="sm">Saved</Badge>;
 
   return (
     <Stack gap="md" h="calc(100vh - 100px)">
@@ -125,7 +190,18 @@ export function WritingView({ scriptId }: Props) {
             </div>
           </Group>
           <Group>
-            {saving && <Badge variant="dot" color="yellow" size="sm">Saving...</Badge>}
+            {saveBadge}
+            <Tooltip label="Save">
+              <Button
+                size="compact-sm"
+                variant="light"
+                leftSection={<IconDeviceFloppy size={16} />}
+                onClick={flushAll}
+                disabled={!isDirty || saving}
+              >
+                Save
+              </Button>
+            </Tooltip>
             <Badge variant="light" color={script.status === "ready" ? "green" : script.status === "practicing" ? "blue" : "gray"}>
               {script.status}
             </Badge>
@@ -191,6 +267,8 @@ export function WritingView({ scriptId }: Props) {
                     </div>
                     <ActionIcon size="xs" variant="subtle" color="red" onClick={async (e) => {
                       e.stopPropagation();
+                      contentRef.current.delete(s.id);
+                      titleRef.current.delete(s.id);
                       await fetch(`/api/scripts/${scriptId}/sections/${s.id}`, { method: "DELETE" });
                       if (selectedSection?.id === s.id) setSelectedSection(null);
                       await loadScript();
@@ -211,7 +289,6 @@ export function WritingView({ scriptId }: Props) {
               <TextInput
                 value={selectedSection.title}
                 onChange={(e) => {
-                  setSelectedSection({ ...selectedSection, title: e.currentTarget.value });
                   handleSectionTitleChange(selectedSection.id, e.currentTarget.value);
                 }}
                 variant="unstyled"
@@ -223,7 +300,7 @@ export function WritingView({ scriptId }: Props) {
               <Editor
                 content={selectedSection.content}
                 onChange={(json: any) => {
-                  handleContentChange(selectedSection.id, json);
+                  handleEditorChange(selectedSection.id, json);
                 }}
               />
             </Stack>

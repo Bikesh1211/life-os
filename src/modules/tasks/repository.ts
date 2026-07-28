@@ -352,6 +352,7 @@ export async function getProjectStats(userId: string) {
     .from(tasks)
     .where(
       and(
+        eq(tasks.userId, userId),
         isNull(tasks.deletedAt),
         isNull(tasks.parentId),
         inArray(tasks.projectId, projectIds),
@@ -401,27 +402,47 @@ export async function updateLabel(id: string, userId: string, input: { name?: st
 }
 
 export async function deleteLabel(id: string, userId: string) {
-  await db
-    .delete(taskTasksLabels)
-    .where(eq(taskTasksLabels.labelId, id));
-
+  // Delete the label first: it is the ownership-scoped statement, so a label
+  // belonging to someone else leaves their task links untouched.
   const [label] = await db
     .delete(taskLabels)
     .where(and(eq(taskLabels.id, id), eq(taskLabels.userId, userId)))
     .returning();
-  return label ?? null;
+  if (!label) return null;
+
+  await db.delete(taskTasksLabels).where(eq(taskTasksLabels.labelId, id));
+  return label;
 }
 
-export async function setTaskLabels(taskId: string, labelIds: string[]) {
+/**
+ * Replaces a task's labels. Both sides are ownership-checked: the task must be
+ * the caller's, and only labels the caller owns are linked — otherwise a task
+ * id alone would let anyone rewrite another user's labels, and an arbitrary
+ * label id would pull a stranger's label name into the response.
+ */
+export async function setTaskLabels(taskId: string, userId: string, labelIds: string[]) {
+  const [task] = await db
+    .select({ id: tasks.id })
+    .from(tasks)
+    .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
+    .limit(1);
+  if (!task) return;
+
   await db.delete(taskTasksLabels).where(eq(taskTasksLabels.taskId, taskId));
-  if (labelIds.length > 0) {
-    await db.insert(taskTasksLabels).values(
-      labelIds.map((labelId) => ({ taskId, labelId })),
-    );
-  }
+  if (labelIds.length === 0) return;
+
+  const owned = await db
+    .select({ id: taskLabels.id })
+    .from(taskLabels)
+    .where(and(inArray(taskLabels.id, labelIds), eq(taskLabels.userId, userId)));
+  if (owned.length === 0) return;
+
+  await db.insert(taskTasksLabels).values(
+    owned.map((label) => ({ taskId, labelId: label.id })),
+  );
 }
 
-export async function getTaskLabels(taskId: string) {
+export async function getTaskLabels(taskId: string, userId: string) {
   return db
     .select({
       id: taskLabels.id,
@@ -430,10 +451,10 @@ export async function getTaskLabels(taskId: string) {
     })
     .from(taskTasksLabels)
     .innerJoin(taskLabels, eq(taskTasksLabels.labelId, taskLabels.id))
-    .where(eq(taskTasksLabels.taskId, taskId));
+    .where(and(eq(taskTasksLabels.taskId, taskId), eq(taskLabels.userId, userId)));
 }
 
-export async function getTaskLabelsBatch(taskIds: string[]) {
+export async function getTaskLabelsBatch(taskIds: string[], userId: string) {
   if (taskIds.length === 0) return [];
   const rows = await db
     .select({
@@ -444,6 +465,6 @@ export async function getTaskLabelsBatch(taskIds: string[]) {
     })
     .from(taskTasksLabels)
     .innerJoin(taskLabels, eq(taskTasksLabels.labelId, taskLabels.id))
-    .where(inArray(taskTasksLabels.taskId, taskIds));
+    .where(and(inArray(taskTasksLabels.taskId, taskIds), eq(taskLabels.userId, userId)));
   return rows;
 }

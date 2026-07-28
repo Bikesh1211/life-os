@@ -12,7 +12,7 @@ export async function GET(_request: Request, { params }: Params) {
   const book = await getBook(id, userId);
   if (!book) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const chapter = await getChapter(chapterId);
+  const chapter = await getChapter(chapterId, userId);
   if (!chapter) return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
 
   return NextResponse.json(chapter);
@@ -28,7 +28,7 @@ export async function PUT(request: Request, { params }: Params) {
 
   try {
     const body = await request.json();
-    const chapter = await modifyChapter(chapterId, body);
+    const chapter = await modifyChapter(chapterId, userId, body);
     if (!chapter) return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
     return NextResponse.json(chapter);
   } catch (error: unknown) {
@@ -45,7 +45,7 @@ export async function DELETE(_request: Request, { params }: Params) {
   const book = await getBook(id, userId);
   if (!book) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const chapter = await removeChapter(chapterId);
+  const chapter = await removeChapter(chapterId, userId);
   if (!chapter) return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
 
   return NextResponse.json({ success: true });

@@ -8,7 +8,13 @@ export async function GET(req: NextRequest) {
   const error = searchParams.get("error");
   const errorDescription = searchParams.get("error_description");
   const errorCode = searchParams.get("error_code");
-  const redirectTo = searchParams.get("redirect_url") || "/";
+  // Only same-origin relative paths may be redirected to. A raw `redirect_url`
+  // such as "//evil.com" or "/\evil.com" is normalised by browsers into an
+  // off-site navigation, turning the callback into an open redirect that
+  // launders phishing links through a trusted domain.
+  const requested = searchParams.get("redirect_url");
+  const redirectTo =
+    requested && /^\/(?![/\\])/.test(requested) ? requested : "/";
 
   if (error) {
     const signInUrl = new URL("/sign-in", origin);

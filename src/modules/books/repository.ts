@@ -1,6 +1,7 @@
 import { db } from "@/core/database";
-import { eq, and, isNull, desc, asc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, isNull, desc, asc, gte, lte, sql, inArray } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   books,
   bookParts,
@@ -89,6 +90,35 @@ export async function getBooksForUser(
     .orderBy(orderFn(orderCol))
     .limit(opts.limit ?? 100)
     .offset(opts.offset ?? 0);
+}
+
+/**
+ * Ownership guards for book child tables.
+ *
+ * Routes verify the book named in the URL belongs to the caller, but the child
+ * id in the path is user-supplied and need not belong to that book — owning any
+ * one book would otherwise grant write access to every user's chapters. These
+ * subqueries re-assert ownership on the child row itself, inside the same
+ * statement as the read/write.
+ */
+function bookOwnedByUser(column: AnyPgColumn, userId: string) {
+  return inArray(
+    column,
+    db
+      .select({ id: books.id })
+      .from(books)
+      .where(and(eq(books.userId, userId), isNull(books.deletedAt))),
+  );
+}
+
+function chapterOwnedByUser(column: AnyPgColumn, userId: string) {
+  return inArray(
+    column,
+    db
+      .select({ id: bookChapters.id })
+      .from(bookChapters)
+      .where(bookOwnedByUser(bookChapters.bookId, userId)),
+  );
 }
 
 export async function getBookById(id: string, userId: string) {
@@ -225,27 +255,31 @@ export async function getChaptersForBook(bookId: string) {
     .orderBy(asc(bookChapters.order));
 }
 
-export async function getChapterById(id: string) {
+export async function getChapterById(id: string, userId: string) {
   const [chapter] = await db
     .select()
     .from(bookChapters)
-    .where(eq(bookChapters.id, id));
+    .where(and(eq(bookChapters.id, id), bookOwnedByUser(bookChapters.bookId, userId)));
   return chapter ?? null;
 }
 
-export async function updateChapter(id: string, input: Partial<CreateChapterInput>) {
+export async function updateChapter(
+  id: string,
+  userId: string,
+  input: Partial<CreateChapterInput>,
+) {
   const [chapter] = await db
     .update(bookChapters)
     .set({ ...input, updatedAt: new Date() })
-    .where(eq(bookChapters.id, id))
+    .where(and(eq(bookChapters.id, id), bookOwnedByUser(bookChapters.bookId, userId)))
     .returning();
   return chapter ?? null;
 }
 
-export async function deleteChapter(id: string) {
+export async function deleteChapter(id: string, userId: string) {
   const [chapter] = await db
     .delete(bookChapters)
-    .where(eq(bookChapters.id, id))
+    .where(and(eq(bookChapters.id, id), bookOwnedByUser(bookChapters.bookId, userId)))
     .returning();
   return chapter ?? null;
 }
@@ -279,19 +313,24 @@ export async function createVersion(input: CreateVersionInput) {
   return version;
 }
 
-export async function getVersionsForChapter(chapterId: string) {
+export async function getVersionsForChapter(chapterId: string, userId: string) {
   return db
     .select()
     .from(bookVersions)
-    .where(eq(bookVersions.chapterId, chapterId))
+    .where(
+      and(
+        eq(bookVersions.chapterId, chapterId),
+        chapterOwnedByUser(bookVersions.chapterId, userId),
+      ),
+    )
     .orderBy(desc(bookVersions.createdAt));
 }
 
-export async function getVersionById(id: string) {
+export async function getVersionById(id: string, userId: string) {
   const [version] = await db
     .select()
     .from(bookVersions)
-    .where(eq(bookVersions.id, id));
+    .where(and(eq(bookVersions.id, id), chapterOwnedByUser(bookVersions.chapterId, userId)));
   return version ?? null;
 }
 
@@ -324,19 +363,23 @@ export async function getUserCollaboratorRole(bookId: string, userId: string) {
   return collaborator?.role ?? null;
 }
 
-export async function updateCollaborator(id: string, input: Partial<CreateCollaboratorInput>) {
+export async function updateCollaborator(
+  id: string,
+  userId: string,
+  input: Partial<CreateCollaboratorInput>,
+) {
   const [collaborator] = await db
     .update(bookCollaborators)
     .set(input)
-    .where(eq(bookCollaborators.id, id))
+    .where(and(eq(bookCollaborators.id, id), bookOwnedByUser(bookCollaborators.bookId, userId)))
     .returning();
   return collaborator ?? null;
 }
 
-export async function deleteCollaborator(id: string) {
+export async function deleteCollaborator(id: string, userId: string) {
   const [collaborator] = await db
     .delete(bookCollaborators)
-    .where(eq(bookCollaborators.id, id))
+    .where(and(eq(bookCollaborators.id, id), bookOwnedByUser(bookCollaborators.bookId, userId)))
     .returning();
   return collaborator ?? null;
 }
@@ -346,11 +389,16 @@ export async function createComment(input: CreateCommentInput) {
   return comment;
 }
 
-export async function getCommentsForChapter(chapterId: string) {
+export async function getCommentsForChapter(chapterId: string, userId: string) {
   return db
     .select()
     .from(bookComments)
-    .where(eq(bookComments.chapterId, chapterId))
+    .where(
+      and(
+        eq(bookComments.chapterId, chapterId),
+        chapterOwnedByUser(bookComments.chapterId, userId),
+      ),
+    )
     .orderBy(asc(bookComments.createdAt));
 }
 

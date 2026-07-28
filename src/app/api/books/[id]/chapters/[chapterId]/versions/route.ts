@@ -12,7 +12,7 @@ export async function GET(_request: Request, { params }: Params) {
   const book = await getBook(id, userId);
   if (!book) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const versions = await getChapterVersions(chapterId);
+  const versions = await getChapterVersions(chapterId, userId);
   return NextResponse.json(versions);
 }
 
@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: Params) {
 
   try {
     const body = await request.json().catch(() => ({}));
-    const version = await saveVersion(chapterId, body.note);
+    const version = await saveVersion(chapterId, userId, body.note);
     if (!version) return NextResponse.json({ error: "Chapter not found" }, { status: 404 });
     return NextResponse.json(version, { status: 201 });
   } catch {

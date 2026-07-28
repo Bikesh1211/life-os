@@ -12,7 +12,7 @@ export async function GET(_request: Request, { params }: Params) {
   const book = await getBook(id, userId);
   if (!book) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  const comments = await getChapterComments(chapterId);
+  const comments = await getChapterComments(chapterId, userId);
   return NextResponse.json(comments);
 }
 

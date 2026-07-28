@@ -8,7 +8,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   try {
     const { id } = await params;
-    const milestones = await getMilestones(id);
+    const milestones = await getMilestones(id, userId);
     return NextResponse.json(milestones);
   } catch {
     return NextResponse.json({ error: "Failed to fetch milestones" }, { status: 500 });

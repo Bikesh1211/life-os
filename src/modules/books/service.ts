@@ -398,27 +398,27 @@ export async function getChapters(bookId: string) {
   return getChaptersForBook(bookId);
 }
 
-export async function getChapter(id: string) {
-  return getChapterById(id);
+export async function getChapter(id: string, userId: string) {
+  return getChapterById(id, userId);
 }
 
-export async function modifyChapter(id: string, params: UpdateChapterParams) {
+export async function modifyChapter(id: string, userId: string, params: UpdateChapterParams) {
   const validated = updateChapterSchema.parse(params);
   const input: Partial<CreateChapterInput> = { ...validated };
   if (validated.content) {
     input.wordCount = countWordsFromDoc(validated.content);
   }
-  const chapter = await updateChapter(id, input);
+  const chapter = await updateChapter(id, userId, input);
   if (chapter) {
     await recalculateBookCounts(chapter.bookId);
   }
   return chapter;
 }
 
-export async function removeChapter(id: string) {
-  const chapter = await getChapterById(id);
+export async function removeChapter(id: string, userId: string) {
+  const chapter = await getChapterById(id, userId);
   if (!chapter) return null;
-  const result = await deleteChapter(id);
+  const result = await deleteChapter(id, userId);
   if (result) {
     await recalculateBookCounts(chapter.bookId);
   }
@@ -440,8 +440,8 @@ async function recalculateBookCounts(bookId: string) {
   } as Partial<CreateBookInput>);
 }
 
-export async function saveVersion(chapterId: string, note?: string) {
-  const chapter = await getChapterById(chapterId);
+export async function saveVersion(chapterId: string, userId: string, note?: string) {
+  const chapter = await getChapterById(chapterId, userId);
   if (!chapter) return null;
   const input: CreateVersionInput = {
     chapterId,
@@ -452,14 +452,14 @@ export async function saveVersion(chapterId: string, note?: string) {
   return createVersion(input);
 }
 
-export async function getChapterVersions(chapterId: string) {
-  return getVersionsForChapter(chapterId);
+export async function getChapterVersions(chapterId: string, userId: string) {
+  return getVersionsForChapter(chapterId, userId);
 }
 
-export async function restoreVersion(versionId: string) {
-  const version = await getVersionById(versionId);
+export async function restoreVersion(versionId: string, userId: string) {
+  const version = await getVersionById(versionId, userId);
   if (!version) return null;
-  const chapter = await updateChapter(version.chapterId, {
+  const chapter = await updateChapter(version.chapterId, userId, {
     content: version.content,
     wordCount: version.wordCount,
   });
@@ -476,13 +476,17 @@ export async function getBookCollaborators(bookId: string) {
   return getCollaboratorsForBook(bookId);
 }
 
-export async function modifyCollaborator(id: string, params: z.infer<typeof updateCollaboratorSchema>) {
+export async function modifyCollaborator(
+  id: string,
+  userId: string,
+  params: z.infer<typeof updateCollaboratorSchema>,
+) {
   const validated = updateCollaboratorSchema.parse(params);
-  return updateCollaborator(id, validated);
+  return updateCollaborator(id, userId, validated);
 }
 
-export async function removeCollaborator(id: string) {
-  return deleteCollaborator(id);
+export async function removeCollaborator(id: string, userId: string) {
+  return deleteCollaborator(id, userId);
 }
 
 export async function checkCollaboratorRole(bookId: string, userId: string) {
@@ -501,8 +505,8 @@ export async function addComment(params: CreateCommentParams) {
   return createComment(input);
 }
 
-export async function getChapterComments(chapterId: string) {
-  return getCommentsForChapter(chapterId);
+export async function getChapterComments(chapterId: string, userId: string) {
+  return getCommentsForChapter(chapterId, userId);
 }
 
 export async function editComment(id: string, userId: string, params: z.infer<typeof updateCommentSchema>) {
