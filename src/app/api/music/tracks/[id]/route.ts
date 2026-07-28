@@ -90,7 +90,7 @@ export async function GET(
         service.isInLibrary(userId, track.id),
         repo.getNotesByEntity(userId, "track", track.id),
         repo.getMemoriesByTrackViaSongs(userId, track.id),
-        repo.getCollectionItems(track.id).catch(() => []),
+        repo.getCollectionItemsForEntity(userId, "track", track.id).catch(() => []),
       ]);
 
     const isFavorited = favorite.some((f) => f.entityId === track.id);

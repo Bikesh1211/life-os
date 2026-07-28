@@ -1,6 +1,7 @@
 import { db } from "@/core/database";
-import { eq, and, isNull, desc, asc, sql } from "drizzle-orm";
+import { eq, and, isNull, desc, asc, sql, inArray } from "drizzle-orm";
 import type { SQL } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   scripts,
   scriptSections,
@@ -18,6 +19,22 @@ export type ScriptSection = typeof scriptSections.$inferSelect;
 export type ScriptCategory = typeof scriptCategories.$inferSelect;
 export type ScriptVersion = typeof scriptVersions.$inferSelect;
 export type ScriptPracticeSession = typeof scriptPracticeSessions.$inferSelect;
+
+/**
+ * Restricts a child-table query to rows whose owning script belongs to `userId`.
+ * Expressed as a subquery so the ownership test runs inside the same statement
+ * as the read/write, leaving no check-then-use window.
+ */
+function scriptOwnedByUser(column: AnyPgColumn, userId: string) {
+  return inArray(
+    column,
+    db
+      .select({ id: scripts.id })
+      .from(scripts)
+      .where(and(eq(scripts.userId, userId), isNull(scripts.deletedAt))),
+  );
+}
+
 export type ScriptQuestion = typeof scriptQuestions.$inferSelect;
 export type ScriptActionItem = typeof scriptActionItems.$inferSelect;
 export type ScriptChecklistItem = typeof scriptChecklistItems.$inferSelect;
@@ -190,22 +207,32 @@ export async function getSectionsForScript(scriptId: string) {
     .orderBy(asc(scriptSections.sortOrder));
 }
 
-export async function getSectionById(id: string) {
-  const [section] = await db.select().from(scriptSections).where(eq(scriptSections.id, id));
+export async function getSectionById(id: string, userId: string) {
+  const [section] = await db
+    .select()
+    .from(scriptSections)
+    .where(and(eq(scriptSections.id, id), scriptOwnedByUser(scriptSections.scriptId, userId)));
   return section ?? null;
 }
 
-export async function updateSection(id: string, input: Partial<CreateScriptSectionInput>) {
+export async function updateSection(
+  id: string,
+  userId: string,
+  input: Partial<CreateScriptSectionInput>,
+) {
   const [section] = await db
     .update(scriptSections)
     .set({ ...input, updatedAt: new Date() })
-    .where(eq(scriptSections.id, id))
+    .where(and(eq(scriptSections.id, id), scriptOwnedByUser(scriptSections.scriptId, userId)))
     .returning();
   return section ?? null;
 }
 
-export async function deleteSection(id: string) {
-  const [section] = await db.delete(scriptSections).where(eq(scriptSections.id, id)).returning();
+export async function deleteSection(id: string, userId: string) {
+  const [section] = await db
+    .delete(scriptSections)
+    .where(and(eq(scriptSections.id, id), scriptOwnedByUser(scriptSections.scriptId, userId)))
+    .returning();
   return section ?? null;
 }
 
@@ -301,8 +328,11 @@ export async function getVersionsForScript(scriptId: string) {
     .orderBy(desc(scriptVersions.createdAt));
 }
 
-export async function getVersionById(id: string) {
-  const [version] = await db.select().from(scriptVersions).where(eq(scriptVersions.id, id));
+export async function getVersionById(id: string, userId: string) {
+  const [version] = await db
+    .select()
+    .from(scriptVersions)
+    .where(and(eq(scriptVersions.id, id), scriptOwnedByUser(scriptVersions.scriptId, userId)));
   return version ?? null;
 }
 
@@ -377,17 +407,24 @@ export async function getQuestionById(id: string) {
   return question ?? null;
 }
 
-export async function updateQuestion(id: string, input: Partial<CreateScriptQuestionInput>) {
+export async function updateQuestion(
+  id: string,
+  userId: string,
+  input: Partial<CreateScriptQuestionInput>,
+) {
   const [question] = await db
     .update(scriptQuestions)
     .set({ ...input, updatedAt: new Date() })
-    .where(eq(scriptQuestions.id, id))
+    .where(and(eq(scriptQuestions.id, id), scriptOwnedByUser(scriptQuestions.scriptId, userId)))
     .returning();
   return question ?? null;
 }
 
-export async function deleteQuestion(id: string) {
-  const [question] = await db.delete(scriptQuestions).where(eq(scriptQuestions.id, id)).returning();
+export async function deleteQuestion(id: string, userId: string) {
+  const [question] = await db
+    .delete(scriptQuestions)
+    .where(and(eq(scriptQuestions.id, id), scriptOwnedByUser(scriptQuestions.scriptId, userId)))
+    .returning();
   return question ?? null;
 }
 
@@ -406,17 +443,24 @@ export async function getActionItemsForScript(scriptId: string) {
     .orderBy(asc(scriptActionItems.sortOrder));
 }
 
-export async function updateActionItem(id: string, input: Partial<CreateScriptActionItemInput>) {
+export async function updateActionItem(
+  id: string,
+  userId: string,
+  input: Partial<CreateScriptActionItemInput>,
+) {
   const [item] = await db
     .update(scriptActionItems)
     .set(input)
-    .where(eq(scriptActionItems.id, id))
+    .where(and(eq(scriptActionItems.id, id), scriptOwnedByUser(scriptActionItems.scriptId, userId)))
     .returning();
   return item ?? null;
 }
 
-export async function deleteActionItem(id: string) {
-  const [item] = await db.delete(scriptActionItems).where(eq(scriptActionItems.id, id)).returning();
+export async function deleteActionItem(id: string, userId: string) {
+  const [item] = await db
+    .delete(scriptActionItems)
+    .where(and(eq(scriptActionItems.id, id), scriptOwnedByUser(scriptActionItems.scriptId, userId)))
+    .returning();
   return item ?? null;
 }
 
@@ -435,16 +479,27 @@ export async function getChecklistItemsForScript(scriptId: string) {
     .orderBy(asc(scriptChecklistItems.sortOrder));
 }
 
-export async function updateChecklistItem(id: string, input: Partial<CreateScriptChecklistItemInput>) {
+export async function updateChecklistItem(
+  id: string,
+  userId: string,
+  input: Partial<CreateScriptChecklistItemInput>,
+) {
   const [item] = await db
     .update(scriptChecklistItems)
     .set(input)
-    .where(eq(scriptChecklistItems.id, id))
+    .where(
+      and(eq(scriptChecklistItems.id, id), scriptOwnedByUser(scriptChecklistItems.scriptId, userId)),
+    )
     .returning();
   return item ?? null;
 }
 
-export async function deleteChecklistItem(id: string) {
-  const [item] = await db.delete(scriptChecklistItems).where(eq(scriptChecklistItems.id, id)).returning();
+export async function deleteChecklistItem(id: string, userId: string) {
+  const [item] = await db
+    .delete(scriptChecklistItems)
+    .where(
+      and(eq(scriptChecklistItems.id, id), scriptOwnedByUser(scriptChecklistItems.scriptId, userId)),
+    )
+    .returning();
   return item ?? null;
 }

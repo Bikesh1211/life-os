@@ -567,23 +567,64 @@ export async function deleteCollection(id: string, userId: string) {
 
 // ─── Collection Items ─────────────────────────────────────────────
 
-export async function addCollectionItem(input: CreateCollectionItemInput) {
+/** Restricts collection-item rows to collections owned by `userId`. */
+function collectionOwnedByUser(userId: string) {
+  return inArray(
+    musicCollectionItems.collectionId,
+    db
+      .select({ id: musicCollections.id })
+      .from(musicCollections)
+      .where(eq(musicCollections.userId, userId)),
+  );
+}
+
+export async function addCollectionItem(input: CreateCollectionItemInput, userId: string) {
+  const [collection] = await db
+    .select({ id: musicCollections.id })
+    .from(musicCollections)
+    .where(and(eq(musicCollections.id, input.collectionId), eq(musicCollections.userId, userId)))
+    .limit(1);
+  if (!collection) return null;
+
   const [item] = await db.insert(musicCollectionItems).values(input).returning();
   return item;
 }
 
-export async function getCollectionItems(collectionId: string) {
+export async function getCollectionItems(collectionId: string, userId: string) {
   return db
     .select()
     .from(musicCollectionItems)
-    .where(eq(musicCollectionItems.collectionId, collectionId))
+    .where(
+      and(eq(musicCollectionItems.collectionId, collectionId), collectionOwnedByUser(userId)),
+    )
     .orderBy(musicCollectionItems.position);
 }
 
-export async function removeCollectionItem(id: string) {
+/**
+ * Collections owned by `userId` that contain the given entity. Distinct from
+ * getCollectionItems, which lists the contents of one collection.
+ */
+export async function getCollectionItemsForEntity(
+  userId: string,
+  entityType: string,
+  entityId: string,
+) {
+  return db
+    .select()
+    .from(musicCollectionItems)
+    .where(
+      and(
+        eq(musicCollectionItems.entityType, entityType),
+        eq(musicCollectionItems.entityId, entityId),
+        collectionOwnedByUser(userId),
+      ),
+    );
+}
+
+export async function removeCollectionItem(id: string, userId: string) {
   const [item] = await db
     .delete(musicCollectionItems)
-    .where(eq(musicCollectionItems.id, id))
+    .where(and(eq(musicCollectionItems.id, id), collectionOwnedByUser(userId)))
     .returning();
   return item ?? null;
 }

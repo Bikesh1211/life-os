@@ -11,7 +11,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
     const body = await request.json();
     const parsed = addCollectionItemSchema.parse(body);
-    const item = await addCollectionItem(id, parsed);
+    const item = await addCollectionItem(id, userId, parsed);
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
     if (error instanceof Error && "issues" in error) {
@@ -32,7 +32,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     if (!itemId) {
       return NextResponse.json({ error: "itemId required" }, { status: 400 });
     }
-    await removeCollectionItem(itemId);
+    await removeCollectionItem(itemId, userId);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json({ error: "Failed to remove item" }, { status: 500 });

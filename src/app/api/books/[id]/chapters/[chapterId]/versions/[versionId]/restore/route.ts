@@ -13,7 +13,7 @@ export async function POST(_request: Request, { params }: Params) {
   if (!book) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { versionId } = await params;
-  const chapter = await restoreVersion(versionId);
+  const chapter = await restoreVersion(versionId, userId);
   if (!chapter) return NextResponse.json({ error: "Version not found" }, { status: 404 });
 
   return NextResponse.json(chapter);

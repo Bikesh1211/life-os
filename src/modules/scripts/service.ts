@@ -332,27 +332,31 @@ export async function getSections(scriptId: string) {
   return getSectionsForScript(scriptId);
 }
 
-export async function getSection(id: string) {
-  return getSectionById(id);
+export async function getSection(id: string, userId: string) {
+  return getSectionById(id, userId);
 }
 
-export async function modifySection(id: string, params: z.infer<typeof updateSectionSchema>) {
+export async function modifySection(
+  id: string,
+  userId: string,
+  params: z.infer<typeof updateSectionSchema>,
+) {
   const validated = updateSectionSchema.parse(params);
   const input: Partial<CreateScriptSectionInput> = { ...validated };
   if (validated.content) {
     input.wordCount = countWordsFromDoc(validated.content);
   }
-  const section = await updateSection(id, input);
+  const section = await updateSection(id, userId, input);
   if (section) {
     await recalculateScriptCounts(section.scriptId);
   }
   return section;
 }
 
-export async function removeSection(id: string) {
-  const section = await getSectionById(id);
+export async function removeSection(id: string, userId: string) {
+  const section = await getSectionById(id, userId);
   if (!section) return null;
-  const result = await deleteSection(id);
+  const result = await deleteSection(id, userId);
   if (result) {
     await recalculateScriptCounts(section.scriptId);
   }
@@ -432,8 +436,8 @@ export async function getScriptVersions(scriptId: string) {
   return getVersionsForScript(scriptId);
 }
 
-export async function restoreVersion(versionId: string) {
-  const version = await getVersionById(versionId);
+export async function restoreVersion(versionId: string, userId: string) {
+  const version = await getVersionById(versionId, userId);
   if (!version) return null;
 
   const data = version.data as any;
@@ -447,7 +451,7 @@ export async function restoreVersion(versionId: string) {
 
   const existingSections = await getSectionsForScript(version.scriptId);
   for (const section of existingSections) {
-    await deleteSection(section.id);
+    await deleteSection(section.id, userId);
   }
 
   if (data.sections && Array.isArray(data.sections)) {
@@ -498,13 +502,13 @@ export async function getQuestions(scriptId: string) {
   return getQuestionsForScript(scriptId);
 }
 
-export async function modifyQuestion(id: string, params: UpdateQuestionParams) {
+export async function modifyQuestion(id: string, userId: string, params: UpdateQuestionParams) {
   const validated = updateQuestionSchema.parse(params);
-  return updateQuestion(id, validated as Partial<CreateScriptQuestionInput>);
+  return updateQuestion(id, userId, validated as Partial<CreateScriptQuestionInput>);
 }
 
-export async function removeQuestion(id: string) {
-  return deleteQuestion(id);
+export async function removeQuestion(id: string, userId: string) {
+  return deleteQuestion(id, userId);
 }
 
 // ── Action Items ──
@@ -518,13 +522,13 @@ export async function getActionItems(scriptId: string) {
   return getActionItemsForScript(scriptId);
 }
 
-export async function modifyActionItem(id: string, params: UpdateActionItemParams) {
+export async function modifyActionItem(id: string, userId: string, params: UpdateActionItemParams) {
   const validated = updateActionItemSchema.parse(params);
-  return updateActionItem(id, validated as Partial<CreateScriptActionItemInput>);
+  return updateActionItem(id, userId, validated as Partial<CreateScriptActionItemInput>);
 }
 
-export async function removeActionItem(id: string) {
-  return deleteActionItem(id);
+export async function removeActionItem(id: string, userId: string) {
+  return deleteActionItem(id, userId);
 }
 
 // ── Checklist Items ──
@@ -538,11 +542,15 @@ export async function getChecklistItems(scriptId: string) {
   return getChecklistItemsForScript(scriptId);
 }
 
-export async function modifyChecklistItem(id: string, params: UpdateChecklistItemParams) {
+export async function modifyChecklistItem(
+  id: string,
+  userId: string,
+  params: UpdateChecklistItemParams,
+) {
   const validated = updateChecklistItemSchema.parse(params);
-  return updateChecklistItem(id, validated as Partial<CreateScriptChecklistItemInput>);
+  return updateChecklistItem(id, userId, validated as Partial<CreateScriptChecklistItemInput>);
 }
 
-export async function removeChecklistItem(id: string) {
-  return deleteChecklistItem(id);
+export async function removeChecklistItem(id: string, userId: string) {
+  return deleteChecklistItem(id, userId);
 }

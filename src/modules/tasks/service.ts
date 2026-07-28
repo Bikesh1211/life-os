@@ -122,11 +122,11 @@ export async function createTaskEntry(userId: string, params: CreateTaskParams) 
   const task = await createTask(input);
 
   if (validated.labelIds && validated.labelIds.length > 0) {
-    await setTaskLabels(task.id, validated.labelIds);
+    await setTaskLabels(task.id, userId, validated.labelIds);
   }
 
   if (validated.labelIds) {
-    return { ...task, labels: await getTaskLabelsForTask(task.id) };
+    return { ...task, labels: await getTaskLabelsForTask(task.id, userId) };
   }
 
   return task;
@@ -136,7 +136,7 @@ export const getTask = cache(async (id: string, userId: string) => {
   const task = await getTaskById(id, userId);
   if (!task) return null;
   const [labels, subtasks] = await Promise.all([
-    getTaskLabelsForTask(id),
+    getTaskLabelsForTask(id, userId),
     getSubtasksRepo(id, userId),
   ]);
   return { ...task, labels, subtasks };
@@ -164,7 +164,7 @@ export const getTasks = cache(async (userId: string, filters: Partial<TaskFilter
 
   if (entries.length === 0) return [];
 
-  const labelRows = await getTaskLabelsBatch(entries.map((t) => t.id));
+  const labelRows = await getTaskLabelsBatch(entries.map((t) => t.id), userId);
   const labelsByTaskId = new Map<string, { id: string; name: string; color: string }[]>();
   for (const row of labelRows) {
     const list = labelsByTaskId.get(row.taskId);
@@ -199,13 +199,13 @@ export async function updateTaskEntry(id: string, userId: string, params: Update
   if (validated.completedAt !== undefined) updateData.completedAt = validated.completedAt ? new Date(validated.completedAt) : null;
 
   const task = await updateTask(id, userId, updateData);
+  if (!task) return null;
 
   if (validated.labelIds !== undefined) {
-    await setTaskLabels(id, validated.labelIds ?? []);
+    await setTaskLabels(id, userId, validated.labelIds ?? []);
   }
 
-  if (!task) return null;
-  return { ...task, labels: await getTaskLabelsForTask(task.id) };
+  return { ...task, labels: await getTaskLabelsForTask(task.id, userId) };
 }
 
 export async function deleteTaskEntry(id: string, userId: string) {

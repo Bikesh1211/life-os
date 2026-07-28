@@ -623,7 +623,7 @@ export async function getCollections(userId: string) {
 export async function getCollection(id: string, userId: string) {
   const collection = await repo.getCollectionById(id, userId);
   if (!collection) return null;
-  const items = await repo.getCollectionItems(id);
+  const items = await repo.getCollectionItems(id, userId);
   return { ...collection, items };
 }
 
@@ -636,18 +636,25 @@ export async function deleteCollection(id: string, userId: string) {
   return repo.deleteCollection(id, userId);
 }
 
-export async function addCollectionItem(collectionId: string, params: AddCollectionItemParams) {
+export async function addCollectionItem(
+  collectionId: string,
+  userId: string,
+  params: AddCollectionItemParams,
+) {
   const validated = addCollectionItemSchema.parse(params);
-  return repo.addCollectionItem({
-    collectionId,
-    entityType: validated.entityType,
-    entityId: validated.entityId,
-    position: validated.position ?? 0,
-  });
+  return repo.addCollectionItem(
+    {
+      collectionId,
+      entityType: validated.entityType,
+      entityId: validated.entityId,
+      position: validated.position ?? 0,
+    },
+    userId,
+  );
 }
 
-export async function removeCollectionItem(id: string) {
-  return repo.removeCollectionItem(id);
+export async function removeCollectionItem(id: string, userId: string) {
+  return repo.removeCollectionItem(id, userId);
 }
 
 // ─── Goal Config ──────────────────────────────────────────────────
