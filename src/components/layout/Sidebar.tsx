@@ -36,7 +36,7 @@ import { useAppShell } from "@/app/(app)/AppShellProvider";
 import { useSidebarVisibility } from "@/core/sidebar-visibility";
 import { useSidebarFavorites } from "@/core/sidebar-favorites";
 import { useSupabase } from "@/infrastructure/providers/supabase-provider";
-import { useMantineColorScheme, useComputedColorScheme, Text, Tooltip } from "@mantine/core";
+import { useMantineColorScheme, useComputedColorScheme, Text, Tooltip, Avatar } from "@mantine/core";
 
 const NAV_ICON_SIZE = 18;
 const SIDEBAR_COLLAPSED_W = 64;
@@ -403,13 +403,26 @@ export function SidebarContent({
       {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Footer: email + sign out */}
+      {/* Footer: avatar + email + sign out */}
       <div className="border-t border-gray-100/80 dark:border-white/[0.06] px-4 py-3">
-        {user?.email && (
-          <Text size="xs" c="dimmed" truncate className="mb-2">
-            {user.email}
-          </Text>
-        )}
+        <div className="flex items-center gap-3 mb-2">
+          <Avatar
+            src={user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? ""}
+            alt={user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "User"}
+            size="sm"
+            radius="xl"
+            className="ring-2 ring-white/20 dark:ring-white/10 flex-shrink-0"
+          >
+            {(user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "U").charAt(0).toUpperCase()}
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            {user?.email && (
+              <Text size="xs" c="dimmed" truncate>
+                {user.email}
+              </Text>
+            )}
+          </div>
+        </div>
         <div className="flex items-center justify-between">
           <button
             onClick={async () => {
