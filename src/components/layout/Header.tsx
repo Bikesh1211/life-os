@@ -26,12 +26,10 @@ import {
 } from "@tabler/icons-react";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { navigation } from "@/core/navigation";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 import { useGamificationProfile } from "@/hooks/use-gamification";
-import { APP_NAME } from "@/core/constants";
 import { cn } from "@/core/utils";
 
 function useBreadcrumb() {
@@ -83,19 +81,6 @@ export function Header() {
               <IconMenu2 size={18} />
             </ActionIcon>
           </Tooltip>
-
-          <Link
-            href="/"
-            className="hidden sm:flex items-center gap-2 mr-1.5"
-            title="Go to dashboard"
-          >
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 text-[10px] font-bold text-white shadow-sm shadow-blue-500/20 ring-1 ring-white/10 dark:ring-white/5">
-              {APP_NAME.charAt(0)}
-            </div>
-            <Text fw={600} size="sm" className="tracking-tight text-gray-900 dark:text-white leading-none">
-              {APP_NAME}
-            </Text>
-          </Link>
 
           {breadcrumb && (
             <motion.div

@@ -5,7 +5,6 @@ import { AppShell, AppShellMain } from "@mantine/core";
 import { Sidebar, Header, MobileDrawer, MobileNav, SidebarContent } from "@/components/layout";
 import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import { PageTransition } from "@/components/ui/page-transition";
-import { APP_NAME } from "@/core/constants";
 import { useAppShell } from "./AppShellProvider";
 import { cn } from "@/core/utils";
 
@@ -47,19 +46,7 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
 
       {!minimalChrome && (
         <MobileDrawer opened={mobileOpened} onClose={closeMobile}>
-          <div className="h-full flex flex-col py-4">
-            <div className="flex items-center gap-2.5 px-4 py-2.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-[10px] font-bold text-white">
-                {APP_NAME.charAt(0)}
-              </div>
-              <span className="text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
-                {APP_NAME}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <SidebarContent showBrand={false} showBottomCollapse={false} />
-            </div>
-          </div>
+          <SidebarContent showBottomCollapse={false} />
         </MobileDrawer>
       )}
     </>
