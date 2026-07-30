@@ -1,6 +1,7 @@
 "use client";
 
 import { Text } from "@mantine/core";
+import type { CSSProperties } from "react";
 import type { BookPage as BookPageType } from "./useBookData";
 
 export type ReaderTheme = "light" | "sepia" | "dark" | "oled" | "paper" | "cream";
@@ -58,7 +59,10 @@ export function BookPage({ page, theme, fontSize, lineHeight, pageWidth, fontFam
           background: `linear-gradient(to right, ${colors.border}, ${colors.border}88, transparent)`,
         }}
       />
-      <div className="flex-1 space-y-6 overflow-y-auto">
+      <div
+        className="reader-scroll -mr-2 flex-1 space-y-6 overflow-y-auto pr-1"
+        style={{ "--reader-scroll-tint": colors.muted } as CSSProperties}
+      >
         {page.entries.map((entry) => (
           <article key={entry.id}>
             <Text

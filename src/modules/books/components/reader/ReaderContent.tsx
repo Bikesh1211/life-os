@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, type CSSProperties } from "react";
 import { Loader, Center, Text, Box, Stack, Group, Tooltip, ActionIcon, Slider, Select, Paper, Modal, ScrollArea, TextInput } from "@mantine/core";
 import { useFullscreen } from "@mantine/hooks";
 import { useParams, useRouter } from "next/navigation";
@@ -336,7 +336,10 @@ export function ReaderContent() {
                       background: `linear-gradient(to right, ${colors.border}, ${colors.border}88, transparent)`,
                     }}
                   />
-                  <div className="flex-1 space-y-6 overflow-y-auto" style={{ fontFamily, fontSize, lineHeight }}>
+                  <div
+                    className="reader-scroll -mr-2 flex-1 space-y-6 overflow-y-auto pr-1"
+                    style={{ fontFamily, fontSize, lineHeight, "--reader-scroll-tint": colors.muted } as CSSProperties}
+                  >
                     {currentChapter && (
                       <Editor content={currentChapter.content} editable={false} showToolbar={false} minHeight="auto" />
                     )}
@@ -349,6 +352,7 @@ export function ReaderContent() {
               <Paper
                 shadow="lg"
                 withBorder
+                className="reader-scroll"
                 style={{
                   position: "absolute",
                   top: 8,
@@ -359,7 +363,8 @@ export function ReaderContent() {
                   zIndex: 50,
                   backgroundColor: colors.bg,
                   color: colors.text,
-                }}
+                  "--reader-scroll-tint": colors.muted,
+                } as CSSProperties}
                 p="md"
               >
                 <Group justify="space-between" mb="md">

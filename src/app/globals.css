@@ -161,6 +161,74 @@ body {
   background: var(--mantine-color-dark-3);
 }
 
+/*
+ * Reader scrollbar (journal book view + creator-studio book reader).
+ *
+ * The readers have six paper themes (sepia, cream, oled…) that ignore the app
+ * color scheme, so the scrollbar is tinted from --reader-scroll-tint, which
+ * each reader sets from its active READER_THEMES entry.
+ */
+.reader-scroll {
+  --reader-scroll-tint: currentColor;
+
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--reader-scroll-tint) 28%, transparent) transparent;
+  scrollbar-gutter: stable;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  transition: scrollbar-color 0.25s ease;
+}
+
+.reader-scroll:hover,
+.reader-scroll:focus-within {
+  scrollbar-color: color-mix(in srgb, var(--reader-scroll-tint) 55%, transparent) transparent;
+}
+
+/* WebKit / Blink — a floating pill inset from the page edge. */
+.reader-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.reader-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.reader-scroll::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--reader-scroll-tint) 24%, transparent);
+  /* Transparent border + padding-box clip = a 4px pill with breathing room. */
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 999px;
+  transition:
+    background-color 0.25s ease,
+    border-width 0.2s ease;
+}
+
+.reader-scroll:hover::-webkit-scrollbar-thumb,
+.reader-scroll:focus-within::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--reader-scroll-tint) 45%, transparent);
+  border-width: 2.5px;
+}
+
+.reader-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: color-mix(in srgb, var(--reader-scroll-tint) 65%, transparent);
+}
+
+.reader-scroll::-webkit-scrollbar-thumb:active {
+  background-color: color-mix(in srgb, var(--reader-scroll-tint) 80%, transparent);
+}
+
+.reader-scroll::-webkit-scrollbar-corner,
+.reader-scroll::-webkit-scrollbar-button {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reader-scroll {
+    scroll-behavior: auto;
+  }
+}
+
 /* ── Premium Sidebar ── */
 
 .sd-navbar {
