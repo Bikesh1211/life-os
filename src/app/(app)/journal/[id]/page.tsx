@@ -42,6 +42,16 @@ export default function EditJournalEntryPage() {
       entryId={id}
       initialTitle={entry.title}
       initialContent={entry.content ?? ""}
+      initialDateLabel={
+        entry.eventDate ?? entry.createdAt
+          ? new Date(entry.eventDate ?? entry.createdAt).toLocaleDateString("en-US", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })
+          : undefined
+      }
     />
   );
 }
