@@ -9,6 +9,7 @@ import {
   IconArrowLeft,
   IconDeviceFloppy,
   IconArticle,
+  IconBook2,
   IconMinimize,
   IconMaximize,
   IconListTree,
@@ -19,10 +20,12 @@ import {
 } from "@tabler/icons-react";
 import { Editor } from "@/components/editor";
 import { textToEditorContent } from "@/components/editor/utils";
+import { ReaderMode } from "./book-view/ReaderMode";
 
 type JournalEditorProps = {
   initialTitle?: string;
   initialContent?: string;
+  initialDateLabel?: string;
   entryId?: string;
 };
 
@@ -77,6 +80,7 @@ function OutlineSidebar({ content }: { content: unknown }) {
 export function JournalEditor({
   initialTitle = "",
   initialContent = "",
+  initialDateLabel,
   entryId,
 }: JournalEditorProps) {
   const router = useRouter();
@@ -87,6 +91,7 @@ export function JournalEditor({
   const [focusMode, setFocusMode] = useState(false);
   const [zenMode, setZenMode] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
+  const [readerMode, setReaderMode] = useState(false);
 
   const handleSave = useCallback(async () => {
     setLoading(true);
@@ -175,8 +180,20 @@ export function JournalEditor({
     ["mod+Shift+f", () => setFocusMode((v) => !v)],
     ["mod+Shift+z", () => setZenMode((v) => !v)],
     ["mod+Shift+o", () => setOutlineOpen((v) => !v)],
+    ["mod+Shift+b", () => setReaderMode((v) => !v)],
     ["mod+Shift+s", () => handleSave()],
   ]);
+
+  if (readerMode) {
+    return (
+      <ReaderMode
+        title={title}
+        content={contentText}
+        dateLabel={initialDateLabel}
+        onClose={() => setReaderMode(false)}
+      />
+    );
+  }
 
   if (zenMode) {
     return (
@@ -229,6 +246,11 @@ export function JournalEditor({
               <Tooltip label="Zen mode (⌘⇧Z)">
                 <ActionIcon variant={zenMode ? "filled" : "subtle"} size="sm" onClick={() => setZenMode(true)}>
                   <IconArticle size={14} />
+                </ActionIcon>
+              </Tooltip>
+              <Tooltip label="Book view (⌘⇧B)">
+                <ActionIcon variant="subtle" size="sm" onClick={() => setReaderMode(true)}>
+                  <IconBook2 size={14} />
                 </ActionIcon>
               </Tooltip>
               <Tooltip label="Outline (⌘⇧O)">
