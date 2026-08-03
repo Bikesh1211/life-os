@@ -423,9 +423,10 @@ export async function getSleepDashboard(userId: string) {
 }
 
 export async function getSleepStreak(userId: string, sleepGoalHours: number) {
+  const windowStart = new Date(Date.now() - 400 * 86400000).toISOString().slice(0, 10);
   const allRecords = await repo.getSleepRecordsByDateRange(
     userId,
-    "2000-01-01",
+    windowStart,
     new Date().toISOString().slice(0, 10) + "T23:59:59.999Z",
   );
 
@@ -1068,6 +1069,17 @@ export async function getGroomingActivities(userId: string) {
     })
     .filter((e): e is NonNullable<typeof e> => e !== null)
     .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+export async function getGroomingScore(userId: string): Promise<number> {
+  const today = new Date().toISOString().slice(0, 10);
+  const enrichments = await repo.getHabitEnrichments(userId, "grooming");
+
+  if (enrichments.length === 0) return 50;
+  const overdue = enrichments.filter(
+    (e) => e.nextDueDate && e.nextDueDate < today,
+  ).length;
+  return clamp(100 - (overdue / enrichments.length) * 100, 0, 100);
 }
 
 export async function getGroomingDashboardStats(userId: string) {

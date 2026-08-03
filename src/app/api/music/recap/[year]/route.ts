@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/core/auth";
 
 import { getYearlyListeningStats } from "@/modules/music/repository";
-import { getMemories, getMoodAnalytics } from "@/modules/music";
+import { getMemoriesByDateRange, getMoodAnalytics } from "@/modules/music";
 
 export async function GET(
   _request: Request,
@@ -18,17 +18,14 @@ export async function GET(
   }
 
   try {
-    const [monthlyListening, allMemories, moodAnalytics] = await Promise.all([
+    const yearStart = new Date(Date.UTC(yearNum, 0, 1));
+    const yearEnd = new Date(Date.UTC(yearNum + 1, 0, 1));
+
+    const [monthlyListening, yearMemories, moodAnalytics] = await Promise.all([
       getYearlyListeningStats(userId, yearNum),
-      getMemories(userId, 1000, 0),
+      getMemoriesByDateRange(userId, yearStart, yearEnd),
       getMoodAnalytics(userId, 365),
     ]);
-
-    const yearMemories = allMemories.filter((m) => {
-      if (!m.memoryDate) return false;
-      const d = new Date(m.memoryDate);
-      return d.getFullYear() === yearNum;
-    });
 
     return NextResponse.json({
       year: yearNum,

@@ -47,6 +47,7 @@ export {
   getGroomingActivities,
   completeGroomingActivity,
   getGroomingDashboardStats,
+  getGroomingScore,
   getGroomingInsights,
   completeGroomingSchema,
   createGroomingEnrichmentSchema,

@@ -1,4 +1,14 @@
-import { pgTable, text, uuid, timestamp, integer, boolean, jsonb, pgEnum, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  uuid,
+  timestamp,
+  integer,
+  boolean,
+  jsonb,
+  pgEnum,
+  index,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const moodEnum = pgEnum("journal_mood", [
@@ -30,7 +40,11 @@ export const journalEntries = pgTable(
   },
   (table) => ({
     userEntriesIdx: index("idx_journal_user_entries").on(table.userId, table.createdAt.desc()),
-    userActiveIdx: index("idx_journal_user_active").on(table.userId, table.deletedAt, table.createdAt.desc()),
+    userActiveIdx: index("idx_journal_user_active").on(
+      table.userId,
+      table.deletedAt,
+      table.createdAt.desc(),
+    ),
     moodIdx: index("idx_journal_mood").on(table.userId, table.mood),
     scoreIdx: index("idx_journal_score").on(table.userId, table.reflectionScore),
     tagsIdx: index("idx_journal_tags").using("gin", table.tags),
@@ -41,18 +55,25 @@ export const journalEntries = pgTable(
   }),
 );
 
-export const journalInsights = pgTable("journal_insights", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id").notNull(),
-  journalEntryId: uuid("journal_entry_id")
-    .references(() => journalEntries.id, { onDelete: "cascade" })
-    .notNull(),
-  summary: text("summary"),
-  sentimentScore: integer("sentiment_score"),
-  keywords: text("keywords").array().default([]).notNull(),
-  aiReflection: text("ai_reflection"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const journalInsights = pgTable(
+  "journal_insights",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    journalEntryId: uuid("journal_entry_id")
+      .references(() => journalEntries.id, { onDelete: "cascade" })
+      .notNull(),
+    summary: text("summary"),
+    sentimentScore: integer("sentiment_score"),
+    keywords: text("keywords").array().default([]).notNull(),
+    aiReflection: text("ai_reflection"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdx: index("idx_journal_insights_user").on(table.userId),
+    entryIdx: index("idx_journal_insights_entry").on(table.journalEntryId),
+  }),
+);
 
 export const journalVersions = pgTable(
   "journal_versions",
@@ -88,7 +109,10 @@ export const journalBookmarks = pgTable(
   },
   (table) => ({
     userEntryBookmarksIdx: index("idx_journal_bookmarks_entry").on(table.userId, table.entryId),
-    userBookmarksCreatedIdx: index("idx_journal_bookmarks_created").on(table.userId, table.createdAt.desc()),
+    userBookmarksCreatedIdx: index("idx_journal_bookmarks_created").on(
+      table.userId,
+      table.createdAt.desc(),
+    ),
   }),
 );
 

@@ -14,20 +14,27 @@ function parseCompositeId(compositeId: string): { tmdbId: string; mediaType: str
 }
 
 async function hydrateMedia(memories: any[]) {
-  return Promise.all(
-    memories.map(async (memory) => {
-      if (!memory.mediaId) return { ...memory, mediaTitle: null, mediaPosterUrl: null };
-      const parsed = parseCompositeId(memory.mediaId);
-      if (!parsed) return { ...memory, mediaTitle: null, mediaPosterUrl: null };
-      const media = await repo.getMediaByTmdbId(parsed.tmdbId);
-      return {
-        ...memory,
-        mediaTitle: media?.title ?? null,
-        mediaPosterUrl: media?.posterPath ? `${TMDB_IMAGE_BASE_URL}/w342${media.posterPath}` : null,
-        mediaType: parsed.mediaType,
-      };
-    }),
-  );
+  const mediaIdToMemory = new Map<string, any>();
+  for (const memory of memories) {
+    if (!memory.mediaId) continue;
+    const parsed = parseCompositeId(memory.mediaId);
+    if (parsed && !mediaIdToMemory.has(parsed.tmdbId)) mediaIdToMemory.set(parsed.tmdbId, parsed);
+  }
+  const mediaRows = await repo.getMediaByTmdbIds([...mediaIdToMemory.keys()]);
+  const mediaByTmdbId = new Map(mediaRows.map((m) => [m.tmdbId, m]));
+
+  return memories.map((memory) => {
+    if (!memory.mediaId) return { ...memory, mediaTitle: null, mediaPosterUrl: null };
+    const parsed = parseCompositeId(memory.mediaId);
+    if (!parsed) return { ...memory, mediaTitle: null, mediaPosterUrl: null };
+    const media = mediaByTmdbId.get(parsed.tmdbId);
+    return {
+      ...memory,
+      mediaTitle: media?.title ?? null,
+      mediaPosterUrl: media?.posterPath ? `${TMDB_IMAGE_BASE_URL}/w342${media.posterPath}` : null,
+      mediaType: parsed.mediaType,
+    };
+  });
 }
 
 export async function GET(request: NextRequest) {

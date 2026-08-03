@@ -1,4 +1,14 @@
-import { pgTable, text, uuid, timestamp, integer, boolean, pgEnum, unique } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  uuid,
+  timestamp,
+  integer,
+  boolean,
+  pgEnum,
+  unique,
+  index,
+} from "drizzle-orm/pg-core";
 
 export const xpEventTypeEnum = pgEnum("xp_event_type", [
   "habit_completed",
@@ -28,11 +38,7 @@ export const xpEventTypeEnum = pgEnum("xp_event_type", [
   "grooming_perfect_week",
 ] as const);
 
-export const challengeTypeEnum = pgEnum("challenge_type", [
-  "daily",
-  "weekly",
-  "monthly",
-] as const);
+export const challengeTypeEnum = pgEnum("challenge_type", ["daily", "weekly", "monthly"] as const);
 
 export const achievementCriteriaTypeEnum = pgEnum("achievement_criteria_type", [
   "habit_count",
@@ -68,15 +74,24 @@ export const gamificationUserMetrics = pgTable("gamification_user_metrics", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const gamificationXpTransactions = pgTable("gamification_xp_transactions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: text("user_id").notNull(),
-  eventType: xpEventTypeEnum("event_type").notNull(),
-  eventSource: text("event_source").notNull(),
-  xpAmount: integer("xp_amount").notNull(),
-  description: text("description").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+export const gamificationXpTransactions = pgTable(
+  "gamification_xp_transactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id").notNull(),
+    eventType: xpEventTypeEnum("event_type").notNull(),
+    eventSource: text("event_source").notNull(),
+    xpAmount: integer("xp_amount").notNull(),
+    description: text("description").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userCreatedIdx: index("idx_gamification_xp_transactions_user_created").on(
+      table.userId,
+      table.createdAt.desc(),
+    ),
+  }),
+);
 
 export const gamificationAchievements = pgTable("gamification_achievements", {
   id: uuid("id").defaultRandom().primaryKey(),

@@ -46,6 +46,20 @@ export async function getCommitmentById(userId: string, commitmentId: string) {
   return result[0] ?? null;
 }
 
+export async function getCommitmentsByIds(userId: string, commitmentIds: string[]) {
+  if (commitmentIds.length === 0) return [];
+  return db
+    .select()
+    .from(integrityCommitments)
+    .where(
+      and(
+        inArray(integrityCommitments.id, commitmentIds),
+        eq(integrityCommitments.userId, userId),
+        isNull(integrityCommitments.deletedAt),
+      ),
+    );
+}
+
 export async function createCommitment(input: CreateCommitmentInput) {
   const result = await db.insert(integrityCommitments).values(input).returning();
   return result[0];

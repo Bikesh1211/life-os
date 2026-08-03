@@ -23,19 +23,20 @@ export async function GET() {
       repo.getMoviesWatchedPerMonth(userId),
     ]);
 
-    const hydratedMemories = await Promise.all(
-      recentMemories.map(async (m) => {
-        if (!m.mediaId) return { ...m, mediaTitle: null, mediaPosterUrl: null };
-        const tmdbId = parseCompositeId(m.mediaId);
-        if (!tmdbId) return { ...m, mediaTitle: null, mediaPosterUrl: null };
-        const media = await repo.getMediaByTmdbId(tmdbId);
-        return {
-          ...m,
-          mediaTitle: media?.title ?? null,
-          mediaPosterUrl: media?.posterPath ? `${TMDB_IMAGE_BASE_URL}/w92${media.posterPath}` : null,
-        };
-      }),
-    );
+    const tmdbIds = [...new Set(recentMemories.map((m) => m.mediaId ? parseCompositeId(m.mediaId) : null).filter(Boolean))] as string[];
+    const mediaRows = await repo.getMediaByTmdbIds(tmdbIds);
+    const mediaByTmdbId = new Map(mediaRows.map((m) => [m.tmdbId, m]));
+    const hydratedMemories = recentMemories.map((m) => {
+      if (!m.mediaId) return { ...m, mediaTitle: null, mediaPosterUrl: null };
+      const tmdbId = parseCompositeId(m.mediaId);
+      if (!tmdbId) return { ...m, mediaTitle: null, mediaPosterUrl: null };
+      const media = mediaByTmdbId.get(tmdbId);
+      return {
+        ...m,
+        mediaTitle: media?.title ?? null,
+        mediaPosterUrl: media?.posterPath ? `${TMDB_IMAGE_BASE_URL}/w92${media.posterPath}` : null,
+      };
+    });
 
     return NextResponse.json({ stats, recentMemories: hydratedMemories, favorites, watchlist, memoriesPerMonth });
   } catch {

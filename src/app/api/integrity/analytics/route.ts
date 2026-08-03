@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
     const analytics = await getAnalytics(userId);
     if (includeInsights) {
-      const insights = await getInsights(userId);
+      const insights = await getInsights(userId, analytics);
       return NextResponse.json({ ...analytics, insights });
     }
 

@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/core/auth";
-import { getGroomingDashboardStats, computeWellnessScores } from "@/modules/wellness";
+import { getGroomingDashboardStats, getGroomingScore } from "@/modules/wellness";
 
 export async function GET() {
   const userId = await getCurrentUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const [stats, scores] = await Promise.all([
+    const [stats, groomingScore] = await Promise.all([
       getGroomingDashboardStats(userId),
-      computeWellnessScores(userId),
+      getGroomingScore(userId),
     ]);
 
-    return NextResponse.json({ ...stats, groomingScore: scores.grooming });
+    return NextResponse.json({ ...stats, groomingScore });
   } catch {
     return NextResponse.json({ error: "Failed to fetch dashboard" }, { status: 500 });
   }

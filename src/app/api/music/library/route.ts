@@ -15,33 +15,31 @@ export async function GET(request: Request) {
   try {
     const library = await service.getLibrary(userId, limit, offset);
     const trackIds = library.map((e) => e.trackId);
-    const tracks = await Promise.all(
-      trackIds.map(async (trackId) => {
-        const track = await repo.getTrackById(trackId);
-        if (!track) return null;
-        const artist = await repo.getArtistById(track.artistId);
-        let albumCover: string | null = null;
-        let albumTitle: string | null = null;
-        if (track.albumId) {
-          const album = await repo.getAlbumById(track.albumId);
-          if (album) {
-            albumCover = album.coverArtUrl;
-            albumTitle = album.title;
-          }
-        }
-        return {
-          id: track.id,
-          title: track.title,
-          artistId: track.artistId,
-          artistName: artist?.name ?? "Unknown Artist",
-          albumId: track.albumId,
-          albumTitle,
-          albumCoverUrl: albumCover,
-          duration: track.duration,
-          addedAt: library.find((e) => e.trackId === trackId)?.addedAt.toISOString() ?? null,
-        };
-      }),
-    );
+
+    const trackRows = await repo.getTracksByIds(trackIds);
+    const artistIds = [...new Set(trackRows.map((t) => t.artistId))];
+    const artistRows = await repo.getArtistsByIds(artistIds);
+
+    const trackById = new Map(trackRows.map((t) => [t.id, t]));
+    const artistById = new Map(artistRows.map((a) => [a.id, a]));
+    const addedAtByTrack = new Map(library.map((e) => [e.trackId, e.addedAt]));
+
+    const tracks = library.map((entry) => {
+      const track = trackById.get(entry.trackId);
+      if (!track) return null;
+      const artist = artistById.get(track.artistId);
+      return {
+        id: track.id,
+        title: track.title,
+        artistId: track.artistId,
+        artistName: artist?.name ?? "Unknown Artist",
+        albumId: track.albumId,
+        albumTitle: track.albumTitle,
+        albumCoverUrl: track.albumCoverArtUrl,
+        duration: track.duration,
+        addedAt: addedAtByTrack.get(entry.trackId)?.toISOString() ?? null,
+      };
+    });
     return NextResponse.json({ tracks: tracks.filter(Boolean), total: tracks.length });
   } catch (error) {
     console.error("Failed to fetch library:", error);

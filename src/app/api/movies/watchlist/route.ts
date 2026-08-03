@@ -19,18 +19,19 @@ export async function GET(request: NextRequest) {
   const items = status
     ? await repo.getWatchlistByStatus(userId, status as any)
     : await repo.getWatchlist(userId);
-  const hydrated = await Promise.all(
-    items.map(async (item) => {
-      const tmdbId = parseCompositeId(item.mediaId);
-      if (!tmdbId) return { ...item, mediaTitle: null, mediaPosterUrl: null };
-      const media = await repo.getMediaByTmdbId(tmdbId);
-      return {
-        ...item,
-        mediaTitle: media?.title ?? null,
-        mediaPosterUrl: media?.posterPath ? `${TMDB_IMAGE_BASE_URL}/w342${media.posterPath}` : null,
-      };
-    }),
-  );
+  const tmdbIds = [...new Set(items.map((item) => parseCompositeId(item.mediaId)).filter(Boolean))] as string[];
+  const mediaRows = await repo.getMediaByTmdbIds(tmdbIds);
+  const mediaByTmdbId = new Map(mediaRows.map((m) => [m.tmdbId, m]));
+  const hydrated = items.map((item) => {
+    const tmdbId = parseCompositeId(item.mediaId);
+    if (!tmdbId) return { ...item, mediaTitle: null, mediaPosterUrl: null };
+    const media = mediaByTmdbId.get(tmdbId);
+    return {
+      ...item,
+      mediaTitle: media?.title ?? null,
+      mediaPosterUrl: media?.posterPath ? `${TMDB_IMAGE_BASE_URL}/w342${media.posterPath}` : null,
+    };
+  });
   return NextResponse.json(hydrated);
 }
 
