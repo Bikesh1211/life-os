@@ -85,6 +85,7 @@ function searchItems(items: FlatPageItem[], query: string): FlatPageItem[] {
     movies: ["films", "watchlist", "cinema", "tv", "anime"],
     travel: ["trips", "places", "journeys"],
     career: ["work", "job", "applications"],
+    "field_roadmap": ["roadmap", "career path", "mastery", "become better"],
     network: ["people", "contacts", "relationships"],
     wellness: ["health", "self care"],
     routines: ["daily plan", "planner", "schedule"],

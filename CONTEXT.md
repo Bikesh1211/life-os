@@ -807,3 +807,36 @@ A snapshot of a Script's full state (all sections, content, and metadata). Store
 An external URL attached to a Script (not a file upload — v1 defers file upload infrastructure). Stored as a `text[]` column on the script row. Users paste links to PDFs, PowerPoint files, images, reference links, or external notes. Matches the existing pattern across Tech Gear, Network, Integrity, and Loans plugins.
 
 *Avoid*: Upload, File Upload, Storage (in v1 — defer to cross-app file upload infrastructure)
+
+**Field Roadmap** (plugin):
+The profession-agnostic growth engine at `src/modules/field-roadmap/`. Route group is `/field-roadmap/*`. Feature ID is `field_roadmap`. Owns all roadmap data — field blueprints, user roadmaps, phases, milestones, skills, and evidence links. Provides a guided "path to top-level" journey that composes the app's existing trackers. Composes Career OS (`career_profile.targetRole`), Knowledge Vault (entry mastery), Career projects & interview prep, and Goals via their service layers — never reads another plugin's tables directly. Distinct from Career OS (which tracks resumes/applications/interviews) and Knowledge Vault (spaced review): a Field Roadmap is the forward-facing compass across both.
+
+**Field Blueprint**:
+A seeded, system-authored reference template for a profession (Software Engineer, Doctor, Teacher, Designer, ...). Stored as reference data, not user-scoped. Contains the profession's named phases, milestone content, and skill definitions. When a User picks a field, the blueprint is copied into their own Roadmap — the blueprint itself is never mutated.
+
+**Roadmap**:
+A User's own copy of a Field Blueprint, scoped to `userId`. Cloned at pick time so the User can freely edit milestones, phases, and skills without fighting the shared reference. Anchored to the User's target role via `career_profile.targetRole`. Every roadmap is scoped to a `userId`.
+
+*Avoid*: Path, Track (use Field Blueprint for the template and Roadmap for the user's copy); Career Path (a Roadmap is professional-agnostic — doctors and teachers are users too)
+
+**Phase**:
+A named stage within a Roadmap, grouping its Milestones. Typical phases for an engineer: Foundation → Employable → Proficient → Leader/Staff. Gives the roadmap a forward narrative beyond a milestone checklist. A roadmap has 3-5 phases.
+
+**Roadmap Milestone**:
+A concrete, self-contained target within a Roadmap Stage ("Ship a side project", "Crack a senior interview"). Has a done/not-done state tracked by the User. Distinct from a Goal (a terminal object with its own progress perence); milestones are always inside a roadmap reach.
+
+**Roadmap Skill**:
+A competency within a Roadmap assessed by a 1-10 proficiency bar. The bar is **never stored** — it is computed on-read from verified evidence. Skills feed the overall Target-Role Readiness and are the proof-gated side of the dual-ladder.
+
+**Skill Proficiency**:
+The computed-on-read 1-10 bar for a Roadmap Skill. Derived from the skill's confirmed evidence, never from a self-assigned stored score. Distinct from Knowledge Vault's Mastery Level (which rates a specific learning entry by the user's own rated understanding) — Proficiency is earned only via attached, real artifacts.
+
+**Roadmap Evidence**:
+A user-confirmed link proving competency in a Roadmap Skill. Attached to a skill as `evidenceSources`. Valid sources: a Knowledge Vault entry (via its mastery), a Career interview-prep item, a Portfolio Project, or a completed Roadmap Milestone. Read through the respective service layers. Rule-based keyword matching offers "find evidence" suggestions against existing tracks, but nothing attaches silently — every link is user-confirmed.
+
+**Target-Role Readiness**:
+The roadmap's headline number — a self-diagnostic of how close a User is to their target role, computed on-read (never stored) from the roadmap's skills proficiency and completed milestones, anchored to `career_profile.targetRole`. It is a confidence bar (proficiency + progress), **not** a job-offer predictor. No LLM dependency in v1 — rule-based aggregation.
+
+**Raiser of the roadmap** (UX only): The "next step" primed, current-phase recommendation shown on the dashboard. Not a stored entity — derived on-read from the current phase and the most evidence-starved skill.
+
+*Avoid*: Readiness (ambiguous — always say Target-Role Readiness); AI, coach, advisor (a roadmap's "next step" hint is a rule-based suggestion, not an AI advisor); Skill Level / Level (vague — use Skill Proficiency or Roadmap Phases). Do not build (v1): LLM-generated roadmap advice, adaptive roadmaps that re-mix content, social/network roadmaps, external job-graph sync. Roadmaps are a self-authored, user-owned, deterministic model.
