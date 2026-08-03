@@ -467,6 +467,13 @@ export const navigation: NavGroup[] = [
         featureId: "career",
       },
       {
+        label: "Field Roadmap",
+        route: "/field-roadmap",
+        description: "Path to top-level in your field",
+        icon: IconRoute,
+        featureId: "field_roadmap",
+      },
+      {
         label: "Network",
         route: "/network",
         description: "Your network",
