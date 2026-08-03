@@ -33,6 +33,11 @@ export async function getMediaByTmdbId(tmdbId: string) {
   return media ?? null;
 }
 
+export async function getMediaByTmdbIds(tmdbIds: string[]) {
+  if (tmdbIds.length === 0) return [];
+  return db.select().from(moviesMedia).where(inArray(moviesMedia.tmdbId, tmdbIds));
+}
+
 export async function getPersonByTmdbId(tmdbId: string) {
   const [person] = await db.select().from(moviesPeople).where(eq(moviesPeople.tmdbId, tmdbId)).limit(1);
   return person ?? null;
@@ -226,6 +231,45 @@ export async function getDashboardStats(userId: string) {
     totalQuotes: Number(quoteCount.count),
     totalCollections: Number(colCount.count),
   };
+}
+
+export async function getRatingsStats(userId: string) {
+  const [result] = await db
+    .select({
+      count: sql<number>`count(*)`,
+      average: sql<number>`coalesce(round(avg(${movieRatings.score})::numeric, 1), 0)::numeric`,
+    })
+    .from(movieRatings)
+    .where(eq(movieRatings.userId, userId));
+  return result ?? { count: 0, average: 0 };
+}
+
+export async function getWatchlistStats(userId: string) {
+  const [result] = await db
+    .select({
+      total: sql<number>`count(*)`,
+      completed: sql<number>`count(*) filter (where ${movieWatchlist.status} = 'completed')`,
+      watching: sql<number>`count(*) filter (where ${movieWatchlist.status} = 'watching')`,
+    })
+    .from(movieWatchlist)
+    .where(eq(movieWatchlist.userId, userId));
+  return result ?? { total: 0, completed: 0, watching: 0 };
+}
+
+export async function countMemories(userId: string) {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(movieMemories)
+    .where(eq(movieMemories.userId, userId));
+  return Number(row?.count ?? 0);
+}
+
+export async function countFavorites(userId: string) {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(movieFavorites)
+    .where(eq(movieFavorites.userId, userId));
+  return Number(row?.count ?? 0);
 }
 
 export async function getMoviesWatchedPerMonth(userId: string) {

@@ -490,11 +490,7 @@ export async function getTimeline(userId: string, limit = 50) {
   const events = await repo.getRecentEvents(userId, limit);
   const commitmentIds = [...new Set(events.map((e) => e.commitmentId))];
 
-  const commitments: repo.Commitment[] = [];
-  for (const id of commitmentIds) {
-    const c = await repo.getCommitmentById(userId, id);
-    if (c) commitments.push(c);
-  }
+  const commitments = await repo.getCommitmentsByIds(userId, commitmentIds);
 
   const commitmentMap = new Map(commitments.map((c) => [c.id, c]));
 
@@ -505,38 +501,37 @@ export async function getTimeline(userId: string, limit = 50) {
   }));
 }
 
-export async function getInsights(userId: string) {
-  const analytics = await getAnalytics(userId);
-  const all = await repo.getAllCommitmentsForUser(userId);
+export async function getInsights(userId: string, analytics?: Awaited<ReturnType<typeof getAnalytics>>) {
+  const resolvedAnalytics = analytics ?? (await getAnalytics(userId));
   const dayOfWeekDist = await repo.getDayOfWeekDistribution(userId);
   const categoryDist = await repo.getCategoryDistribution(userId);
 
   const insights: Array<{ type: "positive" | "negative" | "info"; message: string }> = [];
 
-  if (analytics.integrityScore >= 90) {
-    insights.push({ type: "positive", message: `Your integrity score is ${analytics.integrityScore}/100 — excellent reliability!` });
-  } else if (analytics.integrityScore >= 70) {
-    insights.push({ type: "positive", message: `Your integrity score is ${analytics.integrityScore}/100. You're building strong commitment habits.` });
-  } else if (analytics.integrityScore >= 50) {
-    insights.push({ type: "info", message: `Your integrity score is ${analytics.integrityScore}/100. There's room to improve your follow-through.` });
+  if (resolvedAnalytics.integrityScore >= 90) {
+    insights.push({ type: "positive", message: `Your integrity score is ${resolvedAnalytics.integrityScore}/100 — excellent reliability!` });
+  } else if (resolvedAnalytics.integrityScore >= 70) {
+    insights.push({ type: "positive", message: `Your integrity score is ${resolvedAnalytics.integrityScore}/100. You're building strong commitment habits.` });
+  } else if (resolvedAnalytics.integrityScore >= 50) {
+    insights.push({ type: "info", message: `Your integrity score is ${resolvedAnalytics.integrityScore}/100. There's room to improve your follow-through.` });
   } else {
-    insights.push({ type: "negative", message: `Your integrity score is ${analytics.integrityScore}/100. Start with easier commitments to build momentum.` });
+    insights.push({ type: "negative", message: `Your integrity score is ${resolvedAnalytics.integrityScore}/100. Start with easier commitments to build momentum.` });
   }
 
-  if (analytics.currentStreak >= 30) {
-    insights.push({ type: "positive", message: `You're on an incredible ${analytics.currentStreak}-day integrity streak!` });
-  } else if (analytics.currentStreak >= 7) {
-    insights.push({ type: "positive", message: `You're on a ${analytics.currentStreak}-day streak! Keep the momentum going.` });
-  } else if (analytics.currentStreak >= 3) {
-    insights.push({ type: "info", message: `Current streak: ${analytics.currentStreak} days. Can you make it a week?` });
+  if (resolvedAnalytics.currentStreak >= 30) {
+    insights.push({ type: "positive", message: `You're on an incredible ${resolvedAnalytics.currentStreak}-day integrity streak!` });
+  } else if (resolvedAnalytics.currentStreak >= 7) {
+    insights.push({ type: "positive", message: `You're on a ${resolvedAnalytics.currentStreak}-day streak! Keep the momentum going.` });
+  } else if (resolvedAnalytics.currentStreak >= 3) {
+    insights.push({ type: "info", message: `Current streak: ${resolvedAnalytics.currentStreak} days. Can you make it a week?` });
   }
 
-  if (analytics.promiseRatio >= 90) {
-    insights.push({ type: "positive", message: `You keep ${analytics.promiseRatio}% of your commitments — you're a person of your word.` });
-  } else if (analytics.promiseRatio >= 70) {
-    insights.push({ type: "info", message: `Promise success rate: ${analytics.promiseRatio}%. Aim for 90%+.` });
+  if (resolvedAnalytics.promiseRatio >= 90) {
+    insights.push({ type: "positive", message: `You keep ${resolvedAnalytics.promiseRatio}% of your commitments — you're a person of your word.` });
+  } else if (resolvedAnalytics.promiseRatio >= 70) {
+    insights.push({ type: "info", message: `Promise success rate: ${resolvedAnalytics.promiseRatio}%. Aim for 90%+.` });
   } else {
-    insights.push({ type: "negative", message: `Promise success rate: ${analytics.promiseRatio}%. Try making fewer, more realistic commitments.` });
+    insights.push({ type: "negative", message: `Promise success rate: ${resolvedAnalytics.promiseRatio}%. Try making fewer, more realistic commitments.` });
   }
 
   const dayEntries = Object.entries(dayOfWeekDist).filter(([_, d]) => d.total > 0);
@@ -568,8 +563,8 @@ export async function getInsights(userId: string) {
     }
   }
 
-  if (analytics.avgCompletionTimeHours > 0) {
-    insights.push({ type: "info", message: `Average completion time: ${analytics.avgCompletionTimeHours} hours. Use this to estimate future commitments better.` });
+  if (resolvedAnalytics.avgCompletionTimeHours > 0) {
+    insights.push({ type: "info", message: `Average completion time: ${resolvedAnalytics.avgCompletionTimeHours} hours. Use this to estimate future commitments better.` });
   }
 
   return insights;

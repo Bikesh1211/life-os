@@ -71,6 +71,7 @@ export async function getTracksByIds(ids: string[]) {
       title: musicTracks.title,
       albumId: musicTracks.albumId,
       artistId: musicTracks.artistId,
+      duration: musicTracks.duration,
       albumCoverArtUrl: musicAlbums.coverArtUrl,
       albumTitle: musicAlbums.title,
     })
@@ -755,14 +756,21 @@ export async function getMostListenedArtists(userId: string, limit = 10) {
     .limit(limit);
 }
 
-export async function getListeningStreaks(userId: string) {
+export async function getListeningStreaks(userId: string, lookbackDays = 400) {
+  const since = new Date();
+  since.setDate(since.getDate() - lookbackDays);
   return db
     .select({
       date: sql<string>`DATE(${musicListeningHistory.listenedAt})`,
       count: sql<number>`count(*)`,
     })
     .from(musicListeningHistory)
-    .where(eq(musicListeningHistory.userId, userId))
+    .where(
+      and(
+        eq(musicListeningHistory.userId, userId),
+        gte(musicListeningHistory.listenedAt, since),
+      ),
+    )
     .groupBy(sql`DATE(${musicListeningHistory.listenedAt})`)
     .orderBy(desc(sql`DATE(${musicListeningHistory.listenedAt})`));
 }

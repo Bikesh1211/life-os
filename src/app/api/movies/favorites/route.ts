@@ -15,18 +15,19 @@ export async function GET() {
   const userId = await getCurrentUserId();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const items = await repo.getFavorites(userId);
-  const hydrated = await Promise.all(
-    items.map(async (fav) => {
-      const tmdbId = parseCompositeId(fav.mediaId);
-      if (!tmdbId) return { ...fav, mediaTitle: null, mediaPosterUrl: null };
-      const media = await repo.getMediaByTmdbId(tmdbId);
-      return {
-        ...fav,
-        mediaTitle: media?.title ?? null,
-        mediaPosterUrl: media?.posterPath ? `${TMDB_IMAGE_BASE_URL}/w342${media.posterPath}` : null,
-      };
-    }),
-  );
+  const tmdbIds = [...new Set(items.map((fav) => parseCompositeId(fav.mediaId)).filter(Boolean))] as string[];
+  const mediaRows = await repo.getMediaByTmdbIds(tmdbIds);
+  const mediaByTmdbId = new Map(mediaRows.map((m) => [m.tmdbId, m]));
+  const hydrated = items.map((fav) => {
+    const tmdbId = parseCompositeId(fav.mediaId);
+    if (!tmdbId) return { ...fav, mediaTitle: null, mediaPosterUrl: null };
+    const media = mediaByTmdbId.get(tmdbId);
+    return {
+      ...fav,
+      mediaTitle: media?.title ?? null,
+      mediaPosterUrl: media?.posterPath ? `${TMDB_IMAGE_BASE_URL}/w342${media.posterPath}` : null,
+    };
+  });
   return NextResponse.json(hydrated);
 }
 

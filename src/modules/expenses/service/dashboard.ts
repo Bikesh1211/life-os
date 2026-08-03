@@ -42,11 +42,13 @@ export async function getDashboardSummary(userId: string) {
   const year = now.year();
   const month = now.month() + 1;
 
-  const [monthlySpending, monthlyIncome, averageDaily] = await Promise.all([
+  const [monthlySpending, monthlyIncome] = await Promise.all([
     getMonthlySpending(userId, year, month),
     getMonthlyIncomeTotal(userId, year, month),
-    getAverageDailySpending(userId, year, month),
   ]);
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const averageDailySpend = daysInMonth > 0 ? monthlySpending.total / daysInMonth : 0;
 
   const savingsRate = monthlyIncome > 0
     ? ((monthlyIncome - monthlySpending.total) / monthlyIncome) * 100
@@ -56,7 +58,7 @@ export async function getDashboardSummary(userId: string) {
     monthlySpending: monthlySpending.total,
     monthlyIncome,
     savingsRate,
-    averageDailySpend: averageDaily.average,
+    averageDailySpend,
     transactionCount: monthlySpending.count,
   };
 }
