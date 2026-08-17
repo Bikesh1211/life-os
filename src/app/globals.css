@@ -900,20 +900,46 @@ body {
   margin: calc(var(--app-shell-padding, 0px) * -1);
 }
 
-[data-mantine-color-scheme="dark"] .lb {
-  --lb-bg: #0b0d14;
-  --lb-surface: #12141d;
-  --lb-card: #171922;
-  --lb-fg: #ece5d6;
-  --lb-muted: #9a9284;
-  --lb-border: rgba(217, 180, 106, 0.18);
-  --lb-primary: #d9b46a;
+/*
+ * The wizarding palette, declared once.
+ *
+ * These twelve values are the Library's dark room, and they are also the
+ * Harry Potter movie theme (see `core/themes/harry-potter.ts`, which reads
+ * these same variables rather than restating them). Declared on `:root` so
+ * both consumers can reach them, and so there is exactly one place to change a
+ * colour — the reading room and the theme cannot drift apart, because there is
+ * only one set of numbers.
+ */
+:root {
+  --hp-bg: #0b0d14;
+  --hp-surface: #12141d;
+  --hp-card: #171922;
+  --hp-fg: #ece5d6;
+  --hp-muted: #9a9284;
+  --hp-border: rgba(217, 180, 106, 0.18);
+  --hp-primary: #d9b46a;
 
-  --lb-gold: #d9b46a;
-  --lb-candle: #e8a855;
-  --lb-parchment: #f0e6d2;
-  --lb-emerald: #2c6d5c;
-  --lb-ink: #04060e;
+  --hp-gold: #d9b46a;
+  --hp-candle: #e8a855;
+  --hp-parchment: #f0e6d2;
+  --hp-emerald: #2c6d5c;
+  --hp-ink: #04060e;
+}
+
+[data-mantine-color-scheme="dark"] .lb {
+  --lb-bg: var(--hp-bg);
+  --lb-surface: var(--hp-surface);
+  --lb-card: var(--hp-card);
+  --lb-fg: var(--hp-fg);
+  --lb-muted: var(--hp-muted);
+  --lb-border: var(--hp-border);
+  --lb-primary: var(--hp-primary);
+
+  --lb-gold: var(--hp-gold);
+  --lb-candle: var(--hp-candle);
+  --lb-parchment: var(--hp-parchment);
+  --lb-emerald: var(--hp-emerald);
+  --lb-ink: var(--hp-ink);
 }
 
 /* ── Containers ──────────────────────────────────────────────────────────── */

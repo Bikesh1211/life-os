@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "@/infrastructure/providers";
 import { APP_NAME, APP_DESCRIPTION } from "@/core/constants";
+import { ThemeBootScript, ThemeStyles } from "@/core/themes/ThemeStyles";
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
 import "@mantine/spotlight/styles.css";
@@ -59,6 +60,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             __html: `try{var c=window.localStorage.getItem("mantine-color-scheme-value");var d=c==="light"||c==="dark"?c:"dark";document.documentElement.setAttribute("data-mantine-color-scheme",d)}catch(e){}`,
           }}
         />
+        {/* After the scheme script, and on purpose: a movie theme carries its
+            own scheme, so when one is selected it has the last word. */}
+        <ThemeBootScript />
+        <ThemeStyles />
         <Providers>{children}</Providers>
       </body>
     </html>
