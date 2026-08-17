@@ -1,4 +1,10 @@
 import { DEFAULT_DEPTH, DEPTH_STORAGE_KEY, MOVIE_THEMES, THEME_STORAGE_KEY } from "./index";
+import {
+  BACKGROUND_INTENSITY_KEY,
+  CONTEXT_MODE_KEY,
+  DEFAULT_CONTEXT_MODE,
+  DEFAULT_INTENSITY,
+} from "./contexts";
 
 /**
  * The theme layer's stylesheet link.
@@ -51,6 +57,12 @@ try {
   var t = window.localStorage.getItem(${JSON.stringify(THEME_STORAGE_KEY)});
   var d = window.localStorage.getItem(${JSON.stringify(DEPTH_STORAGE_KEY)});
   r.setAttribute("data-theme-depth", d === "palette" || d === "full" ? d : ${JSON.stringify(DEFAULT_DEPTH)});
+
+  var m = window.localStorage.getItem(${JSON.stringify(CONTEXT_MODE_KEY)});
+  r.setAttribute("data-context-mode", ["auto","global","feature","off"].indexOf(m) > -1 ? m : ${JSON.stringify(DEFAULT_CONTEXT_MODE)});
+
+  var b = window.localStorage.getItem(${JSON.stringify(BACKGROUND_INTENSITY_KEY)});
+  r.setAttribute("data-bg-intensity", ["minimal","balanced","cinematic"].indexOf(b) > -1 ? b : ${JSON.stringify(DEFAULT_INTENSITY)});
   if (t && s[t]) {
     r.setAttribute("data-movie-theme", t);
     r.setAttribute("data-mantine-color-scheme", s[t]);

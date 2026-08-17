@@ -7,6 +7,7 @@ import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useAppShell } from "./AppShellProvider";
 import { cn } from "@/core/utils";
+import { ContextBackground } from "@/core/themes/contexts/ContextBackground";
 
 export function AppShellInner({ children }: { children: React.ReactNode }) {
   const { opened, collapsed, mobileOpened, minimalChrome, closeMobile } = useAppShell();
@@ -14,6 +15,10 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      {/* Behind everything, and outside the AppShell so no layout depends on
+          it. One fixed element for the whole application. */}
+      <ContextBackground />
+
       <Suspense fallback={null}>
         <NavigationProgress />
       </Suspense>

@@ -8,6 +8,7 @@ import { useSidebarFavorites } from "@/core/sidebar-favorites";
 import { cn } from "@/core/utils";
 import { FeedbackForm } from "@/modules/feedback/components/FeedbackForm";
 import { AppearanceSection } from "./_components/AppearanceSection";
+import { CinematicSection } from "./_components/CinematicSection";
 
 function ItemCheckbox({ item, checked, onChange, disabled }: { item: NavItem; checked: boolean; onChange: () => void; disabled: boolean }) {
   return (
@@ -168,6 +169,7 @@ export default function SettingsPage() {
       </Paper>
 
       <AppearanceSection />
+      <CinematicSection />
       <FeedbackForm />
       <SidebarFavoritesSection />
       <SidebarVisibilitySection />

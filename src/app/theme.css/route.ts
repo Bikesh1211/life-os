@@ -1,4 +1,5 @@
 import { themeStylesheet } from "@/core/themes";
+import { contextStylesheet } from "@/core/themes/contexts";
 
 /**
  * The theme stylesheet, served rather than inlined.
@@ -21,7 +22,11 @@ import { themeStylesheet } from "@/core/themes";
 export const dynamic = "force-static";
 
 export function GET() {
-  return new Response(themeStylesheet(), {
+  /* Global themes first, contexts second: a context overrides the accent it
+     inherits, and at equal specificity the later rule is the one that wins. */
+  const css = [themeStylesheet(), contextStylesheet()].join("\n\n");
+
+  return new Response(css, {
     headers: {
       "Content-Type": "text/css; charset=utf-8",
       /*
