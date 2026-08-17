@@ -20,6 +20,7 @@ import {
   IconSchool,
   IconGridPattern,
   IconBooks,
+  IconBookmarks,
   IconMusic,
   IconMovie,
   IconPackage,
@@ -257,9 +258,18 @@ export const navigation: NavGroup[] = [
       {
         label: "Library",
         route: "/library",
-        description: "Your digital library",
+        description: "The reading room — everything you have written",
         icon: IconBooks,
         featureId: "library",
+        children: [
+          {
+            label: "Reading Tracker",
+            route: "/library/tracker",
+            description: "Books, articles and papers you are reading",
+            icon: IconBookmarks,
+            featureId: "reading-tracker",
+          },
+        ],
       },
     ],
   },

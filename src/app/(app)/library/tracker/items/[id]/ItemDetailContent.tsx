@@ -347,7 +347,7 @@ export function ItemDetailContent({ item: initialItem, initialAnnotations, initi
         {/* Back + Actions */}
         <Group justify="space-between">
           <Group gap="xs">
-            <ActionIcon variant="subtle" onClick={() => router.push("/library")}>
+            <ActionIcon variant="subtle" onClick={() => router.push("/library/tracker")}>
               <IconArrowLeft size={18} />
             </ActionIcon>
             <Badge size="lg" variant="light" color="gray">

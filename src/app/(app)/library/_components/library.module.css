@@ -1,0 +1,275 @@
+/*
+ * The Library — the effects layer.
+ *
+ * The *palette* is not here: the Library is a full mode, so its colours live in
+ * globals.css under `.lb`, and everything below reads those tokens
+ * (`--lb-ink`, `--lb-gold`, `--lb-parchment`, `--lb-emerald`, `--lb-candle`). What lives here is the behaviour that would be noise in a global
+ * stylesheet — paper grain, spines, the gilt edge, the page turn, the ink
+ * draw, the ribbon.
+ *
+ * Every animation is transform or opacity only, so the whole library composites
+ * and never triggers layout. All of them stop under `prefers-reduced-motion`
+ * via the single block at the foot of this file.
+ *
+ * Note the deliberate absence of `position` on `.panel` and `.paper`, for the
+ * same reason `shop.module.css` documents: module rules are unlayered, Tailwind
+ * utilities live in `@layer utilities`, and unlayered CSS beats any layer
+ * regardless of source order — a `position: relative` here would silently
+ * defeat `fixed` on any dialog that composes the class.
+ */
+
+/* ── Surfaces ────────────────────────────────────────────────────────────── */
+
+.panel {
+  background: color-mix(in oklab, var(--lb-card) 78%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid color-mix(in oklab, var(--lb-border) 90%, transparent);
+}
+
+/*
+ * Paper grain. Two very low-contrast repeating gradients at odd angles, which
+ * is enough to break a flat fill without the banding a single one produces —
+ * and costs nothing next to a texture image. Used on shelf furniture and
+ * manuscript cards, never behind long-form body copy.
+ */
+.paper {
+  background-image:
+    repeating-linear-gradient(
+      37deg,
+      color-mix(in oklab, var(--lb-ink) 2.5%, transparent) 0 1px,
+      transparent 1px 4px
+    ),
+    repeating-linear-gradient(
+      -53deg,
+      color-mix(in oklab, var(--lb-ink) 2%, transparent) 0 1px,
+      transparent 1px 7px
+    );
+}
+
+/* The gilt edge on a card or panel: one hairline of gold along the top. */
+.gilt {
+  box-shadow: inset 0 1px 0 0 color-mix(in oklab, var(--lb-gold) 45%, transparent);
+}
+
+/*
+ * An ornamental rule — a hairline that fades out at both ends with a diamond
+ * at its centre. One element, two gradients, no extra DOM.
+ */
+.rule {
+  height: 1px;
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklab, var(--lb-gold) 40%, transparent) 30%,
+      color-mix(in oklab, var(--lb-gold) 40%, transparent) 70%,
+      transparent
+    );
+  position: relative;
+}
+
+.rule::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  background: color-mix(in oklab, var(--lb-gold) 70%, transparent);
+}
+
+/* ── Spines ──────────────────────────────────────────────────────────────── */
+
+/*
+ * A book on a shelf. The spine is the left edge of the card: a narrow band of
+ * gold with two raised bands across it, the way a bound book has cords under
+ * the leather. Drawn on a pseudo-element so the card itself stays a plain box.
+ */
+.spine {
+  position: relative;
+  overflow: hidden;
+}
+
+.spine::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 6px;
+  background:
+    linear-gradient(
+      180deg,
+      transparent 14%,
+      color-mix(in oklab, var(--lb-gold) 55%, transparent) 14%,
+      color-mix(in oklab, var(--lb-gold) 55%, transparent) 17%,
+      transparent 17%,
+      transparent 83%,
+      color-mix(in oklab, var(--lb-gold) 55%, transparent) 83%,
+      color-mix(in oklab, var(--lb-gold) 55%, transparent) 86%,
+      transparent 86%
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--lb-gold) 30%, transparent),
+      color-mix(in oklab, var(--lb-gold) 8%, transparent)
+    );
+}
+
+/*
+ * The lift. A book comes forward off the shelf and warms slightly — 3px, not a
+ * 3D rotation: the brief asks for a bookshelf that stays fast, and a grid of
+ * twenty transformed cards with perspective is exactly what makes one slow.
+ */
+.lift {
+  transition:
+    transform 0.24s cubic-bezier(0.16, 0.9, 0.3, 1),
+    box-shadow 0.24s ease,
+    border-color 0.24s ease;
+}
+
+.lift:hover,
+.lift:focus-within {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklab, var(--lb-gold) 45%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--lb-gold) 18%, transparent),
+    0 10px 28px color-mix(in oklab, var(--lb-candle) 14%, transparent);
+}
+
+/* "Open book" — revealed on the same hover that lifts the card. */
+.reveal {
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.24s ease, transform 0.24s ease;
+}
+
+.lift:hover .reveal,
+.lift:focus-within .reveal {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Shelf furniture ─────────────────────────────────────────────────────── */
+
+/* The board a rail of books stands on. */
+.board {
+  height: 6px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--lb-gold) 30%, transparent),
+    color-mix(in oklab, var(--lb-ink) 12%, transparent)
+  );
+  border-radius: 1px;
+}
+
+/* The ribbon marking an entry the reader has started. */
+.ribbon {
+  position: absolute;
+  top: -2px;
+  inset-inline-end: 14px;
+  width: 10px;
+  height: 26px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--lb-gold) 85%, transparent),
+    color-mix(in oklab, var(--lb-candle) 70%, transparent)
+  );
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+}
+
+/* ── Manuscript ──────────────────────────────────────────────────────────── */
+
+/*
+ * The drop cap that opens a story or a journal entry. Scoped tightly: it is
+ * applied by the reader to the first paragraph of narrative shelves only, never
+ * to an article, where the first paragraph is usually a summary sentence.
+ */
+.dropCap::first-letter {
+  float: inline-start;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 3.4em;
+  line-height: 0.82;
+  padding-inline-end: 0.08em;
+  padding-block-start: 0.06em;
+  color: color-mix(in oklab, var(--lb-gold) 78%, var(--lb-fg));
+}
+
+/* Ink drawing itself onto the page: a heading underline that writes in. */
+@keyframes lb-ink {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+.inkDraw {
+  transform-origin: left center;
+  animation: lb-ink 0.9s cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+
+/* The page turn used when a chapter changes in reading mode. */
+@keyframes lb-page-in {
+  from { opacity: 0; transform: translateX(18px) rotateY(-4deg); }
+  to { opacity: 1; transform: translateX(0) rotateY(0); }
+}
+
+.pageIn {
+  animation: lb-page-in 0.42s cubic-bezier(0.22, 0.8, 0.3, 1) both;
+  transform-origin: left center;
+}
+
+/* ── Code ────────────────────────────────────────────────────────────────── */
+
+/*
+ * Code sits on the one dark surface the library allows in light mode. A snippet
+ * on parchment reads as a quotation; a snippet on a slab reads as a terminal,
+ * which is what it is.
+ */
+.codeSurface {
+  background: color-mix(in oklab, var(--lb-ink) 94%, var(--lb-emerald));
+  color: color-mix(in oklab, var(--lb-parchment) 92%, transparent);
+  border: 1px solid color-mix(in oklab, var(--lb-gold) 22%, transparent);
+}
+
+.tokenComment { color: color-mix(in oklab, var(--lb-parchment) 42%, transparent); font-style: italic; }
+.tokenString { color: #8FD3A8; }
+.tokenNumber { color: #E9B872; }
+.tokenKeyword { color: #E3A8C8; }
+.tokenPunctuation { color: color-mix(in oklab, var(--lb-parchment) 62%, transparent); }
+
+/* ── Glow ────────────────────────────────────────────────────────────────── */
+
+/* The candle on a focused control. Used sparingly — search, the entrance. */
+.glow {
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--lb-gold) 30%, transparent),
+    0 0 26px -6px color-mix(in oklab, var(--lb-candle) 45%, transparent);
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .inkDraw,
+  .pageIn {
+    animation: none !important;
+  }
+
+  .inkDraw {
+    transform: none;
+  }
+
+  /* The reveals still appear — they are information (a label, a control), not
+     travel. Only the movement is removed. */
+  .lift,
+  .reveal {
+    transition: none !important;
+  }
+
+  .lift:hover,
+  .lift:focus-within {
+    transform: none;
+  }
+
+  .reveal {
+    transform: none;
+  }
+}

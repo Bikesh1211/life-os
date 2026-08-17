@@ -855,3 +855,185 @@ body {
     animation: none;
   }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   THE LIBRARY — the reading room
+   ──────────────────────────────────────────────────────────────────────────
+   A full mode rather than a page, so it carries its own palette and its own
+   type scale. Everything below is scoped under `.lb` — the class the Library
+   layout puts on its root — so none of it can reach the rest of Life OS.
+
+   Ink, gold, parchment and candlelight. The palette is warm and quiet because
+   this is a room for reading for forty minutes, not a dashboard: the loudest
+   thing on any page should be the prose.
+
+   Light and dark are both defined, hung off the scheme Mantine stamps on the
+   html element rather than off a media query — a reader who has chosen light
+   in Life OS gets a lit room, not a candlelit one.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.lb {
+  --lb-bg: #faf6ee;
+  --lb-surface: #fffdf8;
+  --lb-card: #fdfaf3;
+  --lb-fg: #1d1a14;
+  --lb-muted: #6b6355;
+  --lb-border: rgba(92, 72, 32, 0.16);
+  --lb-primary: #8a6a1f;
+
+  /* The room's own four. */
+  --lb-gold: #a8842f;
+  --lb-candle: #bf7a2c;
+  --lb-parchment: #f3e9d2;
+  --lb-emerald: #1d4f43;
+  --lb-ink: #14161f;
+
+  /* The dark ground the entrance and the code blocks are painted on. Constant
+     across schemes: a snippet reads as a terminal in both. */
+  --lb-void: #04060e;
+
+  color: var(--lb-fg);
+  background: var(--lb-bg);
+
+  /* Edge to edge — the AppShell pads its main region, and the Library is a
+     mode rather than a page. See `.xp` for the same reasoning. */
+  margin: calc(var(--app-shell-padding, 0px) * -1);
+}
+
+[data-mantine-color-scheme="dark"] .lb {
+  --lb-bg: #0b0d14;
+  --lb-surface: #12141d;
+  --lb-card: #171922;
+  --lb-fg: #ece5d6;
+  --lb-muted: #9a9284;
+  --lb-border: rgba(217, 180, 106, 0.18);
+  --lb-primary: #d9b46a;
+
+  --lb-gold: #d9b46a;
+  --lb-candle: #e8a855;
+  --lb-parchment: #f0e6d2;
+  --lb-emerald: #2c6d5c;
+  --lb-ink: #04060e;
+}
+
+/* ── Containers ──────────────────────────────────────────────────────────── */
+
+.lb .lb-container {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+/*
+ * The measure. 42rem is roughly 68 characters at this size, which is the band
+ * long-form prose is comfortable in — the whole point of the reading routes.
+ */
+.lb .lb-narrow {
+  width: 100%;
+  max-width: 46rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .lb .lb-container,
+  .lb .lb-narrow {
+    padding-inline: 1.5rem;
+  }
+}
+
+/* ── Type ────────────────────────────────────────────────────────────────── */
+
+/* The small caps label the room uses for furniture: shelf numerals, section
+   headings, metadata rows. */
+.lb .lb-caption {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.lb .lb-h1 {
+  font-size: clamp(2.25rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: 0.02em;
+}
+
+.lb .lb-h2 {
+  font-size: clamp(1.75rem, 3.5vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.lb .lb-h3 {
+  font-size: clamp(1.375rem, 2.4vw, 1.875rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.lb .lb-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 640px) {
+  .lb .lb-section-title {
+    font-size: 1.5rem;
+  }
+}
+
+.lb .lb-body-lg {
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--lb-muted);
+}
+
+.lb .lb-body {
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: var(--lb-muted);
+}
+
+/* ── Reading mode ────────────────────────────────────────────────────────── */
+
+/*
+ * Distraction-free reading folds away everything that is not the page. The
+ * attribute is set on the document element by `ReaderMode` for exactly as long
+ * as it is mounted, so leaving by any route — Close, the back button, a link —
+ * puts the application back.
+ */
+html[data-reading="on"] .library-rail,
+html[data-reading="on"] .mantine-AppShell-header,
+html[data-reading="on"] .mantine-AppShell-navbar {
+  display: none !important;
+}
+
+html[data-reading="on"] .mantine-AppShell-main {
+  padding: 0 !important;
+}
+
+/*
+ * The candle behind the hero. A slow, small opacity drift — the tome is at 14%
+ * already, so this is barely perceptible and entirely the point: a room lit by
+ * one flame is not a room lit by a lamp.
+ */
+@keyframes lb-candle {
+  0%, 100% { opacity: 1; }
+  38% { opacity: 0.82; }
+  61% { opacity: 0.94; }
+  76% { opacity: 0.78; }
+}
+
+.lb .candle-flicker {
+  animation: lb-candle 7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lb .candle-flicker {
+    animation: none;
+  }
+}
