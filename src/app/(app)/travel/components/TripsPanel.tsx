@@ -4,7 +4,13 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { IconPlus, IconBackpack, IconClock, IconWorld } from "@tabler/icons-react";
-import { Card, Text, Group, Badge, Button, Modal, TextInput, Stack } from "@mantine/core";
+import { Card, Text, Group, Badge, Button, Checkbox, Modal, Select, TextInput, Stack } from "@mantine/core";
+import {
+  CATEGORY_OPTIONS,
+  DIFFICULTY_OPTIONS,
+  ExploreFieldset,
+  optionalNumber,
+} from "./ExploreFields";
 import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
 
@@ -38,6 +44,13 @@ function CreateTripModal({ opened, onClose }: { opened: boolean; onClose: () => 
   const [country, setCountry] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [coverImage, setCoverImage] = useState("");
+  const [category, setCategory] = useState<string | null>(null);
+  const [difficulty, setDifficulty] = useState<string | null>(null);
+  const [distanceKm, setDistanceKm] = useState("");
+  const [elevationM, setElevationM] = useState("");
+  const [transportation, setTransportation] = useState("");
+  const [featured, setFeatured] = useState(false);
 
   async function handleSubmit() {
     if (!title.trim() || !destination.trim()) return;
@@ -50,6 +63,13 @@ function CreateTripModal({ opened, onClose }: { opened: boolean; onClose: () => 
         country: country || undefined,
         startDate: startDate ? new Date(startDate).toISOString() : null,
         endDate: endDate ? new Date(endDate).toISOString() : null,
+        coverImage: coverImage.trim() || undefined,
+        category: category || undefined,
+        difficulty: difficulty || undefined,
+        distanceKm: optionalNumber(distanceKm),
+        elevationM: optionalNumber(elevationM),
+        transportation: transportation.trim() || undefined,
+        featured: featured || undefined,
       }),
     });
     onClose();
@@ -66,6 +86,35 @@ function CreateTripModal({ opened, onClose }: { opened: boolean; onClose: () => 
           <TextInput label="Start Date" type="date" value={startDate} onChange={(e) => setStartDate(e.currentTarget.value)} />
           <TextInput label="End Date" type="date" value={endDate} onChange={(e) => setEndDate(e.currentTarget.value)} />
         </Group>
+
+        <ExploreFieldset hint="Optional. These are what the Adventure Archive draws its dossier from — a trip without them still appears, it simply prints fewer figures.">
+          <TextInput
+            label="Cover image URL"
+            placeholder="https://…"
+            value={coverImage}
+            onChange={(e) => setCoverImage(e.currentTarget.value)}
+          />
+          <Group grow>
+            <Select label="Kind" data={CATEGORY_OPTIONS} value={category} onChange={setCategory} clearable />
+            <Select label="Difficulty" data={DIFFICULTY_OPTIONS} value={difficulty} onChange={setDifficulty} clearable />
+          </Group>
+          <Group grow>
+            <TextInput label="Distance (km)" type="number" value={distanceKm} onChange={(e) => setDistanceKm(e.currentTarget.value)} />
+            <TextInput label="Peak elevation (m)" type="number" value={elevationM} onChange={(e) => setElevationM(e.currentTarget.value)} />
+          </Group>
+          <TextInput
+            label="Transport"
+            placeholder="Motorcycle, train, on foot…"
+            value={transportation}
+            onChange={(e) => setTransportation(e.currentTarget.value)}
+          />
+          <Checkbox
+            label="Feature this expedition on the archive's front page"
+            checked={featured}
+            onChange={(e) => setFeatured(e.currentTarget.checked)}
+          />
+        </ExploreFieldset>
+
         <Button fullWidth onClick={handleSubmit} mt="sm">Create Trip</Button>
       </Stack>
     </Modal>

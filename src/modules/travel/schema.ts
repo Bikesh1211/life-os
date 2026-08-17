@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, boolean, pgEnum, index, jsonb, date } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, integer, doublePrecision, boolean, pgEnum, index, jsonb, date } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const tripStatusEnum = pgEnum("trip_status", ["planning", "booked", "in_progress", "completed", "cancelled"]);
@@ -26,6 +26,21 @@ export const cuisineEnum = pgEnum("cuisine_type", [
   "mediterranean", "korean", "vietnamese", "middle_eastern", "spanish", "other",
 ]);
 
+/**
+ * How hard the ground was, and how far along the planning got.
+ *
+ * Both belong to Explore Mode, and both are deliberately shared between a trip,
+ * a place already reached and a place still on the list: an archive that grades
+ * a finished trek on one scale and a planned one on another cannot compare them.
+ */
+export const travelDifficultyEnum = pgEnum("travel_difficulty", [
+  "easy", "moderate", "hard", "extreme",
+]);
+
+export const travelPlanningStatusEnum = pgEnum("travel_planning_status", [
+  "planned", "researching", "ready",
+]);
+
 export const travelTrips = pgTable(
   "travel_trips",
   {
@@ -42,6 +57,17 @@ export const travelTrips = pgTable(
     currency: text("currency").default("USD"),
     travelers: integer("travelers").default(1),
     notes: text("notes"),
+    /* ── Explore Mode ──────────────────────────────────────────────────────
+       The expedition reading of a trip. Everything here is nullable: a trip
+       entered through the ordinary planner is still a valid expedition, it
+       simply prints fewer figures. See `modules/travel/explore`. */
+    category: wishlistCategoryEnum("category"),
+    distanceKm: integer("distance_km"),
+    elevationM: integer("elevation_m"),
+    transportation: text("transportation"),
+    difficulty: travelDifficultyEnum("difficulty"),
+    gallery: text("gallery").array().default([]).notNull(),
+    featured: boolean("featured").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -93,6 +119,14 @@ export const travelWishlist = pgTable(
     tags: text("tags").array().default([]).notNull(),
     isVisited: boolean("is_visited").default(false).notNull(),
     visitedAt: timestamp("visited_at", { withTimezone: true }),
+    /* ── Explore Mode ──────────────────────────────────────────────────────
+       A wishlist row *is* a bucket-list entry, so the archive needs no second
+       table for one: flipping `isVisited` is what moves a destination out of
+       "The Next Expeditions" and into the visited archive. */
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    difficulty: travelDifficultyEnum("difficulty"),
+    planningStatus: travelPlanningStatusEnum("planning_status"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -122,6 +156,17 @@ export const travelVisitedPlaces = pgTable(
     activities: text("activities").array().default([]).notNull(),
     totalDays: integer("total_days"),
     isFavorited: boolean("is_favorited").default(false).notNull(),
+    /* ── Explore Mode ──────────────────────────────────────────────────────
+       A position on the map, and the plate on its record. `latitude` and
+       `longitude` are what put a place on the expedition map at all; a place
+       without them still appears everywhere else in the archive. */
+    category: wishlistCategoryEnum("category"),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    elevation: integer("elevation"),
+    coverImage: text("cover_image"),
+    gallery: text("gallery").array().default([]).notNull(),
+    mapsUrl: text("maps_url"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

@@ -4,8 +4,15 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { notifications } from "@mantine/notifications";
 import { IconPlus, IconStar, IconWorld, IconFlag } from "@tabler/icons-react";
-import { Card, Text, Group, Badge, Button, Modal, TextInput, Select, Stack } from "@mantine/core";
+import { Card, Text, Group, Badge, Button, Modal, TextInput, Textarea, Select, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import {
+  CATEGORY_OPTIONS,
+  DIFFICULTY_OPTIONS,
+  ExploreFieldset,
+  PLANNING_STATUS_OPTIONS,
+  optionalNumber,
+} from "./ExploreFields";
 
 type WishlistItem = {
   id: string;
@@ -31,14 +38,36 @@ const priorityConfig: Record<string, { color: string; label: string }> = {
 function CreateWishlistModal({ opened, onClose }: { opened: boolean; onClose: () => void }) {
   const [title, setTitle] = useState("");
   const [country, setCountry] = useState("");
+  const [city, setCity] = useState("");
   const [priority, setPriority] = useState<string | null>("medium");
+  const [category, setCategory] = useState<string | null>(null);
+  const [whyVisit, setWhyVisit] = useState("");
+  const [bestSeason, setBestSeason] = useState("");
+  const [difficulty, setDifficulty] = useState<string | null>(null);
+  const [planningStatus, setPlanningStatus] = useState<string | null>(null);
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [coverImage, setCoverImage] = useState("");
 
   async function handleSubmit() {
     if (!title.trim()) return;
     await fetch("/api/travel/wishlist", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, country: country || undefined, priority: priority || undefined }),
+      body: JSON.stringify({
+        title,
+        country: country || undefined,
+        city: city || undefined,
+        priority: priority || undefined,
+        category: category || undefined,
+        whyVisit: whyVisit.trim() || undefined,
+        bestSeason: bestSeason.trim() || undefined,
+        difficulty: difficulty || undefined,
+        planningStatus: planningStatus || undefined,
+        latitude: optionalNumber(latitude),
+        longitude: optionalNumber(longitude),
+        coverImage: coverImage.trim() || undefined,
+      }),
     });
     notifications.show({ title: "Created", message: "Destination added to wishlist", color: "green" });
     onClose();
@@ -49,13 +78,52 @@ function CreateWishlistModal({ opened, onClose }: { opened: boolean; onClose: ()
     <Modal opened={opened} onClose={onClose} title="Add to Wishlist" size="md">
       <Stack gap="sm">
         <TextInput label="Destination" placeholder="Santorini, Greece" value={title} onChange={(e) => setTitle(e.currentTarget.value)} required />
-        <TextInput label="Country" placeholder="Greece" value={country} onChange={(e) => setCountry(e.currentTarget.value)} />
-        <Select label="Priority" data={[
-          { value: "low", label: "Low" },
-          { value: "medium", label: "Medium" },
-          { value: "high", label: "High" },
-          { value: "dream", label: "Dream" },
-        ]} value={priority} onChange={setPriority} />
+        <Group grow>
+          <TextInput label="Country" placeholder="Greece" value={country} onChange={(e) => setCountry(e.currentTarget.value)} />
+          <TextInput label="City" placeholder="Oia" value={city} onChange={(e) => setCity(e.currentTarget.value)} />
+        </Group>
+        <Group grow>
+          <Select label="Priority" data={[
+            { value: "low", label: "Low" },
+            { value: "medium", label: "Medium" },
+            { value: "high", label: "High" },
+            { value: "dream", label: "Dream" },
+          ]} value={priority} onChange={setPriority} />
+          <Select label="Kind" data={CATEGORY_OPTIONS} value={category} onChange={setCategory} clearable />
+        </Group>
+        <Textarea
+          label="Why this one"
+          placeholder="The reason it is on the list"
+          autosize
+          minRows={2}
+          value={whyVisit}
+          onChange={(e) => setWhyVisit(e.currentTarget.value)}
+        />
+
+        <ExploreFieldset hint="How the Adventure Archive's bucket list reads this destination. Coordinates put it on the map.">
+          <Group grow>
+            <TextInput label="Best season" placeholder="Oct–Nov" value={bestSeason} onChange={(e) => setBestSeason(e.currentTarget.value)} />
+            <Select label="Difficulty" data={DIFFICULTY_OPTIONS} value={difficulty} onChange={setDifficulty} clearable />
+          </Group>
+          <Select
+            label="Planning status"
+            data={PLANNING_STATUS_OPTIONS}
+            value={planningStatus}
+            onChange={setPlanningStatus}
+            clearable
+          />
+          <Group grow>
+            <TextInput label="Latitude" placeholder="36.4618" value={latitude} onChange={(e) => setLatitude(e.currentTarget.value)} />
+            <TextInput label="Longitude" placeholder="25.3753" value={longitude} onChange={(e) => setLongitude(e.currentTarget.value)} />
+          </Group>
+          <TextInput
+            label="Cover image URL"
+            placeholder="https://…"
+            value={coverImage}
+            onChange={(e) => setCoverImage(e.currentTarget.value)}
+          />
+        </ExploreFieldset>
+
         <Button fullWidth onClick={handleSubmit} mt="sm">Add to Wishlist</Button>
       </Stack>
     </Modal>

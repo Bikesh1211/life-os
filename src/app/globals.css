@@ -673,3 +673,185 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   EXPLORE MODE — The Adventure Archive
+   ──────────────────────────────────────────────────────────────────────────
+   A full mode rather than a page, so it carries its own palette and its own
+   type scale. Everything below is scoped under `.xp` — the class the Explore
+   layout puts on its root — so none of it can reach the rest of Life OS.
+
+   The palette is warm and dim on purpose: this is a field logbook, not a
+   dashboard. It is defined once here and read by both the Tailwind classes in
+   the archive's markup and the module CSS that carries its effects.
+
+   Light and dark are both defined. Mantine stamps the scheme on the html
+   element, so the dark block hangs off that rather than off a media query —
+   a reader who has chosen light in Life OS gets light in the archive too.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.xp {
+  --xp-bg: #fbf7f0;
+  --xp-surface: #ffffff;
+  --xp-card: #fffdf9;
+  --xp-fg: #241d16;
+  --xp-muted: #6f6355;
+  --xp-border: rgba(88, 66, 38, 0.16);
+  --xp-primary: #9a6b1f;
+
+  /* The archive's own three: brass for furniture, expedition red for a
+     position on the map, trail for the line between two of them. */
+  --xp-brass: #b8842c;
+  --xp-expedition: #c0503a;
+  --xp-trail: #a2703a;
+  --xp-parchment: #e8dcc6;
+  --xp-terrain: rgba(120, 90, 50, 0.35);
+
+  /* The curtain the entrance and the lightbox are painted on. Constant across
+     schemes: a photograph is judged against dark ground in both. */
+  --xp-void: #0a0705;
+
+  color: var(--xp-fg);
+  background: var(--xp-bg);
+
+  /*
+   * Edge to edge.
+   *
+   * The AppShell pads its main region so ordinary pages sit inside a gutter.
+   * Explore is a mode, not a page — its rail is meant to span the window and
+   * its map is meant to reach the sides — so it cancels that padding rather
+   * than floating inside it. Read from Mantine's own variable, so this stays
+   * correct if the shell's padding is ever changed.
+   */
+  margin: calc(var(--app-shell-padding, 0px) * -1);
+}
+
+[data-mantine-color-scheme="dark"] .xp {
+  --xp-bg: #0f0c09;
+  --xp-surface: #16120d;
+  --xp-card: #1a1510;
+  --xp-fg: #f0e9de;
+  --xp-muted: #a09385;
+  --xp-border: rgba(217, 164, 65, 0.18);
+  --xp-primary: #d9a441;
+
+  --xp-brass: #d9a441;
+  --xp-expedition: #e0705c;
+  --xp-trail: #c98f4e;
+  --xp-parchment: #e8dcc6;
+  --xp-terrain: rgba(232, 220, 198, 0.22);
+}
+
+/* ── Containers ──────────────────────────────────────────────────────────── */
+
+.xp .xp-container {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+.xp .xp-narrow {
+  width: 100%;
+  max-width: 48rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .xp .xp-container,
+  .xp .xp-narrow {
+    padding-inline: 1.5rem;
+  }
+}
+
+/* ── Type ────────────────────────────────────────────────────────────────── */
+
+/*
+ * The stamped label the archive uses for every piece of furniture: section
+ * headings, metadata rows, the map's readout. Monospace and letter-spaced,
+ * because a field document labels its boxes rather than titling them.
+ */
+.xp .xp-label {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.xp .xp-h1 {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 800;
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+}
+
+.xp .xp-h2 {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.xp .xp-h3 {
+  font-size: clamp(1.25rem, 2vw, 1.6rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.xp .xp-section-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+@media (min-width: 640px) {
+  .xp .xp-section-title {
+    font-size: 1.5rem;
+  }
+}
+
+.xp .xp-body-lg {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--xp-muted);
+}
+
+.xp .xp-body {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--xp-muted);
+}
+
+.xp .xp-dim {
+  color: var(--xp-muted);
+}
+
+.xp .xp-accent {
+  color: var(--xp-primary);
+}
+
+/* ── The one animation that belongs to the map ───────────────────────────── */
+
+/*
+ * A visited marker pings when it is selected. A planned one does not — it has
+ * not happened yet.
+ */
+@keyframes xp-ping {
+  0% { transform: scale(0.6); opacity: 0.5; }
+  70% { transform: scale(1.9); opacity: 0; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+.xp-marker-ping {
+  animation: xp-ping 1.9s cubic-bezier(0, 0, 0.2, 1) infinite;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xp-marker-ping {
+    animation: none;
+  }
+}

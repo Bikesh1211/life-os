@@ -2,10 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Tabs } from "@mantine/core";
+import Link from "next/link";
+import { Card, Group, Stack, Tabs, Text } from "@mantine/core";
 import {
+  IconArrowRight,
   IconPlane,
   IconBackpack,
+  IconCompass,
   IconStar,
   IconWorld,
   IconBook,
@@ -57,6 +60,48 @@ const tabs = [
   { value: "restaurants", label: "Restaurants", icon: IconToolsKitchen2 },
 ];
 
+/**
+ * The way into Explore Mode.
+ *
+ * The tabs below are the *workbench* — where trips, places and journals are
+ * entered and edited. Explore is the same records read as an archive, and it
+ * takes over the whole window when it opens, so it cannot be a ninth tab: it is
+ * a door, and it says so.
+ */
+function ExploreEntry() {
+  return (
+    <Card
+      component={Link}
+      href="/travel/explore"
+      withBorder
+      radius="md"
+      padding="md"
+      className="group transition-colors hover:border-[var(--mantine-color-orange-5)]"
+    >
+      <Group justify="space-between" wrap="nowrap" gap="md">
+        <Group gap="md" wrap="nowrap">
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--mantine-color-orange-light)]">
+            <IconCompass size={22} className="text-[var(--mantine-color-orange-filled)]" />
+          </div>
+          <div className="min-w-0">
+            <Text fw={600} size="sm">
+              Explore Mode — The Adventure Archive
+            </Text>
+            <Text size="xs" c="dimmed" lineClamp={1}>
+              Your trips and places as an expedition map, a timeline, a gallery and the stories you
+              brought back.
+            </Text>
+          </div>
+        </Group>
+        <IconArrowRight
+          size={18}
+          className="shrink-0 text-[var(--mantine-color-dimmed)] transition-transform group-hover:translate-x-0.5"
+        />
+      </Group>
+    </Card>
+  );
+}
+
 export function TravelContent({ dashboardData, dashboardLoading, defaultTab = "dashboard" }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -81,6 +126,8 @@ export function TravelContent({ dashboardData, dashboardLoading, defaultTab = "d
 
   return (
     <Stack gap="md">
+      <ExploreEntry />
+
       <Tabs value={activeTab} onChange={handleTabChange}>
         <Tabs.List>
           {tabs.map((tab) => (
