@@ -64,11 +64,17 @@ export const createWishlistSchema = z.object({
   whyVisit: z.string().optional().nullable(),
   plannedYear: z.number().int().optional().nullable(),
   tags: z.array(z.string()).optional(),
+  isFavorited: z.boolean().optional(),
   /* Explore Mode — what the bucket list needs to place and grade a plan. */
   latitude,
   longitude,
   difficulty: travelDifficulty.optional().nullable(),
   planningStatus: planningStatus.optional().nullable(),
+  /* Ticking a destination off. This is the whole of "completed destinations
+     move into the visited archive" — Explore reads `isVisited` as the row's
+     status, so there is no second record to create and none to reconcile. */
+  isVisited: z.boolean().optional(),
+  visitedAt: isoDate,
 });
 export const updateWishlistSchema = createWishlistSchema.partial();
 
@@ -85,6 +91,7 @@ export const createVisitedSchema = z.object({
   notes: z.string().optional().nullable(),
   companions: z.array(z.string()).optional(),
   activities: z.array(z.string()).optional(),
+  isFavorited: z.boolean().optional(),
   /* Explore Mode — the position on the map and the plate on the record. */
   category: travelCategory.optional().nullable(),
   latitude,
@@ -205,12 +212,28 @@ export const travelService = {
   },
   async createWishlist(userId: string, data: any) {
     const p = createWishlistSchema.parse(data);
-    const [r] = await db.insert(travelWishlist).values({ ...p, userId }).returning();
+    const [r] = await db.insert(travelWishlist).values({
+      ...p,
+      userId,
+      visitedAt: p.visitedAt ? new Date(p.visitedAt) : null,
+    }).returning();
     return r;
   },
   async updateWishlist(userId: string, id: string, data: any) {
     const p = updateWishlistSchema.parse(data);
-    const [r] = await db.update(travelWishlist).set({ ...p, updatedAt: new Date() }).where(and(eq(travelWishlist.id, id), eq(travelWishlist.userId, userId))).returning();
+    const upd: any = { ...p, updatedAt: new Date() };
+    if (p.visitedAt !== undefined) upd.visitedAt = p.visitedAt ? new Date(p.visitedAt) : null;
+    /* Ticking a destination off without naming a day stamps today. A visited
+       row with no date drops to the foot of the timeline as undated, which is
+       the wrong answer when the caller has just said it happened. */
+    if (p.isVisited === true && p.visitedAt === undefined) {
+      const [current] = await db.select({ visitedAt: travelWishlist.visitedAt })
+        .from(travelWishlist)
+        .where(and(eq(travelWishlist.id, id), eq(travelWishlist.userId, userId)))
+        .limit(1);
+      if (!current?.visitedAt) upd.visitedAt = new Date();
+    }
+    const [r] = await db.update(travelWishlist).set(upd).where(and(eq(travelWishlist.id, id), eq(travelWishlist.userId, userId))).returning();
     return r;
   },
   async deleteWishlist(userId: string, id: string) {
