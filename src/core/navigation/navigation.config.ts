@@ -415,6 +415,15 @@ export const navigation: NavGroup[] = [
         description: "Plan, track & remember your travels",
         icon: IconPlane,
         featureId: "travel",
+        children: [
+          {
+            label: "Explore",
+            route: "/travel/explore",
+            description: "The Adventure Archive — map, expeditions, stories",
+            icon: IconCompass,
+            featureId: "travel-explore",
+          },
+        ],
       },
     ],
   },

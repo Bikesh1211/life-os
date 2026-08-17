@@ -1,0 +1,271 @@
+/*
+ * The Adventure Archive — the effects layer.
+ *
+ * The *palette* is not here: Explore is a full mode, so its colours live in
+ * globals.css under `.xp`, and everything below reads those tokens
+ * (`--xp-brass`, `--xp-expedition`, `--xp-parchment`, `--xp-terrain`,
+ * `--xp-trail`). What lives here is behaviour that would be noise in a global
+ * stylesheet — the map sheet, the drawing trail, the dossier corners, the
+ * stamp, the shutter.
+ *
+ * Every animation is transform, opacity or `stroke-dashoffset` only, so the
+ * whole archive composites and never triggers layout. All of them stop under
+ * `prefers-reduced-motion` via the single block at the foot of this file.
+ *
+ * Note the deliberate absence of `position` on `.panel` and `.sheet`: module
+ * rules are unlayered, Tailwind utilities live in `@layer utilities`, and
+ * unlayered CSS beats any layer regardless of source order — a
+ * `position: relative` here would silently defeat `fixed` on anything that
+ * composes the class.
+ */
+
+/* ── Surfaces ────────────────────────────────────────────────────────────── */
+
+.panel {
+  background: color-mix(in oklab, var(--xp-card) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--xp-border);
+}
+
+/*
+ * The map sheet. A faint warm wash plus the paper grain the dossiers use, so
+ * the map reads as a chart on a table rather than as a canvas element.
+ */
+.sheet {
+  background:
+    radial-gradient(
+      120% 90% at 20% 0%,
+      color-mix(in oklab, var(--xp-brass) 9%, transparent) 0%,
+      transparent 62%
+    ),
+    color-mix(in oklab, var(--xp-card) 80%, transparent);
+}
+
+/* Paper grain — two very low-contrast gradients at odd angles. Used on chart
+   and dossier furniture, never behind long-form body copy. */
+.paper {
+  background-image:
+    repeating-linear-gradient(
+      41deg,
+      color-mix(in oklab, var(--xp-fg) 2.5%, transparent) 0 1px,
+      transparent 1px 5px
+    ),
+    repeating-linear-gradient(
+      -47deg,
+      color-mix(in oklab, var(--xp-fg) 2%, transparent) 0 1px,
+      transparent 1px 8px
+    );
+}
+
+.card {
+  background: color-mix(in oklab, var(--xp-card) 82%, transparent);
+  border: 1px solid var(--xp-border);
+}
+
+/* ── Dossier ─────────────────────────────────────────────────────────────── */
+
+/*
+ * Corner ticks as eight hairline gradients on one pseudo-element rather than
+ * four extra elements per card. The archive frames dozens of things; this keeps
+ * that free. A field folder is stamped, not targeted — so they are short.
+ */
+.corners {
+  position: relative;
+}
+
+.corners::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  pointer-events: none;
+  --edge: color-mix(in oklab, var(--xp-brass) 42%, transparent);
+  --len: 10px;
+  background:
+    linear-gradient(var(--edge), var(--edge)) top left / 1px var(--len) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) top left / var(--len) 1px no-repeat,
+    linear-gradient(var(--edge), var(--edge)) top right / 1px var(--len) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) top right / var(--len) 1px no-repeat,
+    linear-gradient(var(--edge), var(--edge)) bottom left / 1px var(--len) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) bottom left / var(--len) 1px no-repeat,
+    linear-gradient(var(--edge), var(--edge)) bottom right / 1px var(--len) no-repeat,
+    linear-gradient(var(--edge), var(--edge)) bottom right / var(--len) 1px no-repeat;
+}
+
+/*
+ * The lift on a dossier. 3px and a warm edge — not a 3D tilt: the cards have to
+ * stay fast, and a grid of twenty transformed cards with perspective is what
+ * makes a grid slow.
+ */
+.lift {
+  transition:
+    transform 0.24s cubic-bezier(0.16, 0.9, 0.3, 1),
+    box-shadow 0.24s ease,
+    border-color 0.24s ease;
+}
+
+.lift:hover,
+.lift:focus-within {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklab, var(--xp-brass) 48%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--xp-brass) 16%, transparent),
+    0 10px 28px color-mix(in oklab, var(--xp-brass) 12%, transparent);
+}
+
+/* ── The drawing trail ───────────────────────────────────────────────────── */
+
+@keyframes xp-draw {
+  from {
+    stroke-dashoffset: var(--trail-length, 400);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.trail {
+  stroke-dasharray: var(--trail-length, 400);
+  animation: xp-draw 2.2s cubic-bezier(0.25, 0.4, 0.25, 1) both;
+}
+
+/*
+ * The card's own route, which draws on hover rather than on load. A stroke on a
+ * pseudo-element would need a shape; this is an SVG inside the card and the
+ * class only arms the animation.
+ */
+.cardTrail {
+  stroke-dasharray: 260;
+  stroke-dashoffset: 260;
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.25, 0.4, 0.25, 1);
+}
+
+.lift:hover .cardTrail,
+.lift:focus-within .cardTrail {
+  stroke-dashoffset: 0;
+}
+
+/* ── Stamp ───────────────────────────────────────────────────────────────── */
+
+/*
+ * The archive stamp — a rotated, hairline-bordered label in expedition red.
+ * Deliberately imperfect: 4 degrees off true and slightly transparent, the way
+ * an inked stamp lands.
+ */
+.stamp {
+  transform: rotate(-4deg);
+  border: 1.5px solid color-mix(in oklab, var(--xp-expedition) 60%, transparent);
+  color: color-mix(in oklab, var(--xp-expedition) 88%, var(--xp-fg));
+  opacity: 0.9;
+}
+
+@keyframes xp-stamp {
+  0% {
+    transform: rotate(-4deg) scale(1.5);
+    opacity: 0;
+  }
+  60% {
+    transform: rotate(-4deg) scale(0.94);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-4deg) scale(1);
+    opacity: 0.9;
+  }
+}
+
+.stampIn {
+  animation: xp-stamp 0.5s cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+
+/* ── Gallery ─────────────────────────────────────────────────────────────── */
+
+/* The shutter: a frame closing and opening over a photograph as it is chosen. */
+@keyframes xp-shutter {
+  0% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(0);
+  }
+  100% {
+    transform: scaleY(1);
+  }
+}
+
+.shutter {
+  animation: xp-shutter 0.42s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transform-origin: center;
+}
+
+/* A photograph lifts very slightly and warms under the pointer. */
+.frame {
+  transition:
+    transform 0.3s cubic-bezier(0.16, 0.9, 0.3, 1),
+    filter 0.3s ease;
+}
+
+.frame:hover,
+.frame:focus-visible {
+  transform: scale(1.015);
+  filter: saturate(1.08) brightness(1.04);
+}
+
+/* ── The map ─────────────────────────────────────────────────────────────── */
+
+/*
+ * Leaflet paints its own tiles, its own controls and its own attribution, none
+ * of which know about the archive's palette. The filter is applied to the tile
+ * pane only — the markers, routes and labels the archive draws itself sit in
+ * the overlay pane and are left alone.
+ */
+.tiles :global(.leaflet-tile-pane) {
+  filter: sepia(0.32) saturate(0.72) brightness(0.98) contrast(1.02);
+}
+
+:global([data-mantine-color-scheme="dark"]) .tiles :global(.leaflet-tile-pane) {
+  filter: sepia(0.5) saturate(0.55) brightness(0.58) contrast(1.12) invert(0.92) hue-rotate(180deg);
+}
+
+.tiles :global(.leaflet-container) {
+  background: transparent;
+  font: inherit;
+}
+
+.tiles :global(.leaflet-control-attribution) {
+  background: color-mix(in oklab, var(--xp-bg) 80%, transparent);
+  color: var(--xp-muted);
+  font-size: 10px;
+}
+
+.tiles :global(.leaflet-control-attribution a) {
+  color: var(--xp-muted);
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .trail,
+  .stampIn,
+  .shutter {
+    animation: none !important;
+  }
+
+  /* The route is still *there* — only the drawing of it is removed. */
+  .trail,
+  .cardTrail {
+    stroke-dashoffset: 0;
+  }
+
+  .lift,
+  .cardTrail,
+  .frame {
+    transition: none !important;
+  }
+
+  .lift:hover,
+  .lift:focus-within,
+  .frame:hover,
+  .frame:focus-visible {
+    transform: none;
+  }
+}

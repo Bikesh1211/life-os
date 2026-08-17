@@ -9,6 +9,24 @@ import { createTimelineEvent } from "@/modules/timeline";
 
 const isoDate = z.string().datetime().optional().nullable();
 
+/**
+ * The Explore Mode vocabulary, shared by a trip, a visited place and a wishlist
+ * row. Declared once here for the same reason it is one enum on the database:
+ * a category that means something different on a trip than on a place cannot be
+ * filtered across both.
+ */
+const travelCategory = z.enum([
+  "beach", "mountains", "historical", "food", "adventure", "nature", "city", "spiritual",
+]);
+const travelDifficulty = z.enum(["easy", "moderate", "hard", "extreme"]);
+const planningStatus = z.enum(["planned", "researching", "ready"]);
+
+/** A real coordinate, or nothing. Out-of-range values are rejected rather than
+    clamped: a place at latitude 400 is a typo, and putting it on the equator
+    would be the archive inventing a position it was never given. */
+const latitude = z.number().min(-90).max(90).optional().nullable();
+const longitude = z.number().min(-180).max(180).optional().nullable();
+
 export const createTripSchema = z.object({
   title: z.string().min(1).max(300),
   destination: z.string().min(1).max(300),
@@ -21,6 +39,14 @@ export const createTripSchema = z.object({
   currency: z.string().max(10).default("USD"),
   travelers: z.number().int().default(1),
   notes: z.string().optional().nullable(),
+  /* Explore Mode — the expedition reading of a trip. */
+  category: travelCategory.optional().nullable(),
+  distanceKm: z.number().int().nonnegative().optional().nullable(),
+  elevationM: z.number().int().optional().nullable(),
+  transportation: z.string().max(200).optional().nullable(),
+  difficulty: travelDifficulty.optional().nullable(),
+  gallery: z.array(z.string().max(2000)).optional(),
+  featured: z.boolean().optional(),
 });
 export const updateTripSchema = createTripSchema.partial();
 
@@ -38,6 +64,11 @@ export const createWishlistSchema = z.object({
   whyVisit: z.string().optional().nullable(),
   plannedYear: z.number().int().optional().nullable(),
   tags: z.array(z.string()).optional(),
+  /* Explore Mode — what the bucket list needs to place and grade a plan. */
+  latitude,
+  longitude,
+  difficulty: travelDifficulty.optional().nullable(),
+  planningStatus: planningStatus.optional().nullable(),
 });
 export const updateWishlistSchema = createWishlistSchema.partial();
 
@@ -54,6 +85,14 @@ export const createVisitedSchema = z.object({
   notes: z.string().optional().nullable(),
   companions: z.array(z.string()).optional(),
   activities: z.array(z.string()).optional(),
+  /* Explore Mode — the position on the map and the plate on the record. */
+  category: travelCategory.optional().nullable(),
+  latitude,
+  longitude,
+  elevation: z.number().int().optional().nullable(),
+  coverImage: z.string().max(2000).optional().nullable(),
+  gallery: z.array(z.string().max(2000)).optional(),
+  mapsUrl: z.string().max(2000).optional().nullable(),
 });
 
 export const createJournalSchema = z.object({
