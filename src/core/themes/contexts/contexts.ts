@@ -643,7 +643,7 @@ export function contextForPath(pathname: string): CinematicContext | undefined {
  * room's route group, so it takes the enchanted-library context like any other
  * page.
  */
-const EXEMPT = ["/library", "/travel/explore", "/journal"];
+const EXEMPT = ["/library", "/travel/explore"];
 const NOT_EXEMPT = ["/library/tracker"];
 
 export function isExemptPath(pathname: string): boolean {
