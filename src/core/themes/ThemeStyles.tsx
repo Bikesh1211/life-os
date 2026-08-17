@@ -1,10 +1,14 @@
 import { createHash } from "node:crypto";
 import { DEFAULT_DEPTH, DEPTH_STORAGE_KEY, MOVIE_THEMES, THEME_STORAGE_KEY, themeStylesheet } from "./index";
 import {
+  AMBIENT_EFFECTS_KEY,
   BACKGROUND_INTENSITY_KEY,
   CONTEXT_MODE_KEY,
+  DEFAULT_AMBIENT,
   DEFAULT_CONTEXT_MODE,
   DEFAULT_INTENSITY,
+  DEFAULT_MOTION,
+  MOTION_KEY,
   contextStylesheet,
 } from "./contexts";
 
@@ -42,7 +46,6 @@ export function ThemeStyles() {
        bundled. This one is generated from the typed theme registry at build
        time, so there is no file for the bundler to take — the route handler is
        the only way in. */
-    // eslint-disable-next-line @next/next/no-css-tags
     <link rel="stylesheet" href={themeStylesheetHref()} precedence="high" />
   );
 }
@@ -80,6 +83,12 @@ try {
 
   var b = window.localStorage.getItem(${JSON.stringify(BACKGROUND_INTENSITY_KEY)});
   r.setAttribute("data-bg-intensity", ["minimal","balanced","cinematic"].indexOf(b) > -1 ? b : ${JSON.stringify(DEFAULT_INTENSITY)});
+
+  var a = window.localStorage.getItem(${JSON.stringify(AMBIENT_EFFECTS_KEY)});
+  r.setAttribute("data-ambient", ["subtle","off"].indexOf(a) > -1 ? a : ${JSON.stringify(DEFAULT_AMBIENT)});
+
+  var mo = window.localStorage.getItem(${JSON.stringify(MOTION_KEY)});
+  r.setAttribute("data-motion", ["system","full","reduced"].indexOf(mo) > -1 ? mo : ${JSON.stringify(DEFAULT_MOTION)});
   if (t && s[t]) {
     r.setAttribute("data-movie-theme", t);
     r.setAttribute("data-mantine-color-scheme", s[t]);

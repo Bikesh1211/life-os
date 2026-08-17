@@ -1,20 +1,57 @@
 import { CONTEXTS, contextById, contextForPath, isExemptPath } from "./contexts";
 import type { CinematicContext } from "./contexts";
-import { motifBackground } from "./motifs";
 import { derivePalette } from "./palette";
 import { bridgeVariables } from "../index";
 import { paperAtmosphere, deepAtmosphere, metalAtmosphere } from "../atmospheres";
-import {
-  DARK_REFERENCE,
-  LIGHT_REFERENCE,
-  ensureContrast,
-  readableOn,
-} from "./contrast";
+import { DARK_REFERENCE, LIGHT_REFERENCE, ensureContrast, readableOn } from "./contrast";
 
 export { CONTEXTS, contextById, contextForPath, isExemptPath };
 export type { CinematicContext };
 export { MOTIFS } from "./motifs";
 export type { MotifId } from "./motifs";
+
+/**
+ * Which environment each room is drawn as.
+ *
+ * Contexts outnumber scenes on purpose: a scene is a *place*, and several rooms
+ * legitimately share one. Goals and the Dashboard are both command centres;
+ * Notes, Writing and the Archive are all desks with paper on them. What tells
+ * them apart is the palette, which is per-context — the same room at a
+ * different hour.
+ */
+export const SCENE_FOR: Record<string, string> = {
+  dashboard: "dossier",
+  tasks: "dossier",
+  projects: "workshop",
+  goals: "dossier",
+  strategy: "workshop",
+  journal: "nightfall",
+  "quick-note": "continental",
+  notes: "desk",
+  writing: "desk",
+  knowledge: "construct",
+  learning: "observatory",
+  archive: "reading",
+  reading: "reading",
+  movies: "cinema",
+  music: "cosmos",
+  discovery: "construct",
+  travel: "expedition",
+  places: "expedition",
+  photos: "offworld",
+  network: "construct",
+  timeline: "spacetime",
+  memories: "keepsake",
+  calendar: "spacetime",
+  time: "spacetime",
+  health: "observatory",
+  training: "gym",
+  mindset: "spacetime",
+  finance: "exchange",
+  inventory: "atelier",
+  wardrobe: "atelier",
+  settings: "glass",
+};
 export { contrast, ensureContrast, DARK_REFERENCE, LIGHT_REFERENCE } from "./contrast";
 
 /**
@@ -33,11 +70,35 @@ export type ContextMode = "full" | "tint" | "off";
 /** How strongly the texture is painted. */
 export type BackgroundIntensity = "minimal" | "balanced" | "cinematic";
 
+/**
+ * Ambient effects: the drifting dust, and nothing else.
+ *
+ * Separate from intensity on purpose. Intensity is about how *present* the
+ * environment is; this is about whether any of it moves. Someone can want a
+ * fully cinematic room that holds perfectly still — motion sensitivity is not
+ * the same preference as taste in decor.
+ */
+export type AmbientEffects = "subtle" | "off";
+
+/**
+ * Motion preference.
+ *
+ * `system` defers to `prefers-reduced-motion`, which is the right default and
+ * covers most people. The explicit settings exist because the OS toggle is a
+ * blunt, global instrument — someone may want animation everywhere else and
+ * stillness here, or the reverse, and neither is expressible at the OS level.
+ */
+export type MotionPreference = "system" | "full" | "reduced";
+
 export const CONTEXT_MODE_KEY = "lifeos-context-mode";
 export const BACKGROUND_INTENSITY_KEY = "lifeos-bg-intensity";
+export const AMBIENT_EFFECTS_KEY = "lifeos-ambient-effects";
+export const MOTION_KEY = "lifeos-motion";
 
 export const DEFAULT_CONTEXT_MODE: ContextMode = "full";
 export const DEFAULT_INTENSITY: BackgroundIntensity = "balanced";
+export const DEFAULT_AMBIENT: AmbientEffects = "subtle";
+export const DEFAULT_MOTION: MotionPreference = "system";
 
 export function isContextMode(value: unknown): value is ContextMode {
   return value === "full" || value === "tint" || value === "off";
@@ -47,32 +108,13 @@ export function isIntensity(value: unknown): value is BackgroundIntensity {
   return value === "minimal" || value === "balanced" || value === "cinematic";
 }
 
-/**
- * The opacity of the texture layer, before a context's own weight.
- *
- * These numbers look high for a feature whose whole point is restraint, and the
- * reason is that they are not the final alpha — they multiply it. A motif draws
- * its lines at around 22% of the accent (see `motifs.ts`), so the figure that
- * actually reaches the screen is the product of the two:
- *
- *   minimal    0.10 x 0.22 = 2.2%   barely there by design
- *   balanced   0.28 x 0.22 = 6.2%   visible as texture, never as a picture
- *   cinematic  0.50 x 0.22 = 11%    present, still behind everything
- *
- * The first version of this multiplied 0.055 by 0.22 and produced 1.2%, which
- * is below the point where a colour is distinguishable from its background at
- * all — the layer was rendering perfectly and could not be seen. Compounding
- * two separately-reasonable "keep it subtle" numbers is an easy way to ship
- * nothing.
- */
-const INTENSITY_OPACITY: Record<BackgroundIntensity, number> = {
-  minimal: 0.1,
-  balanced: 0.28,
-  cinematic: 0.5,
-};
+export function isAmbient(value: unknown): value is AmbientEffects {
+  return value === "subtle" || value === "off";
+}
 
-/** What a stepped-down layer uses: phones, and `auto` below desktop widths. */
-const REDUCED_OPACITY = 0.1;
+export function isMotion(value: unknown): value is MotionPreference {
+  return value === "system" || value === "full" || value === "reduced";
+}
 
 /**
  * The context layer, as a stylesheet.
@@ -113,7 +155,17 @@ const REDUCED_OPACITY = 0.1;
  * a field on each context because it follows from the motif — a room drawn
  * with contour lines is a paper room, and nobody should have to say so twice.
  */
-const ATMOSPHERE_FOR: Partial<Record<string, (o?: { light?: string; fill?: string; edge?: string; grain?: number }) => ReturnType<typeof paperAtmosphere>>> = {
+const ATMOSPHERE_FOR: Partial<
+  Record<
+    string,
+    (o?: {
+      light?: string;
+      fill?: string;
+      edge?: string;
+      grain?: number;
+    }) => ReturnType<typeof paperAtmosphere>
+  >
+> = {
   paper: paperAtmosphere,
   topographic: paperAtmosphere,
   shelf: paperAtmosphere,
@@ -137,14 +189,72 @@ const ATMOSPHERE_FOR: Partial<Record<string, (o?: { light?: string; fill?: strin
   none: metalAtmosphere,
 };
 
-const OPACITY_SCOPE = ':root:root:not([data-context-mode="off"]):not([data-context="none"])';
+/**
+ * The chrome band. Hidden unless the room is fully applied — announcing a room
+ * the palette has not entered would be the interface overselling itself.
+ */
+const BAND_CSS = `.ctx-band {
+  display: none;
+}
+
+:root[data-context-mode="full"]:not([data-context="none"]) .ctx-band {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0 0 0.6rem;
+  border-bottom: 1px solid var(--lo-border, var(--border-subtle));
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ctx-band-mark {
+  width: 3px;
+  height: 0.95rem;
+  flex: none;
+  border-radius: 2px;
+  background: var(--lo-accent, var(--mantine-primary-color-filled));
+  transform: translateY(0.1rem);
+}
+
+.ctx-band-title {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lo-accent, var(--mantine-primary-color-filled));
+}
+
+.ctx-band-tagline {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--lo-text-muted, var(--mantine-color-dimmed));
+}
+
+.ctx-band-source {
+  flex: none;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lo-text-muted, var(--mantine-color-dimmed));
+  opacity: 0.7;
+}
+
+@media (max-width: 640px) {
+  .ctx-band-source {
+    display: none;
+  }
+}`;
 
 export function contextStylesheet(): string {
   const blocks: string[] = [];
 
   for (const context of CONTEXTS) {
-    const { image, size } = motifBackground(context.motif);
-
     /* The accent, and the small set of bridge variables that an accent owns.
        Surfaces, text and borders are deliberately absent — those belong to the
        global theme, and letting a context touch them is what would turn 46
@@ -207,18 +317,20 @@ export function contextStylesheet(): string {
  * atmosphere with it, at full strength rather than as a wash.
  */
 :root[data-context-mode="full"][data-context="${context.id}"] {
-${Object.entries(bridgeVariables({
-      id: context.id as never,
-      name: context.title,
-      subtitle: context.inspiration,
-      description: context.tagline,
-      mood: context.tagline,
-      scheme: context.scheme,
-      tokens,
-      atmosphere,
-    }))
-      .map(([name, value]) => `  ${name}: ${value};`)
-      .join("\n")}
+${Object.entries(
+  bridgeVariables({
+    id: context.id as never,
+    name: context.title,
+    subtitle: context.inspiration,
+    description: context.tagline,
+    mood: context.tagline,
+    scheme: context.scheme,
+    tokens,
+    atmosphere,
+  }),
+)
+  .map(([name, value]) => `  ${name}: ${value};`)
+  .join("\n")}
 }
 
 :root[data-context-mode="full"][data-context="${context.id}"] body {
@@ -240,117 +352,10 @@ ${Object.entries(bridgeVariables({
   background-image: ${atmosphere.surface};
   box-shadow: ${atmosphere.gilt};
 }
-
-:root[data-context="${context.id}"]:not([data-context-mode="off"]) .ctx-bg {
-  background-image: ${image};${size ? `\n  background-size: ${size};` : ""}
-}`);
+`);
   }
 
-  /* The layer itself. One fixed element behind everything, painting nothing but
-     a gradient — no scroll listener, no repaint on scroll, no compositing cost
-     beyond a single static layer. */
-  blocks.push(`.ctx-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0;
-  /* Only the opacity transitions, and only between intensities. The gradients
-     themselves never animate — there is nothing here that moves. */
-  transition: opacity 200ms ease;
-}
-
-${Object.entries(INTENSITY_OPACITY)
-  .map(
-    ([level, value]) =>
-      `${OPACITY_SCOPE}[data-bg-intensity="${level}"] .ctx-bg {\n  opacity: calc(${value} * var(--ctx-weight, 1));\n}`,
-  )
-  .join("\n\n")}
-
-/*
- * The chrome band. Hidden unless the room is fully applied — see
- * CinematicHeader.tsx for why announcing a room the palette has not entered
- * would be the interface overselling itself.
- */
-.ctx-band {
-  display: none;
-}
-
-:root[data-context-mode="full"]:not([data-context="none"]) .ctx-band {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  margin: 0 0 1rem;
-  padding: 0 0 0.6rem;
-  border-bottom: 1px solid var(--lo-border, var(--border-subtle));
-  /* Clipped rather than wrapped: on a phone the tagline drops off the end,
-     which is the right thing to lose first. */
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.ctx-band-mark {
-  width: 3px;
-  height: 0.95rem;
-  flex: none;
-  border-radius: 2px;
-  background: var(--lo-accent, var(--mantine-primary-color-filled));
-  transform: translateY(0.1rem);
-}
-
-.ctx-band-title {
-  flex: none;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--lo-accent, var(--mantine-primary-color-filled));
-}
-
-.ctx-band-tagline {
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 0.78rem;
-  font-style: italic;
-  color: var(--lo-text-muted, var(--mantine-color-dimmed));
-}
-
-.ctx-band-source {
-  flex: none;
-  font-size: 0.66rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--lo-text-muted, var(--mantine-color-dimmed));
-  opacity: 0.7;
-}
-
-@media (max-width: 640px) {
-  .ctx-band-source {
-    display: none;
-  }
-}
-
-/*
- * Phones get less of everything. A texture that reads as atmosphere on a
- * 27-inch display reads as a dirty screen at arm's length, and the pixels it
- * costs are pixels a phone would rather spend on the actual page.
- */
-@media (max-width: 640px) {
-  ${OPACITY_SCOPE} .ctx-bg {
-    opacity: calc(${REDUCED_OPACITY} * var(--ctx-weight, 1));
-  }
-  :root[data-bg-intensity="minimal"] .ctx-bg {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ctx-bg {
-    transition: none;
-  }
-}`);
+  blocks.push(BAND_CSS);
 
   return blocks.join("\n\n");
 }

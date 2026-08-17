@@ -3,14 +3,24 @@
 import { useState } from "react";
 import { Anchor, Collapse, Paper, SegmentedControl, Text } from "@mantine/core";
 import { IconChevronDown, IconChevronRight } from "@tabler/icons-react";
-import { CONTEXTS, type BackgroundIntensity, type ContextMode } from "@/core/themes/contexts";
+import {
+  CONTEXTS,
+  type AmbientEffects,
+  type BackgroundIntensity,
+  type ContextMode,
+  type MotionPreference,
+} from "@/core/themes/contexts";
 import { useContextTheme } from "@/core/themes/contexts/use-context-theme";
 
 /**
  * Settings → Cinematic Experience.
  *
- * Two controls and a list. The controls are what a reader will actually touch;
- * the list is there because "every area has its own atmosphere" is a claim, and
+ * Four controls and a list. The controls run from the broadest decision to the
+ * narrowest — whether contexts apply at all, how present they are, whether
+ * anything drifts, and whether anything moves — so the first one a reader meets
+ * is the one that matters most.
+ *
+ * The list is there because "every area has its own atmosphere" is a claim, and
  * a claim you cannot check is marketing. Folded away by default so the settings
  * page does not grow by thirty rows.
  */
@@ -40,7 +50,8 @@ const INTENSITIES: { value: BackgroundIntensity; label: string }[] = [
 ];
 
 export function CinematicSection() {
-  const { mode, intensity, setMode, setIntensity } = useContextTheme();
+  const { mode, intensity, ambient, motion, setMode, setIntensity, setAmbient, setMotion } =
+    useContextTheme();
   const [listOpen, setListOpen] = useState(false);
 
   const active = MODES.find((entry) => entry.value === mode) ?? MODES[0];
@@ -92,6 +103,52 @@ export function CinematicSection() {
         {off
           ? "Turn contextual environments on to use background textures."
           : "Textures are drawn entirely in CSS — no images, nothing to download — and sit behind the interface. Phones step down automatically."}
+      </Text>
+
+      {/* ── Ambient effects ───────────────────────────────────────────── */}
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-4">
+        <Text size="sm" fw={500} c={off ? "dimmed" : undefined}>
+          Ambient effects
+        </Text>
+        <SegmentedControl
+          size="xs"
+          value={ambient}
+          onChange={(value) => setAmbient(value as AmbientEffects)}
+          aria-label="Ambient effects"
+          disabled={off}
+          data={[
+            { value: "subtle", label: "Subtle" },
+            { value: "off", label: "Off" },
+          ]}
+        />
+      </div>
+      <Text size="xs" c="dimmed" mt={6} lh={1.45}>
+        The drifting dust in the air of a scene. Everything else in an environment is still.
+      </Text>
+
+      {/* ── Motion ────────────────────────────────────────────────────── */}
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-subtle)] pt-4">
+        <Text size="sm" fw={500}>
+          Motion
+        </Text>
+        <SegmentedControl
+          size="xs"
+          value={motion}
+          onChange={(value) => setMotion(value as MotionPreference)}
+          aria-label="Motion"
+          data={[
+            { value: "system", label: "System" },
+            { value: "full", label: "Full" },
+            { value: "reduced", label: "Reduced" },
+          ]}
+        />
+      </div>
+      <Text size="xs" c="dimmed" mt={6} lh={1.45}>
+        {motion === "system"
+          ? "Following your system's reduce-motion setting."
+          : motion === "reduced"
+            ? "Ambient motion is stopped here regardless of your system setting."
+            : "Ambient motion plays here even if your system asks to reduce motion."}
       </Text>
 
       {/* ── The inventory ─────────────────────────────────────────────── */}

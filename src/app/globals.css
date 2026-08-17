@@ -1063,3 +1063,54 @@ html[data-reading="on"] .mantine-AppShell-main {
     animation: none;
   }
 }
+
+/*
+ * The one moving thing in the cinematic system: dust in a beam of light.
+ *
+ * Opacity and a few pixels of vertical drift, nothing else — no transform on a
+ * loop that forces layout, no canvas, no particle engine. It stops entirely
+ * under `prefers-reduced-motion`, where the motes stay where they were drawn.
+ */
+@keyframes scene-drift {
+  0%,
+  100% {
+    opacity: 0.18;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.5;
+    transform: translateY(-7px);
+  }
+}
+
+.scene-drift {
+  animation: scene-drift 12s ease-in-out infinite;
+}
+
+/*
+ * Three ways the drift can stop, and they are not the same preference.
+ *
+ * The OS setting is the default and covers most people. `data-motion` lets
+ * someone override it in either direction, because `prefers-reduced-motion` is
+ * global and a person may want stillness only here. And `data-ambient="off"`
+ * removes the motes entirely rather than freezing them — that is a taste
+ * setting, not an accessibility one, which is why it hides instead of pausing.
+ *
+ * Every stop leaves a fixed opacity behind so a still mote is still drawn: the
+ * scene loses its air, not its dust.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-motion="full"]) .scene-drift {
+    animation: none;
+    opacity: 0.3;
+  }
+}
+
+:root[data-motion="reduced"] .scene-drift {
+  animation: none;
+  opacity: 0.3;
+}
+
+:root[data-ambient="off"] .scene-drift {
+  display: none;
+}

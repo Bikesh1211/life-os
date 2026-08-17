@@ -7,7 +7,7 @@ import { NavigationProgress } from "@/components/layout/NavigationProgress";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useAppShell } from "./AppShellProvider";
 import { cn } from "@/core/utils";
-import { ContextBackground } from "@/core/themes/contexts/ContextBackground";
+import { CinematicBackground } from "@/core/themes/scenes/CinematicBackground";
 import { CinematicHeader } from "@/core/themes/contexts/CinematicHeader";
 
 export function AppShellInner({ children }: { children: React.ReactNode }) {
@@ -16,9 +16,10 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {/* Behind everything, and outside the AppShell so no layout depends on
-          it. One fixed element for the whole application. */}
-      <ContextBackground />
+      {/* The environment: one fixed layer behind everything, outside the
+          AppShell so no layout depends on it. Also the single place the
+          route-to-context attribute is written. */}
+      <CinematicBackground />
 
       <Suspense fallback={null}>
         <NavigationProgress />
