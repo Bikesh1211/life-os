@@ -1,9 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type * as Leaflet from "leaflet";
-import { IconMinus, IconPlus, IconRefresh } from "@tabler/icons-react";
+import {
+  IconArrowsMaximize,
+  IconArrowsMinimize,
+  IconMinus,
+  IconPlus,
+  IconRefresh,
+} from "@tabler/icons-react";
 import { cn } from "@/core/utils";
 import { canonicalCountry, routeLine } from "@/modules/travel/explore";
 import type { Expedition, ExploredPlace } from "@/modules/travel/explore";
@@ -69,6 +75,8 @@ export function ExpeditionMap({
   height,
 }: ExpeditionMapProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
   const layerRef = useRef<Leaflet.LayerGroup | null>(null);
@@ -230,13 +238,117 @@ export function ExpeditionMap({
     return () => observer.disconnect();
   }, [ready]);
 
+  /* ── Full screen ────────────────────────────────────────────────────
+     Two mechanisms, and both on purpose.
+
+     The CSS overlay is what actually makes the map fill the window, and it is
+     the one that always works: a fixed root, the sheet taking the space, the
+     dossier still beside it. The Fullscreen API is layered on top of that
+     because "full screen" reasonably means the browser's own chrome gets out
+     of the way too — but it is a request the browser may refuse, and refusing
+     it must not leave the control doing nothing. So the state drives the
+     layout and the API is best-effort.
+
+     Leaving is symmetric: the button, Escape, or the browser dropping out of
+     fullscreen on its own all land in the same place. */
+
+  const toggleExpanded = useCallback(() => {
+    setExpanded((current) => {
+      const next = !current;
+      const element = rootRef.current;
+
+      if (next) {
+        void element?.requestFullscreen?.().catch(() => {
+          /* Refused — the CSS overlay still fills the viewport. */
+        });
+      } else if (document.fullscreenElement) {
+        void document.exitFullscreen?.().catch(() => {});
+      }
+
+      return next;
+    });
+  }, []);
+
+  /* The browser can leave fullscreen without asking — Escape, or the user
+     switching tabs on some platforms. When it does, the overlay has to follow,
+     or the map stays pinned over the page with no way out of it. */
+  useEffect(() => {
+    function onChange() {
+      if (!document.fullscreenElement) setExpanded(false);
+    }
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  /* Escape leaves even when the API was refused and the browser therefore has
+     no fullscreen of its own to exit. */
+  useEffect(() => {
+    if (!expanded) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setExpanded(false);
+        if (document.fullscreenElement) void document.exitFullscreen?.().catch(() => {});
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [expanded]);
+
+  /* The page underneath must not scroll while the map is over it. */
+  useEffect(() => {
+    if (!expanded) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [expanded]);
+
+  /* Growing to the window is a resize Leaflet has to be told about, and the
+     fitted bounds are worth recomputing — a view framed for a 460px card is
+     needlessly tight in a 1000px one. `requestAnimationFrame` waits for the
+     new layout to settle, which `invalidateSize` needs to measure against. */
+  useEffect(() => {
+    if (!ready) return;
+    const frame = requestAnimationFrame(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      map.invalidateSize();
+      if (fitRef.current) map.fitBounds(fitRef.current, { animate: false });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [expanded, ready]);
+
+  /* Inline, the wheel belongs to the page and only ⌘-scroll zooms — a map that
+     swallows the wheel traps a reader scrolling past it. Full screen there is
+     no page left to scroll, so the wheel goes back to meaning zoom, which is
+     what it means on every other map. */
+  useEffect(() => {
+    if (!ready) return;
+    const map = mapRef.current;
+    if (!map) return;
+    if (expanded) map.scrollWheelZoom.enable();
+    else map.scrollWheelZoom.disable();
+  }, [expanded, ready]);
+
   const mapHeight = height ?? (compact ? 280 : 460);
+
+  /* Full screen shows the dossier whichever map was expanded — including the
+     small one on a detail page, which has no panel inline. The point of
+     expanding is to read the archive off the map, and that needs the record
+     beside it. */
+  const showPanel = expanded || !compact;
 
   return (
     <div
+      ref={rootRef}
       className={cn(
-        "grid gap-4",
-        !compact && "lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6",
+        expanded
+          ? /* Column on a phone so the map keeps the height it needs and the
+               dossier sits under it; two tracks from `lg` up, the same shape
+               the inline map has. */
+            "fixed inset-0 z-[1080] flex flex-col gap-3 bg-[var(--xp-bg)] p-3 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-4 lg:p-4"
+          : cn("grid gap-4", !compact && "lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6"),
         className,
       )}
     >
@@ -246,12 +358,16 @@ export function ExpeditionMap({
           styles.sheet,
           styles.tiles,
           "relative overflow-hidden rounded-md border border-[var(--xp-border)]",
+          /* `min-h-0` is what lets the sheet actually shrink inside the flex
+             column — without it a flex item refuses to go below its content
+             and the dossier is pushed off the bottom of the window. */
+          expanded && "min-h-0 flex-1",
         )}
       >
         <div
           ref={containerRef}
-          style={{ height: mapHeight }}
-          className="w-full"
+          style={expanded ? undefined : { height: mapHeight }}
+          className={cn("w-full", expanded && "h-full")}
           role="application"
           aria-label={`Expedition map. ${plotted.length} located ${plotted.length === 1 ? "place" : "places"}.`}
         />
@@ -263,10 +379,26 @@ export function ExpeditionMap({
           </p>
         )}
 
-        {/* Chrome: zoom, reset, and the reading. */}
-        {!compact && (
+        {/* The expand control is the one piece of chrome a compact map still
+            gets: a small map that cannot be opened is a picture of a map. */}
+        {compact && !expanded && (
+          <div className="absolute top-3 right-3 z-[500]">
+            <MapButton label="Full screen" onClick={toggleExpanded}>
+              <IconArrowsMaximize size={14} />
+            </MapButton>
+          </div>
+        )}
+
+        {/* Chrome: zoom, reset, full screen, and the reading. */}
+        {(!compact || expanded) && (
           <>
             <div className="absolute top-3 right-3 z-[500] flex flex-col gap-1">
+              <MapButton
+                label={expanded ? "Exit full screen" : "Full screen"}
+                onClick={toggleExpanded}
+              >
+                {expanded ? <IconArrowsMinimize size={14} /> : <IconArrowsMaximize size={14} />}
+              </MapButton>
               <MapButton label="Zoom in" onClick={() => mapRef.current?.zoomIn()}>
                 <IconPlus size={14} />
               </MapButton>
@@ -286,7 +418,7 @@ export function ExpeditionMap({
 
             <figcaption className="pointer-events-none absolute bottom-3 left-3 z-[500] flex flex-wrap items-center gap-3">
               <span className="xp-label rounded-sm bg-[var(--xp-bg)]/85 px-2 py-1 text-[var(--xp-muted)] backdrop-blur-sm">
-                Expedition map
+                {expanded ? "Expedition map · Esc to close" : "Expedition map"}
               </span>
               {active?.latitude !== undefined && active?.longitude !== undefined && (
                 <span className="xp-label rounded-sm bg-[var(--xp-bg)]/85 px-2 py-1 text-[var(--xp-primary)] tabular-nums backdrop-blur-sm">
@@ -299,10 +431,16 @@ export function ExpeditionMap({
       </figure>
 
       {/* ── The dossier ──────────────────────────────────────────────── */}
-      {!compact && (
+      {showPanel && (
         <aside
           aria-live="polite"
-          className={cn(styles.panel, "flex flex-col rounded-md p-5")}
+          className={cn(
+            styles.panel,
+            "flex flex-col rounded-md p-5",
+            /* Expanded on a phone the panel is a short scrolling tray under
+               the map; from `lg` it is the full-height column beside it. */
+            expanded && "max-h-[34vh] shrink-0 overflow-y-auto lg:max-h-none lg:h-full",
+          )}
         >
           {active ? (
             <>
@@ -352,9 +490,11 @@ export function ExpeditionMap({
             <div className="flex h-full flex-col justify-center">
               <p className="xp-label mb-3 text-[var(--xp-muted)]">The archive</p>
               <p className="text-sm text-[var(--xp-muted)]">
-                {plotted.length > 0
-                  ? "Hover or focus a marker to read its record. Drag to pan, ⌘-scroll or pinch to zoom."
-                  : "No mapped locations yet."}
+                {plotted.length === 0
+                  ? "No mapped locations yet."
+                  : expanded
+                    ? "Hover or focus a marker to read its record. Drag to pan, scroll or pinch to zoom."
+                    : "Hover or focus a marker to read its record. Drag to pan, ⌘-scroll or pinch to zoom."}
               </p>
 
               <dl className="mt-6 space-y-2 text-sm">
