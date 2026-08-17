@@ -11,6 +11,7 @@ import {
   IconMapPin,
   IconMountain,
   IconPhoto,
+  IconPencilPlus,
   IconScript,
   IconSearch,
   IconTent,
@@ -46,6 +47,10 @@ const DESTINATIONS = [
   { href: "/travel/explore/gallery", label: "Gallery", icon: IconPhoto },
   { href: "/travel/explore/timeline", label: "Timeline", icon: IconClock },
   { href: "/travel/explore/bucket-list", label: "Bucket List", icon: IconCompass },
+  /* The desk is last because it is where you go to *change* the archive, not
+     to read it — and it is in the rail at all because an archive with no
+     visible way to add to it is a museum. */
+  { href: "/travel/explore/manage", label: "Add / Edit", icon: IconPencilPlus },
 ];
 
 export function ExploreRail({ onOpenSearch }: { onOpenSearch: () => void }) {

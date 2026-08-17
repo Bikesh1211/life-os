@@ -128,6 +128,20 @@ function toVisitedPlace(
   };
 }
 
+/**
+ * A wishlist row, read as a place.
+ *
+ * Its `status` follows `isVisited`, and that single field is the whole of
+ * "completed destinations move into the visited archive": ticking a bucket-list
+ * entry off takes it out of The Next Expeditions and puts it in the archive
+ * proper, on the map and in the timeline, with no second record created and
+ * none to reconcile.
+ *
+ * The planning fields ride along either way. A destination that has been
+ * reached still remembers why it was wanted and what season was chosen, and
+ * throwing that away at the moment it comes true would be the archive losing
+ * the only part of a plan worth keeping.
+ */
 function toPlannedPlace(row: WishRow): ExploredPlace {
   return {
     id: row.id,
@@ -140,7 +154,7 @@ function toPlannedPlace(row: WishRow): ExploredPlace {
     description: row.description ?? undefined,
     notes: row.description ?? undefined,
     visitedAt: iso(row.visitedAt),
-    status: "WISHLIST",
+    status: row.isVisited ? "VISITED" : "WISHLIST",
     category: (row.category as TravelCategory | null) ?? undefined,
     tags: row.tags ?? [],
     coverImage: row.coverImage ?? undefined,
@@ -155,18 +169,6 @@ function toPlannedPlace(row: WishRow): ExploredPlace {
     estimatedBudget: row.estimatedBudget ?? undefined,
     plannedYear: row.plannedYear ?? undefined,
   };
-}
-
-/**
- * Whether a wishlist row still belongs on the bucket list.
- *
- * `isVisited` is the one field that moves a destination out of "The Next
- * Expeditions" and into the archive. A visited wishlist row is not dropped —
- * it is not a *plan* any more, and the honest place for it is nowhere in the
- * planned list rather than in both lists at once.
- */
-function stillPlanned(row: WishRow): boolean {
-  return !row.isVisited;
 }
 
 /* ── The archive ─────────────────────────────────────────────────────────── */
@@ -194,7 +196,7 @@ export const loadArchive = cache(async (userId: string): Promise<Archive> => {
 
   const places = [
     ...visited.map((row) => toVisitedPlace(row, row.tripId ? tripMeta.get(row.tripId) : undefined)),
-    ...wishlist.filter(stillPlanned).map(toPlannedPlace),
+    ...wishlist.map(toPlannedPlace),
   ].sort(byNewestPlace);
 
   /* The written accounts. A journal linked to a trip is that expedition's
