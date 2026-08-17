@@ -9,7 +9,13 @@ const isPublicRoute = (req: NextRequest) => {
     path.startsWith("/sign-up") ||
     path.startsWith("/forgot-password") ||
     path.startsWith("/reset-password") ||
-    path.startsWith("/api")
+    path.startsWith("/api") ||
+    /* The theme stylesheet is a static asset that happens to be generated, so
+       it lives under `app/` and was being matched as an application route —
+       the browser got a 307 to /sign-in instead of CSS, and every theme in the
+       application silently did nothing. It contains no user data: it is a list
+       of colours. */
+    path === "/theme.css"
   );
 };
 

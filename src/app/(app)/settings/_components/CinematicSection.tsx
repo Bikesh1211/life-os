@@ -17,24 +17,19 @@ import { useContextTheme } from "@/core/themes/contexts/use-context-theme";
 
 const MODES: { value: ContextMode; label: string; note: string }[] = [
   {
-    value: "feature",
-    label: "Feature",
-    note: "Each area keeps its own accent and texture — the Library is wizarding, Finance is Wall Street, Timeline is spacetime.",
+    value: "full",
+    label: "Full",
+    note: "Every feature becomes its own room — its own ground, surfaces, ink and light, with a band naming it. Tasks is a mission dossier, Journal is a gothic night, Finance is a trading floor.",
   },
   {
-    value: "global",
-    label: "Global",
-    note: "One palette everywhere, from your movie theme. Only the background texture changes between areas.",
-  },
-  {
-    value: "auto",
-    label: "Automatic",
-    note: "Feature-specific on a desktop, and stepped right down on phones and under reduced motion.",
+    value: "tint",
+    label: "Tint",
+    note: "One application, coloured per area. Your movie theme keeps the palette; each feature contributes only its accent and a faint texture.",
   },
   {
     value: "off",
     label: "Off",
-    note: "No contextual accents and no background textures anywhere.",
+    note: "No contextual colour and no background textures anywhere.",
   },
 ];
 
@@ -57,9 +52,9 @@ export function CinematicSection() {
         Cinematic Experience
       </Text>
       <Text size="sm" c="dimmed" mb="md">
-        Every area of Life OS can carry its own atmosphere — an accent and a texture drawn from
-        the kind of story it belongs to. Everything else, from spacing to typography, stays the
-        same everywhere.
+        Every area of Life OS can become its own cinematic environment, the way the Library is a
+        wizarding reading room. The layout, the spacing and the typography never change — what
+        changes is the ground you are standing on.
       </Text>
 
       {/* ── Contextual themes ─────────────────────────────────────────── */}
@@ -95,8 +90,8 @@ export function CinematicSection() {
       </div>
       <Text size="xs" c="dimmed" mt={6} lh={1.45}>
         {off
-          ? "Turn contextual themes on to use background textures."
-          : "Textures are drawn in CSS and sit behind the interface at very low opacity — the strongest setting is still under a tenth. Phones step down automatically."}
+          ? "Turn contextual environments on to use background textures."
+          : "Textures are drawn entirely in CSS — no images, nothing to download — and sit behind the interface. Phones step down automatically."}
       </Text>
 
       {/* ── The inventory ─────────────────────────────────────────────── */}
@@ -122,7 +117,7 @@ export function CinematicSection() {
                 <span
                   aria-hidden="true"
                   className="size-2.5 shrink-0 rounded-full"
-                  style={{ background: context.accent }}
+                  style={{ background: context.palette.accent }}
                 />
                 <span className="min-w-0 flex-1 truncate">
                   <Text size="sm" span>
@@ -140,9 +135,8 @@ export function CinematicSection() {
           </ul>
 
           <Text size="xs" c="dimmed" mt="sm" lh={1.45}>
-            The Library and Explore Mode are absent on purpose — both already have a full
-            atmosphere of their own, and a context layered over either would be two of them
-            competing.
+            The Library and Explore Mode are absent on purpose — both are already complete
+            environments, and they are the benchmark these thirty-one were built to match.
           </Text>
         </Collapse>
       </div>

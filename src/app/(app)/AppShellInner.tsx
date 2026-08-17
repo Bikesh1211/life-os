@@ -8,6 +8,7 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { useAppShell } from "./AppShellProvider";
 import { cn } from "@/core/utils";
 import { ContextBackground } from "@/core/themes/contexts/ContextBackground";
+import { CinematicHeader } from "@/core/themes/contexts/CinematicHeader";
 
 export function AppShellInner({ children }: { children: React.ReactNode }) {
   const { opened, collapsed, mobileOpened, minimalChrome, closeMobile } = useAppShell();
@@ -43,6 +44,7 @@ export function AppShellInner({ children }: { children: React.ReactNode }) {
         <Header />
         <Sidebar />
         <AppShellMain>
+          <CinematicHeader />
           <PageTransition>{children}</PageTransition>
         </AppShellMain>
       </AppShell>

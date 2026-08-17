@@ -30,12 +30,15 @@ export function GET() {
     headers: {
       "Content-Type": "text/css; charset=utf-8",
       /*
-       * Not `immutable`: the URL has no content hash, so a theme edit has to be
-       * able to reach a browser that has already cached this. An hour of
-       * freshness with a day of stale-while-revalidate means a returning reader
-       * pays nothing and still picks up changes on their own.
+       * `immutable`, because the URL carries a hash of this exact content (see
+       * `themeStylesheetHref`). A theme edit changes the hash, which changes
+       * the URL, which is a different resource — so a browser can cache this
+       * one for a year and still pick up the next one instantly.
+       *
+       * The version without the hash was cached for an hour, which meant every
+       * theme change was invisible for an hour with no way to tell why.
        */
-      "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+      "Cache-Control": "public, max-age=31536000, immutable",
     },
   });
 }

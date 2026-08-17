@@ -1,9 +1,11 @@
-import { DEFAULT_DEPTH, DEPTH_STORAGE_KEY, MOVIE_THEMES, THEME_STORAGE_KEY } from "./index";
+import { createHash } from "node:crypto";
+import { DEFAULT_DEPTH, DEPTH_STORAGE_KEY, MOVIE_THEMES, THEME_STORAGE_KEY, themeStylesheet } from "./index";
 import {
   BACKGROUND_INTENSITY_KEY,
   CONTEXT_MODE_KEY,
   DEFAULT_CONTEXT_MODE,
   DEFAULT_INTENSITY,
+  contextStylesheet,
 } from "./contexts";
 
 /**
@@ -19,6 +21,21 @@ import {
  * it, so the palette is resolved before anything is drawn. Without it the
  * document would paint unthemed and then repaint.
  */
+/**
+ * The stylesheet URL, with a hash of its own content.
+ *
+ * Computed on the server at render time from the same two generators the route
+ * handler uses, so the hash always describes what will actually be served. That
+ * is what lets the response be cached for a year: a theme edit produces a
+ * different hash, a different URL, and therefore a different resource — the old
+ * one is never asked for again.
+ */
+function themeStylesheetHref(): string {
+  const css = [themeStylesheet(), contextStylesheet()].join("\n\n");
+  const hash = createHash("sha1").update(css).digest("hex").slice(0, 10);
+  return `/theme.css?v=${hash}`;
+}
+
 export function ThemeStyles() {
   return (
     /* The rule below assumes a stylesheet that could be `import`ed and
@@ -26,7 +43,7 @@ export function ThemeStyles() {
        time, so there is no file for the bundler to take — the route handler is
        the only way in. */
     // eslint-disable-next-line @next/next/no-css-tags
-    <link rel="stylesheet" href="/theme.css" precedence="high" />
+    <link rel="stylesheet" href={themeStylesheetHref()} precedence="high" />
   );
 }
 
@@ -59,7 +76,7 @@ try {
   r.setAttribute("data-theme-depth", d === "palette" || d === "full" ? d : ${JSON.stringify(DEFAULT_DEPTH)});
 
   var m = window.localStorage.getItem(${JSON.stringify(CONTEXT_MODE_KEY)});
-  r.setAttribute("data-context-mode", ["auto","global","feature","off"].indexOf(m) > -1 ? m : ${JSON.stringify(DEFAULT_CONTEXT_MODE)});
+  r.setAttribute("data-context-mode", ["full","tint","off"].indexOf(m) > -1 ? m : ${JSON.stringify(DEFAULT_CONTEXT_MODE)});
 
   var b = window.localStorage.getItem(${JSON.stringify(BACKGROUND_INTENSITY_KEY)});
   r.setAttribute("data-bg-intensity", ["minimal","balanced","cinematic"].indexOf(b) > -1 ? b : ${JSON.stringify(DEFAULT_INTENSITY)});

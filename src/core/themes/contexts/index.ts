@@ -1,6 +1,9 @@
 import { CONTEXTS, contextById, contextForPath, isExemptPath } from "./contexts";
 import type { CinematicContext } from "./contexts";
 import { motifBackground } from "./motifs";
+import { derivePalette } from "./palette";
+import { bridgeVariables } from "../index";
+import { paperAtmosphere, deepAtmosphere, metalAtmosphere } from "../atmospheres";
 import {
   DARK_REFERENCE,
   LIGHT_REFERENCE,
@@ -17,15 +20,15 @@ export { contrast, ensureContrast, DARK_REFERENCE, LIGHT_REFERENCE } from "./con
 /**
  * How much of a context is applied.
  *
- *   feature   its own accent and its own texture. The default.
- *   global    the global movie theme keeps the accent; only the texture
- *             changes per area. One palette, many rooms.
- *   auto      like `feature`, but the texture steps down on small screens and
- *             under reduced motion — the setting for people who want it and
- *             also want their phone to stay legible.
- *   off       nothing. No accent change, no texture.
+ *   full   the whole room. Its own ground, surfaces, ink, borders, accent and
+ *          atmosphere, plus a chrome band naming it — the treatment `/library`
+ *          gets, given to every feature. The default, because it is the point.
+ *   tint   the global movie theme keeps the palette; a context contributes only
+ *          its accent and its texture. For anyone who wants one application
+ *          that is merely tinted per area.
+ *   off    nothing at all.
  */
-export type ContextMode = "auto" | "global" | "feature" | "off";
+export type ContextMode = "full" | "tint" | "off";
 
 /** How strongly the texture is painted. */
 export type BackgroundIntensity = "minimal" | "balanced" | "cinematic";
@@ -33,11 +36,11 @@ export type BackgroundIntensity = "minimal" | "balanced" | "cinematic";
 export const CONTEXT_MODE_KEY = "lifeos-context-mode";
 export const BACKGROUND_INTENSITY_KEY = "lifeos-bg-intensity";
 
-export const DEFAULT_CONTEXT_MODE: ContextMode = "feature";
+export const DEFAULT_CONTEXT_MODE: ContextMode = "full";
 export const DEFAULT_INTENSITY: BackgroundIntensity = "balanced";
 
 export function isContextMode(value: unknown): value is ContextMode {
-  return value === "auto" || value === "global" || value === "feature" || value === "off";
+  return value === "full" || value === "tint" || value === "off";
 }
 
 export function isIntensity(value: unknown): value is BackgroundIntensity {
@@ -76,17 +79,18 @@ const REDUCED_OPACITY = 0.1;
  *
  * Three kinds of rule, and the separation matters:
  *
- *   The accent block is scoped to `[data-context-mode="feature"]` and
- *   `[data-context-mode="auto"]`, so switching to "Global theme" drops every
- *   accent override at once and the global palette shows through unchanged.
+ *   The `full` block is the room: the entire token bridge, generated from the
+ *   context's derived palette, so every surface, every hairline and every
+ *   piece of text belongs to that feature. This is what makes Tasks a mission
+ *   dossier rather than a red-tinted task list.
  *
- *   The texture block is scoped only to the context, because a texture is
- *   wanted in every mode except `off` — under "Global theme" it simply reads
- *   the global accent instead of the context's own.
+ *   The `tint` block is the modest version — accent only, over whatever global
+ *   theme is selected.
  *
- *   The opacity block is scoped to the intensity, so all three settings are
- *   one variable and the layer never re-paints its gradients to change
- *   strength.
+ *   The texture block is scoped only to the context, so it applies in both.
+ *
+ *   The opacity block is scoped to the intensity, so all three settings are one
+ *   variable and the layer never re-paints its gradients to change strength.
  */
 /*
  * The guard every opacity rule carries.
@@ -101,6 +105,38 @@ const REDUCED_OPACITY = 0.1;
  * The doubled `:root` buys a point of specificity over the plain
  * `[data-bg-intensity]` selectors that would otherwise tie.
  */
+/**
+ * Which atmosphere family a motif belongs to.
+ *
+ * Organic textures get paper's grain, cold and empty ones get the deep wash,
+ * hard-surfaced ones get metal's edge highlight. Written as a map rather than
+ * a field on each context because it follows from the motif — a room drawn
+ * with contour lines is a paper room, and nobody should have to say so twice.
+ */
+const ATMOSPHERE_FOR: Partial<Record<string, (o?: { light?: string; fill?: string; edge?: string; grain?: number }) => ReturnType<typeof paperAtmosphere>>> = {
+  paper: paperAtmosphere,
+  topographic: paperAtmosphere,
+  shelf: paperAtmosphere,
+  compass: paperAtmosphere,
+  equations: paperAtmosphere,
+  mist: paperAtmosphere,
+  curtain: paperAtmosphere,
+  rings: deepAtmosphere,
+  orbit: deepAtmosphere,
+  stars: deepAtmosphere,
+  waves: deepAtmosphere,
+  bokeh: deepAtmosphere,
+  dataflow: deepAtmosphere,
+  grid: metalAtmosphere,
+  blueprint: metalAtmosphere,
+  schematic: metalAtmosphere,
+  ledger: metalAtmosphere,
+  skyline: metalAtmosphere,
+  scanlines: metalAtmosphere,
+  editorial: metalAtmosphere,
+  none: metalAtmosphere,
+};
+
 const OPACITY_SCOPE = ':root:root:not([data-context-mode="off"]):not([data-context="none"])';
 
 export function contextStylesheet(): string {
@@ -116,12 +152,18 @@ export function contextStylesheet(): string {
     /* One authored accent, two legible variants. See `contrast.ts`: an accent
        tuned for charcoal is invisible on Dune's sand, and every one of the
        thirty-one failed there before this existed. */
-    const onDark = ensureContrast(context.accent, DARK_REFERENCE);
-    const onLight = ensureContrast(context.accent, LIGHT_REFERENCE);
+    const onDark = ensureContrast(context.palette.accent, DARK_REFERENCE);
+    const onLight = ensureContrast(context.palette.accent, LIGHT_REFERENCE);
+
+    /* The room's full palette, and the atmosphere family its motif belongs to
+       — organic motifs get paper's grain, cold ones get the deep wash, hard
+       ones get metal's edge highlight. */
+    const tokens = derivePalette(context.palette, context.scheme);
+    const atmosphere = (ATMOSPHERE_FOR[context.motif] ?? deepAtmosphere)();
 
     blocks.push(`:root[data-context="${context.id}"] {
   --ctx-accent: ${onDark};
-  --ctx-accent-hover: ${ensureContrast(context.accentHover, DARK_REFERENCE)};
+  --ctx-accent-hover: ${tokens.accentHover};
   --ctx-accent-contrast: ${readableOn(onDark)};
   --ctx-weight: ${context.weight};
 }
@@ -129,12 +171,11 @@ export function contextStylesheet(): string {
 /* A lit room needs the same colour taken down rather than up. */
 :root[data-mantine-color-scheme="light"][data-context="${context.id}"] {
   --ctx-accent: ${onLight};
-  --ctx-accent-hover: ${ensureContrast(context.accentHover, LIGHT_REFERENCE)};
+  --ctx-accent-hover: ${ensureContrast(tokens.accentHover, LIGHT_REFERENCE)};
   --ctx-accent-contrast: ${readableOn(onLight)};
 }
 
-:root[data-context-mode="feature"][data-context="${context.id}"],
-:root[data-context-mode="auto"][data-context="${context.id}"] {
+:root[data-context-mode="tint"][data-context="${context.id}"] {
   --lo-accent: var(--ctx-accent);
   --lo-accent-hover: var(--ctx-accent-hover);
   --lo-accent-contrast: var(--ctx-accent-contrast);
@@ -158,6 +199,46 @@ export function contextStylesheet(): string {
   --mantine-color-blue-filled: var(--ctx-accent);
   --color-blue-500: var(--ctx-accent);
   --color-blue-600: var(--ctx-accent);
+}
+
+/*
+ * The whole room. Same bridge the global themes use, so every one of the 187
+ * variables a page might read is answered by this feature's palette — and the
+ * atmosphere with it, at full strength rather than as a wash.
+ */
+:root[data-context-mode="full"][data-context="${context.id}"] {
+${Object.entries(bridgeVariables({
+      id: context.id as never,
+      name: context.title,
+      subtitle: context.inspiration,
+      description: context.tagline,
+      mood: context.tagline,
+      scheme: context.scheme,
+      tokens,
+      atmosphere,
+    }))
+      .map(([name, value]) => `  ${name}: ${value};`)
+      .join("\n")}
+}
+
+:root[data-context-mode="full"][data-context="${context.id}"] body {
+  background-image: ${atmosphere.page};
+  background-attachment: scroll;
+}
+
+:root[data-context-mode="full"][data-context="${context.id}"] .sd-navbar,
+:root[data-context-mode="full"][data-context="${context.id}"] .mantine-AppShell-header {
+  background-image: ${atmosphere.chrome};
+}
+
+:root[data-context-mode="full"][data-context="${context.id}"] .mantine-Paper-root,
+:root[data-context-mode="full"][data-context="${context.id}"] .mantine-Card-root,
+:root[data-context-mode="full"][data-context="${context.id}"] .mantine-Modal-content,
+:root[data-context-mode="full"][data-context="${context.id}"] .mantine-Drawer-content,
+:root[data-context-mode="full"][data-context="${context.id}"] .mantine-Menu-dropdown,
+:root[data-context-mode="full"][data-context="${context.id}"] .mantine-Popover-dropdown {
+  background-image: ${atmosphere.surface};
+  box-shadow: ${atmosphere.gilt};
 }
 
 :root[data-context="${context.id}"]:not([data-context-mode="off"]) .ctx-bg {
@@ -187,6 +268,71 @@ ${Object.entries(INTENSITY_OPACITY)
   .join("\n\n")}
 
 /*
+ * The chrome band. Hidden unless the room is fully applied — see
+ * CinematicHeader.tsx for why announcing a room the palette has not entered
+ * would be the interface overselling itself.
+ */
+.ctx-band {
+  display: none;
+}
+
+:root[data-context-mode="full"]:not([data-context="none"]) .ctx-band {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin: 0 0 1rem;
+  padding: 0 0 0.6rem;
+  border-bottom: 1px solid var(--lo-border, var(--border-subtle));
+  /* Clipped rather than wrapped: on a phone the tagline drops off the end,
+     which is the right thing to lose first. */
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ctx-band-mark {
+  width: 3px;
+  height: 0.95rem;
+  flex: none;
+  border-radius: 2px;
+  background: var(--lo-accent, var(--mantine-primary-color-filled));
+  transform: translateY(0.1rem);
+}
+
+.ctx-band-title {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--lo-accent, var(--mantine-primary-color-filled));
+}
+
+.ctx-band-tagline {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--lo-text-muted, var(--mantine-color-dimmed));
+}
+
+.ctx-band-source {
+  flex: none;
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lo-text-muted, var(--mantine-color-dimmed));
+  opacity: 0.7;
+}
+
+@media (max-width: 640px) {
+  .ctx-band-source {
+    display: none;
+  }
+}
+
+/*
  * Phones get less of everything. A texture that reads as atmosphere on a
  * 27-inch display reads as a dirty screen at arm's length, and the pixels it
  * costs are pixels a phone would rather spend on the actual page.
@@ -200,22 +346,11 @@ ${Object.entries(INTENSITY_OPACITY)
   }
 }
 
-/* The 'auto' mode steps the texture down on anything narrower than a desktop,
-   which is the only thing separating it from 'feature'. */
-@media (max-width: 1024px) {
-  ${OPACITY_SCOPE}[data-context-mode="auto"] .ctx-bg {
-    opacity: calc(${REDUCED_OPACITY} * var(--ctx-weight, 1));
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .ctx-bg {
     transition: none;
   }
-  ${OPACITY_SCOPE}[data-context-mode="auto"] .ctx-bg {
-    opacity: calc(${REDUCED_OPACITY} * var(--ctx-weight, 1));
-  }
-}}`);
+}`);
 
   return blocks.join("\n\n");
 }
