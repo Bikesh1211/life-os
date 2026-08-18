@@ -12,7 +12,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { apiFetch, toSearchParams } from "@/core/api/http";
 
 async function fetchStats() {
-  return apiFetch(`/api/fitness/stats${toSearchParams({ includePRs: true })}`);
+  return apiFetch<any>(`/api/fitness/stats${toSearchParams({ includePRs: true })}`);
 }
 
 export function FitnessProgressTab() {

@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { apiFetch, toSearchParams } from "@/core/api/http";
 
 async function fetchStats() {
-  return apiFetch(`/api/fitness/stats${toSearchParams({ includePRs: true })}`);
+  return apiFetch<any>(`/api/fitness/stats${toSearchParams({ includePRs: true })}`);
 }
 
 export function FitnessOverviewTab() {

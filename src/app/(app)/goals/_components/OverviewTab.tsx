@@ -8,6 +8,7 @@ import { IconTarget, IconActivity, IconCheck, IconClock, IconPlus } from "@table
 import { Card, Text, Progress, Group, Badge, Button, Modal, TextInput, Textarea, Select, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
+import { apiFetch } from "@/core/api/http";
 
 type Goal = {
   id: string;
@@ -182,8 +183,7 @@ export default function OverviewTab() {
 
   const { data: overview, isLoading } = useQuery<Overview>({
     queryKey: ["goals", "summary"],
-    queryFn: () =>
-      fetch("/api/goals/summary").then((r) => (r.ok ? r.json() : null)),
+    queryFn: () => apiFetch<Overview>("/api/goals/summary"),
     staleTime: 5 * 60 * 1000,
   });
 

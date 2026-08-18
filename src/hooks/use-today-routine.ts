@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/core/api/http";
 
 export type ExecutionItem = {
   id: string;
@@ -57,11 +58,7 @@ export type TodayRoutine = {
 export function useTodayRoutine() {
   return useQuery<TodayRoutine[]>({
     queryKey: ["today-routines"],
-    queryFn: async () => {
-      const res = await fetch("/api/routines/today");
-      if (!res.ok) throw new Error("Failed to load today's routines");
-      return res.json();
-    },
+    queryFn: () => apiFetch<TodayRoutine[]>("/api/routines/today"),
     refetchInterval: 30_000,
   });
 }
@@ -69,21 +66,17 @@ export function useTodayRoutine() {
 export function useStartExecution() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       routineId,
       executionId,
     }: {
       routineId: string;
       executionId: string;
-    }) => {
-      const res = await fetch(`/api/routines/${routineId}/start`, {
+    }) =>
+      apiFetch(`/api/routines/${routineId}/start`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ executionId }),
-      });
-      if (!res.ok) throw new Error("Failed to start routine");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["today-routines"] });
     },
@@ -93,7 +86,7 @@ export function useStartExecution() {
 export function useStartExecutionItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       routineId,
       executionId,
       executionItemId,
@@ -101,15 +94,11 @@ export function useStartExecutionItem() {
       routineId: string;
       executionId: string;
       executionItemId: string;
-    }) => {
-      const res = await fetch(`/api/routines/${routineId}/start`, {
+    }) =>
+      apiFetch(`/api/routines/${routineId}/start`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ executionId, executionItemId }),
-      });
-      if (!res.ok) throw new Error("Failed to start item");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["today-routines"] });
     },
@@ -119,21 +108,17 @@ export function useStartExecutionItem() {
 export function useCompleteExecution() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       routineId,
       executionId,
     }: {
       routineId: string;
       executionId: string;
-    }) => {
-      const res = await fetch(`/api/routines/${routineId}/complete`, {
+    }) =>
+      apiFetch(`/api/routines/${routineId}/complete`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ executionId }),
-      });
-      if (!res.ok) throw new Error("Failed to complete routine");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["today-routines"] });
     },
@@ -143,21 +128,17 @@ export function useCompleteExecution() {
 export function useSkipExecution() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       routineId,
       executionId,
     }: {
       routineId: string;
       executionId: string;
-    }) => {
-      const res = await fetch(`/api/routines/${routineId}/complete`, {
+    }) =>
+      apiFetch(`/api/routines/${routineId}/complete`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ executionId, action: "skip" }),
-      });
-      if (!res.ok) throw new Error("Failed to skip routine");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["today-routines"] });
     },

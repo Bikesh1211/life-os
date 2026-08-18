@@ -6,16 +6,13 @@ import { IconCircleCheck } from "@tabler/icons-react";
 import { MovieCard } from "@/modules/movies/components/design-system/MovieCard";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
 import { useRouter } from "next/navigation";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 export function MoviesWatchedPanel() {
   const router = useRouter();
-  const { data: items } = useQuery({
+  const { data: items } = useQuery<any>({
     queryKey: ["movie-watchlist", "completed"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/watchlist?status=completed");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any>(`/api/movies/watchlist${toSearchParams({ status: "completed" })}`),
   });
 
   return (

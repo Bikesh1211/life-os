@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { IconCheck, IconX, IconClock, IconUpload, IconPlayerPlay, IconTrash } from "@tabler/icons-react";
 import { Card, Text, Group, Badge, Timeline } from "@mantine/core";
 import dayjs from "dayjs";
+import { apiFetch } from "@/core/api/http";
 
 type TimelineEvent = {
   id: string;
@@ -47,8 +48,7 @@ const eventColors: Record<string, string> = {
 export default function TimelineTab() {
   const { data: events, isLoading } = useQuery<TimelineEvent[]>({
     queryKey: ["integrity", "events"],
-    queryFn: () =>
-      fetch("/api/integrity/events").then((r) => (r.ok ? r.json() : [])),
+    queryFn: () => apiFetch<TimelineEvent[]>("/api/integrity/events"),
     staleTime: 30 * 1000,
   });
 

@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useSupabase } from "@/infrastructure/providers/supabase-provider";
 import { useGamificationProfile } from "./use-gamification";
+import { apiFetch } from "@/core/api/http";
 
 type HabitDashboard = {
   totalHabits: number;
@@ -68,11 +69,7 @@ export type ProfileData = {
 function useHabitDashboard() {
   return useQuery<HabitDashboard>({
     queryKey: ["habit-dashboard"],
-    queryFn: async () => {
-      const res = await fetch("/api/habits/analytics/dashboard");
-      if (!res.ok) throw new Error("Failed to load habit dashboard");
-      return res.json();
-    },
+    queryFn: () => apiFetch<HabitDashboard>("/api/habits/analytics/dashboard"),
     staleTime: 30_000,
   });
 }
@@ -80,11 +77,7 @@ function useHabitDashboard() {
 function useRoutineAnalytics() {
   return useQuery<RoutineAnalytics>({
     queryKey: ["routine-analytics"],
-    queryFn: async () => {
-      const res = await fetch("/api/routines/analytics");
-      if (!res.ok) throw new Error("Failed to load routine analytics");
-      return res.json();
-    },
+    queryFn: () => apiFetch<RoutineAnalytics>("/api/routines/analytics"),
     staleTime: 30_000,
   });
 }
@@ -92,11 +85,7 @@ function useRoutineAnalytics() {
 function useTaskSummary() {
   return useQuery<TaskSummary>({
     queryKey: ["task-summary"],
-    queryFn: async () => {
-      const res = await fetch("/api/tasks/summary");
-      if (!res.ok) throw new Error("Failed to load task summary");
-      return res.json();
-    },
+    queryFn: () => apiFetch<TaskSummary>("/api/tasks/summary"),
     staleTime: 30_000,
   });
 }
@@ -104,11 +93,7 @@ function useTaskSummary() {
 function useGoalSummary() {
   return useQuery<GoalSummary>({
     queryKey: ["goal-summary"],
-    queryFn: async () => {
-      const res = await fetch("/api/goals/summary");
-      if (!res.ok) return { total: 0, active: 0, completed: 0 };
-      return res.json();
-    },
+    queryFn: () => apiFetch<GoalSummary>("/api/goals/summary"),
     staleTime: 30_000,
   });
 }

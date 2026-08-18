@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { SimpleGrid, Paper, Text, Group, Button, Skeleton, Stack } from "@mantine/core";
 import { IconBooks, IconBrain, IconStar, IconTarget, IconVocabulary } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/core/api/http";
 
 type Stats = {
   totalWords: number;
@@ -26,28 +27,22 @@ export default function EnglishDashboard() {
 
   const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
     queryKey: ["english", "stats"],
-    queryFn: () => fetch("/api/english/stats").then((r) => r.json()),
+    queryFn: () => apiFetch<Stats>("/api/english/stats"),
     staleTime: 30 * 1000,
   });
 
   const { data: dailyWord, isLoading: wordLoading } = useQuery<DailyWord>({
     queryKey: ["english", "daily-word"],
-    queryFn: async () => {
-      const res = await fetch("/api/english/daily-word");
-      if (!res.ok) return null;
-      return res.json();
-    },
+    queryFn: () => apiFetch<DailyWord>("/api/english/daily-word"),
     staleTime: 60 * 60 * 1000,
   });
 
   const addMutation = useMutation({
-    mutationFn: async (wordId: string) => {
-      await fetch("/api/english/vocabulary", {
+    mutationFn: (wordId: string) =>
+      apiFetch("/api/english/vocabulary", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wordId }),
-      });
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["english", "vocabulary"] });
     },

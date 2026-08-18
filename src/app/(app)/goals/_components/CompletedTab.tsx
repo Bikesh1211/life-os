@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { IconTarget } from "@tabler/icons-react";
 import { Card, Text, Progress, Group, Badge } from "@mantine/core";
 import dayjs from "dayjs";
+import { apiFetch } from "@/core/api/http";
 
 type Goal = {
   id: string;
@@ -25,8 +26,7 @@ export default function CompletedTab() {
 
   const { data: goals, isLoading } = useQuery<Goal[]>({
     queryKey: ["goals", "completed"],
-    queryFn: () =>
-      fetch("/api/goals?status=completed").then((r) => (r.ok ? r.json() : [])),
+    queryFn: () => apiFetch<Goal[]>("/api/goals?status=completed"),
     staleTime: 5 * 60 * 1000,
   });
 

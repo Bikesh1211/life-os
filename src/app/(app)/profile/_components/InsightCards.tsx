@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Paper, Group, Text, Stack, SimpleGrid, ThemeIcon } from "@mantine/core";
 import { IconBulb, IconTrendingUp, IconAlertCircle, IconInfoCircle } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 type Insight = {
   type: "positive" | "negative" | "info";
@@ -47,11 +48,7 @@ function InsightCard({ insight }: { insight: Insight }) {
 export function InsightCards() {
   const { data: insights, isLoading } = useQuery<Insight[]>({
     queryKey: ["habit-insights"],
-    queryFn: async () => {
-      const res = await fetch("/api/habits/analytics/insights");
-      if (!res.ok) return [];
-      return res.json();
-    },
+    queryFn: async () => apiFetch<Insight[]>("/api/habits/analytics/insights"),
     staleTime: 60_000,
   });
 

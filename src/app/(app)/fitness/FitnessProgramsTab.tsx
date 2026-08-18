@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/core/api/http";
 
 async function fetchPrograms() {
-  return apiFetch("/api/fitness/programs");
+  return apiFetch<any[]>(`/api/fitness/programs`);
 }
 
 async function createProgram(body: Record<string, unknown>) {

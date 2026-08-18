@@ -77,6 +77,9 @@ export function QuickAdd({ onCreated }: QuickAddProps) {
         }),
       });
       setTitle("");
+    } catch {
+      // Keep the typed input so the user can retry; `apiFetch` surfaces the error.
+    } finally {
       setLoading(false);
     }
   }, [title, activityType, startTime, mood, energy, location, inferredCategory, onCreated]);

@@ -14,11 +14,11 @@ import { useRouter } from "next/navigation";
 import { apiFetch, toSearchParams } from "@/core/api/http";
 
 async function fetchWorkouts() {
-  return apiFetch(`/api/fitness/workouts${toSearchParams({ limit: 100 })}`);
+  return apiFetch<any[]>(`/api/fitness/workouts${toSearchParams({ limit: 100 })}`);
 }
 
 async function createWorkout(body: { date: string }) {
-  return apiFetch("/api/fitness/workouts", { method: "POST", body: JSON.stringify(body) });
+  return apiFetch<any>("/api/fitness/workouts", { method: "POST", body: JSON.stringify(body) });
 }
 
 async function deleteWorkout(id: string) {

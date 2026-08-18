@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { IconScale, IconFlame, IconCheck, IconX, IconTrendingUp, IconClock } from "@tabler/icons-react";
 import { Card, Text, Group, Badge, Progress, RingProgress, SimpleGrid, Stack } from "@mantine/core";
+import { apiFetch } from "@/core/api/http";
 
 type Analytics = {
   totalCreated: number;
@@ -30,10 +31,7 @@ type Analytics = {
 export default function AnalyticsTab() {
   const { data: analytics, isLoading } = useQuery<Analytics>({
     queryKey: ["integrity", "analytics"],
-    queryFn: () =>
-      fetch("/api/integrity/analytics?insights=true").then((r) =>
-        r.ok ? r.json() : null,
-      ),
+    queryFn: () => apiFetch<Analytics>("/api/integrity/analytics?insights=true"),
     staleTime: 60 * 1000,
   });
 

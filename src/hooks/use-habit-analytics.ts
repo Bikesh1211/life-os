@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 export type DashboardData = {
   totalHabits: number;
@@ -69,23 +70,13 @@ type FilterParams = {
 
 function buildUrl(base: string, params?: FilterParams) {
   if (!params) return base;
-  const sp = new URLSearchParams();
-  if (params.dateFrom) sp.set("dateFrom", params.dateFrom);
-  if (params.dateTo) sp.set("dateTo", params.dateTo);
-  if (params.period) sp.set("period", params.period);
-  if (params.category) sp.set("category", params.category);
-  const qs = sp.toString();
-  return qs ? `${base}?${qs}` : base;
+  return `${base}${toSearchParams(params)}`;
 }
 
 export function useHabitAnalytics(filters?: FilterParams) {
   return useQuery<DashboardData>({
     queryKey: ["habit-analytics-dashboard", filters ?? {}],
-    queryFn: async () => {
-      const res = await fetch(buildUrl("/api/habits/analytics/dashboard", filters));
-      if (!res.ok) throw new Error("Failed to load habit analytics");
-      return res.json();
-    },
+    queryFn: () => apiFetch<DashboardData>(buildUrl("/api/habits/analytics/dashboard", filters)),
     staleTime: 30_000,
   });
 }
@@ -93,11 +84,7 @@ export function useHabitAnalytics(filters?: FilterParams) {
 export function useHabitStreaks() {
   return useQuery<StreakData>({
     queryKey: ["habit-streaks"],
-    queryFn: async () => {
-      const res = await fetch("/api/habits/analytics/streaks");
-      if (!res.ok) throw new Error("Failed to load streaks");
-      return res.json();
-    },
+    queryFn: () => apiFetch<StreakData>("/api/habits/analytics/streaks"),
     staleTime: 30_000,
   });
 }
@@ -105,11 +92,7 @@ export function useHabitStreaks() {
 export function useHabitTrends(filters?: FilterParams) {
   return useQuery<CompletionTrendsData>({
     queryKey: ["habit-completion-trends", filters ?? {}],
-    queryFn: async () => {
-      const res = await fetch(buildUrl("/api/habits/analytics/completion-trends", filters));
-      if (!res.ok) throw new Error("Failed to load trends");
-      return res.json();
-    },
+    queryFn: () => apiFetch<CompletionTrendsData>(buildUrl("/api/habits/analytics/completion-trends", filters)),
     staleTime: 30_000,
   });
 }
@@ -117,11 +100,7 @@ export function useHabitTrends(filters?: FilterParams) {
 export function useHabitHeatmap(filters?: FilterParams) {
   return useQuery<HeatmapData>({
     queryKey: ["habit-heatmap", filters ?? {}],
-    queryFn: async () => {
-      const res = await fetch(buildUrl("/api/habits/analytics/heatmap", filters));
-      if (!res.ok) throw new Error("Failed to load heatmap");
-      return res.json();
-    },
+    queryFn: () => apiFetch<HeatmapData>(buildUrl("/api/habits/analytics/heatmap", filters)),
     staleTime: 30_000,
   });
 }
@@ -129,11 +108,7 @@ export function useHabitHeatmap(filters?: FilterParams) {
 export function useHabitRankings(filters?: FilterParams) {
   return useQuery<RankingsData>({
     queryKey: ["habit-rankings", filters ?? {}],
-    queryFn: async () => {
-      const res = await fetch(buildUrl("/api/habits/analytics/rankings", filters));
-      if (!res.ok) throw new Error("Failed to load rankings");
-      return res.json();
-    },
+    queryFn: () => apiFetch<RankingsData>(buildUrl("/api/habits/analytics/rankings", filters)),
     staleTime: 30_000,
   });
 }
@@ -141,11 +116,7 @@ export function useHabitRankings(filters?: FilterParams) {
 export function useHabitInsights(filters?: FilterParams) {
   return useQuery<Insight[]>({
     queryKey: ["habit-insights", filters ?? {}],
-    queryFn: async () => {
-      const res = await fetch(buildUrl("/api/habits/analytics/insights", filters));
-      if (!res.ok) throw new Error("Failed to load insights");
-      return res.json();
-    },
+    queryFn: () => apiFetch<Insight[]>(buildUrl("/api/habits/analytics/insights", filters)),
     staleTime: 60_000,
   });
 }
@@ -153,11 +124,7 @@ export function useHabitInsights(filters?: FilterParams) {
 export function useHabitSummary() {
   return useQuery<SummaryData>({
     queryKey: ["habit-summary"],
-    queryFn: async () => {
-      const res = await fetch("/api/habits/analytics/summary");
-      if (!res.ok) throw new Error("Failed to load summary");
-      return res.json();
-    },
+    queryFn: () => apiFetch<SummaryData>("/api/habits/analytics/summary"),
     staleTime: 15_000,
   });
 }

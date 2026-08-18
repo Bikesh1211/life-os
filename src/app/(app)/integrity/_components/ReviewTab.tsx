@@ -19,6 +19,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type Commitment = {
   id: string;
@@ -47,17 +48,11 @@ export default function ReviewTab() {
   const [dueDate, setDueDate] = useState("");
   const queryClient = useQueryClient();
 
-  const statusParams = new URLSearchParams();
-  if (statusFilter) statusParams.set("status", statusFilter);
-  if (categoryFilter) statusParams.set("category", categoryFilter);
-  const queryString = statusParams.toString();
+  const queryString = toSearchParams({ status: statusFilter, category: categoryFilter });
 
   const { data: commitments, isLoading } = useQuery<Commitment[]>({
     queryKey: ["integrity", "commitments", statusFilter, categoryFilter],
-    queryFn: () =>
-      fetch(`/api/integrity${queryString ? `?${queryString}` : ""}`).then((r) =>
-        r.ok ? r.json() : [],
-      ),
+    queryFn: () => apiFetch<Commitment[]>(`/api/integrity${queryString}`),
     staleTime: 30 * 1000,
   });
 

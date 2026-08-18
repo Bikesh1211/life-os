@@ -13,6 +13,7 @@ import {
 } from "@mantine/core";
 import { IconRefresh, IconArrowRight, IconCheck, IconX } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type FillBlankQuestion = {
   wordId: string;
@@ -31,18 +32,13 @@ export default function FillBlankTab() {
 
   const { data: question, isLoading, refetch } = useQuery<FillBlankQuestion>({
     queryKey: ["english", "fill-blank"],
-    queryFn: async () => {
-      const res = await fetch("/api/english/quiz?type=fill_blank");
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error ?? "Failed to load question");
-      return data;
-    },
+    queryFn: () => apiFetch<FillBlankQuestion>(`/api/english/quiz${toSearchParams({ type: "fill_blank" })}`),
     staleTime: 0,
     retry: false,
   });
 
   const submitMutation = useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       wordId,
       correct,
       responseTimeMs,
@@ -50,13 +46,11 @@ export default function FillBlankTab() {
       wordId: string;
       correct: boolean;
       responseTimeMs: number;
-    }) => {
-      await fetch("/api/english/quiz", {
+    }) =>
+      apiFetch("/api/english/quiz", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wordId, quizType: "fill_blank", correct, responseTimeMs }),
-      });
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["english", "stats"] });
     },

@@ -31,6 +31,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
+import { apiFetch } from "@/core/api/http";
 
 type Commitment = {
   id: string;
@@ -273,8 +274,7 @@ export default function DashboardTab() {
 
   const { data: dashboard, isLoading } = useQuery<Dashboard>({
     queryKey: ["integrity", "dashboard"],
-    queryFn: () =>
-      fetch("/api/integrity?view=dashboard").then((r) => (r.ok ? r.json() : null)),
+    queryFn: () => apiFetch<Dashboard>("/api/integrity?view=dashboard"),
     staleTime: 30 * 1000,
   });
 

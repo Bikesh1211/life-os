@@ -8,6 +8,7 @@ import { Container, Title, Text, Badge, Group, Button, Card, Avatar, SimpleGrid,
 import { IconArrowLeft, IconStar, IconClock, IconMovie, IconHeart, IconListDetails, IconCircleCheck, IconPlaylist } from "@tabler/icons-react";
 import Link from "next/link";
 import { MemoryCard } from "@/modules/movies/components/memories/MemoryCard";
+import { apiFetch } from "@/core/api/http";
 
 export default function MediaDetailContent() {
   const params = useParams();
@@ -15,11 +16,7 @@ export default function MediaDetailContent() {
 
   const { data, refetch } = useQuery({
     queryKey: ["movie-media", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/movies/media/${id}`);
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any>(`/api/movies/media/${id}`),
     enabled: !!id,
   });
 
@@ -93,11 +90,7 @@ export default function MediaDetailContent() {
   const [collectionLoading, setCollectionLoading] = useState(false);
   const { data: collections } = useQuery({
     queryKey: ["movie-collections"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/collections");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any>("/api/movies/collections"),
   });
 
   const addToCollection = async () => {

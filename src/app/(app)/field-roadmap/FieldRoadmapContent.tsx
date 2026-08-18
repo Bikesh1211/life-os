@@ -32,6 +32,7 @@ import {
   IconBulb,
   IconPlus,
 } from "@tabler/icons-react";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 const FIELD_ICONS: Record<string, typeof IconCode> = {
   "software-engineer": IconCode,
@@ -98,23 +99,15 @@ export function FieldRoadmapContent() {
 
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["field-roadmap", "dashboard"],
-    queryFn: async () => {
-      const res = await fetch("/api/field-roadmap");
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
-    },
+    queryFn: () => apiFetch<DashboardData>("/api/field-roadmap"),
   });
 
   const pickMutation = useMutation({
-    mutationFn: async (slug: string) => {
-      const res = await fetch("/api/field-roadmap/pick", {
+    mutationFn: (slug: string) =>
+      apiFetch("/api/field-roadmap/pick", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ slug }),
-      });
-      if (!res.ok) throw new Error("Failed to pick field");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Roadmap started", message: "Your field roadmap is ready", color: "green" });
       close();
@@ -124,15 +117,11 @@ export function FieldRoadmapContent() {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
-      const res = await fetch("/api/field-roadmap/milestones", {
+    mutationFn: ({ id, completed }: { id: string; completed: boolean }) =>
+      apiFetch("/api/field-roadmap/milestones", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ milestoneId: id, completed }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+      }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["field-roadmap", "dashboard"] }),
   });
 
@@ -338,9 +327,9 @@ function SuggestionsModal({
     queryKey: ["field-roadmap", "suggestions", target?.skillId],
     queryFn: async () => {
       if (!target) return [];
-      const res = await fetch(`/api/field-roadmap/evidence/suggestions?skillId=${target.skillId}&roadmapId=${target.roadmapId}`);
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
+      return apiFetch<Suggestion[]>(
+        `/api/field-roadmap/evidence/suggestions${toSearchParams({ skillId: target.skillId, roadmapId: target.roadmapId })}`,
+      );
     },
     enabled: opened && !!target,
   });
@@ -348,13 +337,10 @@ function SuggestionsModal({
   const addMutation = useMutation({
     mutationFn: async (s: Suggestion) => {
       if (!target) return;
-      const res = await fetch("/api/field-roadmap/evidence", {
+      return apiFetch("/api/field-roadmap/evidence", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ skillId: target.skillId, entityType: s.entityType, entityId: s.entityId }),
       });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
     },
     onSuccess: (_, s) => {
       setLinked((prev) => new Set(prev).add(`${s.entityType}:${s.entityId}`));

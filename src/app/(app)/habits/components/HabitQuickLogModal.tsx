@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Modal, Stack, Group, Text, Button, TextInput, Badge, Loader, Center } from "@mantine/core";
 import { IconCheck, IconSearch } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/core/api/http";
 
 type Habit = {
   id: string;
@@ -25,9 +26,7 @@ export function HabitQuickLogModal({ opened, onClose }: Props) {
   const { data: habits, isLoading } = useQuery<Habit[]>({
     queryKey: ["habits-list"],
     queryFn: async () => {
-      const res = await fetch("/api/habits/analytics/summary");
-      if (!res.ok) throw new Error("Failed to load habits");
-      const data = await res.json();
+      const data = await apiFetch<{ habits?: Habit[] }>("/api/habits/analytics/summary");
       return data.habits ?? [];
     },
     enabled: opened,
@@ -37,13 +36,10 @@ export function HabitQuickLogModal({ opened, onClose }: Props) {
     mutationFn: async (habitId: string) => {
       setLoggingId(habitId);
       const today = new Date().toISOString().split("T")[0];
-      const res = await fetch("/api/habits/completions", {
+      return apiFetch("/api/habits/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ habitId, completedDate: today }),
       });
-      if (!res.ok) throw new Error("Failed to log habit");
-      return res.json();
     },
     onSettled: () => {
       setLoggingId(null);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 export type DayPlanItem = {
   id: string;
@@ -34,11 +35,10 @@ export type DayMetrics = {
 export function useDayPlan(date: string) {
   return useQuery<{ items: DayPlanItem[]; metrics: DayMetrics }>({
     queryKey: ["day-plan", date],
-    queryFn: async () => {
-      const res = await fetch(`/api/routines/day-plan?date=${date}`);
-      if (!res.ok) throw new Error("Failed to load day plan");
-      return res.json();
-    },
+    queryFn: () =>
+      apiFetch<{ items: DayPlanItem[]; metrics: DayMetrics }>(
+        `/api/routines/day-plan${toSearchParams({ date })}`,
+      ),
     enabled: !!date,
   });
 }
@@ -46,11 +46,7 @@ export function useDayPlan(date: string) {
 export function useDayMetrics(date: string) {
   return useQuery<DayMetrics>({
     queryKey: ["day-metrics", date],
-    queryFn: async () => {
-      const res = await fetch(`/api/routines/day-plan/metrics?date=${date}`);
-      if (!res.ok) throw new Error("Failed to load day metrics");
-      return res.json();
-    },
+    queryFn: () => apiFetch<DayMetrics>(`/api/routines/day-plan/metrics${toSearchParams({ date })}`),
     enabled: !!date,
   });
 }
@@ -58,7 +54,7 @@ export function useDayMetrics(date: string) {
 export function useCreateAdhocItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: {
+    mutationFn: (data: {
       title: string;
       description?: string;
       startTime: string;
@@ -67,18 +63,11 @@ export function useCreateAdhocItem() {
       category?: string;
       priority?: string;
       location?: string;
-    }) => {
-      const res = await fetch("/api/routines/day-plan/ad-hoc", {
+    }) =>
+      apiFetch("/api/routines/day-plan/ad-hoc", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.error || "Failed to create item");
-      }
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["day-plan", variables.date] });
       queryClient.invalidateQueries({ queryKey: ["day-metrics", variables.date] });
@@ -89,7 +78,7 @@ export function useCreateAdhocItem() {
 export function useUpdateAdhocItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       id,
       date,
       ...data
@@ -103,15 +92,11 @@ export function useUpdateAdhocItem() {
       category?: string;
       priority?: string;
       location?: string;
-    }) => {
-      const res = await fetch(`/api/routines/day-plan/ad-hoc/${id}`, {
+    }) =>
+      apiFetch(`/api/routines/day-plan/ad-hoc/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update item");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["day-plan", variables.date] });
       queryClient.invalidateQueries({ queryKey: ["day-metrics", variables.date] });
@@ -122,12 +107,10 @@ export function useUpdateAdhocItem() {
 export function useDeleteAdhocItem() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, date }: { id: string; date: string }) => {
-      const res = await fetch(`/api/routines/day-plan/ad-hoc/${id}`, {
+    mutationFn: ({ id, date }: { id: string; date: string }) =>
+      apiFetch(`/api/routines/day-plan/ad-hoc/${id}`, {
         method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to delete item");
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["day-plan", variables.date] });
       queryClient.invalidateQueries({ queryKey: ["day-metrics", variables.date] });
@@ -138,7 +121,7 @@ export function useDeleteAdhocItem() {
 export function useUpdateItemStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       id,
       date,
       status,
@@ -146,15 +129,11 @@ export function useUpdateItemStatus() {
       id: string;
       date: string;
       status: "pending" | "in_progress" | "completed" | "skipped";
-    }) => {
-      const res = await fetch(`/api/routines/day-plan/items/${id}/status`, {
+    }) =>
+      apiFetch(`/api/routines/day-plan/items/${id}/status`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error("Failed to update status");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["day-plan", variables.date] });
       queryClient.invalidateQueries({ queryKey: ["day-metrics", variables.date] });

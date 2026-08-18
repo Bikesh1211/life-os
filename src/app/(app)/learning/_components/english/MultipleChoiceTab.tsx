@@ -4,6 +4,7 @@ import { useState, useCallback, useRef } from "react";
 import { Paper, Text, Group, Button, Stack, Center, Badge } from "@mantine/core";
 import { IconRefresh, IconArrowRight, IconCheck, IconX } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/core/api/http";
 
 type QuizQuestion = {
   wordId: string;
@@ -27,9 +28,7 @@ export default function MultipleChoiceTab() {
   const { data: question, isLoading, refetch } = useQuery<QuizQuestion>({
     queryKey: ["english", "quiz"],
     queryFn: async () => {
-      const res = await fetch("/api/english/quiz");
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error ?? "Failed to load question");
+      const data = await apiFetch<{ wordId: string; word: string; definition: string; options: string[] }>("/api/english/quiz");
       return {
         wordId: data.wordId,
         word: data.word,
@@ -42,7 +41,7 @@ export default function MultipleChoiceTab() {
   });
 
   const submitMutation = useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       wordId,
       correct,
       responseTimeMs,
@@ -50,13 +49,11 @@ export default function MultipleChoiceTab() {
       wordId: string;
       correct: boolean;
       responseTimeMs: number;
-    }) => {
-      await fetch("/api/english/quiz", {
+    }) =>
+      apiFetch("/api/english/quiz", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wordId, quizType: "multiple_choice", correct, responseTimeMs }),
-      });
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["english", "stats"] });
     },

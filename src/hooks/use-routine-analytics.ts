@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 export type RoutineAnalytics = {
   routineCount: number;
@@ -46,21 +47,13 @@ type FilterParams = {
 
 function buildUrl(base: string, params?: FilterParams) {
   if (!params) return base;
-  const sp = new URLSearchParams();
-  if (params.dateFrom) sp.set("dateFrom", params.dateFrom);
-  if (params.dateTo) sp.set("dateTo", params.dateTo);
-  const qs = sp.toString();
-  return qs ? `${base}?${qs}` : base;
+  return `${base}${toSearchParams(params)}`;
 }
 
 export function useRoutineAnalytics(filters?: FilterParams) {
   return useQuery<RoutineAnalytics>({
     queryKey: ["routine-analytics", filters ?? {}],
-    queryFn: async () => {
-      const res = await fetch(buildUrl("/api/routines/analytics", filters));
-      if (!res.ok) throw new Error("Failed to load routine analytics");
-      return res.json();
-    },
+    queryFn: () => apiFetch<RoutineAnalytics>(buildUrl("/api/routines/analytics", filters)),
     staleTime: 30_000,
   });
 }
@@ -68,12 +61,10 @@ export function useRoutineAnalytics(filters?: FilterParams) {
 export function useRoutineDetailAnalytics(routineId: string, filters?: FilterParams) {
   return useQuery<RoutineDetailAnalytics>({
     queryKey: ["routine-analytics", routineId, filters ?? {}],
-    queryFn: async () => {
-      const url = buildUrl(`/api/routines/analytics?routineId=${routineId}`, filters);
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Failed to load routine analytics");
-      return res.json();
-    },
+    queryFn: () =>
+      apiFetch<RoutineDetailAnalytics>(
+        buildUrl(`/api/routines/analytics${toSearchParams({ routineId })}`, filters),
+      ),
     enabled: !!routineId,
     staleTime: 30_000,
   });

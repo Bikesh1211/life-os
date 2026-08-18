@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 export type DailyPlannerData = {
   goal: {
@@ -49,11 +50,8 @@ export type DailyPlannerData = {
 export function useDailyPlanner(date: string) {
   return useQuery<DailyPlannerData>({
     queryKey: ["daily-planner", date],
-    queryFn: async () => {
-      const res = await fetch(`/api/routines/daily-planner?date=${date}`);
-      if (!res.ok) throw new Error("Failed to load daily planner");
-      return res.json();
-    },
+    queryFn: () =>
+      apiFetch<DailyPlannerData>(`/api/routines/daily-planner${toSearchParams({ date })}`),
     enabled: !!date,
   });
 }
@@ -61,15 +59,11 @@ export function useDailyPlanner(date: string) {
 export function useDailyGoal() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { date: string; title: string; isCompleted?: boolean; taskId?: string | null }) => {
-      const res = await fetch("/api/routines/daily-planner", {
+    mutationFn: (data: { date: string; title: string; isCompleted?: boolean; taskId?: string | null }) =>
+      apiFetch("/api/routines/daily-planner", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "setGoal", ...data }),
-      });
-      if (!res.ok) throw new Error("Failed to set daily goal");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["daily-planner", variables.date] });
     },
@@ -79,15 +73,11 @@ export function useDailyGoal() {
 export function useToggleDailyGoal() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { id: string; date: string; isCompleted: boolean }) => {
-      const res = await fetch("/api/routines/daily-planner", {
+    mutationFn: (data: { id: string; date: string; isCompleted: boolean }) =>
+      apiFetch("/api/routines/daily-planner", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "toggleGoal", ...data }),
-      });
-      if (!res.ok) throw new Error("Failed to toggle daily goal");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["daily-planner", variables.date] });
     },
@@ -97,15 +87,11 @@ export function useToggleDailyGoal() {
 export function useDailyPriority() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { date: string; title: string; estimatedDuration?: number | null; taskId?: string | null }) => {
-      const res = await fetch("/api/routines/daily-planner", {
+    mutationFn: (data: { date: string; title: string; estimatedDuration?: number | null; taskId?: string | null }) =>
+      apiFetch("/api/routines/daily-planner", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "addPriority", ...data }),
-      });
-      if (!res.ok) throw new Error("Failed to add priority");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["daily-planner", variables.date] });
     },
@@ -115,15 +101,11 @@ export function useDailyPriority() {
 export function useUpdatePriorityStatus() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { id: string; date: string; status: string }) => {
-      const res = await fetch("/api/routines/daily-planner", {
+    mutationFn: (data: { id: string; date: string; status: string }) =>
+      apiFetch("/api/routines/daily-planner", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "updatePriority", ...data }),
-      });
-      if (!res.ok) throw new Error("Failed to update priority");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["daily-planner", variables.date] });
     },
@@ -133,15 +115,11 @@ export function useUpdatePriorityStatus() {
 export function useRemovePriority() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { id: string; date: string }) => {
-      const res = await fetch("/api/routines/daily-planner", {
+    mutationFn: (data: { id: string; date: string }) =>
+      apiFetch("/api/routines/daily-planner", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "removePriority", ...data }),
-      });
-      if (!res.ok) throw new Error("Failed to remove priority");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["daily-planner", variables.date] });
     },
@@ -151,15 +129,11 @@ export function useRemovePriority() {
 export function useDailyNote() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { date: string; content: string }) => {
-      const res = await fetch("/api/routines/daily-planner", {
+    mutationFn: (data: { date: string; content: string }) =>
+      apiFetch("/api/routines/daily-planner", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "saveNote", ...data }),
-      });
-      if (!res.ok) throw new Error("Failed to save note");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["daily-planner", variables.date] });
     },
@@ -169,15 +143,11 @@ export function useDailyNote() {
 export function useComputeScore() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { date: string }) => {
-      const res = await fetch("/api/routines/daily-planner", {
+    mutationFn: (data: { date: string }) =>
+      apiFetch("/api/routines/daily-planner", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "computeScore", ...data }),
-      });
-      if (!res.ok) throw new Error("Failed to compute score");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["daily-planner", variables.date] });
     },

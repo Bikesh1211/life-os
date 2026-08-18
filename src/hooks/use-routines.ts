@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/core/api/http";
 
 export type RoutineItem = {
   id: string;
@@ -33,22 +34,14 @@ export type Routine = {
 export function useRoutines() {
   return useQuery<Routine[]>({
     queryKey: ["routines"],
-    queryFn: async () => {
-      const res = await fetch("/api/routines");
-      if (!res.ok) throw new Error("Failed to load routines");
-      return res.json();
-    },
+    queryFn: () => apiFetch<Routine[]>("/api/routines"),
   });
 }
 
 export function useRoutine(id: string) {
   return useQuery<Routine>({
     queryKey: ["routine", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/routines/${id}`);
-      if (!res.ok) throw new Error("Failed to load routine");
-      return res.json();
-    },
+    queryFn: () => apiFetch<Routine>(`/api/routines/${id}`),
     enabled: !!id,
   });
 }
@@ -56,7 +49,7 @@ export function useRoutine(id: string) {
 export function useCreateRoutine() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: {
+    mutationFn: (data: {
       name: string;
       description?: string;
       color?: string;
@@ -70,18 +63,11 @@ export function useCreateRoutine() {
         order: number;
         isOptional?: boolean;
       }>;
-    }) => {
-      const res = await fetch("/api/routines", {
+    }) =>
+      apiFetch("/api/routines", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(errBody.error || "Failed to create routine");
-      }
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["routines"] });
       queryClient.invalidateQueries({ queryKey: ["today-routines"] });
@@ -92,7 +78,7 @@ export function useCreateRoutine() {
 export function useUpdateRoutine() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       id,
       ...data
     }: {
@@ -104,15 +90,11 @@ export function useUpdateRoutine() {
       isActive?: boolean;
       scheduleType?: string;
       customDays?: string[];
-    }) => {
-      const res = await fetch(`/api/routines/${id}`, {
+    }) =>
+      apiFetch(`/api/routines/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update routine");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["routines"] });
       queryClient.invalidateQueries({ queryKey: ["routine", variables.id] });
@@ -124,10 +106,8 @@ export function useUpdateRoutine() {
 export function useDeleteRoutine() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/routines/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete routine");
-    },
+    mutationFn: (id: string) =>
+      apiFetch(`/api/routines/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["routines"] });
       queryClient.invalidateQueries({ queryKey: ["today-routines"] });
@@ -138,11 +118,8 @@ export function useDeleteRoutine() {
 export function useDuplicateRoutine() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/routines/${id}/duplicate`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to duplicate routine");
-      return res.json();
-    },
+    mutationFn: (id: string) =>
+      apiFetch(`/api/routines/${id}/duplicate`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["routines"] });
     },
@@ -152,15 +129,11 @@ export function useDuplicateRoutine() {
 export function useToggleRoutineActive() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
-      const res = await fetch(`/api/routines/${id}`, {
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      apiFetch(`/api/routines/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive }),
-      });
-      if (!res.ok) throw new Error("Failed to toggle routine");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["routines"] });
       queryClient.invalidateQueries({ queryKey: ["today-routines"] });

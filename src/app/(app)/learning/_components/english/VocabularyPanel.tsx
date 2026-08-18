@@ -15,6 +15,7 @@ import {
 } from "@mantine/core";
 import { IconSearch, IconPlus, IconTrash, IconHeart, IconHeartFilled, IconStar, IconCheck, IconX } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type SearchWord = {
   id: string;
@@ -60,63 +61,50 @@ export default function VocabularyPanel() {
 
   const { data: searchResults, isLoading: searchLoading } = useQuery<SearchWord[]>({
     queryKey: ["english", "search", debouncedSearch],
-    queryFn: () =>
-      fetch(`/api/english/words?q=${encodeURIComponent(debouncedSearch)}`).then((r) => r.json()),
+    queryFn: () => apiFetch<SearchWord[]>(`/api/english/words${toSearchParams({ q: debouncedSearch })}`),
     enabled: debouncedSearch.length > 0,
   });
 
   const { data: vocabulary, isLoading: vocabLoading } = useQuery<VocabularyItem[]>({
     queryKey: ["english", "vocabulary", activeTab],
-    queryFn: () => fetch("/api/english/vocabulary").then((r) => r.json()),
+    queryFn: () => apiFetch<VocabularyItem[]>("/api/english/vocabulary"),
   });
 
   const addMutation = useMutation({
-    mutationFn: async (wordId: string) => {
-      const res = await fetch("/api/english/vocabulary", {
+    mutationFn: (wordId: string) =>
+      apiFetch("/api/english/vocabulary", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wordId }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "Failed to add word");
-      }
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["english", "vocabulary"] });
     },
   });
 
   const removeMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await fetch(`/api/english/vocabulary/${id}`, { method: "DELETE" });
-    },
+    mutationFn: (id: string) => apiFetch(`/api/english/vocabulary/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["english", "vocabulary"] });
     },
   });
 
   const favoriteMutation = useMutation({
-    mutationFn: async ({ id, isFavorite }: { id: string; isFavorite: boolean }) => {
-      await fetch(`/api/english/vocabulary/${id}`, {
+    mutationFn: ({ id, isFavorite }: { id: string; isFavorite: boolean }) =>
+      apiFetch(`/api/english/vocabulary/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isFavorite: !isFavorite }),
-      });
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["english", "vocabulary"] });
     },
   });
 
   const masteryMutation = useMutation({
-    mutationFn: async ({ id, mastery }: { id: string; mastery: string }) => {
-      await fetch(`/api/english/vocabulary/${id}`, {
+    mutationFn: ({ id, mastery }: { id: string; mastery: string }) =>
+      apiFetch(`/api/english/vocabulary/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mastery }),
-      });
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["english", "vocabulary"] });
     },

@@ -13,6 +13,7 @@ import {
 } from "@mantine/core";
 import { IconRefresh, IconArrowRight } from "@tabler/icons-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/core/api/http";
 
 type FlashcardWord = {
   id: string;
@@ -31,12 +32,7 @@ export default function FlashcardsTab() {
 
   const { data: words, isLoading, refetch } = useQuery<FlashcardWord[]>({
     queryKey: ["english", "review"],
-    queryFn: async () => {
-      const res = await fetch("/api/english/review");
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error ?? "Failed to load review words");
-      return data;
-    },
+    queryFn: () => apiFetch<FlashcardWord[]>("/api/english/review"),
     staleTime: 0,
     retry: false,
   });
@@ -44,7 +40,7 @@ export default function FlashcardsTab() {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const submitMutation = useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       wordId,
       correct,
       responseTimeMs,
@@ -52,13 +48,11 @@ export default function FlashcardsTab() {
       wordId: string;
       correct: boolean;
       responseTimeMs: number;
-    }) => {
-      await fetch("/api/english/quiz", {
+    }) =>
+      apiFetch("/api/english/quiz", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ wordId, quizType: "flashcard", correct, responseTimeMs }),
-      });
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["english", "stats"] });
     },

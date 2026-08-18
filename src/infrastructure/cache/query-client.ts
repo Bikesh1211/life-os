@@ -22,12 +22,19 @@ import { GC_TIME, STALE_TIME } from "./policy";
  * deliberately: LifeOS is a tab people leave open all day, and refetching
  * everything on every alt-tab is the kind of background traffic this work is
  * meant to remove.
+ *
+ * The global default is the short "list" window (60s), so any list the user
+ * is actively reading or editing revalidates within a minute when its screen
+ * remounts. Expensive-to-compute aggregates (analytics, summaries, reference
+ * data) opt up to seconds-to-minutes via their own `staleTime`, but the base
+ * line stays low because for an in-place-edited list, staleness is about how
+ * visibly ``wrong'' the data looks, not how costly it is to refetch.
  */
 export function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: STALE_TIME.summary,
+        staleTime: STALE_TIME.list,
         gcTime: GC_TIME,
         refetchOnMount: true,
         refetchOnWindowFocus: false,

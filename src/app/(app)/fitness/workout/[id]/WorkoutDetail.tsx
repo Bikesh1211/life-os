@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Stack, Group, Text, Badge, Button, Paper, SimpleGrid, Table, Skeleton } from "@mantine/core";
 import { IconArrowLeft, IconBarbell, IconCheck, IconFlame } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 type Props = {
   sessionId: string;
@@ -32,10 +33,8 @@ type SessionData = {
   }[];
 };
 
-async function fetchSession(id: string): Promise<SessionData> {
-  const res = await fetch(`/api/fitness/workouts/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch workout");
-  return res.json();
+function fetchSession(id: string): Promise<SessionData> {
+  return apiFetch<SessionData>(`/api/fitness/workouts/${id}`);
 }
 
 export function WorkoutDetail({ sessionId }: Props) {

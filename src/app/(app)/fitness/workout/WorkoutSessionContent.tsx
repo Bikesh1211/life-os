@@ -24,7 +24,7 @@ type Props = {
 };
 
 async function fetchExercises() {
-  return apiFetch("/api/fitness/exercises");
+  return apiFetch<any[]>("/api/fitness/exercises");
 }
 
 export function WorkoutSessionContent({ programDayId }: Props) {
@@ -42,7 +42,7 @@ export function WorkoutSessionContent({ programDayId }: Props) {
 
   const startMutation = useMutation({
     mutationFn: async () => {
-      return apiFetch("/api/fitness/workouts", {
+      return apiFetch<any>("/api/fitness/workouts", {
         method: "POST",
         body: JSON.stringify({ date, programDayId: programDayId ?? null }),
       });
@@ -62,13 +62,10 @@ export function WorkoutSessionContent({ programDayId }: Props) {
         weightKg: s.weightKg === "" ? null : String(s.weightKg),
         sortOrder: i,
       }));
-      const res = await fetch(`/api/fitness/workouts/${sessionId}/sets`, {
+      return apiFetch<any>(`/api/fitness/workouts/${sessionId}/sets`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sets: formattedSets }),
       });
-      if (!res.ok) throw new Error("Failed to save sets");
-      return res.json();
     },
   });
 
@@ -76,13 +73,10 @@ export function WorkoutSessionContent({ programDayId }: Props) {
     mutationFn: async () => {
       if (!sessionId) return;
       await saveSetsMutation.mutateAsync();
-      const res = await fetch(`/api/fitness/workouts/${sessionId}`, {
+      return apiFetch<any>(`/api/fitness/workouts/${sessionId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ _action: "complete" }),
       });
-      if (!res.ok) throw new Error("Failed to complete workout");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["fitness"] });

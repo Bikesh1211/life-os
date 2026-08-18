@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { IconTarget, IconCheck, IconX, IconCalendarTime, IconPuzzle, IconPercentage } from "@tabler/icons-react";
 import { Card, Text, Group } from "@mantine/core";
+import { apiFetch } from "@/core/api/http";
 
 type Analytics = {
   totalCreated: number;
@@ -21,8 +22,7 @@ type Analytics = {
 export default function AnalyticsTab() {
   const { data, isLoading } = useQuery<Analytics>({
     queryKey: ["goals", "analytics"],
-    queryFn: () =>
-      fetch("/api/goals/analytics").then((r) => (r.ok ? r.json() : null)),
+    queryFn: () => apiFetch<Analytics>("/api/goals/analytics"),
     staleTime: 5 * 60 * 1000,
   });
 

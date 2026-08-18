@@ -2,6 +2,7 @@
 
 import { notifications } from "@mantine/notifications";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/core/api/http";
 
 export type RoutineTemplateItem = {
   id: string;
@@ -28,11 +29,7 @@ export type RoutineTemplate = {
 export function useRoutineTemplates() {
   return useQuery<RoutineTemplate[]>({
     queryKey: ["routine-templates"],
-    queryFn: async () => {
-      const res = await fetch("/api/routines/templates");
-      if (!res.ok) throw new Error("Failed to load templates");
-      return res.json();
-    },
+    queryFn: () => apiFetch<RoutineTemplate[]>("/api/routines/templates"),
     staleTime: 300_000,
   });
 }
@@ -40,15 +37,11 @@ export function useRoutineTemplates() {
 export function useCloneTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (templateId: string) => {
-      const res = await fetch("/api/routines/templates", {
+    mutationFn: (templateId: string) =>
+      apiFetch("/api/routines/templates", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ templateId }),
-      });
-      if (!res.ok) throw new Error("Failed to clone template");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Cloned", message: "Template cloned as routine", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["routines"] });

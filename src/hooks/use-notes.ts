@@ -7,6 +7,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type { Note, NoteTag } from "@/modules/notes";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 const NOTES_KEY = "notes" as const;
 const TAGS_KEY = "note-tags" as const;
@@ -16,30 +17,11 @@ const LINKS_KEY = "note-links" as const;
 type NoteData = Note & { contentJson?: unknown };
 
 async function fetchNotes(params?: Record<string, string | number | boolean | string[] | undefined>) {
-  const searchParams = new URLSearchParams();
-  if (params?.search) searchParams.set("search", String(params.search));
-  if (params?.category) searchParams.set("category", String(params.category));
-  if (params?.status) searchParams.set("status", String(params.status));
-  if (params?.folderId) searchParams.set("folderId", String(params.folderId));
-  if (params?.tags && Array.isArray(params.tags)) searchParams.set("tags", params.tags.join(","));
-  if (params?.isPinned !== undefined) searchParams.set("isPinned", String(params.isPinned));
-  if (params?.includeArchived !== undefined) searchParams.set("includeArchived", String(params.includeArchived));
-  if (params?.includeDeleted !== undefined) searchParams.set("includeDeleted", String(params.includeDeleted));
-  if (params?.sortBy) searchParams.set("sortBy", String(params.sortBy));
-  if (params?.sortOrder) searchParams.set("sortOrder", String(params.sortOrder));
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.offset) searchParams.set("offset", String(params.offset));
-
-  const qs = searchParams.toString();
-  const res = await fetch(`/api/notes${qs ? `?${qs}` : ""}`);
-  if (!res.ok) throw new Error("Failed to fetch notes");
-  return res.json() as Promise<Note[]>;
+  return apiFetch<Note[]>(`/api/notes${toSearchParams(params ?? {})}`);
 }
 
 async function fetchNote(id: string) {
-  const res = await fetch(`/api/notes/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch note");
-  return res.json() as Promise<NoteData>;
+  return apiFetch<NoteData>(`/api/notes/${id}`);
 }
 
 async function createNote(data: {
@@ -55,45 +37,32 @@ async function createNote(data: {
   reminderDate?: string | null;
   color?: string | null;
 }) {
-  const res = await fetch("/api/notes", {
+  return apiFetch<Note>("/api/notes", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to create note");
-  return res.json() as Promise<Note>;
 }
 
 async function updateNote(id: string, data: Record<string, unknown>) {
-  const res = await fetch(`/api/notes/${id}`, {
+  return apiFetch<Note>(`/api/notes/${id}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to update note");
-  return res.json() as Promise<Note>;
 }
 
 async function deleteNote(id: string) {
-  const res = await fetch(`/api/notes/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete note");
-  return res.json();
+  return apiFetch<any>(`/api/notes/${id}`, { method: "DELETE" });
 }
 
 async function fetchTags() {
-  const res = await fetch("/api/notes/tags");
-  if (!res.ok) throw new Error("Failed to fetch tags");
-  return res.json() as Promise<NoteTag[]>;
+  return apiFetch<NoteTag[]>("/api/notes/tags");
 }
 
 async function createTag(data: { name: string; color?: string }) {
-  const res = await fetch("/api/notes/tags", {
+  return apiFetch<NoteTag>("/api/notes/tags", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Failed to create tag");
-  return res.json() as Promise<NoteTag>;
 }
 
 export function useNotes(
@@ -294,11 +263,7 @@ export function useCreateTag() {
 export function useNoteLinks(noteId: string) {
   return useQuery({
     queryKey: [LINKS_KEY, "outgoing", noteId],
-    queryFn: async () => {
-      const res = await fetch(`/api/notes/links?noteId=${noteId}&type=outgoing`);
-      if (!res.ok) throw new Error("Failed to fetch links");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any[]>(`/api/notes/links${toSearchParams({ noteId, type: "outgoing" })}`),
     enabled: !!noteId,
   });
 }
@@ -306,11 +271,7 @@ export function useNoteLinks(noteId: string) {
 export function useNoteBacklinks(noteId: string) {
   return useQuery({
     queryKey: [LINKS_KEY, "backlinks", noteId],
-    queryFn: async () => {
-      const res = await fetch(`/api/notes/links?noteId=${noteId}&type=backlinks`);
-      if (!res.ok) throw new Error("Failed to fetch backlinks");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any[]>(`/api/notes/links${toSearchParams({ noteId, type: "backlinks" })}`),
     enabled: !!noteId,
   });
 }
@@ -318,15 +279,11 @@ export function useNoteBacklinks(noteId: string) {
 export function useCreateNoteLink() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ noteId, linkedNoteId }: { noteId: string; linkedNoteId: string }) => {
-      const res = await fetch("/api/notes/links", {
+    mutationFn: ({ noteId, linkedNoteId }: { noteId: string; linkedNoteId: string }) =>
+      apiFetch("/api/notes/links", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ noteId, linkedNoteId }),
-      });
-      if (!res.ok) throw new Error("Failed to create link");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       notifications.show({ title: "Created", message: "Note linked", color: "green" });
       queryClient.invalidateQueries({ queryKey: [LINKS_KEY, "outgoing", variables.noteId] });
@@ -338,11 +295,8 @@ export function useCreateNoteLink() {
 export function useDeleteNoteLink() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, noteId }: { id: string; noteId: string }) => {
-      const res = await fetch(`/api/notes/links?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete link");
-      return res.json();
-    },
+    mutationFn: ({ id, noteId }: { id: string; noteId: string }) =>
+      apiFetch(`/api/notes/links${toSearchParams({ id })}`, { method: "DELETE" }),
     onSuccess: (_, variables) => {
       notifications.show({ title: "Deleted", message: "Link removed", color: "orange" });
       queryClient.invalidateQueries({ queryKey: [LINKS_KEY, "outgoing", variables.noteId] });
@@ -356,11 +310,7 @@ export function useDeleteNoteLink() {
 export function useNoteFolders() {
   return useQuery({
     queryKey: [FOLDERS_KEY],
-    queryFn: async () => {
-      const res = await fetch("/api/notes/folders");
-      if (!res.ok) throw new Error("Failed to fetch folders");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any[]>("/api/notes/folders"),
     staleTime: 60_000,
   });
 }
@@ -368,15 +318,11 @@ export function useNoteFolders() {
 export function useCreateNoteFolder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { name: string; color?: string; icon?: string; parentId?: string | null }) => {
-      const res = await fetch("/api/notes/folders", {
+    mutationFn: (data: { name: string; color?: string; icon?: string; parentId?: string | null }) =>
+      apiFetch("/api/notes/folders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to create folder");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Created", message: "Folder created", color: "green" });
       queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] });
@@ -387,15 +333,11 @@ export function useCreateNoteFolder() {
 export function useUpdateNoteFolder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...data }: { id: string; name?: string; color?: string; icon?: string; parentId?: string | null }) => {
-      const res = await fetch("/api/notes/folders", {
+    mutationFn: ({ id, ...data }: { id: string; name?: string; color?: string; icon?: string; parentId?: string | null }) =>
+      apiFetch("/api/notes/folders", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...data }),
-      });
-      if (!res.ok) throw new Error("Failed to update folder");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Updated", message: "Folder updated", color: "green" });
       queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] });
@@ -407,11 +349,8 @@ export function useUpdateNoteFolder() {
 export function useDeleteNoteFolder() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/notes/folders?id=${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete folder");
-      return res.json();
-    },
+    mutationFn: (id: string) =>
+      apiFetch(`/api/notes/folders${toSearchParams({ id })}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Folder deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: [FOLDERS_KEY] });

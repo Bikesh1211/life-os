@@ -2,6 +2,7 @@
 
 import { notifications } from "@mantine/notifications";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 export type LevelInfo = {
   level: number;
@@ -94,22 +95,14 @@ export type XpTransaction = {
 export function useGamificationProfile() {
   return useQuery<GamificationProfile>({
     queryKey: ["gamification", "profile"],
-    queryFn: async () => {
-      const res = await fetch("/api/gamification/profile");
-      if (!res.ok) throw new Error("Failed to load gamification profile");
-      return res.json();
-    },
+    queryFn: () => apiFetch<GamificationProfile>("/api/gamification/profile"),
     staleTime: 30_000,
   });
 }
 
 export function useGamificationSync() {
   return useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/gamification/sync", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to sync gamification data");
-      return res.json();
-    },
+    mutationFn: () => apiFetch("/api/gamification/sync", { method: "POST" }),
     onSuccess: () => {
       notifications.show({ title: "Synced", message: "Gamification data synced", color: "green" });
     },
@@ -122,11 +115,7 @@ export function useGamificationSync() {
 export function useAchievements() {
   return useQuery<Achievement[]>({
     queryKey: ["gamification", "achievements"],
-    queryFn: async () => {
-      const res = await fetch("/api/gamification/achievements");
-      if (!res.ok) throw new Error("Failed to load achievements");
-      return res.json();
-    },
+    queryFn: () => apiFetch<Achievement[]>("/api/gamification/achievements"),
     staleTime: 30_000,
   });
 }
@@ -134,11 +123,7 @@ export function useAchievements() {
 export function useBadges() {
   return useQuery<Badge[]>({
     queryKey: ["gamification", "badges"],
-    queryFn: async () => {
-      const res = await fetch("/api/gamification/badges");
-      if (!res.ok) throw new Error("Failed to load badges");
-      return res.json();
-    },
+    queryFn: () => apiFetch<Badge[]>("/api/gamification/badges"),
     staleTime: 30_000,
   });
 }
@@ -146,11 +131,7 @@ export function useBadges() {
 export function useChallenges() {
   return useQuery<Challenge[]>({
     queryKey: ["gamification", "challenges"],
-    queryFn: async () => {
-      const res = await fetch("/api/gamification/challenges");
-      if (!res.ok) throw new Error("Failed to load challenges");
-      return res.json();
-    },
+    queryFn: () => apiFetch<Challenge[]>("/api/gamification/challenges"),
     staleTime: 30_000,
   });
 }
@@ -158,11 +139,7 @@ export function useChallenges() {
 export function useXpHistory(limit = 100) {
   return useQuery<XpTransaction[]>({
     queryKey: ["gamification", "history", limit],
-    queryFn: async () => {
-      const res = await fetch(`/api/gamification/history?limit=${limit}`);
-      if (!res.ok) throw new Error("Failed to load XP history");
-      return res.json();
-    },
+    queryFn: () => apiFetch<XpTransaction[]>(`/api/gamification/history${toSearchParams({ limit })}`),
     staleTime: 30_000,
   });
 }

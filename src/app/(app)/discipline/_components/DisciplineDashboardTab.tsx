@@ -35,6 +35,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
 import { EXCUSE_TAGS } from "@/modules/integrity/constants";
+import { apiFetch } from "@/core/api/http";
 
 type Commitment = {
   id: string;
@@ -204,10 +205,9 @@ function CheckinCard({ checkin }: { checkin: DisciplineDashboard["todayCheckin"]
   const today = dayjs().format("YYYY-MM-DD");
 
   const saveMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/discipline/checkin", {
+    mutationFn: () =>
+      apiFetch("/api/discipline/checkin", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date: today,
           accomplishments: accomplishments || undefined,
@@ -217,9 +217,7 @@ function CheckinCard({ checkin }: { checkin: DisciplineDashboard["todayCheckin"]
           improvement: improvement || undefined,
           excuseTags: selectedExcuses.length > 0 ? selectedExcuses : undefined,
         }),
-      });
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["discipline"] });
       setIsEditing(false);
@@ -355,8 +353,7 @@ export default function DisciplineDashboardTab() {
 
   const { data: dashboard, isLoading } = useQuery<DisciplineDashboard>({
     queryKey: ["discipline", "dashboard"],
-    queryFn: () =>
-      fetch("/api/discipline?view=dashboard").then((r) => (r.ok ? r.json() : null)),
+    queryFn: () => apiFetch<DisciplineDashboard>("/api/discipline?view=dashboard"),
     staleTime: 30 * 1000,
   });
 
