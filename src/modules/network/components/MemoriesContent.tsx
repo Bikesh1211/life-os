@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, ThemeIcon, Badge, SimpleGrid, Button } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconPhotoHeart, IconHeart, IconPlus, IconEdit, IconTrash } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { MemoriesModal } from "./MemoriesModal";
 
@@ -33,18 +34,11 @@ export function MemoriesContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["network-memories"],
-    queryFn: async () => {
-      const res = await fetch("/api/network/memories");
-      if (!res.ok) throw new Error("Failed to load memories");
-      return res.json() as Promise<Memory[]>;
-    },
+    queryFn: () => apiFetch<Memory[]>("/api/network/memories"),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/network/memories/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-    },
+    mutationFn: (id: string) => apiFetch(`/api/network/memories/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Memory deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["network-memories"] });

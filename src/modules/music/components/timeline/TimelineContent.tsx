@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { IconTimelineEvent } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 type TimelineEvent = {
   id: string;
@@ -17,11 +18,7 @@ type TimelineEvent = {
 export function TimelineContent() {
   const { data, isLoading } = useQuery({
     queryKey: ["music-timeline"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/timeline");
-      if (!res.ok) throw new Error("Failed to load timeline");
-      return res.json() as Promise<{ timeline: TimelineEvent[] }>;
-    },
+    queryFn: () => apiFetch<{ timeline: TimelineEvent[] }>("/api/music/timeline"),
   });
 
   if (isLoading) {

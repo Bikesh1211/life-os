@@ -6,6 +6,7 @@ import {
 } from "@mantine/core";
 import { IconPill, IconPlus, IconTrash, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 import type { WellnessMedicineReminder, WellnessMedicineLog } from "@/modules/wellness";
 
 export function MedicinesContent({
@@ -26,9 +27,8 @@ export function MedicinesContent({
     if (!name || !dosage || !time) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/medicines", {
+      await apiFetch("/api/wellness/medicines", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name, dosage, frequency, time,
           startDate: new Date().toISOString().slice(0, 10),
@@ -45,16 +45,15 @@ export function MedicinesContent({
   }, [name, dosage, frequency, time]);
 
   const handleToggle = useCallback(async (id: string, isActive: boolean) => {
-    await fetch(`/api/wellness/medicines/${id}`, {
+    await apiFetch(`/api/wellness/medicines/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !isActive }),
     });
     window.location.reload();
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
-    await fetch(`/api/wellness/medicines/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/wellness/medicines/${id}`, { method: "DELETE" });
     window.location.reload();
   }, []);
 

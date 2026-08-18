@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { StatCard } from "../design-system/StatCard";
 import { IconChartBar, IconMusic, IconCalendar, IconMoodSmile } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 const moodEmojis: Record<string, string> = {
   happy: "😊",
@@ -30,11 +31,7 @@ type RecapData = {
 export function RecapContent({ year }: { year: number }) {
   const { data, isLoading } = useQuery<RecapData>({
     queryKey: ["music-recap", year],
-    queryFn: async () => {
-      const res = await fetch(`/api/music/recap/${year}`);
-      if (!res.ok) throw new Error("Failed to load recap");
-      return res.json();
-    },
+    queryFn: () => apiFetch<RecapData>(`/api/music/recap/${year}`),
   });
 
   if (isLoading) {

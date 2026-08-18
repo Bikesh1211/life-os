@@ -21,6 +21,7 @@ import {
 } from "@tabler/icons-react";
 import { Editor } from "@/components/editor";
 import type { EditorChangeHandler } from "@/components/editor";
+import { apiFetch } from "@/core/api/http";
 
 type Chapter = {
   id: string;
@@ -118,21 +119,13 @@ export function WritingEditor() {
 
   const { data: book, isLoading: bookLoading } = useQuery({
     queryKey: ["book", bookId],
-    queryFn: async () => {
-      const res = await fetch(`/api/books/${bookId}`);
-      if (!res.ok) throw new Error("Failed to load book");
-      return res.json() as Promise<Book>;
-    },
+    queryFn: () => apiFetch<Book>(`/api/books/${bookId}`),
     enabled: !!bookId,
   });
 
   const { data: chapters, isLoading: chaptersLoading } = useQuery({
     queryKey: ["book-chapters", bookId],
-    queryFn: async () => {
-      const res = await fetch(`/api/books/${bookId}/chapters`);
-      if (!res.ok) throw new Error("Failed to load chapters");
-      return res.json() as Promise<Chapter[]>;
-    },
+    queryFn: () => apiFetch<Chapter[]>(`/api/books/${bookId}/chapters`),
     enabled: !!bookId,
   });
 
@@ -154,13 +147,10 @@ export function WritingEditor() {
   const createChapterMutation = useMutation({
     mutationFn: async () => {
       const nextOrder = chapters?.length ?? 0;
-      const res = await fetch(`/api/books/${bookId}/chapters`, {
+      return apiFetch<Chapter>(`/api/books/${bookId}/chapters`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "Untitled", order: nextOrder }),
       });
-      if (!res.ok) throw new Error("Failed to create chapter");
-      return res.json() as Promise<Chapter>;
     },
     onSuccess: (chapter) => {
       queryClient.invalidateQueries({ queryKey: ["book-chapters", bookId] });
@@ -175,10 +165,9 @@ export function WritingEditor() {
 
   const deleteChapterMutation = useMutation({
     mutationFn: async (chapterId: string) => {
-      const res = await fetch(`/api/books/${bookId}/chapters/${chapterId}`, {
+      await apiFetch(`/api/books/${bookId}/chapters/${chapterId}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to delete chapter");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-chapters", bookId] });
@@ -194,12 +183,10 @@ export function WritingEditor() {
   const saveChapter = useCallback(async () => {
     if (!selectedChapterId) return;
     const body: Record<string, unknown> = { content: contentRef.current, title: chapterTitle };
-    const res = await fetch(`/api/books/${bookId}/chapters/${selectedChapterId}`, {
+    await apiFetch(`/api/books/${bookId}/chapters/${selectedChapterId}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error("Failed to save");
     queryClient.invalidateQueries({ queryKey: ["book-chapters", bookId] });
     queryClient.invalidateQueries({ queryKey: ["book", bookId] });
   }, [selectedChapterId, bookId, chapterTitle, queryClient]);

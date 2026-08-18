@@ -7,27 +7,23 @@ import { IconSearch, IconTrendingUp, IconStar, IconFlame } from "@tabler/icons-r
 import Link from "next/link";
 import { MovieCard } from "@/modules/movies/components/design-system/MovieCard";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
+import { apiFetch, toSearchParams } from "@/core/api/http";
+import { STALE_TIME } from "@/infrastructure/cache/policy";
 
 export function DiscoverContent() {
   const [query, setQuery] = useState("");
 
   const { data: explore, isLoading } = useQuery({
     queryKey: ["movies-explore"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/explore");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
+    queryFn: () => apiFetch<any>("/api/movies/explore"),
+    staleTime: STALE_TIME.summary,
   });
 
   const { data: searchResults } = useQuery({
     queryKey: ["movies-search", query],
-    queryFn: async () => {
+    queryFn: () => {
       if (!query.trim()) return null;
-      const res = await fetch(`/api/movies/search?q=${encodeURIComponent(query)}&type=all`);
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
+      return apiFetch<any>(`/api/movies/search${toSearchParams({ q: query, type: "all" })}`);
     },
     enabled: query.trim().length > 0,
   });

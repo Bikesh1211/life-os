@@ -9,6 +9,7 @@ import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import Link from "next/link";
 import { IconGridDots, IconList, IconTrash, IconSearch } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type LibraryTrack = {
   id: string;
@@ -29,20 +30,13 @@ export function LibraryContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["music-library-songs"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/library?limit=200");
-      if (!res.ok) throw new Error("Failed to load library");
-      return res.json() as Promise<{ tracks: LibraryTrack[]; total: number }>;
-    },
+    queryFn: () =>
+      apiFetch<{ tracks: LibraryTrack[]; total: number }>(`/api/music/library${toSearchParams({ limit: 200 })}`),
   });
 
   const removeMutation = useMutation({
-    mutationFn: async (trackId: string) => {
-      const res = await fetch(`/api/music/library?trackId=${encodeURIComponent(trackId)}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error("Failed to remove from library");
-    },
+    mutationFn: (trackId: string) =>
+      apiFetch(`/api/music/library${toSearchParams({ trackId })}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Removed", message: "Removed from library", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["music-library-songs"] });

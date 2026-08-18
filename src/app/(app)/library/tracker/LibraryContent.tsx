@@ -49,7 +49,8 @@ import {
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { notifications } from "@mantine/notifications";
-import type { ReadingItem } from "@/modules/reading";
+import type { ReadingItem, OpenLibraryBook } from "@/modules/reading";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -383,8 +384,8 @@ function AddItemModal({
     if (!title.trim()) return;
     setSearching(true);
     try {
-      const res = await fetch(`/api/reading/openlibrary?title=${encodeURIComponent(title)}`);
-      if (res.ok) setSearchResults(await res.json());
+      const data = await apiFetch<OpenLibraryBook[]>(`/api/reading/openlibrary${toSearchParams({ title })}`);
+      setSearchResults(data);
     } catch {} finally {
       setSearching(false);
     }
@@ -405,26 +406,22 @@ function AddItemModal({
       if (pageCount) body.pageCount = parseInt(pageCount, 10);
       if (coverUrl) body.coverUrl = coverUrl;
 
-      const res = await fetch("/api/reading/items", {
+      const item = await apiFetch<ReadingItem>("/api/reading/items", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
 
-      if (res.ok) {
-        const item = await res.json();
-        onCreated(item);
-        onClose();
-        setTitle("");
-        setAuthors("");
-        setIsbn("");
-        setUrl("");
-        setTags("");
-        setPageCount("");
-        setCoverUrl("");
-        setSearchResults(null);
-        notifications.show({ title: "Added", message: `${TYPE_LABELS[type]} added to library`, color: "green" });
-      }
+      onCreated(item);
+      onClose();
+      setTitle("");
+      setAuthors("");
+      setIsbn("");
+      setUrl("");
+      setTags("");
+      setPageCount("");
+      setCoverUrl("");
+      setSearchResults(null);
+      notifications.show({ title: "Added", message: `${TYPE_LABELS[type]} added to library`, color: "green" });
     } catch {} finally {
       setLoading(false);
     }
@@ -598,18 +595,14 @@ function EditItemModal({
       if (isbn) body.isbn = isbn;
       if (coverUrl) body.coverUrl = coverUrl;
 
-      const res = await fetch(`/api/reading/items/${item.id}`, {
+      const updated = await apiFetch<ReadingItem>(`/api/reading/items/${item.id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
 
-      if (res.ok) {
-        const updated = await res.json();
-        onUpdated(updated);
-        onClose();
-        notifications.show({ title: "Updated", message: "Item updated", color: "green" });
-      }
+      onUpdated(updated);
+      onClose();
+      notifications.show({ title: "Updated", message: "Item updated", color: "green" });
     } catch {} finally {
       setLoading(false);
     }
@@ -699,16 +692,11 @@ export function LibraryContent({ initialDashboard }: Props) {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
       const tab = TAB_MAP[activeTab ?? "all"];
-      if (tab?.type) params.set("type", tab.type);
-      if (search) params.set("search", search);
-      if (statusFilter) params.set("status", statusFilter);
-      params.set("sortBy", sortBy);
-      params.set("limit", "100");
-
-      const res = await fetch(`/api/reading/items?${params}`);
-      if (res.ok) setItems(await res.json());
+      const data = await apiFetch<ReadingItem[]>(
+        `/api/reading/items${toSearchParams({ type: tab?.type, search, status: statusFilter, sortBy, limit: 100 })}`,
+      );
+      setItems(data);
     } catch {} finally {
       setLoading(false);
     }
@@ -734,22 +722,17 @@ export function LibraryContent({ initialDashboard }: Props) {
   };
 
   const handleDelete = async (id: string) => {
-    const res = await fetch(`/api/reading/items/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setItems((prev) => prev.filter((i) => i.id !== id));
-      notifications.show({ title: "Deleted", message: "Item removed from library", color: "red" });
-    }
+    await apiFetch(`/api/reading/items/${id}`, { method: "DELETE" });
+    setItems((prev) => prev.filter((i) => i.id !== id));
+    notifications.show({ title: "Deleted", message: "Item removed from library", color: "red" });
   };
 
   const handleToggleFavorite = async (item: ReadingItem) => {
-    const res = await fetch(`/api/reading/items/${item.id}`, {
+    await apiFetch(`/api/reading/items/${item.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isFavorited: !item.isFavorited }),
     });
-    if (res.ok) {
-      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, isFavorited: !i.isFavorited } : i)));
-    }
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, isFavorited: !i.isFavorited } : i)));
   };
 
   const handleEdit = (item: ReadingItem) => {

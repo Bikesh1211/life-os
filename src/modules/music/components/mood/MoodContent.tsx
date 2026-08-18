@@ -8,6 +8,7 @@ import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { StatCard } from "../design-system/StatCard";
 import { MoodEntryModal } from "./MoodEntryModal";
 import { IconPlus, IconMoodSmile } from "@tabler/icons-react";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 const moodEmojis: Record<string, string> = {
   happy: "😊",
@@ -39,11 +40,10 @@ export function MoodContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["music-mood"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/mood?limit=100");
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json() as Promise<{ entries: MoodEntry[]; analytics: MoodAnalytics[] }>;
-    },
+    queryFn: () =>
+      apiFetch<{ entries: MoodEntry[]; analytics: MoodAnalytics[] }>(
+        `/api/music/mood${toSearchParams({ limit: 100 })}`,
+      ),
   });
 
   if (isLoading) {

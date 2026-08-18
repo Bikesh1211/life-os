@@ -17,6 +17,7 @@ import { useState } from "react";
 import { PAYMENT_METHODS } from "@/modules/expenses/constants";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
+import { apiFetch } from "@/core/api/http";
 
 type QuickAddModalProps = {
   opened: boolean;
@@ -64,13 +65,10 @@ export function QuickAddModal({
         type: "expense",
       };
 
-      const res = await fetch("/api/expenses/transactions", {
+      await apiFetch("/api/expenses/transactions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) throw new Error("Failed to create transaction");
 
       notifications.show({ title: "Created", message: "Expense added", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });

@@ -16,11 +16,12 @@ import { IconRepeat } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
 import type { RecurringTransaction } from "@/modules/expenses";
+import { apiFetch } from "@/core/api/http";
 
 export default function SubscriptionsTab() {
   const { data: subscriptions, isLoading } = useQuery<RecurringTransaction[]>({
     queryKey: ["expenses", "subscriptions"],
-    queryFn: () => fetch("/api/expenses/subscriptions").then((r) => r.json()),
+    queryFn: () => apiFetch<RecurringTransaction[]>("/api/expenses/subscriptions"),
     staleTime: 5 * 60 * 1000,
   });
 

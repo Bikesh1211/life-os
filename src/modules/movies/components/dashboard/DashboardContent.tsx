@@ -5,15 +5,12 @@ import { SimpleGrid, Text, Skeleton } from "@mantine/core";
 import { IconHeart, IconPhotoHeart, IconListCheck, IconQuote, IconPlaylist } from "@tabler/icons-react";
 import { StatCard } from "@/modules/movies/components/design-system/StatCard";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 
 export function DashboardContent() {
   const { data: dash, isLoading } = useQuery({
     queryKey: ["movies-dashboard"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/dashboard");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any>("/api/movies/dashboard"),
   });
 
   if (isLoading) {

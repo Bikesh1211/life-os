@@ -28,6 +28,7 @@ import Link from "next/link";
 import dayjs from "dayjs";
 import type { KnowledgeEntry } from "@/modules/knowledge";
 import type { KnowledgeEntryLink } from "@/modules/knowledge/repository";
+import { apiFetch } from "@/core/api/http";
 
 type Props = {
   entry: KnowledgeEntry;
@@ -57,7 +58,7 @@ export function EntryDetail({ entry, links }: Props) {
     if (!confirm("Delete this entry?")) return;
     setDeleting(true);
     try {
-      await fetch(`/api/knowledge/${entry.id}`, { method: "DELETE" });
+      await apiFetch(`/api/knowledge/${entry.id}`, { method: "DELETE" });
       notifications.show({
         title: "Deleted",
         message: "Entry has been deleted",
@@ -78,9 +79,8 @@ export function EntryDetail({ entry, links }: Props) {
 
   const handleReview = async (action: "reviewed" | "mastered") => {
     try {
-      await fetch("/api/knowledge/reviews", {
+      await apiFetch("/api/knowledge/reviews", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entryId: entry.id, action }),
       });
       notifications.show({

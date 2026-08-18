@@ -30,13 +30,14 @@ import {
   Line,
 } from "recharts";
 import type { AnalyticsData } from "@/modules/expenses";
+import { apiFetch } from "@/core/api/http";
 
 const COLORS = ["#FF6B6B", "#4ECDC4", "#FFD93D", "#A78BFA", "#F472B6", "#60A5FA", "#F97316", "#34D399", "#FB923C", "#818CF8", "#E879F9", "#9CA3AF"];
 
 export default function AnalyticsTab() {
   const { data, isLoading } = useQuery<AnalyticsData>({
     queryKey: ["expenses", "analytics"],
-    queryFn: () => fetch("/api/expenses/analytics").then((r) => r.json()),
+    queryFn: () => apiFetch<AnalyticsData>("/api/expenses/analytics"),
     staleTime: 5 * 60 * 1000,
   });
 

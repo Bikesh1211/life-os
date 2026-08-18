@@ -4,15 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { SimpleGrid, Text, Badge, Group, Progress } from "@mantine/core";
 import { IconMovie } from "@tabler/icons-react";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
+import { apiFetch } from "@/core/api/http";
 
 export function AnimeContent() {
   const { data: watchlist } = useQuery({
     queryKey: ["movie-anime"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/watchlist");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any[]>("/api/movies/watchlist"),
   });
 
   const anime = watchlist?.filter((w: any) => w.tags?.includes("anime") ?? false) ?? [];

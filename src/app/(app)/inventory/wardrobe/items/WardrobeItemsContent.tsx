@@ -13,6 +13,8 @@ import {
 } from "@tabler/icons-react";
 import ItemFormModal from "../_components/ItemFormModal";
 import { CLOTHING_CATEGORIES, ITEM_SORT_OPTIONS } from "@/modules/wardrobe/constants";
+import { apiFetch, toSearchParams } from "@/core/api/http";
+import type { ClothingItem } from "@/modules/wardrobe";
 
 function ItemCard({ item, onEdit, onDelete, onToggleFavorite }: { item: any; onEdit: () => void; onDelete: () => void; onToggleFavorite: () => void }) {
   return (
@@ -81,13 +83,10 @@ export function WardrobeItemsContent() {
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (categoryFilter) params.set("category", categoryFilter);
-    if (sort) params.set("sort", sort);
     try {
-      const res = await fetch(`/api/inventory/wardrobe/items?${params}`);
-      const data = await res.json();
+      const data = await apiFetch<ClothingItem[]>(
+        `/api/inventory/wardrobe/items${toSearchParams({ search, category: categoryFilter, sort })}`,
+      );
       setItems(data);
     } catch (e) {
       console.error(e);
@@ -107,12 +106,12 @@ export function WardrobeItemsContent() {
 
   const handleSave = async (data: any) => {
     if (editItem) {
-      await fetch(`/api/inventory/wardrobe/items/${editItem.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
+      await apiFetch(`/api/inventory/wardrobe/items/${editItem.id}`, {
+        method: "PATCH", body: JSON.stringify(data),
       });
     } else {
-      await fetch("/api/inventory/wardrobe/items", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
+      await apiFetch("/api/inventory/wardrobe/items", {
+        method: "POST", body: JSON.stringify(data),
       });
     }
     fetchItems();
@@ -120,13 +119,13 @@ export function WardrobeItemsContent() {
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/inventory/wardrobe/items/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/inventory/wardrobe/items/${id}`, { method: "DELETE" });
     fetchItems();
   };
 
   const handleToggleFavorite = async (item: any) => {
-    await fetch(`/api/inventory/wardrobe/items/${item.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isFavorite: !item.isFavorite }),
+    await apiFetch(`/api/inventory/wardrobe/items/${item.id}`, {
+      method: "PATCH", body: JSON.stringify({ isFavorite: !item.isFavorite }),
     });
     fetchItems();
   };

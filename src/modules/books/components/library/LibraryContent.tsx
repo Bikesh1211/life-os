@@ -18,6 +18,7 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { PageHeader } from "@/components/ui/page-header";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type Book = {
   id: string;
@@ -391,23 +392,21 @@ export function LibraryContent() {
 
   const { data: books, isLoading } = useQuery({
     queryKey: ["books", view, search, sortBy],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (view !== "library") params.set("view", view);
-      if (search) params.set("search", search);
-      params.set("sortBy", sortBy);
-      params.set("sortOrder", "desc");
-      params.set("limit", "200");
-      const res = await fetch(`/api/books?${params}`);
-      if (!res.ok) throw new Error("Failed to load books");
-      return res.json() as Promise<Book[]>;
-    },
+    queryFn: () =>
+      apiFetch<Book[]>(
+        `/api/books${toSearchParams({
+          view: view !== "library" ? view : undefined,
+          search: search || undefined,
+          sortBy,
+          sortOrder: "desc",
+          limit: "200",
+        })}`,
+      ),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/books/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete book");
+      await apiFetch(`/api/books/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["books"] });

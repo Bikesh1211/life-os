@@ -14,6 +14,8 @@ import {
   IconDotsVertical, IconCalendar, IconClock,
 } from "@tabler/icons-react";
 import { OCCASIONS, MOODS, SEASONS } from "@/modules/wardrobe/constants";
+import { apiFetch } from "@/core/api/http";
+import type { Outfit, ClothingItem } from "@/modules/wardrobe";
 
 function OutfitCard({ outfit, onEdit, onDelete }: { outfit: any; onEdit: () => void; onDelete: () => void }) {
   const itemCount = outfit.items?.length || 0;
@@ -65,12 +67,12 @@ export function WardrobeOutfitsPanel() {
 
   const fetchData = async () => {
     try {
-      const [outfitsRes, itemsRes] = await Promise.all([
-        fetch("/api/inventory/wardrobe/outfits"),
-        fetch("/api/inventory/wardrobe/items"),
+      const [outfitsData, itemsData] = await Promise.all([
+        apiFetch<Outfit[]>("/api/inventory/wardrobe/outfits"),
+        apiFetch<ClothingItem[]>("/api/inventory/wardrobe/items"),
       ]);
-      setOutfits(await outfitsRes.json());
-      setItems(await itemsRes.json());
+      setOutfits(outfitsData);
+      setItems(itemsData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -110,12 +112,12 @@ export function WardrobeOutfitsPanel() {
     };
 
     if (editOutfit) {
-      await fetch(`/api/inventory/wardrobe/outfits/${editOutfit.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      await apiFetch(`/api/inventory/wardrobe/outfits/${editOutfit.id}`, {
+        method: "PATCH", body: JSON.stringify(body),
       });
     } else {
-      await fetch("/api/inventory/wardrobe/outfits", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      await apiFetch("/api/inventory/wardrobe/outfits", {
+        method: "POST", body: JSON.stringify(body),
       });
     }
     close();
@@ -123,7 +125,7 @@ export function WardrobeOutfitsPanel() {
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/inventory/wardrobe/outfits/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/inventory/wardrobe/outfits/${id}`, { method: "DELETE" });
     fetchData();
   };
 

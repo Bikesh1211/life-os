@@ -2,30 +2,17 @@
 
 import { MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { theme } from "@/core/design-system";
+import { createQueryClient } from "@/infrastructure/cache/query-client";
 import { ServiceWorkerRegister } from "./ServiceWorkerRegister";
 import { PrefetchProvider } from "./PrefetchProvider";
 import { CommandPalette } from "@/components/CommandPalette";
 import { SupabaseProvider } from "./supabase-provider";
 
 export function Providers({ children }: { children: ReactNode }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 5 * 60 * 1000,
-            gcTime: 30 * 60 * 1000,
-            retry: 2,
-            refetchOnWindowFocus: false,
-            refetchOnReconnect: false,
-            refetchOnMount: false,
-          },
-        },
-      }),
-  );
+  const [queryClient] = useState(createQueryClient);
 
   return (
     <SupabaseProvider>

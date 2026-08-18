@@ -5,6 +5,7 @@ import { Card, Text, Group, Stack, SimpleGrid, RingProgress, Badge, Title, Ancho
 import { IconDeviceLaptop, IconHeart, IconShieldCheck, IconCurrencyDollar, IconUsers, IconPlus, IconTool } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 
 interface DashboardStats {
   totalItems: number;
@@ -39,8 +40,7 @@ export default function TechGearDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/inventory/tech-gear/dashboard")
-      .then(r => r.ok ? r.json() : Promise.reject("API error"))
+    apiFetch<DashboardStats>("/api/inventory/tech-gear/dashboard")
       .then(data => { setStats(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);

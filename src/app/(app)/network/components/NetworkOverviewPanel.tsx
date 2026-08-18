@@ -6,6 +6,7 @@ import {
   IconUsers, IconCake, IconCoffee, IconPhotoHeart, IconGift, IconCalendarEvent, IconPlane, IconHeart,
 } from "@tabler/icons-react";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
+import { apiFetch } from "@/core/api/http";
 import { getDashboardStats, getUpcomingBirthdays, getConnections } from "@/modules/network";
 
 type Stats = {
@@ -24,8 +25,7 @@ export function NetworkOverviewPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/network/stats")
-      .then(r => r.ok ? r.json() : null)
+    apiFetch<Stats>("/api/network/stats")
       .then(data => { setStats(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);

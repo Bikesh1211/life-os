@@ -24,6 +24,7 @@ import {
 } from "@tabler/icons-react";
 import { ACTIVITY_TYPE_SUGGESTIONS, CATEGORY_ICONS } from "@/modules/timeline/constants";
 import dayjs from "dayjs";
+import { apiFetch } from "@/core/api/http";
 
 type QuickAddProps = {
   onCreated: () => void;
@@ -62,9 +63,8 @@ export function QuickAdd({ onCreated }: QuickAddProps) {
     setLoading(true);
     try {
       const cat = inferredCategory === "food" ? "personal" : inferredCategory;
-      const res = await fetch("/api/timeline", {
+      await apiFetch("/api/timeline", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
           eventDate: new Date().toISOString(),
@@ -76,16 +76,7 @@ export function QuickAdd({ onCreated }: QuickAddProps) {
           location: location.trim() || undefined,
         }),
       });
-      if (res.ok) {
-        setTitle("");
-        setActivityType("");
-        setMood(null);
-        setEnergy(null);
-        setLocation("");
-        setExpanded(false);
-        onCreated();
-      }
-    } finally {
+      setTitle("");
       setLoading(false);
     }
   }, [title, activityType, startTime, mood, energy, location, inferredCategory, onCreated]);

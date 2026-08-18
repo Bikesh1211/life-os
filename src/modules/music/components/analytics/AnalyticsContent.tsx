@@ -7,6 +7,7 @@ import { SectionHeading } from "../design-system/SectionHeading";
 import { StatCard } from "../design-system/StatCard";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { IconClock, IconMusic, IconFlame, IconMicrophone, IconCalendar } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 type AnalyticsData = {
   totalListeningHours: number;
@@ -22,11 +23,7 @@ type AnalyticsData = {
 export function AnalyticsContent() {
   const { data, isLoading } = useQuery({
     queryKey: ["music-analytics"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/analytics");
-      if (!res.ok) throw new Error("Failed to load analytics");
-      return res.json() as Promise<AnalyticsData>;
-    },
+    queryFn: () => apiFetch<AnalyticsData>("/api/music/analytics"),
   });
 
   if (isLoading) {

@@ -24,7 +24,8 @@ import { IconPigMoney, IconPlus } from "@tabler/icons-react";
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
 import { BUDGET_PERIODS } from "@/modules/expenses/constants";
-import type { BudgetWithSpending } from "@/modules/expenses";
+import type { BudgetWithSpending, OverviewData } from "@/modules/expenses";
+import { apiFetch } from "@/core/api/http";
 
 export default function BudgetsTab() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -33,16 +34,13 @@ export default function BudgetsTab() {
 
   const { data: budgets, isLoading } = useQuery<BudgetWithSpending[]>({
     queryKey: ["expenses", "budgets"],
-    queryFn: () => fetch("/api/expenses/budgets").then((r) => r.json()),
+    queryFn: () => apiFetch<BudgetWithSpending[]>("/api/expenses/budgets"),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: categories } = useQuery({
     queryKey: ["expenses", "categories"],
-    queryFn: () =>
-      fetch("/api/expenses/overview")
-        .then((r) => r.json())
-        .then((d) => d.categories),
+    queryFn: () => apiFetch<OverviewData>("/api/expenses/overview").then((d) => d.categories),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -59,12 +57,10 @@ export default function BudgetsTab() {
   async function handleSubmit(values: typeof form.values) {
     setLoading(true);
     try {
-      const res = await fetch("/api/expenses/budgets", {
+      await apiFetch("/api/expenses/budgets", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      if (!res.ok) throw new Error("Failed to create budget");
       notifications.show({ title: "Created", message: "Budget created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["expenses", "budgets"] });
       form.reset();

@@ -5,6 +5,7 @@ import { notifications } from "@mantine/notifications";
 import { Modal, TextInput, Group, Button, Text, Loader } from "@mantine/core";
 import { useMutation } from "@tanstack/react-query";
 import { TMDB_IMAGE_BASE_URL } from "@/modules/movies/tmdb";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type Props = {
   opened: boolean;
@@ -75,34 +76,25 @@ export function MemoryCreateModal({ opened, onClose, onSuccess, memory }: Props)
     searchRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(`/api/movies/search?q=${encodeURIComponent(searchQuery)}`);
-        if (res.ok) {
-          const json = await res.json();
-          const results = (json.media ?? []).slice(0, 5).map((m: any) => ({
-            id: Number(m.tmdbId),
-            title: m.title ?? "",
-            mediaType: m.mediaType as "movie" | "tv",
-            posterPath: m.posterPath,
-            year: m.releaseDate ? new Date(m.releaseDate).getFullYear().toString() : "",
-          }));
-          setSearchResults(results);
-        }
+        const json = await apiFetch<any>(`/api/movies/search${toSearchParams({ q: searchQuery })}`);
+        const results = (json.media ?? []).slice(0, 5).map((m: any) => ({
+          id: Number(m.tmdbId),
+          title: m.title ?? "",
+          mediaType: m.mediaType as "movie" | "tv",
+          posterPath: m.posterPath,
+          year: m.releaseDate ? new Date(m.releaseDate).getFullYear().toString() : "",
+        }));
+        setSearchResults(results);
       } catch {} finally { setSearching(false); }
     }, 300);
     return () => { if (searchRef.current) clearTimeout(searchRef.current); };
   }, [searchQuery]);
 
   const mutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: (data: any) => {
       const url = isEditing ? `/api/movies/memories/${memory.id}` : "/api/movies/memories";
       const method = isEditing ? "PATCH" : "POST";
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
+      return apiFetch<any>(url, { method, body: JSON.stringify(data) });
     },
     onSuccess: () => {
       notifications.show({ title: isEditing ? "Updated" : "Created", message: isEditing ? "Memory updated" : "Memory created", color: "green" });

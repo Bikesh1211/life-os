@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { IconSearch } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type QuickResult = {
   id: string;
@@ -44,9 +45,9 @@ export function SearchPalette() {
     queryKey: ["music-palette-search", query],
     queryFn: async () => {
       if (!query.trim()) return { results: [] };
-      const res = await fetch(`/api/music/search?q=${encodeURIComponent(query)}&type=track&limit=5`);
-      if (!res.ok) return { results: [] };
-      return res.json() as Promise<{ results: QuickResult[] }>;
+      return apiFetch<{ results: QuickResult[] }>(
+        `/api/music/search${toSearchParams({ q: query, type: "track", limit: 5 })}`,
+      );
     },
     enabled: query.length > 0,
   });

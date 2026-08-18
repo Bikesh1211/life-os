@@ -13,6 +13,7 @@ import {
   IconArrowUpRight, IconArrowDownRight, IconDots,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 interface LoanRow {
   id: string;
@@ -48,20 +49,18 @@ export default function LoansList() {
   const fetchLoans = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (debouncedSearch) params.set("search", debouncedSearch);
-      if (direction) params.set("direction", direction);
-      if (status) params.set("status", status);
-      params.set("sortBy", sortBy);
-      params.set("limit", String(pageSize));
-      params.set("offset", String((page - 1) * pageSize));
-
-      const res = await fetch(`/api/loans?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLoans(data.loans ?? []);
-        setTotal(data.total ?? 0);
-      }
+      const data = await apiFetch<{ loans: LoanRow[]; total: number }>(
+        `/api/loans${toSearchParams({
+          search: debouncedSearch || undefined,
+          direction: direction || undefined,
+          status: status || undefined,
+          sortBy,
+          limit: pageSize,
+          offset: (page - 1) * pageSize,
+        })}`,
+      );
+      setLoans(data.loans ?? []);
+      setTotal(data.total ?? 0);
     } catch { /* ignore */ }
     setLoading(false);
   }, [debouncedSearch, direction, status, sortBy, page]);

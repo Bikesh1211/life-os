@@ -11,27 +11,18 @@ import { IconPlus, IconBarbell, IconCalendarBolt, IconTrash } from "@tabler/icon
 import { PremiumCard } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { useRouter } from "next/navigation";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 async function fetchWorkouts() {
-  const res = await fetch("/api/fitness/workouts?limit=100");
-  if (!res.ok) throw new Error("Failed to fetch workouts");
-  return res.json();
+  return apiFetch(`/api/fitness/workouts${toSearchParams({ limit: 100 })}`);
 }
 
 async function createWorkout(body: { date: string }) {
-  const res = await fetch("/api/fitness/workouts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error("Failed to create workout");
-  return res.json();
+  return apiFetch("/api/fitness/workouts", { method: "POST", body: JSON.stringify(body) });
 }
 
 async function deleteWorkout(id: string) {
-  const res = await fetch(`/api/fitness/workouts/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete workout");
-  return res.json();
+  return apiFetch(`/api/fitness/workouts/${id}`, { method: "DELETE" });
 }
 
 export function FitnessWorkoutsTab() {

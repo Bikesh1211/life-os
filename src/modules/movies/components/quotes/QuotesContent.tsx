@@ -7,6 +7,7 @@ import { notifications } from "@mantine/notifications";
 import { IconQuote, IconPlus, IconTrash } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
+import { apiFetch } from "@/core/api/http";
 
 export function QuotesContent() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -17,21 +18,12 @@ export function QuotesContent() {
 
   const { data: quotes } = useQuery({
     queryKey: ["movie-quotes"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/quotes");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any[]>("/api/movies/quotes"),
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch("/api/movies/quotes", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    mutationFn: (data: any) =>
+      apiFetch("/api/movies/quotes", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
       notifications.show({ title: "Created", message: "Quote saved", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["movie-quotes"] });
@@ -40,9 +32,7 @@ export function QuotesContent() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await fetch(`/api/movies/quotes/${id}`, { method: "DELETE" });
-    },
+    mutationFn: (id: string) => apiFetch(`/api/movies/quotes/${id}`, { method: "DELETE" }),
     onSuccess: () => { notifications.show({ title: "Deleted", message: "Quote deleted", color: "orange" }); queryClient.invalidateQueries({ queryKey: ["movie-quotes"] }); },
   });
 
@@ -54,7 +44,7 @@ export function QuotesContent() {
         action={<Button leftSection={<IconPlus size={16} />} size="sm" onClick={open}>Add Quote</Button>}
       />
 
-      {quotes?.length > 0 ? (
+      {quotes && quotes.length > 0 ? (
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
           {quotes.map((q: any) => (
             <div key={q.id} className="relative rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4">

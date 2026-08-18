@@ -46,6 +46,31 @@ const queryClient = postgres(databaseUrl, {
   connect_timeout: 15,
 });
 
+/**
+ * Makes Drizzle's queries use prepared statements.
+ *
+ * Drizzle's postgres-js driver runs every statement through `client.unsafe()`
+ * (see drizzle-orm/postgres-js/session.js), and postgres.js hard-defaults
+ * `unsafe()` to `prepare: false`. An unprepared parameterised statement costs
+ * two server round-trips — parse/describe, then bind/execute — where a
+ * prepared one costs one. Against this database that is the difference
+ * between ~400ms and ~215ms *per query*, measured, and it applies to every
+ * query the application makes.
+ *
+ * Re-defaulting `prepare` to true (still overridable per call) is safe here:
+ * the connection string points at Supavisor in transaction mode, which tracks
+ * named prepared statements on behalf of pooled clients.
+ */
+function enablePreparedStatements(client: typeof queryClient) {
+  const unsafe = client.unsafe.bind(client);
+  type UnsafeArgs = Parameters<typeof unsafe>;
+  client.unsafe = ((query: UnsafeArgs[0], params?: UnsafeArgs[1], options?: UnsafeArgs[2]) =>
+    unsafe(query, params ?? [], { prepare: true, ...options })) as typeof client.unsafe;
+  return client;
+}
+
+enablePreparedStatements(queryClient);
+
 export const db = drizzle(queryClient, {
   schema: {
     ...tasksSchema,

@@ -5,6 +5,7 @@ import { SimpleGrid, Text, Badge, Group } from "@mantine/core";
 import { IconListDetails } from "@tabler/icons-react";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 
 const statusColors: Record<string, string> = {
   plan_to_watch: "gray", watching: "blue", completed: "green", dropped: "red", rewatching: "yellow",
@@ -13,11 +14,7 @@ const statusColors: Record<string, string> = {
 export function WatchlistContent() {
   const { data: watchlist } = useQuery({
     queryKey: ["movie-watchlist"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/watchlist");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any[]>("/api/movies/watchlist"),
   });
 
   if (!watchlist || watchlist.length === 0) {

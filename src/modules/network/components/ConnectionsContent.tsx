@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, Badge, ThemeIcon, SimpleGrid, Button } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconUserPlus, IconHeart, IconPlus, IconTrash, IconEdit } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { ConnectionsModal } from "./ConnectionsModal";
 
@@ -44,18 +45,11 @@ export function ConnectionsContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["network-connections"],
-    queryFn: async () => {
-      const res = await fetch("/api/network/connections");
-      if (!res.ok) throw new Error("Failed to load connections");
-      return res.json() as Promise<Connection[]>;
-    },
+    queryFn: () => apiFetch<Connection[]>("/api/network/connections"),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/network/connections/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-    },
+    mutationFn: (id: string) => apiFetch(`/api/network/connections/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Connection deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["network-connections"] });

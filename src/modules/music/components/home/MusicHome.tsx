@@ -9,6 +9,7 @@ import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { notifications } from "@mantine/notifications";
 import { IconSearch, IconX, IconMusic, IconTrendingUp, IconSparkles, IconHeart, IconBooks, IconPhotoHeart, IconArticle, IconMoodHeart } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type SearchResult = {
   id: string;
@@ -104,9 +105,7 @@ export function MusicHome() {
     queryKey: ["music-search", query],
     queryFn: async () => {
       if (!query.trim()) return { artists: [], albums: [], tracks: [], query: "", source: "itunes" };
-      const res = await fetch(`/api/music/search?q=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error("Search failed");
-      return res.json() as Promise<SearchResponse>;
+      return apiFetch<SearchResponse>(`/api/music/search${toSearchParams({ q: query })}`);
     },
     enabled: query.length > 0,
   });
@@ -114,28 +113,20 @@ export function MusicHome() {
   // Dashboard overview (stat cards, recent content)
   const { data: dashboardData } = useQuery({
     queryKey: ["music-dashboard"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/dashboard");
-      if (!res.ok) return {};
-      return res.json() as Promise<{
-        recentlyPlayed?: Array<{ id: string; trackId: string; title: string; coverArtUrl: string | null; artistName: string; listenedAt: string }>;
-        recentMemories?: Array<{ id: string; title: string | null; contextText: string; createdAt: string }>;
-        totalListeningHours?: number;
-        currentStreak?: number;
-        longestStreak?: number;
-      }>;
-    },
+    queryFn: () => apiFetch<{
+      recentlyPlayed?: Array<{ id: string; trackId: string; title: string; coverArtUrl: string | null; artistName: string; listenedAt: string }>;
+      recentMemories?: Array<{ id: string; title: string | null; contextText: string; createdAt: string }>;
+      totalListeningHours?: number;
+      currentStreak?: number;
+      longestStreak?: number;
+    }>("/api/music/dashboard"),
     enabled: !query.trim(),
   });
 
   // Explore
   const { data: exploreData } = useQuery<ExploreData>({
     queryKey: ["music-explore"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/explore");
-      if (!res.ok) throw new Error("Failed to load explore");
-      return res.json();
-    },
+    queryFn: () => apiFetch<ExploreData>("/api/music/explore"),
     enabled: !query.trim(),
   });
 
@@ -147,15 +138,11 @@ export function MusicHome() {
 
   // Favorite mutation
   const favoriteMutation = useMutation({
-    mutationFn: async ({ spotifyId, entityType }: { spotifyId: string; entityType: string }) => {
-      const res = await fetch("/api/music/favorites", {
+    mutationFn: ({ spotifyId, entityType }: { spotifyId: string; entityType: string }) =>
+      apiFetch("/api/music/favorites", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ spotifyId, entityType }),
-      });
-      if (!res.ok) throw new Error("Failed to favorite");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Favorited", message: "Added to favorites", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-library"] });

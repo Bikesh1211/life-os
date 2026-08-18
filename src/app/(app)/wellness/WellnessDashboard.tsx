@@ -49,6 +49,7 @@ import {
   IconArrowRight,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 import type {
   WellnessScores,
   WellnessInsight,
@@ -122,9 +123,8 @@ function MoodLogForm({ onClose }: { onClose: () => void }) {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      await fetch("/api/wellness/mood", {
+      await apiFetch("/api/wellness/mood", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
       onClose();
@@ -174,9 +174,8 @@ function SleepLogForm({ onClose }: { onClose: () => void }) {
     if (!bedtime || !wakeTime) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/sleep", {
+      await apiFetch("/api/wellness/sleep", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bedtime: new Date(bedtime).toISOString(),
           wakeTime: new Date(wakeTime).toISOString(),
@@ -230,9 +229,8 @@ function HydrationLogForm({ onClose }: { onClose: () => void }) {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      await fetch("/api/wellness/hydration", {
+      await apiFetch("/api/wellness/hydration", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date: new Date().toISOString().slice(0, 10),
           amountMl,
@@ -283,9 +281,8 @@ function ConfidenceLogForm({ onClose }: { onClose: () => void }) {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      await fetch("/api/wellness/confidence", {
+      await apiFetch("/api/wellness/confidence", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           date: new Date().toISOString().slice(0, 10),
           score,
@@ -329,9 +326,8 @@ function WeightLogForm({ onClose }: { onClose: () => void }) {
     if (!weightKg) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/weight", {
+      await apiFetch("/api/wellness/weight", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           weightKg: Number(weightKg),
           bodyFatPercentage: bodyFat ? Number(bodyFat) : undefined,
@@ -381,9 +377,8 @@ function WorkoutLogForm({ onClose }: { onClose: () => void }) {
     if (!workoutType || !durationMinutes) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/workouts", {
+      await apiFetch("/api/wellness/workouts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workoutType,
           durationMinutes: Number(durationMinutes),
@@ -436,9 +431,8 @@ function StepsLogForm({ onClose }: { onClose: () => void }) {
     if (!steps) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/steps", {
+      await apiFetch("/api/wellness/steps", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           steps: Number(steps),
           date: new Date().toISOString().slice(0, 10),
@@ -480,9 +474,8 @@ function CalorieLogForm({ onClose }: { onClose: () => void }) {
     if (!calories) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/calories", {
+      await apiFetch("/api/wellness/calories", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mealType,
           calories: Number(calories),
@@ -543,9 +536,8 @@ function BpLogForm({ onClose }: { onClose: () => void }) {
     if (!systolic || !diastolic) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/blood-pressure", {
+      await apiFetch("/api/wellness/blood-pressure", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systolic: Number(systolic),
           diastolic: Number(diastolic),

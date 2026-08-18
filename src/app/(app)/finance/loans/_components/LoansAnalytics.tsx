@@ -4,6 +4,7 @@ import { Card, Text, Stack, SimpleGrid, Group, ThemeIcon, Skeleton } from "@mant
 import { IconTrendingUp, IconCash, IconCoin, IconUsers } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { StatCard } from "@/components/ui/stat-card";
+import { apiFetch } from "@/core/api/http";
 
 export default function LoansAnalytics() {
   const [data, setData] = useState<{
@@ -22,19 +23,16 @@ export default function LoansAnalytics() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/loans/dashboard");
-        if (res.ok) {
-          const d = await res.json();
-          setData({
-            ...d,
-            totalReceived: d.amountRecoveredThisMonth ?? 0,
-            totalRepaid: d.amountRepaidThisMonth ?? 0,
-            largestLoan: 0,
-            averageLoan: 0,
-            recoveryRate: 0,
-            repaymentRate: 0,
-          });
-        }
+        const d = await apiFetch<any>("/api/loans/dashboard");
+        setData({
+          ...d,
+          totalReceived: d.amountRecoveredThisMonth ?? 0,
+          totalRepaid: d.amountRepaidThisMonth ?? 0,
+          largestLoan: 0,
+          averageLoan: 0,
+          recoveryRate: 0,
+          repaymentRate: 0,
+        });
       } catch { /* ignore */ }
     }
     load();

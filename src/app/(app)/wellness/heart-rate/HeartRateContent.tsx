@@ -6,6 +6,7 @@ import {
 } from "@mantine/core";
 import { IconActivity, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 import type { WellnessHeartRateEntry } from "@/modules/wellness";
 
 export function HeartRateContent({ entries }: { entries: WellnessHeartRateEntry[] }) {
@@ -18,9 +19,8 @@ export function HeartRateContent({ entries }: { entries: WellnessHeartRateEntry[
     if (!resting && !average && !max) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/heart-rate", {
+      await apiFetch("/api/wellness/heart-rate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           resting: resting ? Number(resting) : undefined,
           average: average ? Number(average) : undefined,

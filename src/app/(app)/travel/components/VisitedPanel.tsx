@@ -18,6 +18,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import dayjs from "dayjs";
+import { apiFetch, toSearchParams, ApiError } from "@/core/api/http";
 import { CATEGORY_OPTIONS, ExploreFieldset, optionalNumber } from "./ExploreFields";
 
 type VisitedPlace = {
@@ -64,8 +65,12 @@ function AddVisitedModal({ opened, onClose }: { opened: boolean; onClose: () => 
     if (!query) return;
     setLocating(true);
     try {
-      const response = await fetch(`/api/travel-helper/geocode?q=${encodeURIComponent(query)}`);
-      const results = response.ok ? await response.json() : null;
+      const results = await apiFetch<Array<{ lat: string; lon: string }>>(
+        `/api/travel-helper/geocode${toSearchParams({ q: query })}`,
+      ).catch((error: unknown) => {
+        if (error instanceof ApiError && error.status > 0) return null;
+        throw error;
+      });
       /* Nominatim answers with an array of matches, best first, and its `lat`
          and `lon` are strings. The first match is the one to take: refining a
          wrong guess is what the two fields underneath are for. */
@@ -97,9 +102,8 @@ function AddVisitedModal({ opened, onClose }: { opened: boolean; onClose: () => 
     if (!country.trim() || !city.trim()) return;
     setSaving(true);
     try {
-      const response = await fetch("/api/travel/visited", {
+      await apiFetch("/api/travel/visited", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           country,
           city,
@@ -115,17 +119,14 @@ function AddVisitedModal({ opened, onClose }: { opened: boolean; onClose: () => 
         }),
       });
 
-      if (!response.ok) {
-        notifications.show({
-          title: "Not saved",
-          message: "The place could not be saved. Check the fields and try again.",
-          color: "red",
-        });
-        return;
-      }
-
       onClose();
       window.location.reload();
+    } catch {
+      notifications.show({
+        title: "Not saved",
+        message: "The place could not be saved. Check the fields and try again.",
+        color: "red",
+      });
     } finally {
       setSaving(false);
     }
@@ -198,9 +199,9 @@ export function VisitedPanel() {
   const [opened, { open, close }] = useDisclosure(false);
 
   useEffect(() => {
-    fetch("/api/travel/visited")
-      .then((r) => (r.ok ? r.json() : []))
+    apiFetch<VisitedPlace[]>("/api/travel/visited")
       .then(setPlaces)
+      .catch(() => setPlaces([]))
       .finally(() => setLoading(false));
   }, []);
 

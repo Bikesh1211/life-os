@@ -17,6 +17,7 @@ import { notifications } from "@mantine/notifications";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import type { KnowledgeEntry } from "@/modules/knowledge";
+import { apiFetch } from "@/core/api/http";
 
 type Props = {
   subjects: string[];
@@ -95,15 +96,10 @@ export function EntryForm({ subjects, initialData }: Props) {
         : "/api/knowledge";
       const method = isEditing ? "PUT" : "POST";
 
-      const res = await fetch(url, {
+      const data = await apiFetch<KnowledgeEntry>(url, {
         method,
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) throw new Error("Failed to save");
-
-      const data = await res.json();
       notifications.show({
         title: isEditing ? "Updated" : "Created",
         message: `"${data.title}" has been ${isEditing ? "updated" : "created"} successfully.`,

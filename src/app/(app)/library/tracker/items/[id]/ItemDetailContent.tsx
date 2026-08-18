@@ -47,6 +47,7 @@ import dayjs from "dayjs";
 import { notifications } from "@mantine/notifications";
 import { useRouter } from "next/navigation";
 import type { ReadingItem, ReadingAnnotation, ReadingNote, ReadingSession } from "@/modules/reading";
+import { apiFetch } from "@/core/api/http";
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -95,20 +96,16 @@ function AddAnnotationModal({
     if (!text.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/reading/items/${readingItemId}/annotations`, {
+      const annotation = await apiFetch<ReadingAnnotation>(`/api/reading/items/${readingItemId}/annotations`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type, text, note, page }),
       });
-      if (res.ok) {
-        const annotation = await res.json();
-        onCreated(annotation);
-        onClose();
-        setText("");
-        setNote("");
-        setPage(undefined);
-        notifications.show({ title: "Added", message: "Annotation saved", color: "green" });
-      }
+      onCreated(annotation);
+      onClose();
+      setText("");
+      setNote("");
+      setPage(undefined);
+      notifications.show({ title: "Added", message: "Annotation saved", color: "green" });
     } catch {} finally {
       setLoading(false);
     }
@@ -183,19 +180,15 @@ function AddSessionModal({
         pagesRead,
         note,
       };
-      const res = await fetch(`/api/reading/items/${readingItemId}/sessions`, {
+      const session = await apiFetch<ReadingSession>(`/api/reading/items/${readingItemId}/sessions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (res.ok) {
-        const session = await res.json();
-        onCreated(session);
-        onClose();
-        setPagesRead(undefined);
-        setNote("");
-        notifications.show({ title: "Logged", message: "Reading session saved", color: "green" });
-      }
+      onCreated(session);
+      onClose();
+      setPagesRead(undefined);
+      setNote("");
+      notifications.show({ title: "Logged", message: "Reading session saved", color: "green" });
     } catch {} finally {
       setLoading(false);
     }
@@ -247,19 +240,15 @@ function AddNoteModal({
     if (!title.trim()) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/reading/items/${readingItemId}/notes`, {
+      const note = await apiFetch<ReadingNote>(`/api/reading/items/${readingItemId}/notes`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, content }),
       });
-      if (res.ok) {
-        const note = await res.json();
-        onCreated(note);
-        onClose();
-        setTitle("");
-        setContent("");
-        notifications.show({ title: "Added", message: "Note saved", color: "green" });
-      }
+      onCreated(note);
+      onClose();
+      setTitle("");
+      setContent("");
+      notifications.show({ title: "Added", message: "Note saved", color: "green" });
     } catch {} finally {
       setLoading(false);
     }
@@ -303,42 +292,30 @@ export function ItemDetailContent({ item: initialItem, initialAnnotations, initi
   const Icon = TYPE_ICONS[item.type] ?? IconBook;
 
   const handleStatusChange = async (status: string) => {
-    const res = await fetch(`/api/reading/items/${item.id}`, {
+    const updated = await apiFetch<ReadingItem>(`/api/reading/items/${item.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status }),
     });
-    if (res.ok) {
-      const updated = await res.json();
-      setItem(updated);
-      notifications.show({ title: "Updated", message: `Status changed to ${STATUS_LABELS[status]}`, color: "blue" });
-    }
+    setItem(updated);
+    notifications.show({ title: "Updated", message: `Status changed to ${STATUS_LABELS[status]}`, color: "blue" });
   };
 
   const handleToggleFavorite = async () => {
-    const res = await fetch(`/api/reading/items/${item.id}`, {
+    const updated = await apiFetch<ReadingItem>(`/api/reading/items/${item.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isFavorited: !item.isFavorited }),
     });
-    if (res.ok) {
-      const updated = await res.json();
-      setItem(updated);
-    }
+    setItem(updated);
   };
 
   const handleDeleteAnnotation = async (id: string) => {
-    const res = await fetch(`/api/reading/annotations/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setAnnotations((prev) => prev.filter((a) => a.id !== id));
-    }
+    await apiFetch(`/api/reading/annotations/${id}`, { method: "DELETE" });
+    setAnnotations((prev) => prev.filter((a) => a.id !== id));
   };
 
   const handleDeleteNote = async (id: string) => {
-    const res = await fetch(`/api/reading/notes/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setNotes((prev) => prev.filter((n) => n.id !== id));
-    }
+    await apiFetch(`/api/reading/notes/${id}`, { method: "DELETE" });
+    setNotes((prev) => prev.filter((n) => n.id !== id));
   };
 
   return (

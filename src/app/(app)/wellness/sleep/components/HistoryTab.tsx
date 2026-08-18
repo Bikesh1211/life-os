@@ -19,6 +19,7 @@ import {
   Skeleton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 import {
   IconBed,
   IconEdit,
@@ -111,9 +112,8 @@ function EditSleepModal({
     if (!record || !bedtime || !wakeTime) return;
     setSaving(true);
     try {
-      await fetch(`/api/wellness/sleep/${record.id}`, {
+      await apiFetch(`/api/wellness/sleep/${record.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bedtime: new Date(bedtime).toISOString(),
           wakeTime: new Date(wakeTime).toISOString(),
@@ -137,7 +137,7 @@ function EditSleepModal({
     if (!confirm("Delete this sleep record?")) return;
     setSaving(true);
     try {
-      await fetch(`/api/wellness/sleep/${record.id}`, { method: "DELETE" });
+      await apiFetch(`/api/wellness/sleep/${record.id}`, { method: "DELETE" });
       onClose();
       onSaved();
     } catch {} finally {
@@ -218,11 +218,8 @@ export function HistoryTab() {
   const fetchRecords = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/wellness/sleep?period=month");
-      if (res.ok) {
-        const data = await res.json();
-        setRecords(data);
-      }
+      const data = await apiFetch<SleepRecord[]>(`/api/wellness/sleep${toSearchParams({ period: "month" })}`);
+      setRecords(data);
     } catch {} finally {
       setLoading(false);
     }

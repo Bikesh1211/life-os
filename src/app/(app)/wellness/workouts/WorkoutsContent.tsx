@@ -6,6 +6,7 @@ import {
 } from "@mantine/core";
 import { IconRun, IconTrash, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 import type { WellnessWorkoutEntry } from "@/modules/wellness";
 
 export function WorkoutsContent({ entries }: { entries: WellnessWorkoutEntry[] }) {
@@ -17,9 +18,8 @@ export function WorkoutsContent({ entries }: { entries: WellnessWorkoutEntry[] }
     if (!workoutType || !duration) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/workouts", {
+      await apiFetch("/api/wellness/workouts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           workoutType, durationMinutes: Number(duration),
           date: new Date().toISOString().slice(0, 10),
@@ -32,7 +32,7 @@ export function WorkoutsContent({ entries }: { entries: WellnessWorkoutEntry[] }
   }, [workoutType, duration]);
 
   const handleDelete = useCallback(async (id: string) => {
-    await fetch(`/api/wellness/workouts/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/wellness/workouts/${id}`, { method: "DELETE" });
     window.location.reload();
   }, []);
 

@@ -18,6 +18,7 @@ import {
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { PageHeader } from "@/components/ui/page-header";
+import { apiFetch } from "@/core/api/http";
 
 function StatCard({ title, value, icon, color, subtitle }: { title: string; value: string | number; icon: React.ReactNode; color: string; subtitle?: string }) {
   return (
@@ -69,30 +70,23 @@ export function DashboardTab() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["wellness", "grooming", "dashboard"],
     queryFn: async () => {
-      const res = await fetch("/api/wellness/grooming/dashboard");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      return apiFetch<any>("/api/wellness/grooming/dashboard");
     },
   });
 
   const { data: activities } = useQuery({
     queryKey: ["wellness", "grooming", "activities"],
     queryFn: async () => {
-      const res = await fetch("/api/wellness/grooming/activities");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      return apiFetch<any[]>("/api/wellness/grooming/activities");
     },
   });
 
   const completeMutation = useMutation({
     mutationFn: async (habitId: string) => {
-      const res = await fetch("/api/wellness/grooming/completions", {
+      return apiFetch<any>("/api/wellness/grooming/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ habitId, completedDate: dayjs().format("YYYY-MM-DD") }),
       });
-      if (!res.ok) throw new Error("Failed to complete");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["wellness", "grooming"] });
@@ -132,8 +126,7 @@ export function DashboardTab() {
         <PageHeader title="Grooming Dashboard" subtitle="Track your personal care routine" />
         <Button variant="light" leftSection={<IconSparkles size={16} />} onClick={async () => {
           try {
-            const res = await fetch("/api/wellness/grooming/templates", { method: "POST" });
-            const result = await res.json();
+            const result = await apiFetch<any>("/api/wellness/grooming/templates", { method: "POST" });
             notifications.show({ title: "Templates Loaded", message: `${result.count} grooming activities added`, color: "green" });
             queryClient.invalidateQueries({ queryKey: ["wellness", "grooming"] });
           } catch {

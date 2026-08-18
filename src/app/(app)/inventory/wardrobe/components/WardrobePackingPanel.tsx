@@ -9,6 +9,8 @@ import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus, IconBackpack, IconEdit, IconTrash, IconDotsVertical, IconCheck, IconPlane } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
+import type { ClothingItem } from "@/modules/wardrobe";
 
 export function WardrobePackingPanel() {
   const [lists, setLists] = useState<any[]>([]);
@@ -21,10 +23,10 @@ export function WardrobePackingPanel() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [itemsRes] = await Promise.all([
-        fetch("/api/inventory/wardrobe/items"),
+      const [itemsData] = await Promise.all([
+        apiFetch<ClothingItem[]>("/api/inventory/wardrobe/items"),
       ]);
-      setItems(await itemsRes.json());
+      setItems(itemsData);
       setLists([
         { id: "1", name: "Weekend Trip", destination: "Pokhara", startDate: "2026-06-20", endDate: "2026-06-22", items: [{ name: "T-Shirt", isPacked: false }, { name: "Jeans", isPacked: true }] }
       ]);

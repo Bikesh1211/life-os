@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Container, Title, Timeline as MantineTimeline, Text, ThemeIcon, Group, Stack, Skeleton } from "@mantine/core";
 import { IconCoffee, IconCalendarEvent, IconPhotoHeart, IconUserPlus, IconCake } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 
 type TimelineEntry = {
@@ -19,10 +20,10 @@ export function NetworkTimelinePanel() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/network/meetups").then(r => r.ok ? r.json() : []),
-      fetch("/api/network/events").then(r => r.ok ? r.json() : []),
-      fetch("/api/network/memories").then(r => r.ok ? r.json() : []),
-      fetch("/api/network/connections").then(r => r.ok ? r.json() : []),
+      apiFetch<any[]>("/api/network/meetups"),
+      apiFetch<any[]>("/api/network/events"),
+      apiFetch<any[]>("/api/network/memories"),
+      apiFetch<any[]>("/api/network/connections"),
     ]).then(([meetups, events, memories, connections]) => {
       const result: TimelineEntry[] = [];
       for (const m of meetups) {

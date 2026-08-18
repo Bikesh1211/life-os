@@ -8,6 +8,7 @@ import {
   SimpleGrid, ActionIcon, Skeleton,
 } from "@mantine/core";
 import { IconArrowLeft, IconBarbell, IconPlus, IconTrash, IconCheck } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 type SetRow = {
   exerciseId: string;
@@ -23,9 +24,7 @@ type Props = {
 };
 
 async function fetchExercises() {
-  const res = await fetch("/api/fitness/exercises");
-  if (!res.ok) throw new Error("Failed to fetch exercises");
-  return res.json();
+  return apiFetch("/api/fitness/exercises");
 }
 
 export function WorkoutSessionContent({ programDayId }: Props) {
@@ -43,13 +42,10 @@ export function WorkoutSessionContent({ programDayId }: Props) {
 
   const startMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch("/api/fitness/workouts", {
+      return apiFetch("/api/fitness/workouts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ date, programDayId: programDayId ?? null }),
       });
-      if (!res.ok) throw new Error("Failed to start workout");
-      return res.json();
     },
     onSuccess: (data) => {
       setSessionId(data.id);

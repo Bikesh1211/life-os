@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { IconFolderPlus, IconCheck } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 type Collection = {
   id: string;
@@ -20,23 +21,15 @@ export function AddToCollectionButton({ entityType, entityId }: { entityType: "t
 
   const { data: collections } = useQuery<Collection[]>({
     queryKey: ["music-collections"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/collections");
-      if (!res.ok) throw new Error("Failed to load collections");
-      return res.json();
-    },
+    queryFn: () => apiFetch<Collection[]>("/api/music/collections"),
   });
 
   const addMutation = useMutation({
-    mutationFn: async (collectionId: string) => {
-      const res = await fetch(`/api/music/collections/${collectionId}/items`, {
+    mutationFn: (collectionId: string) =>
+      apiFetch(`/api/music/collections/${collectionId}/items`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entityType, entityId }),
-      });
-      if (!res.ok) throw new Error("Failed to add");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Added", message: "Added to collection", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-collections"] });

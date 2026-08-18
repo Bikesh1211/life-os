@@ -234,11 +234,20 @@ export async function getHeatmapData(userId: string, dateFrom: string, dateTo: s
   return result;
 }
 
+/**
+ * The distinct dates on which something was completed, oldest first.
+ *
+ * Only ever consumed by streak maths, which cares whether a day was hit at
+ * all — so the previous one-row-per-completion result meant transferring (and
+ * de-duplicating in JS) up to one row per habit per day, for the whole
+ * history. `selectDistinct` moves that de-duplication into Postgres, where the
+ * index on (user_id, completed_date) already has the rows in order.
+ */
 export async function getCompletionDates(userId: string, habitId?: string) {
   const conditions = [eq(habitCompletions.userId, userId)];
   if (habitId) conditions.push(eq(habitCompletions.habitId, habitId));
   const rows = await db
-    .select({ date: habitCompletions.completedDate })
+    .selectDistinct({ date: habitCompletions.completedDate })
     .from(habitCompletions)
     .where(and(...conditions))
     .orderBy(asc(habitCompletions.completedDate));

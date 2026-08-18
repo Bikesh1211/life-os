@@ -6,6 +6,7 @@ import { Modal, Button, Group, Text } from "@mantine/core";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiFetch } from "@/core/api/http";
 
 const moods = [
   { emoji: "😊", label: "Happy" },
@@ -31,15 +32,11 @@ export function MoodEntryModal({ opened, onClose }: MoodEntryModalProps) {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: async (data: { mood: string; note?: string }) => {
-      const res = await fetch("/api/music/mood", {
+    mutationFn: (data: { mood: string; note?: string }) =>
+      apiFetch("/api/music/mood", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to log mood");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Logged", message: "Mood logged", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-mood"] });

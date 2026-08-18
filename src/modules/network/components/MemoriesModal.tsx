@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Modal, TextInput, Textarea, Group, Button, Stack, Switch, MultiSelect, Badge, CloseButton, Text } from "@mantine/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
+import { apiFetch } from "@/core/api/http";
 
 type MemoryData = {
   id: string;
@@ -36,11 +37,7 @@ export function MemoriesModal({ opened, onClose, initialData }: Props) {
 
   const { data: allConnections } = useQuery({
     queryKey: ["network-connections"],
-    queryFn: async () => {
-      const res = await fetch("/api/network/connections");
-      if (!res.ok) throw new Error("Failed");
-      return res.json() as Promise<{ id: string; name: string }[]>;
-    },
+    queryFn: () => apiFetch<{ id: string; name: string }[]>("/api/network/connections"),
   });
 
   const connOptions = (allConnections ?? []).map((c) => ({ value: c.id, label: c.name }));
@@ -60,13 +57,11 @@ export function MemoriesModal({ opened, onClose, initialData }: Props) {
   }, [opened, initialData]);
 
   const mutation = useMutation({
-    mutationFn: async (data: Record<string, unknown>) => {
-      const url = isEditing ? `/api/network/memories/${initialData!.id}` : "/api/network/memories";
-      const method = isEditing ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-      if (!res.ok) throw new Error("Failed to save memory");
-      return res.json();
-    },
+    mutationFn: (data: Record<string, unknown>) =>
+      apiFetch(isEditing ? `/api/network/memories/${initialData!.id}` : "/api/network/memories", {
+        method: isEditing ? "PUT" : "POST",
+        body: JSON.stringify(data),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["network-memories"] });
       queryClient.invalidateQueries({ queryKey: ["network-dashboard-stats"] });
@@ -80,10 +75,7 @@ export function MemoriesModal({ opened, onClose, initialData }: Props) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/network/memories/${initialData!.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-    },
+    mutationFn: () => apiFetch(`/api/network/memories/${initialData!.id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["network-memories"] });
       queryClient.invalidateQueries({ queryKey: ["network-dashboard-stats"] });

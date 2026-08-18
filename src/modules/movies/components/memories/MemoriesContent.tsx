@@ -8,17 +8,14 @@ import { useDisclosure } from "@mantine/hooks";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
 import { MemoryCard } from "./MemoryCard";
 import { MemoryCreateModal } from "./MemoryCreateModal";
+import { apiFetch } from "@/core/api/http";
 
 export function MemoriesContent() {
   const [opened, { open, close }] = useDisclosure(false);
 
   const { data: memories, refetch } = useQuery({
     queryKey: ["movie-memories"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/memories");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any[]>("/api/movies/memories"),
   });
 
   return (
@@ -33,7 +30,7 @@ export function MemoriesContent() {
         }
       />
 
-      {memories?.length > 0 ? (
+      {memories && memories.length > 0 ? (
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
           {memories.map((m: any) => (
             <MemoryCard key={m.id} memory={m} />

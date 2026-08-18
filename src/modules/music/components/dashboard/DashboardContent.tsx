@@ -15,6 +15,7 @@ import { MemoryRewind } from "../memory/MemoryRewind";
 import { MoodWidget } from "../mood/MoodWidget";
 import { useState } from "react";
 import { MoodEntryModal } from "../mood/MoodEntryModal";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type DashboardData = {
   stats: {
@@ -58,28 +59,16 @@ export function MusicDashboard() {
 
   const { data, isLoading } = useQuery<DashboardData>({
     queryKey: ["music-dashboard"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/dashboard");
-      if (!res.ok) throw new Error("Failed to load dashboard");
-      return res.json();
-    },
+    queryFn: () => apiFetch<DashboardData>("/api/music/dashboard"),
   });
 
   const { data: moodData } = useQuery({
     queryKey: ["music-mood-dash"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/mood?limit=5");
-      if (!res.ok) throw new Error("Failed to load mood");
-      return res.json() as Promise<{ entries: any[]; analytics: any[] }>;
-    },
+    queryFn: () => apiFetch<{ entries: any[]; analytics: any[] }>(`/api/music/mood${toSearchParams({ limit: 5 })}`),
   });
 
   const seedMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/music/seed", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to seed data");
-      return res.json();
-    },
+    mutationFn: () => apiFetch("/api/music/seed", { method: "POST" }),
     onSuccess: () => {
       notifications.show({ title: "Seeded", message: "Sample data created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-dashboard"] });

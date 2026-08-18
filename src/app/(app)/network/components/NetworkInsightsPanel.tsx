@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Container, Title, Stack, Alert, Skeleton } from "@mantine/core";
 import { IconInfoCircle, IconAlertTriangle, IconReportAnalytics } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 
 type Insight = {
@@ -16,8 +17,7 @@ export function NetworkInsightsPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/network/insights")
-      .then(r => r.ok ? r.json() : [])
+    apiFetch<Insight[]>("/api/network/insights")
       .then(data => { setInsights(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);

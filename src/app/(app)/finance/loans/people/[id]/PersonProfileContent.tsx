@@ -8,6 +8,7 @@ import {
 } from "@mantine/core";
 import { IconArrowLeft, IconArrowUpRight, IconArrowDownRight, IconCoin } from "@tabler/icons-react";
 import dayjs from "dayjs";
+import { apiFetch } from "@/core/api/http";
 
 interface PersonSummary {
   id: string;
@@ -33,8 +34,8 @@ export function PersonProfileContent() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/loans/people/${connectionId}`);
-        if (res.ok) setPerson(await res.json());
+        const person = await apiFetch<PersonSummary>(`/api/loans/people/${connectionId}`);
+        setPerson(person);
       } catch { /* ignore */ }
       setLoading(false);
     }

@@ -8,6 +8,7 @@ import { MusicCard } from "../design-system/MusicCard";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { IconSearch, IconMicrophone, IconX } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type SearchResult = {
   id: string;
@@ -37,9 +38,7 @@ export function SearchContent() {
     queryKey: ["music-search", query],
     queryFn: async () => {
       if (!query.trim()) return { artists: [], albums: [], tracks: [], query: "", source: "itunes" };
-      const res = await fetch(`/api/music/search?q=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error("Search failed");
-      return res.json() as Promise<SearchResponse>;
+      return apiFetch<SearchResponse>(`/api/music/search${toSearchParams({ q: query })}`);
     },
     enabled: query.length > 0,
   });

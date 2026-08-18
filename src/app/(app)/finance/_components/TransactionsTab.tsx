@@ -31,7 +31,8 @@ import {
   IconEdit,
 } from "@tabler/icons-react";
 import { EditTransactionModal } from "./EditTransactionModal";
-import type { Transaction } from "@/modules/expenses";
+import type { Transaction, Account, OverviewData } from "@/modules/expenses";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 export default function TransactionsTab() {
   const [search, setSearch] = useState("");
@@ -43,8 +44,7 @@ export default function TransactionsTab() {
   async function handleDelete(tx: Transaction) {
     if (!window.confirm(`Delete transaction with ${tx.merchant ?? "—"}?`)) return;
     try {
-      const res = await fetch(`/api/expenses/transactions/${tx.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete transaction");
+      await apiFetch(`/api/expenses/transactions/${tx.id}`, { method: "DELETE" });
       notifications.show({ title: "Deleted", message: "Transaction deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
     } catch {
@@ -55,24 +55,25 @@ export default function TransactionsTab() {
   const { data, isLoading } = useQuery<Transaction[]>({
     queryKey: ["expenses", "transactions", search, page],
     queryFn: () =>
-      fetch(
-        `/api/expenses/transactions?search=${search}&limit=${limit}&offset=${(page - 1) * limit}`,
-      ).then((r) => r.json()),
+      apiFetch<Transaction[]>(
+        `/api/expenses/transactions${toSearchParams({
+          search,
+          limit,
+          offset: (page - 1) * limit,
+        })}`,
+      ),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: categories } = useQuery({
     queryKey: ["expenses", "categories"],
-    queryFn: () =>
-      fetch("/api/expenses/overview")
-        .then((r) => r.json())
-        .then((d) => d.categories ?? []),
+    queryFn: () => apiFetch<OverviewData>("/api/expenses/overview").then((d) => d.categories ?? []),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: accounts } = useQuery({
     queryKey: ["expenses", "accounts"],
-    queryFn: () => fetch("/api/expenses/accounts").then((r) => r.json()),
+    queryFn: () => apiFetch<Account[]>("/api/expenses/accounts"),
     staleTime: 5 * 60 * 1000,
   });
 

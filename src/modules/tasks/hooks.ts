@@ -1,79 +1,53 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import type { Task } from "./repository";
-
-const TASKS_KEY = "tasks" as const;
-const PROJECTS_KEY = "task-projects" as const;
-const LABELS_KEY = "task-labels" as const;
+import { apiFetch, toSearchParams } from "@/core/api/http";
+import { cacheKeys } from "@/infrastructure/cache/keys";
+import { STALE_TIME } from "@/infrastructure/cache/policy";
+import type { TaskProject, TaskLabel } from "./repository";
 
 // ── API helpers ──
 
+type QueryValue = string | number | boolean | string[] | null | undefined;
+
 async function fetchTasks(filters?: Record<string, unknown>): Promise<Task[]> {
-  const params = new URLSearchParams();
-  if (filters) {
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== undefined && value !== null && value !== "") {
-        if (Array.isArray(value)) {
-          params.set(key, value.join(","));
-        } else {
-          params.set(key, String(value));
-        }
-      }
-    }
-  }
-  const res = await fetch(`/api/tasks?${params.toString()}`);
-  if (!res.ok) throw new Error("Failed to fetch tasks");
-  return res.json();
+  const params = (filters ?? {}) as Record<string, QueryValue>;
+  return apiFetch<Task[]>(`/api/tasks${toSearchParams(params)}`);
 }
 
 async function fetchTask(id: string): Promise<Task & { subtasks: Task[] }> {
-  const res = await fetch(`/api/tasks/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch task");
-  return res.json();
+  return apiFetch(`/api/tasks/${id}`);
 }
 
-async function createTask(data: Record<string, unknown>) {
-  const res = await fetch("/api/tasks", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to create task");
-  return res.json();
+function createTask(data: Record<string, unknown>) {
+  return apiFetch("/api/tasks", { method: "POST", body: JSON.stringify(data) });
 }
 
-async function updateTask({ id, ...data }: { id: string } & Record<string, unknown>) {
-  const res = await fetch(`/api/tasks/${id}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update task");
-  return res.json();
+function updateTask({ id, ...data }: { id: string } & Record<string, unknown>) {
+  return apiFetch(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 }
 
-async function deleteTask(id: string) {
-  const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete task");
-  return res.json();
+function deleteTask(id: string) {
+  return apiFetch(`/api/tasks/${id}`, { method: "DELETE" });
 }
 
 // ── Task Queries ──
 
 export function useTasks(filters?: Record<string, unknown>, initialData?: Task[]) {
   return useQuery({
-    queryKey: [TASKS_KEY, filters ?? {}],
+    queryKey: cacheKeys.tasks.list(filters ?? {}),
     queryFn: () => fetchTasks(filters),
-    staleTime: 15_000,
+    staleTime: STALE_TIME.list,
     placeholderData: initialData,
   });
 }
 
 export function useTask(id: string) {
   return useQuery({
-    queryKey: [TASKS_KEY, id],
+    queryKey: cacheKeys.tasks.detail(id),
     queryFn: () => fetchTask(id),
     enabled: !!id,
+    staleTime: STALE_TIME.detail,
   });
 }
 
@@ -85,7 +59,7 @@ export function useCreateTask() {
     mutationFn: createTask,
     onSuccess: () => {
       notifications.show({ title: "Created", message: "Task created", color: "green" });
-      queryClient.invalidateQueries({ queryKey: [TASKS_KEY] });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.all });
     },
     onError: () => {
       notifications.show({ title: "Error", message: "Failed to create task", color: "red" });
@@ -98,9 +72,9 @@ export function useUpdateTask() {
   return useMutation({
     mutationFn: updateTask,
     onMutate: async ({ id, ...data }) => {
-      await queryClient.cancelQueries({ queryKey: [TASKS_KEY] });
-      const previousQueries = queryClient.getQueriesData<Task[]>({ queryKey: [TASKS_KEY] });
-      queryClient.setQueriesData<Task[]>({ queryKey: [TASKS_KEY] }, (old) =>
+      await queryClient.cancelQueries({ queryKey: cacheKeys.tasks.all });
+      const previousQueries = queryClient.getQueriesData<Task[]>({ queryKey: cacheKeys.tasks.all });
+      queryClient.setQueriesData<Task[]>({ queryKey: cacheKeys.tasks.all }, (old) =>
         old?.map((task) => (task.id === id ? { ...task, ...data } : task)),
       );
       return { previousQueries };
@@ -117,7 +91,7 @@ export function useUpdateTask() {
       notifications.show({ title: "Error", message: "Failed to update task", color: "red" });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: [TASKS_KEY] });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.all });
     },
   });
 }
@@ -128,7 +102,7 @@ export function useDeleteTask() {
     mutationFn: deleteTask,
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Task deleted", color: "red" });
-      queryClient.invalidateQueries({ queryKey: [TASKS_KEY] });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.all });
     },
     onError: () => {
       notifications.show({ title: "Error", message: "Failed to delete task", color: "red" });
@@ -140,43 +114,29 @@ export function useDeleteTask() {
 
 export function useProjects() {
   return useQuery({
-    queryKey: [PROJECTS_KEY],
-    queryFn: async () => {
-      const res = await fetch("/api/tasks/projects");
-      if (!res.ok) throw new Error("Failed to fetch projects");
-      return res.json();
-    },
-    staleTime: 30_000,
+    queryKey: cacheKeys.tasks.projects,
+    queryFn: () => apiFetch<TaskProject[]>("/api/tasks/projects"),
+    staleTime: STALE_TIME.reference,
   });
 }
 
 export function useProject(id: string) {
   return useQuery({
-    queryKey: [PROJECTS_KEY, id],
-    queryFn: async () => {
-      const res = await fetch(`/api/tasks/projects/${id}`);
-      if (!res.ok) throw new Error("Failed to fetch project");
-      return res.json();
-    },
+    queryKey: [...cacheKeys.tasks.projects, id],
+    queryFn: () => apiFetch<TaskProject>(`/api/tasks/projects/${id}`),
     enabled: !!id,
+    staleTime: STALE_TIME.detail,
   });
 }
 
 export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: Record<string, unknown>) => {
-      const res = await fetch("/api/tasks/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to create project");
-      return res.json();
-    },
+    mutationFn: (data: Record<string, unknown>) =>
+      apiFetch("/api/tasks/projects", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
       notifications.show({ title: "Created", message: "Project created", color: "green" });
-      queryClient.invalidateQueries({ queryKey: [PROJECTS_KEY] });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.projects });
     },
     onError: () => {
       notifications.show({ title: "Error", message: "Failed to create project", color: "red" });
@@ -187,18 +147,11 @@ export function useCreateProject() {
 export function useUpdateProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...data }: { id: string } & Record<string, unknown>) => {
-      const res = await fetch(`/api/tasks/projects/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update project");
-      return res.json();
-    },
+    mutationFn: ({ id, ...data }: { id: string } & Record<string, unknown>) =>
+      apiFetch(`/api/tasks/projects/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     onSuccess: () => {
       notifications.show({ title: "Updated", message: "Project updated", color: "green" });
-      queryClient.invalidateQueries({ queryKey: [PROJECTS_KEY] });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.projects });
     },
     onError: () => {
       notifications.show({ title: "Error", message: "Failed to update project", color: "red" });
@@ -209,15 +162,11 @@ export function useUpdateProject() {
 export function useDeleteProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/tasks/projects/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete project");
-      return res.json();
-    },
+    mutationFn: (id: string) => apiFetch(`/api/tasks/projects/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Project deleted", color: "red" });
-      queryClient.invalidateQueries({ queryKey: [PROJECTS_KEY] });
-      queryClient.invalidateQueries({ queryKey: [TASKS_KEY] });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.projects });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.all });
     },
     onError: () => {
       notifications.show({ title: "Error", message: "Failed to delete project", color: "red" });
@@ -229,31 +178,20 @@ export function useDeleteProject() {
 
 export function useLabels() {
   return useQuery({
-    queryKey: [LABELS_KEY],
-    queryFn: async () => {
-      const res = await fetch("/api/tasks/labels");
-      if (!res.ok) throw new Error("Failed to fetch labels");
-      return res.json();
-    },
-    staleTime: 30_000,
+    queryKey: cacheKeys.tasks.labels,
+    queryFn: () => apiFetch<TaskLabel[]>("/api/tasks/labels"),
+    staleTime: STALE_TIME.reference,
   });
 }
 
 export function useCreateLabel() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: Record<string, unknown>) => {
-      const res = await fetch("/api/tasks/labels", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to create label");
-      return res.json();
-    },
+    mutationFn: (data: Record<string, unknown>) =>
+      apiFetch("/api/tasks/labels", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
       notifications.show({ title: "Created", message: "Label created", color: "green" });
-      queryClient.invalidateQueries({ queryKey: [LABELS_KEY] });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.labels });
     },
     onError: () => {
       notifications.show({ title: "Error", message: "Failed to create label", color: "red" });
@@ -264,18 +202,11 @@ export function useCreateLabel() {
 export function useUpdateLabel() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...data }: { id: string } & Record<string, unknown>) => {
-      const res = await fetch(`/api/tasks/labels/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update label");
-      return res.json();
-    },
+    mutationFn: ({ id, ...data }: { id: string } & Record<string, unknown>) =>
+      apiFetch(`/api/tasks/labels/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     onSuccess: () => {
       notifications.show({ title: "Updated", message: "Label updated", color: "green" });
-      queryClient.invalidateQueries({ queryKey: [LABELS_KEY] });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.labels });
     },
     onError: () => {
       notifications.show({ title: "Error", message: "Failed to update label", color: "red" });
@@ -286,14 +217,10 @@ export function useUpdateLabel() {
 export function useDeleteLabel() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/tasks/labels/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete label");
-      return res.json();
-    },
+    mutationFn: (id: string) => apiFetch(`/api/tasks/labels/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Label deleted", color: "red" });
-      queryClient.invalidateQueries({ queryKey: [LABELS_KEY] });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.labels });
     },
     onError: () => {
       notifications.show({ title: "Error", message: "Failed to delete label", color: "red" });
@@ -304,17 +231,10 @@ export function useDeleteLabel() {
 export function useSetTaskLabels() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ taskId, labelIds }: { taskId: string; labelIds: string[] }) => {
-      const res = await fetch(`/api/tasks/${taskId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ labelIds }),
-      });
-      if (!res.ok) throw new Error("Failed to set task labels");
-      return res.json();
-    },
+    mutationFn: ({ taskId, labelIds }: { taskId: string; labelIds: string[] }) =>
+      apiFetch(`/api/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify({ labelIds }) }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [TASKS_KEY] });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.tasks.all });
     },
   });
 }

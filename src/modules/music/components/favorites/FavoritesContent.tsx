@@ -9,6 +9,7 @@ import { MusicCard } from "../design-system/MusicCard";
 import Link from "next/link";
 import { IconHeartFilled, IconHeart, IconTrash } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type Favorite = {
   id: string;
@@ -24,21 +25,12 @@ export function FavoritesContent() {
 
   const { data: favorites, isLoading } = useQuery({
     queryKey: ["music-favorites"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/favorites");
-      if (!res.ok) throw new Error("Failed to load favorites");
-      return res.json() as Promise<Favorite[]>;
-    },
+    queryFn: () => apiFetch<Favorite[]>("/api/music/favorites"),
   });
 
   const removeFavoriteMutation = useMutation({
-    mutationFn: async ({ entityType, entityId }: { entityType: string; entityId: string }) => {
-      const res = await fetch(
-        `/api/music/favorites?entityType=${encodeURIComponent(entityType)}&entityId=${encodeURIComponent(entityId)}`,
-        { method: "DELETE" },
-      );
-      if (!res.ok) throw new Error("Failed to remove favorite");
-    },
+    mutationFn: ({ entityType, entityId }: { entityType: string; entityId: string }) =>
+      apiFetch(`/api/music/favorites${toSearchParams({ entityType, entityId })}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Removed", message: "Removed from favorites", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["music-favorites"] });

@@ -14,6 +14,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid, AreaChart, Area,
 } from "recharts";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 import {
   IconClock,
   IconCalendarStats,
@@ -83,11 +84,11 @@ export function AnalyticsTab() {
     setLoading(true);
     try {
       const [analyticsRes, statsRes] = await Promise.all([
-        fetch(`/api/wellness/sleep/analytics?period=${period}`),
-        fetch("/api/wellness/sleep/statistics"),
+        apiFetch<DailyData[]>(`/api/wellness/sleep/analytics${toSearchParams({ period })}`),
+        apiFetch<SleepStats>("/api/wellness/sleep/statistics"),
       ]);
-      if (analyticsRes.ok) setDailyData(await analyticsRes.json());
-      if (statsRes.ok) setStats(await statsRes.json());
+      setDailyData(analyticsRes);
+      setStats(statsRes);
     } catch {} finally {
       setLoading(false);
     }

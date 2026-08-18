@@ -7,6 +7,7 @@ import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { IconSearch, IconX, IconMusic, IconMicrophone, IconBooks } from "@tabler/icons-react";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 const moods = ["🎵", "🎶", "❤️", "💔", "🔥", "🌟", "😊", "😢", "🤔", "💭", "✨", "🌙"];
 
@@ -87,9 +88,7 @@ export function MemoryCreateModal({ opened, onClose, initialData }: MemoryCreate
     }
     setSearching(true);
     try {
-      const res = await fetch(`/api/music/search?q=${encodeURIComponent(q)}`);
-      if (!res.ok) return;
-      const data = await res.json();
+      const data = await apiFetch<any>(`/api/music/search${toSearchParams({ q })}`);
       const allResults: SearchResult[] = [
         ...(data.artists ?? []).map((r: any) => ({ ...r, type: "artist" as const })),
         ...(data.albums ?? []).map((r: any) => ({ ...r, type: "album" as const })),
@@ -128,15 +127,12 @@ export function MemoryCreateModal({ opened, onClose, initialData }: MemoryCreate
   };
 
   const mutation = useMutation({
-    mutationFn: async (data: MemoryFormData) => {
+    mutationFn: (data: MemoryFormData) => {
       const url = isEditing ? `/api/music/memories/${initialData!.id}` : "/api/music/memories";
-      const res = await fetch(url, {
+      return apiFetch(url, {
         method: isEditing ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to save memory");
-      return res.json();
     },
     onSuccess: () => {
       notifications.show({ title: isEditing ? "Updated" : "Created", message: isEditing ? "Memory updated" : "Memory created", color: "green" });

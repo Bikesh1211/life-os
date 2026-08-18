@@ -10,6 +10,8 @@ import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus, IconComponents, IconEdit, IconTrash, IconDotsVertical, IconDeviceLaptop } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
+import type { Setup, TechItem } from "@/modules/tech-gear";
 
 export function TechSetupsPanel() {
   const [setups, setSetups] = useState<any[]>([]);
@@ -21,12 +23,12 @@ export function TechSetupsPanel() {
 
   const fetchData = async () => {
     try {
-      const [setupsRes, itemsRes] = await Promise.all([
-        fetch("/api/inventory/tech-gear/setups"),
-        fetch("/api/inventory/tech-gear/items"),
+      const [setupsData, itemsData] = await Promise.all([
+        apiFetch<Setup[]>("/api/inventory/tech-gear/setups"),
+        apiFetch<TechItem[]>("/api/inventory/tech-gear/items"),
       ]);
-      setSetups(await setupsRes.json());
-      setItems(await itemsRes.json());
+      setSetups(setupsData);
+      setItems(itemsData);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -44,15 +46,15 @@ export function TechSetupsPanel() {
   const handleSave = async () => {
     const body = { name: form.name, description: form.description || undefined, itemIds: form.itemIds };
     if (editSetup) {
-      await fetch(`/api/inventory/tech-gear/setups/${editSetup.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      await apiFetch(`/api/inventory/tech-gear/setups/${editSetup.id}`, { method: "PATCH", body: JSON.stringify(body) });
     } else {
-      await fetch("/api/inventory/tech-gear/setups", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      await apiFetch("/api/inventory/tech-gear/setups", { method: "POST", body: JSON.stringify(body) });
     }
     close(); fetchData();
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`/api/inventory/tech-gear/setups/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/inventory/tech-gear/setups/${id}`, { method: "DELETE" });
     fetchData();
   };
 

@@ -10,6 +10,7 @@ import { IconFolder, IconPlus } from "@tabler/icons-react";
 import Link from "next/link";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
+import { apiFetch } from "@/core/api/http";
 
 type Collection = {
   id: string;
@@ -27,23 +28,15 @@ export function CollectionsContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["music-collections"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/collections");
-      if (!res.ok) throw new Error("Failed to load collections");
-      return res.json() as Promise<{ collections: Collection[] }>;
-    },
+    queryFn: () => apiFetch<{ collections: Collection[] }>("/api/music/collections"),
   });
 
   const createMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/music/collections", {
+    mutationFn: () =>
+      apiFetch("/api/music/collections", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: createTitle, description: createDesc || undefined }),
-      });
-      if (!res.ok) throw new Error("Failed to create");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Created", message: "Collection created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-collections"] });

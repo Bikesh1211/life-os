@@ -4,15 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { SimpleGrid, Text, Badge, Group, Progress } from "@mantine/core";
 import { IconDeviceTv } from "@tabler/icons-react";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
+import { apiFetch } from "@/core/api/http";
 
 export function TvShowsContent() {
   const { data: watchlist } = useQuery({
     queryKey: ["movie-watchlist"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/watchlist");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any[]>("/api/movies/watchlist"),
   });
 
   const tvShows = watchlist?.filter((w: any) => !w.mediaId?.startsWith("movie-")) ?? [];

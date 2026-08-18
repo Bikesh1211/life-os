@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, ThemeIcon, Badge, SimpleGrid } from "@mantine/core";
 import { IconPlane } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 
 type Trip = {
@@ -18,11 +19,7 @@ type Trip = {
 export function TripsContent() {
   const { data: trips, isLoading } = useQuery({
     queryKey: ["travel-trips"],
-    queryFn: async () => {
-      const res = await fetch("/api/travel/trips");
-      if (!res.ok) throw new Error("Failed to load trips");
-      return res.json() as Promise<Trip[]>;
-    },
+    queryFn: () => apiFetch<Trip[]>("/api/travel/trips"),
   });
 
   const tripList = trips ?? [];

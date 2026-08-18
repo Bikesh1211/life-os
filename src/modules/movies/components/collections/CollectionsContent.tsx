@@ -8,6 +8,7 @@ import { IconPlaylist, IconPlus, IconTrash, IconExternalLink } from "@tabler/ico
 import { useDisclosure } from "@mantine/hooks";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 
 export function CollectionsContent() {
   const [opened, { open, close }] = useDisclosure(false);
@@ -17,21 +18,12 @@ export function CollectionsContent() {
 
   const { data: collections } = useQuery({
     queryKey: ["movie-collections"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/collections");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any[]>("/api/movies/collections"),
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch("/api/movies/collections", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    mutationFn: (data: any) =>
+      apiFetch("/api/movies/collections", { method: "POST", body: JSON.stringify(data) }),
     onSuccess: () => {
       notifications.show({ title: "Created", message: "Collection created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["movie-collections"] });
@@ -40,9 +32,7 @@ export function CollectionsContent() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await fetch(`/api/movies/collections/${id}`, { method: "DELETE" });
-    },
+    mutationFn: (id: string) => apiFetch(`/api/movies/collections/${id}`, { method: "DELETE" }),
     onSuccess: () => { notifications.show({ title: "Deleted", message: "Collection deleted", color: "orange" }); queryClient.invalidateQueries({ queryKey: ["movie-collections"] }); },
   });
 
@@ -54,7 +44,7 @@ export function CollectionsContent() {
         action={<Button leftSection={<IconPlus size={16} />} size="sm" onClick={open}>New Collection</Button>}
       />
 
-      {collections?.length > 0 ? (
+      {collections && collections.length > 0 ? (
         <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }} spacing="md">
           {collections.map((c: any) => (
             <div key={c.id} className="group relative rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-4 transition-all hover:shadow-md">

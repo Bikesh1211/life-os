@@ -35,6 +35,7 @@ import {
   IconFilter,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 import type { RouteCard } from "@/modules/travel-helper";
 import dayjs from "dayjs";
 
@@ -72,11 +73,9 @@ export function RoutesTab() {
   const fetchRoutes = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (search) params.set("search", search);
-      if (transportFilter) params.set("transportMode", transportFilter);
-      const res = await fetch(`/api/travel-helper/routes?${params.toString()}`);
-      const data = await res.json();
+      const data = await apiFetch<RouteCard[]>(
+        `/api/travel-helper/routes${toSearchParams({ search, transportMode: transportFilter })}`,
+      );
       if (Array.isArray(data)) {
         setRoutes(data);
       }
@@ -92,24 +91,23 @@ export function RoutesTab() {
   }, [fetchRoutes]);
 
   const toggleFavorite = async (route: RouteCard) => {
-    const res = await fetch(`/api/travel-helper/routes/${route.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isFavorite: !route.isFavorite }),
-    });
-    if (res.ok) {
+    try {
+      await apiFetch(`/api/travel-helper/routes/${route.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ isFavorite: !route.isFavorite }),
+      });
       setRoutes((prev) =>
         prev.map((r) => (r.id === route.id ? { ...r, isFavorite: !r.isFavorite } : r)),
       );
-    }
+    } catch {}
   };
 
   const deleteRoute = async (route: RouteCard) => {
-    const res = await fetch(`/api/travel-helper/routes/${route.id}`, { method: "DELETE" });
-    if (res.ok) {
+    try {
+      await apiFetch(`/api/travel-helper/routes/${route.id}`, { method: "DELETE" });
       setRoutes((prev) => prev.filter((r) => r.id !== route.id));
       notifications.show({ color: "green", title: "Deleted", message: `"${route.name}" deleted` });
-    }
+    } catch {}
   };
 
   const openRouteDetail = (route: RouteCard) => {

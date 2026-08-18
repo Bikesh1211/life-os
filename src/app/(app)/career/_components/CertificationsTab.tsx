@@ -20,6 +20,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus, IconDots, IconTrash, IconCertificate, IconBuilding, IconCalendar } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 interface Certification {
   id: string;
@@ -50,10 +51,8 @@ export default function CertificationsTab() {
 
   const loadCerts = () => {
     setLoading(true);
-    fetch("/api/career/certifications")
-      .then(async (r) => {
-        if (!r.ok) throw new Error("Failed to load");
-        const d = await r.json();
+    apiFetch<Certification[]>("/api/career/certifications")
+      .then((d) => {
         setCerts(d);
         setLoading(false);
       })

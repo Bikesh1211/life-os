@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, ThemeIcon, Badge, Button } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconGift, IconPlus, IconEdit, IconTrash } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { GiftsModal } from "./GiftsModal";
 
@@ -26,27 +27,16 @@ export function GiftsContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["network-gifts"],
-    queryFn: async () => {
-      const res = await fetch("/api/network/gifts");
-      if (!res.ok) throw new Error("Failed to load gifts");
-      return res.json() as Promise<Gift[]>;
-    },
+    queryFn: () => apiFetch<Gift[]>("/api/network/gifts"),
   });
 
   const { data: allConnections } = useQuery({
     queryKey: ["network-connections"],
-    queryFn: async () => {
-      const res = await fetch("/api/network/connections");
-      if (!res.ok) throw new Error("Failed");
-      return res.json() as Promise<{ id: string; name: string }[]>;
-    },
+    queryFn: () => apiFetch<{ id: string; name: string }[]>("/api/network/connections"),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/network/gifts/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-    },
+    mutationFn: (id: string) => apiFetch(`/api/network/gifts/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Gift deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["network-gifts"] });

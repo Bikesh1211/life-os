@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { MusicContainer } from "../design-system/MusicContainer";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { IconClock } from "@tabler/icons-react";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type HistoryEntry = {
   id: string;
@@ -19,9 +20,9 @@ export function HistoryContent() {
     queryKey: ["music-history"],
     initialPageParam: 0,
     queryFn: async ({ pageParam }) => {
-      const res = await fetch(`/api/music/history?offset=${pageParam}&limit=30`);
-      if (!res.ok) throw new Error("Failed to load history");
-      return res.json() as Promise<{ entries: HistoryEntry[]; nextOffset: number | null }>;
+      return apiFetch<{ entries: HistoryEntry[]; nextOffset: number | null }>(
+        `/api/music/history${toSearchParams({ offset: pageParam, limit: 30 })}`,
+      );
     },
     getNextPageParam: (lastPage) => lastPage.nextOffset,
   });

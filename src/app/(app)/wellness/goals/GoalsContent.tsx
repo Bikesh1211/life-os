@@ -6,6 +6,7 @@ import {
 } from "@mantine/core";
 import { IconTargetArrow, IconTrophy, IconPlus, IconTrash, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 import type { WellnessUserGoal, WellnessAchievement } from "@/modules/wellness";
 
 export function GoalsContent({
@@ -26,9 +27,8 @@ export function GoalsContent({
     if (!title || !targetValue) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/goals", {
+      await apiFetch("/api/wellness/goals", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           goalType, title, targetValue: Number(targetValue), unit,
           startDate: new Date().toISOString().slice(0, 10),
@@ -44,16 +44,15 @@ export function GoalsContent({
   }, [goalType, title, targetValue, unit]);
 
   const handleDelete = useCallback(async (id: string) => {
-    await fetch(`/api/wellness/goals/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/wellness/goals/${id}`, { method: "DELETE" });
     window.location.reload();
   }, []);
 
   const handleUpdate = useCallback(async (id: string, currentValue: number) => {
     const newVal = prompt("Enter current value:", String(currentValue));
     if (newVal === null) return;
-    await fetch(`/api/wellness/goals/${id}`, {
+    await apiFetch(`/api/wellness/goals/${id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentValue: Number(newVal) }),
     });
     window.location.reload();

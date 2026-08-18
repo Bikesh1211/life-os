@@ -12,6 +12,8 @@ import {
 } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import ItemFormModal from "../../_components/ItemFormModal";
+import { apiFetch } from "@/core/api/http";
+import type { ClothingItem } from "@/modules/wardrobe";
 
 export default function ItemDetailPage() {
   const params = useParams<{ id: string }>();
@@ -22,8 +24,7 @@ export default function ItemDetailPage() {
 
   const fetchItem = async () => {
     try {
-      const res = await fetch(`/api/inventory/wardrobe/items/${params.id}`);
-      const data = await res.json();
+      const data = await apiFetch<ClothingItem>(`/api/inventory/wardrobe/items/${params.id}`);
       setItem(data);
     } catch (e) {
       console.error(e);
@@ -35,14 +36,14 @@ export default function ItemDetailPage() {
   useEffect(() => { fetchItem(); }, [params.id]);
 
   const handleSave = async (data: any) => {
-    await fetch(`/api/inventory/wardrobe/items/${params.id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
+    await apiFetch(`/api/inventory/wardrobe/items/${params.id}`, {
+      method: "PATCH", body: JSON.stringify(data),
     });
     fetchItem();
   };
 
   const handleDelete = async () => {
-    await fetch(`/api/inventory/wardrobe/items/${params.id}`, { method: "DELETE" });
+    await apiFetch(`/api/inventory/wardrobe/items/${params.id}`, { method: "DELETE" });
     router.push("/inventory/wardrobe/items");
   };
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Modal, TextInput, Textarea, Group, Button, Stack, Switch, Text, MultiSelect, ActionIcon, CloseButton, Badge, SimpleGrid } from "@mantine/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
+import { apiFetch } from "@/core/api/http";
 
 type ConnectionData = {
   id: string;
@@ -91,13 +92,11 @@ export function ConnectionsModal({ opened, onClose, initialData }: Props) {
   }, [opened, initialData]);
 
   const mutation = useMutation({
-    mutationFn: async (data: Record<string, unknown>) => {
-      const url = isEditing ? `/api/network/connections/${initialData!.id}` : "/api/network/connections";
-      const method = isEditing ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
-      if (!res.ok) throw new Error("Failed to save connection");
-      return res.json();
-    },
+    mutationFn: (data: Record<string, unknown>) =>
+      apiFetch(isEditing ? `/api/network/connections/${initialData!.id}` : "/api/network/connections", {
+        method: isEditing ? "PUT" : "POST",
+        body: JSON.stringify(data),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["network-connections"] });
       queryClient.invalidateQueries({ queryKey: ["network-dashboard-stats"] });
@@ -112,10 +111,7 @@ export function ConnectionsModal({ opened, onClose, initialData }: Props) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/network/connections/${initialData!.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete connection");
-    },
+    mutationFn: () => apiFetch(`/api/network/connections/${initialData!.id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["network-connections"] });
       queryClient.invalidateQueries({ queryKey: ["network-dashboard-stats"] });

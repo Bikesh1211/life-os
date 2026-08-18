@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, ThemeIcon, Badge, Button } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCalendarEvent, IconPlus, IconEdit, IconTrash } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { EventsModal } from "./EventsModal";
 
@@ -32,18 +33,11 @@ export function EventsContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["network-events"],
-    queryFn: async () => {
-      const res = await fetch("/api/network/events");
-      if (!res.ok) throw new Error("Failed to load events");
-      return res.json() as Promise<Event[]>;
-    },
+    queryFn: () => apiFetch<Event[]>("/api/network/events"),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/network/events/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-    },
+    mutationFn: (id: string) => apiFetch(`/api/network/events/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Event deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["network-events"] });

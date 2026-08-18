@@ -6,6 +6,7 @@ import { IconArrowLeft, IconTrash, IconEdit, IconWorld, IconCalendar, IconUsers,
 import { Card, Text, Group, Badge, Button, ActionIcon, Stack, Loader, Center, Modal, TextInput, Textarea, Select } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { apiFetch } from "@/core/api/http";
 import dayjs from "dayjs";
 
 type Trip = {
@@ -37,9 +38,8 @@ function EditTripModal({ trip, opened, onClose }: { trip: Trip; opened: boolean;
 
   async function handleSubmit() {
     if (!title.trim() || !destination.trim()) return;
-    await fetch(`/api/travel/trips/${trip.id}`, {
+    await apiFetch(`/api/travel/trips/${trip.id}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
         destination,
@@ -95,9 +95,9 @@ export default function TripDetailPage() {
 
   useEffect(() => {
     if (!params.id) return;
-    fetch(`/api/travel/trips/${params.id}`)
-      .then((r) => (r.ok ? r.json() : null))
+    apiFetch<Trip>(`/api/travel/trips/${params.id}`)
       .then(setTrip)
+      .catch(() => setTrip(null))
       .finally(() => setLoading(false));
   }, [params.id]);
 
@@ -116,7 +116,7 @@ export default function TripDetailPage() {
 
   async function handleDelete() {
     if (!trip) return;
-    await fetch(`/api/travel/trips/${trip.id}`, { method: "DELETE" });
+    await apiFetch(`/api/travel/trips/${trip.id}`, { method: "DELETE" });
     notifications.show({ title: "Deleted", message: "Trip deleted", color: "orange" });
     router.push("/travel/trips");
   }

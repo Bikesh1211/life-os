@@ -12,20 +12,21 @@ import { CategoryBreakdown } from "./CategoryBreakdown";
 import { QuickAddModal } from "./QuickAddModal";
 
 import { StatGridSkeleton, ChartSkeleton } from "@/components/ui/loading-skeleton";
-import type { OverviewData } from "@/modules/expenses";
+import type { OverviewData, Account } from "@/modules/expenses";
+import { apiFetch } from "@/core/api/http";
 
 export default function DashboardTab() {
   const [quickAddOpened, setQuickAddOpened] = useState(false);
 
   const { data, isLoading } = useQuery<OverviewData>({
     queryKey: ["expenses", "overview"],
-    queryFn: () => fetch("/api/expenses/overview").then((r) => r.json()),
+    queryFn: () => apiFetch<OverviewData>("/api/expenses/overview"),
     staleTime: 5 * 60 * 1000,
   });
 
   const accountsQuery = useQuery({
     queryKey: ["expenses", "accounts"],
-    queryFn: () => fetch("/api/expenses/accounts").then((r) => r.json()),
+    queryFn: () => apiFetch<Account[]>("/api/expenses/accounts"),
     staleTime: 5 * 60 * 1000,
   });
 

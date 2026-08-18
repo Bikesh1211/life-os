@@ -14,6 +14,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react";
 import { cn } from "@/core/utils";
+import { apiFetch, ApiError } from "@/core/api/http";
 import { canonicalCountry, categoryFor, makeSlug } from "@/modules/travel/explore";
 import type { TravelCategory } from "@/modules/travel/explore";
 import { filterCls } from "./fields";
@@ -313,16 +314,10 @@ export function ArchiveDesk() {
           : journalBody(journalForm);
 
     try {
-      const response = await fetch(editing ? `${base}/${editing.id}` : base, {
+      await apiFetch(editing ? `${base}/${editing.id}` : base, {
         method: editing ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
-      if (!response.ok) {
-        const detail = await response.json().catch(() => null);
-        throw new Error(detail?.error ?? "Failed to save");
-      }
 
       setNotice({ kind: "ok", text: editing ? "Saved." : "Created." });
       setShowForm(false);
@@ -331,7 +326,7 @@ export function ArchiveDesk() {
     } catch (error) {
       setNotice({
         kind: "error",
-        text: error instanceof Error ? error.message : "Something went wrong",
+        text: errorText(error, "Failed to save"),
       });
     } finally {
       setSaving(false);
@@ -341,14 +336,13 @@ export function ArchiveDesk() {
   async function handleDelete(id: string, kind: string, label: string) {
     if (!confirm(`Delete “${label}”? This cannot be undone.`)) return;
     try {
-      const response = await fetch(`${endpointFor(kind)}/${id}`, { method: "DELETE" });
-      if (!response.ok) throw new Error("Failed to delete");
+      await apiFetch(`${endpointFor(kind)}/${id}`, { method: "DELETE" });
       setNotice({ kind: "ok", text: "Deleted." });
       await reload();
     } catch (error) {
       setNotice({
         kind: "error",
-        text: error instanceof Error ? error.message : "Something went wrong",
+        text: errorText(error, "Failed to delete"),
       });
     }
   }
@@ -922,12 +916,19 @@ async function fetchArchive(): Promise<ArchiveSnapshot> {
 
 async function fetchJson<T>(url: string): Promise<T | null> {
   try {
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    return (await response.json()) as T;
+    return await apiFetch<T>(url);
   } catch {
     return null;
   }
+}
+
+function errorText(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    const body = error.body as { error?: unknown } | null | undefined;
+    if (body && typeof body.error === "string") return body.error;
+    return fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
 }
 
 function formatDate(value: string | null | undefined): string {

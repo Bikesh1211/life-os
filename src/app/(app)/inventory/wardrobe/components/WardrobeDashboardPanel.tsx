@@ -5,6 +5,7 @@ import { Card, Text, Group, Stack, SimpleGrid, RingProgress, Badge, Title, Ancho
 import { IconShirt, IconHeart, IconWash, IconCurrencyDollar, IconPlus, IconArrowRight } from "@tabler/icons-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 
 interface DashboardStats {
   totalItems: number;
@@ -40,8 +41,7 @@ export function WardrobeDashboardPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/inventory/wardrobe/dashboard")
-      .then(r => r.ok ? r.json() : Promise.reject("API error"))
+    apiFetch<DashboardStats>("/api/inventory/wardrobe/dashboard")
       .then(data => { setStats(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);

@@ -37,6 +37,7 @@ import { motion } from "framer-motion";
 import { ACCOUNT_TYPES } from "@/modules/expenses/constants";
 import { EditAccountModal } from "./EditAccountModal";
 import type { Account } from "@/modules/expenses";
+import { apiFetch } from "@/core/api/http";
 
 const accountIcons: Record<string, React.ComponentType<{ size?: number }>> = {
   checking: IconBuildingBank,
@@ -64,7 +65,7 @@ export default function AccountsTab() {
 
   const { data: accounts, isLoading } = useQuery<Account[]>({
     queryKey: ["expenses", "accounts"],
-    queryFn: () => fetch("/api/expenses/accounts").then((r) => r.json()),
+    queryFn: () => apiFetch<Account[]>("/api/expenses/accounts"),
     staleTime: 5 * 60 * 1000,
     select: (data) => data.filter((account) => !account.isArchived),
   });
@@ -82,12 +83,10 @@ export default function AccountsTab() {
   async function handleSubmit(values: typeof form.values) {
     setLoading(true);
     try {
-      const res = await fetch("/api/expenses/accounts", {
+      await apiFetch("/api/expenses/accounts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      if (!res.ok) throw new Error("Failed to create account");
       notifications.show({ title: "Created", message: "Account created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["expenses", "accounts"] });
       form.reset();

@@ -8,6 +8,7 @@ import { Container, Text, Group, Button, Title, SimpleGrid, Badge } from "@manti
 import { IconArrowLeft, IconEdit, IconTrash } from "@tabler/icons-react";
 import Link from "next/link";
 import { MemoryCreateModal } from "./MemoryCreateModal";
+import { apiFetch } from "@/core/api/http";
 
 export function MemoryDetailContent() {
   const params = useParams();
@@ -18,19 +19,12 @@ export function MemoryDetailContent() {
 
   const { data: memory, refetch } = useQuery({
     queryKey: ["movie-memory", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/movies/memories/${id}`);
-      if (!res.ok) throw new Error("Not found");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any>(`/api/movies/memories/${id}`),
     enabled: !!id,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/movies/memories/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed");
-    },
+    mutationFn: () => apiFetch(`/api/movies/memories/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Memory deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["movie-memories"] });

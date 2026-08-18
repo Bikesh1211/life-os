@@ -8,6 +8,7 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
 import dayjs from "dayjs";
+import { apiFetch, ApiError } from "@/core/api/http";
 
 interface Props {
   onClose: () => void;
@@ -60,16 +61,10 @@ export default function CreateLoanModal({ onClose }: Props) {
         body.installmentAmount = installmentAmount;
       }
 
-      const res = await fetch("/api/loans", {
+      await apiFetch("/api/loans", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to create loan");
-      }
 
       notifications.show({
         title: "Success",
@@ -78,9 +73,18 @@ export default function CreateLoanModal({ onClose }: Props) {
       });
       onClose();
     } catch (err) {
+      const message =
+        err instanceof ApiError &&
+        err.body &&
+        typeof err.body === "object" &&
+        "message" in err.body
+          ? String((err.body as { message: unknown }).message)
+          : err instanceof Error
+            ? err.message
+            : "Something went wrong";
       notifications.show({
         title: "Error",
-        message: err instanceof Error ? err.message : "Something went wrong",
+        message,
         color: "red",
       });
     } finally {

@@ -14,6 +14,7 @@ import {
   IconLink, IconFileText,
 } from "@tabler/icons-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiFetch } from "@/core/api/http";
 
 type ResearchNote = {
   id: string;
@@ -40,23 +41,16 @@ export function ResearchNotesPanel({ bookId }: { bookId: string }) {
 
   const { data: notes, isLoading } = useQuery({
     queryKey: ["book-research-notes", bookId],
-    queryFn: async () => {
-      const res = await fetch(`/api/books/${bookId}/research`);
-      if (!res.ok) throw new Error("Failed to load research notes");
-      return res.json() as Promise<ResearchNote[]>;
-    },
+    queryFn: () => apiFetch<ResearchNote[]>(`/api/books/${bookId}/research`),
     enabled: !!bookId,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const res = await fetch(`/api/books/${bookId}/research`, {
+      return apiFetch<ResearchNote>(`/api/books/${bookId}/research`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to create note");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-research-notes", bookId] });
@@ -68,13 +62,10 @@ export function ResearchNotesPanel({ bookId }: { bookId: string }) {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      const res = await fetch(`/api/books/${bookId}/research/${id}`, {
+      return apiFetch<ResearchNote>(`/api/books/${bookId}/research/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to update note");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-research-notes", bookId] });
@@ -86,8 +77,7 @@ export function ResearchNotesPanel({ bookId }: { bookId: string }) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/books/${bookId}/research/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete note");
+      await apiFetch(`/api/books/${bookId}/research/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-research-notes", bookId] });

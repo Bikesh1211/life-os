@@ -8,6 +8,7 @@ import { Container, Text, Button, Title, SimpleGrid, Group, Badge, TextInput, Lo
 import { IconArrowLeft, IconTrash, IconPlus, IconX } from "@tabler/icons-react";
 import Link from "next/link";
 import { TMDB_IMAGE_BASE_URL } from "@/modules/movies/tmdb";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 export function CollectionDetailContent() {
   const params = useParams();
@@ -25,8 +26,7 @@ export function CollectionDetailContent() {
     searchRef.current = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await fetch(`/api/movies/search?q=${encodeURIComponent(searchQuery)}`);
-        const json = await res.json();
+        const json = await apiFetch<any>(`/api/movies/search${toSearchParams({ q: searchQuery })}`);
         setSearchResults((json.media ?? []).slice(0, 5));
       } catch {} finally { setSearching(false); }
     }, 300);
@@ -35,37 +35,25 @@ export function CollectionDetailContent() {
 
   const { data: collection, refetch } = useQuery({
     queryKey: ["movie-collection", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/movies/collections/${id}`);
-      if (!res.ok) throw new Error("Not found");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any>(`/api/movies/collections/${id}`),
     enabled: !!id,
   });
 
   const addMutation = useMutation({
-    mutationFn: async (mediaId: string) => {
-      const res = await fetch(`/api/movies/collections/${id}/items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mediaId }),
-      });
-      if (!res.ok) throw new Error("Failed");
-    },
+    mutationFn: (mediaId: string) =>
+      apiFetch(`/api/movies/collections/${id}/items`, { method: "POST", body: JSON.stringify({ mediaId }) }),
     onSuccess: () => { notifications.show({ title: "Added", message: "Movie added to collection", color: "green" }); refetch(); queryClient.invalidateQueries({ queryKey: ["movie-collections"] }); setSearchQuery(""); setSearchResults([]); },
   });
 
   const removeMutation = useMutation({
-    mutationFn: async (itemId: string) => {
-      const res = await fetch(`/api/movies/collections/${id}/items?itemId=${itemId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed");
-    },
+    mutationFn: (itemId: string) =>
+      apiFetch(`/api/movies/collections/${id}/items${toSearchParams({ itemId })}`, { method: "DELETE" }),
     onSuccess: () => { notifications.show({ title: "Removed", message: "Removed from collection", color: "orange" }); refetch(); queryClient.invalidateQueries({ queryKey: ["movie-collections"] }); },
   });
 
   const deleteCollection = async () => {
     if (!confirm("Delete this entire collection?")) return;
-    await fetch(`/api/movies/collections/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/movies/collections/${id}`, { method: "DELETE" });
     notifications.show({ title: "Deleted", message: "Collection deleted", color: "orange" });
     queryClient.invalidateQueries({ queryKey: ["movie-collections"] });
     router.push("/movies/collections");

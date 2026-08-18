@@ -15,6 +15,7 @@ import {
   IconPhoto,
   IconMusic,
 } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 type MemoryData = {
   id: string;
@@ -39,11 +40,7 @@ export function MemoryDetailContent({ idPromise }: { idPromise: Promise<{ id: st
 
   const { data: memory, isLoading } = useQuery<MemoryData>({
     queryKey: ["memory", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/music/memories/${id}`);
-      if (!res.ok) throw new Error("Memory not found");
-      return res.json();
-    },
+    queryFn: () => apiFetch<MemoryData>(`/api/music/memories/${id}`),
   });
 
   if (isLoading) {

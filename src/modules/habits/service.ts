@@ -29,35 +29,44 @@ function getDateRange(params: AnalyticsFilterParams) {
   return { dateFrom: start.format("YYYY-MM-DD"), dateTo: end.format("YYYY-MM-DD") };
 }
 
+/**
+ * Current and longest run of consecutive days, from a list of completed dates.
+ *
+ * `current` used to be read off `streak` after the whole loop had run. The
+ * loop walks newest to oldest and resets on every gap, so what it held at the
+ * end was the length of the run containing the *oldest* date — the current
+ * streak was only ever right for an account whose entire history is one
+ * unbroken run. It is now measured from the newest date, which is what the
+ * dashboard has always claimed to show.
+ */
 export function calculateStreak(dates: string[]): { current: number; longest: number } {
   if (dates.length === 0) return { current: 0, longest: 0 };
 
   const unique = [...new Set(dates)].sort().reverse();
-  let current = 1;
   let longest = 1;
   let streak = 1;
+  let leading = 1;
+  let leadingOpen = true;
 
   for (let i = 1; i < unique.length; i++) {
-    const diff = dayjs(unique[i - 1]).diff(dayjs(unique[i]), "day");
-    if (diff === 1) {
+    const consecutive = dayjs(unique[i - 1]).diff(dayjs(unique[i]), "day") === 1;
+    if (consecutive) {
       streak++;
       if (streak > longest) longest = streak;
+      if (leadingOpen) leading++;
     } else {
       streak = 1;
+      leadingOpen = false;
     }
   }
 
-  if (unique.length > 0) {
-    const today = dayjs().format("YYYY-MM-DD");
-    const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
-    if (unique[0] !== today && unique[0] !== yesterday) {
-      current = 0;
-    } else {
-      current = streak;
-    }
-  }
+  // A run only counts as "current" while it is still live: it has to reach
+  // today, or yesterday for a day that has not been logged yet.
+  const today = dayjs().format("YYYY-MM-DD");
+  const yesterday = dayjs().subtract(1, "day").format("YYYY-MM-DD");
+  const live = unique[0] === today || unique[0] === yesterday;
 
-  return { current, longest };
+  return { current: live ? leading : 0, longest };
 }
 
 function computeConsistency(completionDates: string[], dateFrom: string, dateTo: string): number {
@@ -317,36 +326,46 @@ export async function logCompletion(
   return completion;
 }
 
+/**
+ * Dashboard summary for the habits card.
+ *
+ * This ran as three sequential stages — counts, then every completion date,
+ * then a frequency breakdown — even though no stage used the one before it.
+ * Against a remote database that is three round-trips of pure waiting, and it
+ * made this the slowest of the seven calls the dashboard awaits in parallel,
+ * so the whole dashboard waited on it. The two habit counts were also separate
+ * queries over the same rows with the same predicate.
+ *
+ * Now: one query for the habit counts, one for today's completions, one for
+ * the completion dates, all issued together — one round-trip.
+ */
 export async function getSummary(userId: string) {
   const today = dayjs().format("YYYY-MM-DD");
-  const [habitRows, todayResult] = await Promise.all([
-    db.select({ count: count() }).from(habits).where(and(eq(habits.userId, userId), isNull(habits.deletedAt))),
+
+  const [habitRows, todayResult, allDates] = await Promise.all([
+    db
+      .select({
+        total: count(),
+        daily: sql<number>`count(*) filter (where ${habits.frequency} = 'daily')`,
+        weekly: sql<number>`count(*) filter (where ${habits.frequency} = 'weekly')`,
+        monthly: sql<number>`count(*) filter (where ${habits.frequency} = 'monthly')`,
+      })
+      .from(habits)
+      .where(and(eq(habits.userId, userId), isNull(habits.deletedAt))),
     db
       .select({ count: count() })
       .from(habitCompletions)
       .where(and(eq(habitCompletions.userId, userId), eq(habitCompletions.completedDate, today))),
+    repo.getCompletionDates(userId),
   ]);
 
-  const habitCount = habitRows[0]?.count ?? 0;
+  const { total = 0, daily = 0, weekly = 0, monthly = 0 } = habitRows[0] ?? {};
   const completedToday = Number(todayResult[0]?.count ?? 0);
-
-  const allDates = await repo.getCompletionDates(userId);
   const overallStreak = calculateStreak(allDates);
-
-  const totalExpectedResult = await db
-    .select({
-      daily: sql<number>`count(*) filter (where ${habits.frequency} = 'daily')`,
-      weekly: sql<number>`count(*) filter (where ${habits.frequency} = 'weekly')`,
-      monthly: sql<number>`count(*) filter (where ${habits.frequency} = 'monthly')`,
-    })
-    .from(habits)
-    .where(and(eq(habits.userId, userId), isNull(habits.deletedAt)));
-
-  const { daily = 0, weekly = 0, monthly = 0 } = totalExpectedResult[0] ?? {};
   const totalExpected = Number(daily) + Number(weekly) / 7 + Number(monthly) / 30;
 
   return {
-    totalHabits: Number(habitCount ?? 0),
+    totalHabits: Number(total),
     completedToday,
     pendingToday: Math.max(0, Math.ceil(totalExpected - completedToday)),
     currentStreak: overallStreak.current,

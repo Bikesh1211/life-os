@@ -6,6 +6,7 @@ import {
 } from "@mantine/core";
 import { IconWalk, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 import type { WellnessStepEntry } from "@/modules/wellness";
 
 export function StepsContent({ entries }: { entries: WellnessStepEntry[] }) {
@@ -16,9 +17,8 @@ export function StepsContent({ entries }: { entries: WellnessStepEntry[] }) {
     if (!steps) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/steps", {
+      await apiFetch("/api/wellness/steps", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ steps: Number(steps), date: new Date().toISOString().slice(0, 10) }),
       });
       window.location.reload();

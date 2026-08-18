@@ -5,15 +5,12 @@ import { SimpleGrid, Text, Title, Group, Skeleton } from "@mantine/core";
 import { IconReportAnalytics, IconHeart, IconPhotoHeart, IconListCheck, IconStar, IconQuote } from "@tabler/icons-react";
 import { StatCard } from "@/modules/movies/components/design-system/StatCard";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
+import { apiFetch } from "@/core/api/http";
 
 export function StatisticsContent() {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["movie-statistics"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/statistics");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any>("/api/movies/statistics"),
   });
 
   if (isLoading) {

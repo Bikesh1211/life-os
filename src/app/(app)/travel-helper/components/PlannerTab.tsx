@@ -37,6 +37,7 @@ import {
   IconGripVertical,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { apiFetch, ApiError } from "@/core/api/http";
 import type { Waypoint } from "@/modules/travel-helper/types";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -68,6 +69,15 @@ async function geocode(query: string): Promise<GeocodingResult[]> {
   );
   if (!res.ok) return [];
   return res.json();
+}
+
+function apiErrorText(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    const body = error.body as { error?: unknown } | null | undefined;
+    if (body && typeof body.error === "string") return body.error;
+    return fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
 }
 
 export function PlannerTab() {
@@ -286,22 +296,16 @@ export function PlannerTab() {
 
     setComputing(true);
     try {
-      const res = await fetch("/api/travel-helper/route", {
+      const data = await apiFetch<any>("/api/travel-helper/route", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ origin, destination, waypoints, transportMode }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to compute route");
-      }
-      const data = await res.json();
       setRouteResult(data);
     } catch (err) {
       notifications.show({
         color: "red",
         title: "Route computation failed",
-        message: err instanceof Error ? err.message : "Unknown error",
+        message: apiErrorText(err, "Failed to compute route"),
       });
     } finally {
       setComputing(false);
@@ -321,9 +325,8 @@ export function PlannerTab() {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
-      const res = await fetch("/api/travel-helper/routes", {
+      await apiFetch("/api/travel-helper/routes", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: routeName.trim(),
           origin,
@@ -342,22 +345,17 @@ export function PlannerTab() {
           geometries: routeResult.geometry,
         }),
       });
-      if (res.ok) {
-        notifications.show({
-          color: "green",
-          title: "Saved!",
-          message: `"${routeName.trim()}" has been saved`,
-        });
-        resetPlanner();
-      } else {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to save");
-      }
+      notifications.show({
+        color: "green",
+        title: "Saved!",
+        message: `"${routeName.trim()}" has been saved`,
+      });
+      resetPlanner();
     } catch (err) {
       notifications.show({
         color: "red",
         title: "Error",
-        message: err instanceof Error ? err.message : "Failed to save route",
+        message: apiErrorText(err, "Failed to save route"),
       });
     } finally {
       setSaving(false);

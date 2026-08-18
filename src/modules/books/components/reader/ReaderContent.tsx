@@ -11,6 +11,7 @@ import { IconX, IconCheck, IconSearch } from "@tabler/icons-react";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 import { Editor } from "@/components/editor";
 import { ReaderToolbar } from "./ReaderToolbar";
+import { apiFetch } from "@/core/api/http";
 
 export type ReaderTheme = "light" | "sepia" | "dark" | "oled" | "paper" | "cream";
 
@@ -122,31 +123,19 @@ export function ReaderContent() {
 
   const { data: book, isLoading: bookLoading } = useQuery({
     queryKey: ["book", bookId],
-    queryFn: async () => {
-      const res = await fetch(`/api/books/${bookId}`);
-      if (!res.ok) throw new Error("Failed to load book");
-      return res.json() as Promise<Book>;
-    },
+    queryFn: () => apiFetch<Book>(`/api/books/${bookId}`),
     enabled: !!bookId,
   });
 
   const { data: chapters, isLoading: chaptersLoading } = useQuery({
     queryKey: ["book-chapters", bookId],
-    queryFn: async () => {
-      const res = await fetch(`/api/books/${bookId}/chapters`);
-      if (!res.ok) throw new Error("Failed to load chapters");
-      return res.json() as Promise<Chapter[]>;
-    },
+    queryFn: () => apiFetch<Chapter[]>(`/api/books/${bookId}/chapters`),
     enabled: !!bookId,
   });
 
   const { data: bookmarks } = useQuery({
     queryKey: ["bookmarks", bookId],
-    queryFn: async () => {
-      const res = await fetch(`/api/books/${bookId}/bookmarks`);
-      if (!res.ok) throw new Error("Failed to load bookmarks");
-      return res.json() as Promise<Bookmark[]>;
-    },
+    queryFn: () => apiFetch<Bookmark[]>(`/api/books/${bookId}/bookmarks`),
     enabled: !!bookId,
   });
 
@@ -154,16 +143,13 @@ export function ReaderContent() {
     mutationFn: async (chapterId: string) => {
       const existing = bookmarks?.find((b) => b.chapterId === chapterId);
       if (existing) {
-        const res = await fetch(`/api/books/${bookId}/bookmarks/${existing.id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to remove bookmark");
+        await apiFetch(`/api/books/${bookId}/bookmarks/${existing.id}`, { method: "DELETE" });
         return { type: "remove" as const, chapterId };
       }
-      const res = await fetch(`/api/books/${bookId}/bookmarks`, {
+      await apiFetch(`/api/books/${bookId}/bookmarks`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chapterId, label: chapters?.[chapterIndex]?.title ?? `Chapter ${chapterIndex + 1}` }),
       });
-      if (!res.ok) throw new Error("Failed to add bookmark");
       return { type: "add" as const, chapterId };
     },
     onSuccess: (result) => {

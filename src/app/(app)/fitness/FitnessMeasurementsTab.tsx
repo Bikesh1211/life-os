@@ -11,21 +11,14 @@ import { IconPlus, IconDimensions, IconScale, IconRulerMeasure, IconBarbell } fr
 import { PremiumCard } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { PageHeader } from "@/components/ui/page-header";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 async function fetchMeasurements() {
-  const res = await fetch("/api/fitness/measurements?limit=50");
-  if (!res.ok) throw new Error("Failed to fetch measurements");
-  return res.json();
+  return apiFetch(`/api/fitness/measurements${toSearchParams({ limit: 50 })}`);
 }
 
 async function logMeasurement(body: Record<string, unknown>) {
-  const res = await fetch("/api/fitness/measurements", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error("Failed to log measurement");
-  return res.json();
+  return apiFetch("/api/fitness/measurements", { method: "POST", body: JSON.stringify(body) });
 }
 
 export function FitnessMeasurementsTab() {

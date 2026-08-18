@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { SegmentedControl, Stack, SimpleGrid, Skeleton } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
+import { apiFetch } from "@/core/api/http";
 import { useDayPlan } from "@/hooks/use-day-plan";
 import {
   useDailyPlanner,
@@ -161,9 +162,8 @@ export default function DailyPlannerContent() {
         <EndOfDayReview
           currentReview={null}
           onSave={async (data) => {
-            await fetch("/api/routines/daily-planner", {
+            await apiFetch("/api/routines/daily-planner", {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 action: "computeScore",
                 date: selectedDate,

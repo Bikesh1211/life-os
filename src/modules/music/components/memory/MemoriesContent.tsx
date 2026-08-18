@@ -9,6 +9,7 @@ import { MemoryCard } from "./MemoryCard";
 import { MemoryCreateModal } from "./MemoryCreateModal";
 import { IconPlus } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { apiFetch } from "@/core/api/http";
 
 type MemoryTrack = {
   trackId: string;
@@ -35,18 +36,11 @@ export function MemoriesContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["music-memories"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/memories");
-      if (!res.ok) throw new Error("Failed to load memories");
-      return res.json() as Promise<Memory[]>;
-    },
+    queryFn: () => apiFetch<Memory[]>("/api/music/memories"),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/music/memories/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete memory");
-    },
+    mutationFn: (id: string) => apiFetch(`/api/music/memories/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Memory deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["music-memories"] });

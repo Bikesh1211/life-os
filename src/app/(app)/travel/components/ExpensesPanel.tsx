@@ -6,6 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { IconPlus, IconCoin, IconTrash } from "@tabler/icons-react";
 import { Card, Text, Group, Badge, Button, Modal, TextInput, Select, Stack, ActionIcon } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { apiFetch } from "@/core/api/http";
 import dayjs from "dayjs";
 
 type Expense = {
@@ -43,8 +44,8 @@ export function ExpensesPanel() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/travel/expenses").then((r) => (r.ok ? r.json() : [])),
-      fetch("/api/travel/trips").then((r) => (r.ok ? r.json() : [])),
+      apiFetch<Expense[]>("/api/travel/expenses").catch(() => []),
+      apiFetch<Trip[]>("/api/travel/trips").catch(() => []),
     ])
       .then(([exp, trps]) => {
         setExpenses(exp);
@@ -54,7 +55,7 @@ export function ExpensesPanel() {
   }, []);
 
   async function deleteExpense(id: string) {
-    await fetch(`/api/travel/expenses/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/travel/expenses/${id}`, { method: "DELETE" });
     notifications.show({ title: "Deleted", message: "Expense deleted", color: "orange" });
     setExpenses((prev) => prev.filter((e) => e.id !== id));
   }
@@ -95,9 +96,8 @@ export function ExpensesPanel() {
           const form = e.currentTarget;
           const data = Object.fromEntries(new FormData(form));
           const tripId = data.tripId === "" ? null : data.tripId;
-          await fetch("/api/travel/expenses", {
+          await apiFetch("/api/travel/expenses", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               category: data.category,
               amount: Math.round(Number(data.amount) * 100),

@@ -13,6 +13,8 @@ import {
 } from "@tabler/icons-react";
 import ItemFormModal from "../_components/ItemFormModal";
 import { TECH_CATEGORIES } from "@/modules/tech-gear/constants";
+import { apiFetch, toSearchParams } from "@/core/api/http";
+import type { TechItem } from "@/modules/tech-gear";
 
 function ItemCard({ item, onEdit, onDelete, onToggleFavorite }: { item: any; onEdit: () => void; onDelete: () => void; onToggleFavorite: () => void }) {
   return (
@@ -69,12 +71,10 @@ export function TechGearItemsContent() {
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (categoryFilter) params.set("category", categoryFilter);
     try {
-      const res = await fetch(`/api/inventory/tech-gear/items?${params}`);
-      const data = await res.json();
+      const data = await apiFetch<TechItem[]>(
+        `/api/inventory/tech-gear/items${toSearchParams({ search, category: categoryFilter })}`,
+      );
       setItems(data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -85,16 +85,16 @@ export function TechGearItemsContent() {
 
   const handleSave = async (data: any) => {
     if (editItem) {
-      await fetch(`/api/inventory/tech-gear/items/${editItem.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      await apiFetch(`/api/inventory/tech-gear/items/${editItem.id}`, { method: "PATCH", body: JSON.stringify(data) });
     } else {
-      await fetch("/api/inventory/tech-gear/items", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+      await apiFetch("/api/inventory/tech-gear/items", { method: "POST", body: JSON.stringify(data) });
     }
     fetchItems(); setEditItem(null);
   };
 
-  const handleDelete = async (id: string) => { await fetch(`/api/inventory/tech-gear/items/${id}`, { method: "DELETE" }); fetchItems(); };
+  const handleDelete = async (id: string) => { await apiFetch(`/api/inventory/tech-gear/items/${id}`, { method: "DELETE" }); fetchItems(); };
   const handleToggleFavorite = async (item: any) => {
-    await fetch(`/api/inventory/tech-gear/items/${item.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ isFavorite: !item.isFavorite }) });
+    await apiFetch(`/api/inventory/tech-gear/items/${item.id}`, { method: "PATCH", body: JSON.stringify({ isFavorite: !item.isFavorite }) });
     fetchItems();
   };
 

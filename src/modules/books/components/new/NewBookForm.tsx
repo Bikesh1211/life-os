@@ -10,6 +10,7 @@ import { DatePickerInput } from "@mantine/dates";
 import { useRouter } from "next/navigation";
 import { notifications } from "@mantine/notifications";
 import { IconBook, IconTargetArrow, IconEye } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 const bookTypes = [
   { value: "novel", label: "Novel" },
@@ -102,18 +103,10 @@ export function NewBookForm() {
         isListed: values.isListed,
       };
 
-      const res = await fetch("/api/books", {
+      const book = await apiFetch<{ id: string }>("/api/books", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Failed to create book");
-      }
-
-      const book = await res.json();
       notifications.show({ title: "Created", message: "Book created successfully", color: "green" });
       router.push(`/creator-studio/books/${book.id}/write`);
     } catch (err) {

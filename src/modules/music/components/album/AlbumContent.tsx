@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 import { notifications } from "@mantine/notifications";
 import { IconExternalLink, IconHeart, IconHeartFilled } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 type TrackItem = {
   id: string;
@@ -54,34 +55,22 @@ export function AlbumContent({ idPromise }: { idPromise: Promise<{ id: string }>
   const { id } = use(idPromise);
   const { data, isLoading } = useQuery<AlbumData>({
     queryKey: ["album", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/music/albums/${id}`);
-      if (!res.ok) throw new Error("Album not found");
-      return res.json();
-    },
+    queryFn: () => apiFetch<AlbumData>(`/api/music/albums/${id}`),
   });
 
   const queryClient = useQueryClient();
   const [favoriting, setFavoriting] = useState(false);
 
   const favoriteMutation = useMutation({
-    mutationFn: async (action: "add" | "remove") => {
-      if (action === "add") {
-        const res = await fetch("/api/music/favorites", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ spotifyId: id, entityType: "album" }),
-        });
-        if (!res.ok) throw new Error("Failed to favorite");
-        return res.json();
-      } else {
-        const res = await fetch(`/api/music/favorites?entityType=album&entityId=${encodeURIComponent(id)}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) throw new Error("Failed to unfavorite");
-        return res.json();
-      }
-    },
+    mutationFn: (action: "add" | "remove") =>
+      action === "add"
+        ? apiFetch("/api/music/favorites", {
+            method: "POST",
+            body: JSON.stringify({ spotifyId: id, entityType: "album" }),
+          })
+        : apiFetch(`/api/music/favorites?entityType=album&entityId=${encodeURIComponent(id)}`, {
+            method: "DELETE",
+          }),
     onSuccess: (_data, action) => {
       notifications.show({ title: action === "add" ? "Favorited" : "Unfavorited", message: action === "add" ? "Album added to favorites" : "Album removed from favorites", color: action === "add" ? "green" : "orange" });
       queryClient.invalidateQueries({ queryKey: ["album", id] });

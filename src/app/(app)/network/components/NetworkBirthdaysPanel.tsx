@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Container, Title, Card, Group, Text, Stack, ThemeIcon, Skeleton } from "@mantine/core";
 import { IconCake } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 
 function calculateAge(birthday: string): number {
@@ -51,8 +52,7 @@ export function NetworkBirthdaysPanel() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/network/connections")
-      .then(r => r.ok ? r.json() : [])
+    apiFetch<Connection[]>("/api/network/connections")
       .then(data => { setConnections(data); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);

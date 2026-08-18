@@ -12,6 +12,7 @@ import { IconArrowLeft, IconTrash, IconEdit, IconPlus } from "@tabler/icons-reac
 import Link from "next/link";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type CollectionItem = {
   id: string;
@@ -40,23 +41,15 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
 
   const { data, isLoading } = useQuery<CollectionDetail>({
     queryKey: ["music-collection", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/music/collections/${id}`);
-      if (!res.ok) throw new Error("Collection not found");
-      return res.json();
-    },
+    queryFn: () => apiFetch<CollectionDetail>(`/api/music/collections/${id}`),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (body: { title?: string; description?: string }) => {
-      const res = await fetch(`/api/music/collections/${id}`, {
+    mutationFn: (body: { title?: string; description?: string }) =>
+      apiFetch(`/api/music/collections/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error("Failed to update");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Updated", message: "Collection updated", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-collection", id] });
@@ -66,10 +59,7 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const res = await fetch(`/api/music/collections/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-    },
+    mutationFn: () => apiFetch(`/api/music/collections/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Collection deleted", color: "orange" });
       window.location.href = "/music/library";
@@ -77,10 +67,8 @@ export function CollectionDetailContent({ idPromise }: { idPromise: Promise<{ id
   });
 
   const removeItemMutation = useMutation({
-    mutationFn: async (itemId: string) => {
-      const res = await fetch(`/api/music/collections/${id}/items?itemId=${itemId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to remove item");
-    },
+    mutationFn: (itemId: string) =>
+      apiFetch(`/api/music/collections/${id}/items${toSearchParams({ itemId })}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Removed", message: "Item removed from collection", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["music-collection", id] });

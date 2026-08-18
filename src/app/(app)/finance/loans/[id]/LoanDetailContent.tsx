@@ -14,6 +14,7 @@ import {
   IconPlus, IconCash, IconTrash, IconAlertTriangle,
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
+import { apiFetch } from "@/core/api/http";
 
 interface LoanDetail {
   id: string;
@@ -72,14 +73,14 @@ export function LoanDetailContent() {
     async function load() {
       try {
         const [loanRes, repaymentsRes, eventsRes] = await Promise.all([
-          fetch(`/api/loans/${id}`),
-          fetch(`/api/loans/${id}/repayments`),
-          fetch(`/api/loans/${id}/events`),
+          apiFetch<LoanDetail>(`/api/loans/${id}`).catch(() => null),
+          apiFetch<Repayment[]>(`/api/loans/${id}/repayments`).catch(() => []),
+          apiFetch<LoanEvent[]>(`/api/loans/${id}/events`).catch(() => []),
         ]);
 
-        if (loanRes.ok) setLoan(await loanRes.json());
-        if (repaymentsRes.ok) setRepayments(await repaymentsRes.json());
-        if (eventsRes.ok) setEvents(await eventsRes.json());
+        if (loanRes) setLoan(loanRes);
+        setRepayments(repaymentsRes);
+        setEvents(eventsRes);
       } catch { /* ignore */ }
       setLoading(false);
     }
@@ -89,9 +90,8 @@ export function LoanDetailContent() {
   const handleAddRepayment = async () => {
     if (!repayAmount) return;
     try {
-      const res = await fetch(`/api/loans/${id}/repayments`, {
+      await apiFetch(`/api/loans/${id}/repayments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: repayAmount,
           date: repayDate.toISOString(),
@@ -99,8 +99,6 @@ export function LoanDetailContent() {
           notes: repayNotes || undefined,
         }),
       });
-
-      if (!res.ok) throw new Error("Failed to add repayment");
 
       notifications.show({ title: "Success", message: "Repayment added", color: "green" });
       close();

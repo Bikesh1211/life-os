@@ -4,17 +4,18 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton, Stack } from "@mantine/core";
 import { KnowledgeLibrary } from "../components/KnowledgeLibrary";
 import type { KnowledgeEntry } from "@/modules/knowledge";
+import { apiFetch } from "@/core/api/http";
 
 export default function LibraryTab() {
   const { data: entries, isLoading: entriesLoading } = useQuery<KnowledgeEntry[]>({
     queryKey: ["knowledge", "entries"],
-    queryFn: () => fetch("/api/knowledge").then((r) => r.json()),
+    queryFn: () => apiFetch<KnowledgeEntry[]>("/api/knowledge"),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: subjects, isLoading: subjectsLoading } = useQuery<string[]>({
     queryKey: ["knowledge", "subjects"],
-    queryFn: () => fetch("/api/knowledge/subjects").then((r) => r.json()),
+    queryFn: () => apiFetch<string[]>("/api/knowledge/subjects"),
     staleTime: 5 * 60 * 1000,
   });
 

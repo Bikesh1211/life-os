@@ -31,6 +31,7 @@ import { EventCreateModal } from "./components/EventCreateModal";
 import { EventEditModal } from "./components/EventEditModal";
 import type { TimelineEvent } from "@/modules/timeline/repository";
 import type { DurationBreakdown } from "@/modules/timeline";
+import { apiFetch } from "@/core/api/http";
 
 type EventWithDuration = TimelineEvent & {
   duration: DurationBreakdown;
@@ -78,11 +79,8 @@ export function TimelineContent({ events, defaultTab = "story" }: Props) {
 
   const handleRefresh = useCallback(async () => {
     try {
-      const res = await fetch("/api/timeline");
-      if (res.ok) {
-        const data = await res.json();
-        setLocalEvents(data);
-      }
+      const data = await apiFetch<EventWithDuration[]>("/api/timeline");
+      setLocalEvents(data);
     } catch {}
   }, []);
 

@@ -6,23 +6,20 @@ import { IconHeart } from "@tabler/icons-react";
 import { MovieCard } from "@/modules/movies/components/design-system/MovieCard";
 import { SectionHeading } from "@/modules/movies/components/design-system/SectionHeading";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/core/api/http";
 
 export function FavoritesContent() {
   const router = useRouter();
   const { data: favorites } = useQuery({
     queryKey: ["movie-favorites"],
-    queryFn: async () => {
-      const res = await fetch("/api/movies/favorites");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => apiFetch<any[]>("/api/movies/favorites"),
   });
 
   return (
     <div>
       <SectionHeading title="Favorites" icon={<IconHeart size={18} />} />
 
-      {favorites?.length > 0 ? (
+      {favorites && favorites.length > 0 ? (
         <SimpleGrid cols={{ base: 2, sm: 3, md: 4, lg: 5 }} spacing="md">
           {favorites.map((fav: any) => (
             <div key={fav.id} className="text-center">

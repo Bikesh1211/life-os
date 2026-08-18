@@ -9,11 +9,10 @@ import { IconChartLine, IconFlame, IconBarbell, IconTrophy } from "@tabler/icons
 import { PremiumCard } from "@/components/ui/card";
 import { StatCard } from "@/components/ui/stat-card";
 import { PageHeader } from "@/components/ui/page-header";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 async function fetchStats() {
-  const res = await fetch("/api/fitness/stats?includePRs=true");
-  if (!res.ok) throw new Error("Failed to fetch stats");
-  return res.json();
+  return apiFetch(`/api/fitness/stats${toSearchParams({ includePRs: true })}`);
 }
 
 export function FitnessProgressTab() {

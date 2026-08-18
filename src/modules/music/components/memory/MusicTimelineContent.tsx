@@ -10,6 +10,7 @@ import { MemoryTimeline } from "./MemoryTimeline";
 import { MemoryCreateModal } from "./MemoryCreateModal";
 import { MemoryRewind } from "./MemoryRewind";
 import { IconPlus } from "@tabler/icons-react";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 export function MusicTimelineContent() {
   const [showCreate, setShowCreate] = useState(false);
@@ -18,18 +19,12 @@ export function MusicTimelineContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["music-memories"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/memories?limit=200");
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json() as Promise<any[]>;
-    },
+    queryFn: () =>
+      apiFetch<any[]>(`/api/music/memories${toSearchParams({ limit: 200 })}`),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/music/memories/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-    },
+    mutationFn: (id: string) => apiFetch(`/api/music/memories/${id}`, { method: "DELETE" }),
     onSuccess: () => { notifications.show({ title: "Deleted", message: "Memory deleted", color: "orange" }); queryClient.invalidateQueries({ queryKey: ["music-memories"] }); },
   });
 

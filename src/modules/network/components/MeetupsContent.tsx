@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Container, Title, Card, Group, Text, Stack, ThemeIcon, Button } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCoffee, IconPlus, IconEdit, IconTrash } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 import { FeaturePlaceholder } from "@/components/shared/FeaturePlaceholder";
 import { MeetupsModal } from "./MeetupsModal";
 
@@ -32,18 +33,11 @@ export function MeetupsContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["network-meetups"],
-    queryFn: async () => {
-      const res = await fetch("/api/network/meetups");
-      if (!res.ok) throw new Error("Failed to load meetups");
-      return res.json() as Promise<Meetup[]>;
-    },
+    queryFn: () => apiFetch<Meetup[]>("/api/network/meetups"),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/network/meetups/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-    },
+    mutationFn: (id: string) => apiFetch(`/api/network/meetups/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Meetup deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["network-meetups"] });

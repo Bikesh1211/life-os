@@ -6,6 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { IconPlus, IconStar, IconWorld, IconFlag } from "@tabler/icons-react";
 import { Card, Text, Group, Badge, Button, Modal, TextInput, Textarea, Select, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { apiFetch } from "@/core/api/http";
 import {
   CATEGORY_OPTIONS,
   DIFFICULTY_OPTIONS,
@@ -51,9 +52,8 @@ function CreateWishlistModal({ opened, onClose }: { opened: boolean; onClose: ()
 
   async function handleSubmit() {
     if (!title.trim()) return;
-    await fetch("/api/travel/wishlist", {
+    await apiFetch("/api/travel/wishlist", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
         country: country || undefined,
@@ -136,20 +136,20 @@ export function WishlistPanel() {
   const [opened, { open, close }] = useDisclosure(false);
 
   useEffect(() => {
-    fetch("/api/travel/wishlist")
-      .then((r) => (r.ok ? r.json() : []))
+    apiFetch<WishlistItem[]>("/api/travel/wishlist")
       .then(setItems)
+      .catch(() => setItems([]))
       .finally(() => setLoading(false));
   }, []);
 
   async function markVisited(id: string) {
-    await fetch(`/api/travel/wishlist/${id}/visited`, { method: "POST" });
+    await apiFetch(`/api/travel/wishlist/${id}/visited`, { method: "POST" });
     notifications.show({ title: "Updated", message: "Marked as visited", color: "green" });
     window.location.reload();
   }
 
   async function deleteItem(id: string) {
-    await fetch(`/api/travel/wishlist/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/travel/wishlist/${id}`, { method: "DELETE" });
     notifications.show({ title: "Deleted", message: "Destination removed", color: "orange" });
     window.location.reload();
   }

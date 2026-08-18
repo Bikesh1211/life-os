@@ -14,6 +14,7 @@ import {
   IconUser, IconPhoto,
 } from "@tabler/icons-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiFetch } from "@/core/api/http";
 
 type Character = {
   id: string;
@@ -47,23 +48,16 @@ export function CharacterManager({ bookId }: { bookId: string }) {
 
   const { data: characters, isLoading } = useQuery({
     queryKey: ["book-characters", bookId],
-    queryFn: async () => {
-      const res = await fetch(`/api/books/${bookId}/characters`);
-      if (!res.ok) throw new Error("Failed to load characters");
-      return res.json() as Promise<Character[]>;
-    },
+    queryFn: () => apiFetch<Character[]>(`/api/books/${bookId}/characters`),
     enabled: !!bookId,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const res = await fetch(`/api/books/${bookId}/characters`, {
+      return apiFetch<Character>(`/api/books/${bookId}/characters`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to create character");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-characters", bookId] });
@@ -78,13 +72,10 @@ export function CharacterManager({ bookId }: { bookId: string }) {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: typeof formData }) => {
-      const res = await fetch(`/api/books/${bookId}/characters/${id}`, {
+      return apiFetch<Character>(`/api/books/${bookId}/characters/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to update character");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-characters", bookId] });
@@ -96,10 +87,9 @@ export function CharacterManager({ bookId }: { bookId: string }) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/books/${bookId}/characters/${id}`, {
+      await apiFetch(`/api/books/${bookId}/characters/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to delete character");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-characters", bookId] });

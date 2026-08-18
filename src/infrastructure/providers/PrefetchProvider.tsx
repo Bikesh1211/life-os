@@ -2,6 +2,8 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import { apiFetch } from "@/core/api/http";
+import { STALE_TIME } from "@/infrastructure/cache/policy";
 
 const PREFETCH_CONFIGS = [
   { key: ["gamification", "profile"], url: "/api/gamification/profile" },
@@ -16,16 +18,15 @@ export function PrefetchProvider({ children }: { children: React.ReactNode }) {
     if (prefetched.current) return;
     prefetched.current = true;
 
-    const controller = new AbortController();
-
     for (const { key, url } of PREFETCH_CONFIGS) {
-      queryClient.prefetchQuery({
+      void queryClient.prefetchQuery({
         queryKey: key,
-        queryFn: () =>
-          fetch(url, { signal: controller.signal }).then(
-            (res) => (res.ok ? res.json() : Promise.resolve(null)),
-          ),
-        staleTime: 5 * 60 * 1000,
+        // `apiFetch` adds the request timeout and surfaces non-2xx as a typed
+        // error, so a failing prefetch is dropped quietly instead of leaving a
+        // half-formed cache entry behind.
+        queryFn: () => apiFetch<unknown>(url),
+        staleTime: STALE_TIME.summary,
+        retry: false,
       });
     }
   }, [queryClient]);

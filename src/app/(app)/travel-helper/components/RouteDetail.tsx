@@ -28,6 +28,7 @@ import {
   IconStarFilled,
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
+import { apiFetch } from "@/core/api/http";
 import type { RouteCard } from "@/modules/travel-helper";
 import dayjs from "dayjs";
 import L from "leaflet";
@@ -138,17 +139,12 @@ export function RouteDetail({ route, onClose }: RouteDetailProps) {
   const saveChanges = async () => {
     setSaving(true);
     try {
-      const res = await fetch(`/api/travel-helper/routes/${route.id}`, {
+      await apiFetch(`/api/travel-helper/routes/${route.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, description: description || null, notes: notes || null, isFavorite }),
       });
-      if (res.ok) {
-        notifications.show({ color: "green", title: "Saved", message: "Route updated" });
-        setIsEditing(false);
-      } else {
-        notifications.show({ color: "red", title: "Error", message: "Failed to save" });
-      }
+      notifications.show({ color: "green", title: "Saved", message: "Route updated" });
+      setIsEditing(false);
     } catch {
       notifications.show({ color: "red", title: "Error", message: "Failed to save" });
     } finally {
@@ -295,9 +291,8 @@ export function RouteDetail({ route, onClose }: RouteDetailProps) {
               variant="subtle"
               onClick={() => {
                 setIsFavorite(!isFavorite);
-                fetch(`/api/travel-helper/routes/${route.id}`, {
+                apiFetch(`/api/travel-helper/routes/${route.id}`, {
                   method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ isFavorite: !isFavorite }),
                 }).catch(() => {});
               }}

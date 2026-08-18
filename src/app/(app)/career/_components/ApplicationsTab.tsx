@@ -22,6 +22,7 @@ import {
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { IconPlus, IconDots, IconTrash, IconCalendar, IconBuilding, IconMapPin } from "@tabler/icons-react";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 interface Application {
   id: string;
@@ -82,11 +83,9 @@ export default function ApplicationsTab() {
 
   const loadApps = () => {
     setLoading(true);
-    const url = filter ? `/api/career/applications?status=${filter}` : "/api/career/applications";
-    fetch(url)
-      .then(async (r) => {
-        if (!r.ok) throw new Error("Failed to load");
-        const d = await r.json();
+    const url = `/api/career/applications${toSearchParams({ status: filter })}`;
+    apiFetch<Application[]>(url)
+      .then((d) => {
         setApps(d);
         setLoading(false);
       })
@@ -98,12 +97,10 @@ export default function ApplicationsTab() {
   const handleCreate = async () => {
     if (!form.company.trim() || !form.position.trim()) return;
     try {
-      const res = await fetch("/api/career/applications", {
+      await apiFetch("/api/career/applications", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      if (!res.ok) throw new Error("Failed to create");
       setForm({ company: "", position: "", location: "", salaryRange: "", status: "wishlist", isRemote: null, notes: "" });
       close();
       loadApps();
@@ -114,15 +111,10 @@ export default function ApplicationsTab() {
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      const res = await fetch(`/api/career/applications/${id}`, {
+      await apiFetch(`/api/career/applications/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error ?? "Invalid transition");
-      }
       loadApps();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to update status");
@@ -131,7 +123,7 @@ export default function ApplicationsTab() {
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/career/applications/${id}`, { method: "DELETE" });
+      await apiFetch(`/api/career/applications/${id}`, { method: "DELETE" });
       loadApps();
     } catch {
       setError("Failed to delete");

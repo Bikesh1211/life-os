@@ -19,6 +19,7 @@ import {
   Skeleton,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { apiFetch } from "@/core/api/http";
 import {
   IconBed,
   IconSunrise,
@@ -84,9 +85,8 @@ function SleepLogForm({ onClose, onSaved }: { onClose: () => void; onSaved: () =
     if (!bedtime || !wakeTime) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/sleep", {
+      await apiFetch("/api/wellness/sleep", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           bedtime: new Date(bedtime).toISOString(),
           wakeTime: new Date(wakeTime).toISOString(),
@@ -217,8 +217,8 @@ export function DashboardTab() {
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/wellness/sleep/dashboard");
-      if (res.ok) setData(await res.json());
+      const data = await apiFetch<DashboardData>("/api/wellness/sleep/dashboard");
+      setData(data);
     } catch {} finally {
       setLoading(false);
     }

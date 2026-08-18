@@ -13,6 +13,8 @@ import {
 } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import ItemFormModal from "../../_components/ItemFormModal";
+import { apiFetch } from "@/core/api/http";
+import type { TechItem } from "@/modules/tech-gear";
 
 export default function TechItemDetailPage() {
   const params = useParams<{ id: string }>();
@@ -23,8 +25,7 @@ export default function TechItemDetailPage() {
 
   const fetchItem = async () => {
     try {
-      const res = await fetch(`/api/inventory/tech-gear/items/${params.id}`);
-      const data = await res.json();
+      const data = await apiFetch<TechItem>(`/api/inventory/tech-gear/items/${params.id}`);
       setItem(data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
@@ -33,12 +34,12 @@ export default function TechItemDetailPage() {
   useEffect(() => { fetchItem(); }, [params.id]);
 
   const handleSave = async (data: any) => {
-    await fetch(`/api/inventory/tech-gear/items/${params.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+    await apiFetch(`/api/inventory/tech-gear/items/${params.id}`, { method: "PATCH", body: JSON.stringify(data) });
     fetchItem();
   };
 
   const handleDelete = async () => {
-    await fetch(`/api/inventory/tech-gear/items/${params.id}`, { method: "DELETE" });
+    await apiFetch(`/api/inventory/tech-gear/items/${params.id}`, { method: "DELETE" });
     router.push("/inventory/tech-gear/items");
   };
 

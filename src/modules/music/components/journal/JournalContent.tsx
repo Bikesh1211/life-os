@@ -9,6 +9,7 @@ import { notifications } from "@mantine/notifications";
 import { IconPlus } from "@tabler/icons-react";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type JournalEntry = {
   id: string;
@@ -27,23 +28,16 @@ export function JournalContent() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["music-journal"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/journal?limit=30");
-      if (!res.ok) throw new Error("Failed to load journal");
-      return res.json() as Promise<{ entries: JournalEntry[] }>;
-    },
+    queryFn: () =>
+      apiFetch<{ entries: JournalEntry[] }>(`/api/music/journal${toSearchParams({ limit: 30 })}`),
   });
 
   const createMutation = useMutation({
-    mutationFn: async (params: { journalEntry: string; mood?: string }) => {
-      const res = await fetch("/api/music/journal", {
+    mutationFn: (params: { journalEntry: string; mood?: string }) =>
+      apiFetch("/api/music/journal", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params),
-      });
-      if (!res.ok) throw new Error("Failed to create entry");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Created", message: "Journal entry created", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["music-journal"] });

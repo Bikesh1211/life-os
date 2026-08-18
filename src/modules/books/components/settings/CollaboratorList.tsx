@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Paper, Stack, Text, Group, Button, Select, Loader, Center, Avatar } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconUserPlus, IconTrash } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 type Collaborator = {
   id: string;
@@ -17,22 +18,16 @@ export function CollaboratorList({ bookId }: { bookId: string }) {
 
   const { data: collaborators, isLoading } = useQuery({
     queryKey: ["book-collaborators", bookId],
-    queryFn: async () => {
-      const res = await fetch(`/api/books/${bookId}/collaborators`);
-      if (!res.ok) throw new Error("Failed to load collaborators");
-      return res.json() as Promise<Collaborator[]>;
-    },
+    queryFn: () => apiFetch<Collaborator[]>(`/api/books/${bookId}/collaborators`),
     enabled: !!bookId,
   });
 
   const updateRoleMutation = useMutation({
     mutationFn: async ({ id, role }: { id: string; role: string }) => {
-      const res = await fetch(`/api/books/${bookId}/collaborators/${id}`, {
+      await apiFetch(`/api/books/${bookId}/collaborators/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role }),
       });
-      if (!res.ok) throw new Error("Failed to update role");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-collaborators", bookId] });
@@ -45,10 +40,9 @@ export function CollaboratorList({ bookId }: { bookId: string }) {
 
   const removeMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/books/${bookId}/collaborators/${id}`, {
+      await apiFetch(`/api/books/${bookId}/collaborators/${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to remove collaborator");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book-collaborators", bookId] });

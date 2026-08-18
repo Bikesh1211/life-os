@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { IconPlus, IconBook } from "@tabler/icons-react";
 import { Card, Text, Group, Badge, Button, Modal, TextInput, Textarea, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { apiFetch } from "@/core/api/http";
 import dayjs from "dayjs";
 
 type Journal = {
@@ -33,9 +34,9 @@ export function JournalsPanel() {
   const [opened, { open, close }] = useDisclosure(false);
 
   useEffect(() => {
-    fetch("/api/travel/journals")
-      .then((r) => (r.ok ? r.json() : []))
+    apiFetch<Journal[]>("/api/travel/journals")
       .then(setJournals)
+      .catch(() => setJournals([]))
       .finally(() => setLoading(false));
   }, []);
 
@@ -67,9 +68,8 @@ export function JournalsPanel() {
           e.preventDefault();
           const form = e.currentTarget;
           const data = Object.fromEntries(new FormData(form));
-          await fetch("/api/travel/journals", {
+          await apiFetch("/api/travel/journals", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               title: data.title,
               location: data.location || undefined,

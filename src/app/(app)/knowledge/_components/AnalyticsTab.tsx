@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Skeleton, Stack } from "@mantine/core";
 import { KnowledgeAnalytics } from "../components/KnowledgeAnalytics";
 import type { KnowledgeEntry } from "@/modules/knowledge";
+import { apiFetch } from "@/core/api/http";
 
 type DashboardStats = {
   total: number;
@@ -18,13 +19,13 @@ type DashboardStats = {
 export default function AnalyticsTab() {
   const { data: entries, isLoading: entriesLoading } = useQuery<KnowledgeEntry[]>({
     queryKey: ["knowledge", "entries"],
-    queryFn: () => fetch("/api/knowledge").then((r) => r.json()),
+    queryFn: () => apiFetch<KnowledgeEntry[]>("/api/knowledge"),
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["knowledge", "stats"],
-    queryFn: () => fetch("/api/knowledge/stats").then((r) => r.json()),
+    queryFn: () => apiFetch<DashboardStats>("/api/knowledge/stats"),
     staleTime: 5 * 60 * 1000,
   });
 

@@ -18,6 +18,7 @@ import dayjs from "dayjs";
 import { PAYMENT_METHODS, TRANSACTION_TYPES } from "@/modules/expenses/constants";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
+import { apiFetch } from "@/core/api/http";
 
 type Transaction = {
   id: string;
@@ -101,13 +102,10 @@ export function EditTransactionModal({
         isRecurring: values.isRecurring,
       };
 
-      const res = await fetch(`/api/expenses/transactions/${transaction.id}`, {
+      await apiFetch(`/api/expenses/transactions/${transaction.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) throw new Error("Failed to update transaction");
 
       notifications.show({ title: "Updated", message: "Transaction updated", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["expenses"] });

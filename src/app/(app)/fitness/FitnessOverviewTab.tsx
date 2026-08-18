@@ -11,11 +11,10 @@ import { StatCard } from "@/components/ui/stat-card";
 import { PremiumCard } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { useRouter } from "next/navigation";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 async function fetchStats() {
-  const res = await fetch("/api/fitness/stats?includePRs=true");
-  if (!res.ok) throw new Error("Failed to fetch stats");
-  return res.json();
+  return apiFetch(`/api/fitness/stats${toSearchParams({ includePRs: true })}`);
 }
 
 export function FitnessOverviewTab() {

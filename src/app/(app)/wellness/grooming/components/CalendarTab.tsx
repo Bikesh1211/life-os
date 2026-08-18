@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { IconChevronLeft, IconChevronRight, IconCircleCheck, IconCircleX, IconMinus } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { PageHeader } from "@/components/ui/page-header";
+import { apiFetch } from "@/core/api/http";
 
 function CalendarDay({ date, isToday, activityCount, completedCount, status }: { date: number; isToday: boolean; activityCount: number; completedCount: number; status: "all" | "partial" | "none" | "future" }) {
   const statusColor = status === "all" ? "green" : status === "partial" ? "yellow" : status === "none" ? "red" : "gray";
@@ -45,9 +46,7 @@ export function CalendarTab() {
   const { data: activities } = useQuery({
     queryKey: ["wellness", "grooming", "activities"],
     queryFn: async () => {
-      const res = await fetch("/api/wellness/grooming/activities");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      return apiFetch<any[]>("/api/wellness/grooming/activities");
     },
   });
 

@@ -18,6 +18,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { CardGridSkeleton } from "@/components/ui/loading-skeleton";
 import { StatCard } from "@/components/ui/stat-card";
+import { apiFetch } from "@/core/api/http";
 
 const LoansList = lazy(() => import("./LoansList"));
 const LoansAnalytics = lazy(() => import("./LoansAnalytics"));
@@ -58,11 +59,8 @@ export function LoansContent() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch("/api/loans/dashboard");
-        if (res.ok) {
-          const data = await res.json();
-          setDashboardData(data);
-        }
+        const data = await apiFetch<any>("/api/loans/dashboard");
+        setDashboardData(data);
       } catch { /* ignore */ }
     }
     load();

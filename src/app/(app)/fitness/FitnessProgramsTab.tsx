@@ -11,27 +11,18 @@ import { IconPlus, IconBarbell, IconTrash, IconEye } from "@tabler/icons-react";
 import { PremiumCard } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/core/api/http";
 
 async function fetchPrograms() {
-  const res = await fetch("/api/fitness/programs");
-  if (!res.ok) throw new Error("Failed to fetch programs");
-  return res.json();
+  return apiFetch("/api/fitness/programs");
 }
 
 async function createProgram(body: Record<string, unknown>) {
-  const res = await fetch("/api/fitness/programs", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error("Failed to create program");
-  return res.json();
+  return apiFetch("/api/fitness/programs", { method: "POST", body: JSON.stringify(body) });
 }
 
 async function deleteProgram(id: string) {
-  const res = await fetch(`/api/fitness/programs/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete program");
-  return res.json();
+  return apiFetch(`/api/fitness/programs/${id}`, { method: "DELETE" });
 }
 
 export function FitnessProgramsTab() {

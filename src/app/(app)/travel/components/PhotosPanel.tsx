@@ -6,6 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { IconPhoto, IconTrash } from "@tabler/icons-react";
 import { Card, Text, Group, Button, ActionIcon, Tooltip, Modal, TextInput, Stack } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { apiFetch } from "@/core/api/http";
 import dayjs from "dayjs";
 
 type Photo = {
@@ -26,14 +27,14 @@ export function PhotosPanel() {
   const [opened, { open, close }] = useDisclosure(false);
 
   useEffect(() => {
-    fetch("/api/travel/photos")
-      .then((r) => (r.ok ? r.json() : []))
+    apiFetch<Photo[]>("/api/travel/photos")
       .then(setPhotos)
+      .catch(() => setPhotos([]))
       .finally(() => setLoading(false));
   }, []);
 
   async function deletePhoto(id: string) {
-    await fetch(`/api/travel/photos/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/travel/photos/${id}`, { method: "DELETE" });
     notifications.show({ title: "Deleted", message: "Photo deleted", color: "orange" });
     setPhotos((prev) => prev.filter((p) => p.id !== id));
   }
@@ -66,9 +67,8 @@ export function PhotosPanel() {
           e.preventDefault();
           const form = e.currentTarget;
           const data = Object.fromEntries(new FormData(form));
-          await fetch("/api/travel/photos", {
+          await apiFetch("/api/travel/photos", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url: data.url, caption: data.caption || undefined }),
           });
           notifications.show({ title: "Created", message: "Photo added", color: "green" });

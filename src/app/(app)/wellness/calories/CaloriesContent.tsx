@@ -6,6 +6,7 @@ import {
 } from "@mantine/core";
 import { IconFlame, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 import type { WellnessCalorieEntry } from "@/modules/wellness";
 
 const mealColors: Record<string, string> = {
@@ -27,9 +28,8 @@ export function CaloriesContent({ entries }: { entries: WellnessCalorieEntry[] }
     if (!calories) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/calories", {
+      await apiFetch("/api/wellness/calories", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mealType, calories: Number(calories),
           proteinG: proteinG ? Number(proteinG) : undefined,

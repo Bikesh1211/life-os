@@ -16,6 +16,7 @@ import {
 } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { PageHeader } from "@/components/ui/page-header";
+import { apiFetch } from "@/core/api/http";
 
 const CATEGORY_COLORS: Record<string, string> = {
   "hair-care": "#81C784",
@@ -77,9 +78,7 @@ export function ActivitiesTab() {
   const { data: activities, isLoading } = useQuery({
     queryKey: ["wellness", "grooming", "activities"],
     queryFn: async () => {
-      const res = await fetch("/api/wellness/grooming/activities");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      return apiFetch<any[]>("/api/wellness/grooming/activities");
     },
   });
 

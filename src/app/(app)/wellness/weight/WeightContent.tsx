@@ -6,6 +6,7 @@ import {
 } from "@mantine/core";
 import { IconWeight, IconTrash, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 import type { WellnessWeightEntry } from "@/modules/wellness";
 
 export function WeightContent({ entries }: { entries: WellnessWeightEntry[] }) {
@@ -16,9 +17,8 @@ export function WeightContent({ entries }: { entries: WellnessWeightEntry[] }) {
     if (!weightKg) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/weight", {
+      await apiFetch("/api/wellness/weight", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ weightKg: Number(weightKg), date: new Date().toISOString().slice(0, 10) }),
       });
       window.location.reload();
@@ -28,7 +28,7 @@ export function WeightContent({ entries }: { entries: WellnessWeightEntry[] }) {
   }, [weightKg]);
 
   const handleDelete = useCallback(async (id: string) => {
-    await fetch(`/api/wellness/weight/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/wellness/weight/${id}`, { method: "DELETE" });
     window.location.reload();
   }, []);
 

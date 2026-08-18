@@ -6,17 +6,15 @@ import { MusicContainer } from "../design-system/MusicContainer";
 import { GoalsProgress } from "../dashboard/GoalsProgress";
 import { MusicEmptyState } from "../design-system/MusicEmptyState";
 import { SectionHeading } from "../design-system/SectionHeading";
+import { apiFetch } from "@/core/api/http";
 
 export function GoalsContent() {
   const { data, isLoading } = useQuery({
     queryKey: ["music-goals"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/goals");
-      if (!res.ok) throw new Error("Failed to load goals");
-      return res.json() as Promise<{
+    queryFn: () =>
+      apiFetch<{
         goals: Array<{ id: string; label: string; current: number; target: number; unit: string }>;
-      }>;
-    },
+      }>("/api/music/goals"),
   });
 
   if (isLoading) {

@@ -6,6 +6,7 @@ import {
 } from "@mantine/core";
 import { IconHeartbeat, IconArrowLeft } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 import type { WellnessBloodPressureEntry } from "@/modules/wellness";
 
 function bpCategory(systolic: number, diastolic: number): { label: string; color: string } {
@@ -25,9 +26,8 @@ export function BloodPressureContent({ entries }: { entries: WellnessBloodPressu
     if (!systolic || !diastolic) return;
     setSaving(true);
     try {
-      await fetch("/api/wellness/blood-pressure", {
+      await apiFetch("/api/wellness/blood-pressure", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systolic: Number(systolic), diastolic: Number(diastolic),
           pulse: pulse ? Number(pulse) : undefined,

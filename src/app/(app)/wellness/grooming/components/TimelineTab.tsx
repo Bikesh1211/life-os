@@ -11,6 +11,7 @@ import {
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { PageHeader } from "@/components/ui/page-header";
+import { apiFetch } from "@/core/api/http";
 
 dayjs.extend(relativeTime);
 
@@ -18,9 +19,7 @@ export function TimelineTab() {
   const { data: activities } = useQuery({
     queryKey: ["wellness", "grooming", "activities"],
     queryFn: async () => {
-      const res = await fetch("/api/wellness/grooming/activities");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      return apiFetch<any[]>("/api/wellness/grooming/activities");
     },
   });
 

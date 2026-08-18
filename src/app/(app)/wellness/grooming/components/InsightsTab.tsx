@@ -13,6 +13,7 @@ import {
   IconAlertTriangle,
 } from "@tabler/icons-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { apiFetch } from "@/core/api/http";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 
 const COLORS = ["#4FC3F7", "#81C784", "#FFB74D", "#F48FB1", "#CE93D8", "#FF8A65", "#90CAF9", "#A1887F"];
@@ -31,27 +32,21 @@ export function InsightsTab() {
   const { data: stats } = useQuery({
     queryKey: ["wellness", "grooming", "dashboard"],
     queryFn: async () => {
-      const res = await fetch("/api/wellness/grooming/dashboard");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      return apiFetch<any>("/api/wellness/grooming/dashboard");
     },
   });
 
   const { data: activities } = useQuery({
     queryKey: ["wellness", "grooming", "activities"],
     queryFn: async () => {
-      const res = await fetch("/api/wellness/grooming/activities");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      return apiFetch<any[]>("/api/wellness/grooming/activities");
     },
   });
 
   const { data: insights } = useQuery({
     queryKey: ["wellness", "grooming", "insights"],
     queryFn: async () => {
-      const res = await fetch("/api/wellness/grooming/insights");
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
+      return apiFetch<any[]>("/api/wellness/grooming/insights");
     },
   });
 

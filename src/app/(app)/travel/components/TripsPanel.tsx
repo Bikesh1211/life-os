@@ -12,6 +12,7 @@ import {
   optionalNumber,
 } from "./ExploreFields";
 import { useDisclosure } from "@mantine/hooks";
+import { apiFetch } from "@/core/api/http";
 import dayjs from "dayjs";
 
 type Trip = {
@@ -54,9 +55,8 @@ function CreateTripModal({ opened, onClose }: { opened: boolean; onClose: () => 
 
   async function handleSubmit() {
     if (!title.trim() || !destination.trim()) return;
-    await fetch("/api/travel/trips", {
+    await apiFetch("/api/travel/trips", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
         destination,
@@ -128,9 +128,9 @@ export function TripsPanel() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch("/api/travel/trips")
-      .then((r) => (r.ok ? r.json() : []))
+    apiFetch<Trip[]>("/api/travel/trips")
       .then(setTrips)
+      .catch(() => setTrips([]))
       .finally(() => setLoading(false));
   }, []);
 

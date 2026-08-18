@@ -20,6 +20,7 @@ import {
   IconX,
 } from "@tabler/icons-react";
 import Link from "next/link";
+import { apiFetch } from "@/core/api/http";
 import { useTodayRoutine, useStartExecution, useCompleteExecution, useSkipExecution, useStartExecutionItem } from "@/hooks/use-today-routine";
 import { useRoutine } from "@/hooks/use-routines";
 import { RoutineTimeline } from "@/modules/routines/components/RoutineTimeline";
@@ -69,15 +70,14 @@ export default function RoutineTimelinePage() {
   }
 
   async function handleCompleteItem(itemId: string) {
-    const res = await fetch(`/api/routines/${id}/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ executionId: execution!.id, executionItemId: itemId }),
-    });
-    if (res.ok) {
+    try {
+      await apiFetch(`/api/routines/${id}/start`, {
+        method: "POST",
+        body: JSON.stringify({ executionId: execution!.id, executionItemId: itemId }),
+      });
       notifications.show({ title: "Completed", message: "Activity completed", color: "green" });
       refetch();
-    }
+    } catch {}
   }
 
   return (

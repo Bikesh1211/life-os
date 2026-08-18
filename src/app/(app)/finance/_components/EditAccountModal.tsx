@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
 import { useState, useEffect } from "react";
 import { ACCOUNT_TYPES } from "@/modules/expenses/constants";
+import { apiFetch } from "@/core/api/http";
 
 type Account = {
   id: string;
@@ -65,13 +66,10 @@ export function EditAccountModal({ account, opened, onClose }: EditAccountModalP
         body.adjustmentAmount = values.adjustmentAmount;
       }
 
-      const res = await fetch(`/api/expenses/accounts/${account.id}`, {
+      await apiFetch(`/api/expenses/accounts/${account.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
-      if (!res.ok) throw new Error("Failed to update account");
 
       notifications.show({ title: "Updated", message: "Account updated", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["expenses", "accounts"] });
@@ -88,10 +86,9 @@ export function EditAccountModal({ account, opened, onClose }: EditAccountModalP
     if (!confirm(`Delete account "${account.name}"? This cannot be undone.`)) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/expenses/accounts/${account.id}`, {
+      await apiFetch(`/api/expenses/accounts/${account.id}`, {
         method: "DELETE",
       });
-      if (!res.ok) throw new Error("Failed to delete account");
       notifications.show({ title: "Deleted", message: "Account deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["expenses", "accounts"] });
       onClose();

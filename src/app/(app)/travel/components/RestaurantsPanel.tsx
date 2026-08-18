@@ -6,6 +6,7 @@ import { notifications } from "@mantine/notifications";
 import { IconPlus, IconToolsKitchen2, IconStar, IconTrash } from "@tabler/icons-react";
 import { Card, Text, Group, Badge, Button, Modal, TextInput, Select, Stack, ActionIcon } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
+import { apiFetch } from "@/core/api/http";
 
 type Restaurant = {
   id: string;
@@ -43,14 +44,14 @@ export function RestaurantsPanel() {
   const [opened, { open, close }] = useDisclosure(false);
 
   useEffect(() => {
-    fetch("/api/travel/restaurants")
-      .then((r) => (r.ok ? r.json() : []))
+    apiFetch<Restaurant[]>("/api/travel/restaurants")
       .then(setRestaurants)
+      .catch(() => setRestaurants([]))
       .finally(() => setLoading(false));
   }, []);
 
   async function deleteRestaurant(id: string) {
-    await fetch(`/api/travel/restaurants/${id}`, { method: "DELETE" });
+    await apiFetch(`/api/travel/restaurants/${id}`, { method: "DELETE" });
     notifications.show({ title: "Deleted", message: "Restaurant deleted", color: "orange" });
     setRestaurants((prev) => prev.filter((r) => r.id !== id));
   }
@@ -83,9 +84,8 @@ export function RestaurantsPanel() {
           e.preventDefault();
           const form = e.currentTarget;
           const data = Object.fromEntries(new FormData(form));
-          await fetch("/api/travel/restaurants", {
+          await apiFetch("/api/travel/restaurants", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               name: data.name,
               country: data.country || undefined,

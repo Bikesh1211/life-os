@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { IconClock } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 
 type MemoryEntry = {
   id: string;
@@ -23,11 +24,7 @@ type RewindData = {
 export function MemoryRewind() {
   const { data, isLoading } = useQuery<RewindData>({
     queryKey: ["music-on-this-day"],
-    queryFn: async () => {
-      const res = await fetch("/api/music/on-this-day");
-      if (!res.ok) throw new Error("Failed to load");
-      return res.json();
-    },
+    queryFn: () => apiFetch<RewindData>("/api/music/on-this-day"),
     staleTime: 1000 * 60 * 60,
   });
 

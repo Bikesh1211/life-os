@@ -12,6 +12,7 @@ import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconDownload, IconUsers, IconNotebook, IconTargetArrow } from "@tabler/icons-react";
+import { apiFetch } from "@/core/api/http";
 import { CollaboratorList } from "./CollaboratorList";
 import { CharacterManager } from "../characters/CharacterManager";
 import { ResearchNotesPanel } from "../research/ResearchNotesPanel";
@@ -89,11 +90,7 @@ export function BookSettings() {
 
   const { data: book, isLoading } = useQuery({
     queryKey: ["book", bookId],
-    queryFn: async () => {
-      const res = await fetch(`/api/books/${bookId}`);
-      if (!res.ok) throw new Error("Failed to load book");
-      return res.json() as Promise<BookData>;
-    },
+    queryFn: () => apiFetch<BookData>(`/api/books/${bookId}`),
     enabled: !!bookId,
   });
 
@@ -130,13 +127,10 @@ export function BookSettings() {
 
   const updateMutation = useMutation({
     mutationFn: async (values: Record<string, unknown>) => {
-      const res = await fetch(`/api/books/${bookId}`, {
+      return apiFetch<Record<string, unknown>>(`/api/books/${bookId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      if (!res.ok) throw new Error("Failed to update");
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["book", bookId] });

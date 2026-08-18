@@ -14,6 +14,7 @@ import { IconClock, IconExternalLink, IconHeart, IconHeartFilled, IconMicrophone
 import { notifications } from "@mantine/notifications";
 import { Editor } from "@/components/editor";
 import { textToEditorContent, textFromEditor } from "@/components/editor/utils";
+import { apiFetch, toSearchParams } from "@/core/api/http";
 
 type TrackData = {
   id: string;
@@ -54,11 +55,7 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
   const { id } = use(idPromise);
   const { data, isLoading } = useQuery<TrackData>({
     queryKey: ["track", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/music/tracks/${id}`);
-      if (!res.ok) throw new Error("Track not found");
-      return res.json();
-    },
+    queryFn: () => apiFetch<TrackData>(`/api/music/tracks/${id}`),
   });
 
   const queryClient = useQueryClient();
@@ -67,26 +64,18 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
 
   const { data: notes } = useQuery({
     queryKey: ["track-notes", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/music/notes?entityType=track&entityId=${encodeURIComponent(id)}`);
-      if (!res.ok) throw new Error("Failed to fetch notes");
-      return res.json() as Promise<Array<{ id: string; content: string; createdAt: string }>>;
-    },
+    queryFn: () =>
+      apiFetch<Array<{ id: string; content: string; createdAt: string }>>(
+        `/api/music/notes${toSearchParams({ entityType: "track", entityId: id })}`,
+      ),
   });
 
   const noteMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const res = await fetch("/api/music/notes", {
+    mutationFn: (content: string) =>
+      apiFetch("/api/music/notes", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entityType: "track", entityId: id, content }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to save note");
-      }
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       notifications.show({ title: "Created", message: "Note saved", color: "green" });
       queryClient.invalidateQueries({ queryKey: ["track-notes", id] });
@@ -102,13 +91,7 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
   });
 
   const deleteNoteMutation = useMutation({
-    mutationFn: async (noteId: string) => {
-      const res = await fetch(`/api/music/notes/${noteId}`, { method: "DELETE" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Failed to delete note");
-      }
-    },
+    mutationFn: (noteId: string) => apiFetch(`/api/music/notes/${noteId}`, { method: "DELETE" }),
     onSuccess: () => {
       notifications.show({ title: "Deleted", message: "Note deleted", color: "orange" });
       queryClient.invalidateQueries({ queryKey: ["track-notes", id] });
@@ -131,23 +114,15 @@ export function TrackContent({ idPromise }: { idPromise: Promise<{ id: string }>
   };
 
   const favoriteMutation = useMutation({
-    mutationFn: async (action: "add" | "remove") => {
-      if (action === "add") {
-        const res = await fetch("/api/music/favorites", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ spotifyId: id, entityType: "track" }),
-        });
-        if (!res.ok) throw new Error("Failed to favorite");
-        return res.json();
-      } else {
-        const res = await fetch(`/api/music/favorites?entityType=track&entityId=${encodeURIComponent(id)}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) throw new Error("Failed to unfavorite");
-        return res.json();
-      }
-    },
+    mutationFn: (action: "add" | "remove") =>
+      action === "add"
+        ? apiFetch("/api/music/favorites", {
+            method: "POST",
+            body: JSON.stringify({ spotifyId: id, entityType: "track" }),
+          })
+        : apiFetch(`/api/music/favorites${toSearchParams({ entityType: "track", entityId: id })}`, {
+            method: "DELETE",
+          }),
     onSuccess: (_data, action) => {
       notifications.show({ title: action === "add" ? "Favorited" : "Unfavorited", message: action === "add" ? "Track added to favorites" : "Track removed from favorites", color: action === "add" ? "green" : "orange" });
       queryClient.invalidateQueries({ queryKey: ["track", id] });

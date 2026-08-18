@@ -14,6 +14,7 @@ import {
   Button,
   Divider,
 } from "@mantine/core";
+import { apiFetch } from "@/core/api/http";
 import {
   IconBulb,
   IconCheck,
@@ -40,16 +41,13 @@ export function InsightsTab() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [insightsRes, goalRes] = await Promise.all([
-        fetch("/api/wellness/sleep/insights"),
-        fetch("/api/wellness/sleep/preferences"),
+      const [insightsData, goalData] = await Promise.all([
+        apiFetch<Insight[]>("/api/wellness/sleep/insights"),
+        apiFetch<{ sleepGoalHours: number }>("/api/wellness/sleep/preferences"),
       ]);
-      if (insightsRes.ok) setInsights(await insightsRes.json());
-      if (goalRes.ok) {
-        const goal = await goalRes.json();
-        setSleepGoal(goal.sleepGoalHours);
-        setGoalInput(goal.sleepGoalHours);
-      }
+      setInsights(insightsData);
+      setSleepGoal(goalData.sleepGoalHours);
+      setGoalInput(goalData.sleepGoalHours);
     } catch {} finally {
       setLoading(false);
     }
@@ -63,15 +61,12 @@ export function InsightsTab() {
     if (!goalInput) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/wellness/sleep/preferences", {
+      await apiFetch("/api/wellness/sleep/preferences", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sleepGoalHours: goalInput }),
       });
-      if (res.ok) {
-        setSleepGoal(Number(goalInput));
-        fetchData();
-      }
+      setSleepGoal(Number(goalInput));
+      fetchData();
     } catch {} finally {
       setSaving(false);
     }
