@@ -397,7 +397,7 @@ export function ExpeditionMap({
   /* The compact map sits in a 22rem column on desktop and full-width on small
    screens, so a taller default reads as a proper map there — and until the
    fullscreen overlay is reliable this is the map people actually use. */
-  const mapHeight = height ?? (compact ? 420 : 460);
+  const mapHeight = height ?? (compact ? 420 : 560);
 
   /* Full screen shows the dossier whichever map was expanded — including the
      small one on a detail page, which has no panel inline. The point of
