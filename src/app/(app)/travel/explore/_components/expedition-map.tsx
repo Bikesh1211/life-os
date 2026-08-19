@@ -126,7 +126,6 @@ export function ExpeditionMap({
 
   useEffect(() => {
     let cancelled = false;
-    let onWheel: ((event: WheelEvent) => void) | undefined;
     const container = containerRef.current;
 
     (async () => {
@@ -137,12 +136,16 @@ export function ExpeditionMap({
       const map = L.map(container, {
         zoomControl: false,
         attributionControl: true,
-        /* Scroll belongs to the page. A map that swallows the wheel traps a
-           reader scrolling past it — ⌘/ctrl-scroll still zooms, which is the
-           convention every embedded map has settled on. */
-        scrollWheelZoom: false,
-        /* zoomSnap 0 keeps ⌘/ctrl-scroll's 0.5 steps from snapping back to
-           the nearest integer below. */
+        /* A map that behaves like Google's: wheel/smooth-touchpad zoom, pinch
+           zoom, drag to pan, double-click to zoom in. The archive's overlay is
+           big enough now (560px/420px) that it earns the wheel instead of
+           handing it back to the page. */
+        scrollWheelZoom: true,
+        doubleClickZoom: true,
+        dragging: true,
+        touchZoom: true,
+        /* zoomSnap 0 keeps every wheel notch a smooth fractional step instead
+           of snapping between whole levels. */
         zoomSnap: 0,
         worldCopyJump: true,
       }).setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
@@ -151,21 +154,6 @@ export function ExpeditionMap({
         maxZoom: BASEMAP_MAX_ZOOM,
         attribution: BASEMAP_ATTRIBUTION,
       }).addTo(map);
-
-      /* Leaflet's Map does not forward `wheel` to `map.on("wheel")` — wheel
-         is the scroll wheel handler's own DOM listener, so listen on the
-         container instead. `passive:false` is what lets preventDefault stop
-         the browser's native page zoom. */
-      onWheel = (event: WheelEvent) => {
-        /* When expanded, Leaflet's own scrollWheelZoom is enabled and already
-           handles the wheel with proper smoothing — don't double-zoom. */
-        if (map.scrollWheelZoom.enabled()) return;
-        if (event.metaKey || event.ctrlKey) {
-          event.preventDefault();
-          map.setZoom(map.getZoom() - Math.sign(event.deltaY) * 0.5);
-        }
-      };
-      container.addEventListener("wheel", onWheel, { passive: false });
 
       /* Clicking empty map dismisses a pinned dossier. */
       map.on("click", () => {
@@ -180,7 +168,6 @@ export function ExpeditionMap({
 
     return () => {
       cancelled = true;
-      if (onWheel && container) container.removeEventListener("wheel", onWheel);
       mapRef.current?.remove();
       mapRef.current = null;
       layerRef.current = null;
@@ -382,18 +369,6 @@ export function ExpeditionMap({
     return () => cancelAnimationFrame(frame1);
   }, [expanded, ready]);
 
-  /* Inline, the wheel belongs to the page and only ⌘-scroll zooms — a map that
-     swallows the wheel traps a reader scrolling past it. Full screen there is
-     no page left to scroll, so the wheel goes back to meaning zoom, which is
-     what it means on every other map. */
-  useEffect(() => {
-    if (!ready) return;
-    const map = mapRef.current;
-    if (!map) return;
-    if (expanded) map.scrollWheelZoom.enable();
-    else map.scrollWheelZoom.disable();
-  }, [expanded, ready]);
-
   /* The compact map sits in a 22rem column on desktop and full-width on small
    screens, so a taller default reads as a proper map there — and until the
    fullscreen overlay is reliable this is the map people actually use. */
@@ -564,8 +539,8 @@ export function ExpeditionMap({
                 {plotted.length === 0
                   ? "No mapped locations yet."
                   : expanded
-                    ? "Hover or focus a marker to read its record. Drag to pan, scroll or pinch to zoom."
-                    : "Hover or focus a marker to read its record. Drag to pan, ⌘-scroll or pinch to zoom."}
+? "Hover or focus a marker to read its record. Drag to pan, scroll or pinch to zoom."
+                  : "Hover or focus a marker to read its record. Drag to pan, scroll or pinch to zoom."}
               </p>
 
               <dl className="mt-6 space-y-2 text-sm">

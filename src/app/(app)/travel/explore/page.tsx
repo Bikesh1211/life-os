@@ -75,8 +75,8 @@ export default async function ExplorePage() {
                   Expedition map
                 </h2>
                 <p className="mt-1 max-w-xl text-sm text-[var(--xp-muted)]">
-                  Every recorded position, on real geography. Drag to pan, ⌘-scroll or pinch to
-                  zoom, and open any marker for its record.
+Every recorded position, on real geography. Drag to pan, scroll or pinch to
+                    zoom, and open any marker for its record.
                 </p>
               </div>
               <Link
