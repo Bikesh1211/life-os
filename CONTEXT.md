@@ -761,6 +761,9 @@ The routing engine used by Travel Helper. Accessed via the public demo server at
 **Nominatim**:
 The geocoding service used by Travel Helper for place search. Accessed client-side directly from the OpenStreetMap Nominatim API. No API key required. Returns geocoding results (display name, lat, lng) for origin, destination, and waypoint search inputs.
 
+**Basemap**:
+The map imagery shared by every map in Life OS — the Expedition Map (`/travel/explore`) and the Travel Helper planner and route detail. Uses Esri World Street Map so place labels render in English, where OSM's own standard tiles would print the local script (Devanagari over Nepal). Defined once and reused across all maps (see ADR-0012). A map with nothing plotted rests on a default home view centred on Nepal.
+
 *Avoid*: Travel (when referring to Travel Helper — collides with the existing Travel Journal module at `src/modules/travel/`)
 
 **Scripts** (plugin):

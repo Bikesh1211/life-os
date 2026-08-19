@@ -38,6 +38,13 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { apiFetch, ApiError } from "@/core/api/http";
+import {
+  BASEMAP_ATTRIBUTION,
+  BASEMAP_MAX_ZOOM,
+  BASEMAP_URL,
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+} from "@/core/maps/basemap";
 import type { Waypoint } from "@/modules/travel-helper/types";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -121,11 +128,12 @@ export function PlannerTab() {
 
     const map = L.map(mapRef.current, {
       zoomControl: true,
-      attributionControl: false,
-    }).setView([20, 0], 2);
+      attributionControl: true,
+    }).setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
+    L.tileLayer(BASEMAP_URL, {
+      maxZoom: BASEMAP_MAX_ZOOM,
+      attribution: BASEMAP_ATTRIBUTION,
     }).addTo(map);
 
     map.on("click", (e: L.LeafletMouseEvent) => {

@@ -29,6 +29,13 @@ import {
 } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { apiFetch } from "@/core/api/http";
+import {
+  BASEMAP_ATTRIBUTION,
+  BASEMAP_MAX_ZOOM,
+  BASEMAP_URL,
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+} from "@/core/maps/basemap";
 import type { RouteCard } from "@/modules/travel-helper";
 import dayjs from "dayjs";
 import L from "leaflet";
@@ -68,11 +75,12 @@ export function RouteDetail({ route, onClose }: RouteDetailProps) {
 
     const map = L.map(mapRef.current, {
       zoomControl: true,
-      attributionControl: false,
-    }).setView([0, 0], 2);
+      attributionControl: true,
+    }).setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
+    L.tileLayer(BASEMAP_URL, {
+      maxZoom: BASEMAP_MAX_ZOOM,
+      attribution: BASEMAP_ATTRIBUTION,
     }).addTo(map);
 
     mapInstanceRef.current = map;

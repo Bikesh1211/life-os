@@ -11,6 +11,13 @@ import {
   IconRefresh,
 } from "@tabler/icons-react";
 import { cn } from "@/core/utils";
+import {
+  BASEMAP_ATTRIBUTION,
+  BASEMAP_MAX_ZOOM,
+  BASEMAP_URL,
+  DEFAULT_MAP_CENTER,
+  DEFAULT_MAP_ZOOM,
+} from "@/core/maps/basemap";
 import { canonicalCountry, routeLine } from "@/modules/travel/explore";
 import type { Expedition, ExploredPlace } from "@/modules/travel/explore";
 import styles from "./explore.module.css";
@@ -19,9 +26,10 @@ import "leaflet/dist/leaflet.css";
 /**
  * THE EXPEDITION MAP — the centre of the Adventure Archive.
  *
- * Real geography, from the tile server Life OS already talks to in the travel
- * planner, rather than a second hand-drawn projection: this archive is not
- * bounded by one country, so the map has to be the world.
+ * Real geography, from the shared basemap (see `@/core/maps/basemap`), rather
+ * than a second hand-drawn projection: this archive is not bounded by one
+ * country, so when places are plotted the map fits itself to them. Idle, it
+ * rests on the home view.
  *
  * What this map adds over the planner's is the *expedition* reading: routes
  * drawn between the places a trip actually reached, visited and planned markers
@@ -76,6 +84,9 @@ export function ExpeditionMap({
 }: ExpeditionMapProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  /* A click pins the dossier open so it survives the cursor leaving the
+     marker (hover alone is a preview that dismisses on mouseout). */
+  const pinnedIdRef = useRef<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<Leaflet.Map | null>(null);
@@ -115,33 +126,51 @@ export function ExpeditionMap({
 
   useEffect(() => {
     let cancelled = false;
+    let onWheel: ((event: WheelEvent) => void) | undefined;
+    const container = containerRef.current;
 
     (async () => {
-      if (!containerRef.current || mapRef.current) return;
+      if (!container || mapRef.current) return;
       const L = (await import("leaflet")).default;
-      if (cancelled || !containerRef.current || mapRef.current) return;
+      if (cancelled || !container || mapRef.current) return;
 
-      const map = L.map(containerRef.current, {
+      const map = L.map(container, {
         zoomControl: false,
         attributionControl: true,
         /* Scroll belongs to the page. A map that swallows the wheel traps a
            reader scrolling past it — ⌘/ctrl-scroll still zooms, which is the
            convention every embedded map has settled on. */
         scrollWheelZoom: false,
+        /* zoomSnap 0 keeps ⌘/ctrl-scroll's 0.5 steps from snapping back to
+           the nearest integer below. */
+        zoomSnap: 0,
         worldCopyJump: true,
-      }).setView([20, 0], 2);
+      }).setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap",
+      L.tileLayer(BASEMAP_URL, {
+        maxZoom: BASEMAP_MAX_ZOOM,
+        attribution: BASEMAP_ATTRIBUTION,
       }).addTo(map);
 
-      map.on("wheel", (event) => {
-        const original = (event as unknown as { originalEvent: WheelEvent }).originalEvent;
-        if (original.metaKey || original.ctrlKey) {
-          original.preventDefault();
-          map.setZoom(map.getZoom() - Math.sign(original.deltaY) * 0.5);
+      /* Leaflet's Map does not forward `wheel` to `map.on("wheel")` — wheel
+         is the scroll wheel handler's own DOM listener, so listen on the
+         container instead. `passive:false` is what lets preventDefault stop
+         the browser's native page zoom. */
+      onWheel = (event: WheelEvent) => {
+        /* When expanded, Leaflet's own scrollWheelZoom is enabled and already
+           handles the wheel with proper smoothing — don't double-zoom. */
+        if (map.scrollWheelZoom.enabled()) return;
+        if (event.metaKey || event.ctrlKey) {
+          event.preventDefault();
+          map.setZoom(map.getZoom() - Math.sign(event.deltaY) * 0.5);
         }
+      };
+      container.addEventListener("wheel", onWheel, { passive: false });
+
+      /* Clicking empty map dismisses a pinned dossier. */
+      map.on("click", () => {
+        pinnedIdRef.current = null;
+        setActiveId(null);
       });
 
       mapRef.current = map;
@@ -151,6 +180,7 @@ export function ExpeditionMap({
 
     return () => {
       cancelled = true;
+      if (onWheel && container) container.removeEventListener("wheel", onWheel);
       mapRef.current?.remove();
       mapRef.current = null;
       layerRef.current = null;
@@ -173,6 +203,13 @@ export function ExpeditionMap({
 
       layer.clearLayers();
 
+      /* Drop a pin that once pointed at a place no longer on screen (e.g. the
+         expedition/country filter changed). */
+      if (pinnedIdRef.current !== null && !plotted.some((p) => p.place.id === pinnedIdRef.current)) {
+        pinnedIdRef.current = null;
+        setActiveId(null);
+      }
+
       for (const route of routes) {
         const focused = !focusExpedition || focusExpedition === route.slug;
         L.polyline(route.points, {
@@ -193,13 +230,18 @@ export function ExpeditionMap({
         /* A DivIcon rather than Leaflet's default pin: the marker has to carry
            the archive's own vocabulary (filled for reached, hollow and dashed
            for planned) and it has to be a real link so it is keyboard
-           reachable and right-clickable. */
+           reachable and right-clickable. A plain click is swallowed so the
+           dossier opens beside the map instead of navigating away; the record
+           is one intentional "View details" deep. */
         const marker = L.marker([latitude, longitude], {
           icon: L.divIcon({
             className: "",
             html: markerHtml(place, visited, dimmed),
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
+            /* A visited pin is a teardrop whose tip overhangs the anchor so it
+               points at the actual coordinates; a planned place is a centred
+               paddle. */
+            iconSize: visited ? [30, 35] : [30, 30],
+            iconAnchor: visited ? [15, 35] : [15, 15],
           }),
           keyboard: true,
           title: `${place.name}${place.city ? `, ${place.city}` : ""}`,
@@ -207,10 +249,20 @@ export function ExpeditionMap({
           riseOnHover: true,
         }).addTo(layer);
 
-        marker.on("mouseover", () => setActiveId(place.id));
-        marker.on("mouseout", () => setActiveId((id) => (id === place.id ? null : id)));
-        marker.on("focus", () => setActiveId(place.id));
-        marker.on("click", () => setActiveId(place.id));
+        marker.on("mouseover", () => {
+          if (pinnedIdRef.current === null) setActiveId(place.id);
+        });
+        marker.on("mouseout", () => {
+          if (pinnedIdRef.current !== place.id)
+            setActiveId((id) => (id === place.id ? null : id));
+        });
+        marker.on("focus", () => {
+          if (pinnedIdRef.current === null) setActiveId(place.id);
+        });
+        marker.on("click", () => {
+          pinnedIdRef.current = place.id;
+          setActiveId(place.id);
+        });
       }
 
       /* Fit to what is actually plotted, once per data change. A world view
@@ -275,6 +327,12 @@ export function ExpeditionMap({
   useEffect(() => {
     function onChange() {
       if (!document.fullscreenElement) setExpanded(false);
+      /* The browser commits fullscreen asynchronously; a map measured during
+         the transition paints no tiles. Re-measure on the frames after the
+         state settles so the map fills the finally-sized overlay. */
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => mapRef.current?.invalidateSize(true));
+      });
     }
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
@@ -310,13 +368,18 @@ export function ExpeditionMap({
      new layout to settle, which `invalidateSize` needs to measure against. */
   useEffect(() => {
     if (!ready) return;
-    const frame = requestAnimationFrame(() => {
-      const map = mapRef.current;
-      if (!map) return;
-      map.invalidateSize();
-      if (fitRef.current) map.fitBounds(fitRef.current, { animate: false });
+    const frame1 = requestAnimationFrame(() => {
+      /* A second frame lets the grid/fullscreen reflow fully settle before
+         `invalidateSize` measures the container — a single frame can catch the
+         map mid-resize and leave it blank. */
+      requestAnimationFrame(() => {
+        const map = mapRef.current;
+        if (!map) return;
+        map.invalidateSize(true);
+        if (fitRef.current) map.fitBounds(fitRef.current, { animate: false });
+      });
     });
-    return () => cancelAnimationFrame(frame);
+    return () => cancelAnimationFrame(frame1);
   }, [expanded, ready]);
 
   /* Inline, the wheel belongs to the page and only ⌘-scroll zooms — a map that
@@ -331,7 +394,10 @@ export function ExpeditionMap({
     else map.scrollWheelZoom.disable();
   }, [expanded, ready]);
 
-  const mapHeight = height ?? (compact ? 280 : 460);
+  /* The compact map sits in a 22rem column on desktop and full-width on small
+   screens, so a taller default reads as a proper map there — and until the
+   fullscreen overlay is reliable this is the map people actually use. */
+  const mapHeight = height ?? (compact ? 420 : 460);
 
   /* Full screen shows the dossier whichever map was expanded — including the
      small one on a detail page, which has no panel inline. The point of
@@ -346,8 +412,11 @@ export function ExpeditionMap({
         expanded
           ? /* Column on a phone so the map keeps the height it needs and the
                dossier sits under it; two tracks from `lg` up, the same shape
-               the inline map has. */
-            "fixed inset-0 z-[1080] flex flex-col gap-3 bg-[var(--xp-bg)] p-3 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-4 lg:p-4"
+               the inline map has. The explicit `minmax(0,1fr)` row is what
+               lets the sheet actually fill a viewport-height grid — a default
+               `auto` row collapses, because the map's own container only
+               reports `h-full` (a height of an auto box is zero). */
+            "fixed inset-0 z-[1080] flex flex-col gap-3 bg-[var(--xp-bg)] p-3 lg:grid lg:grid-rows-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-4 lg:p-4"
           : cn("grid gap-4", !compact && "lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6"),
         className,
       )}
@@ -358,10 +427,12 @@ export function ExpeditionMap({
           styles.sheet,
           styles.tiles,
           "relative overflow-hidden rounded-md border border-[var(--xp-border)]",
-          /* `min-h-0` is what lets the sheet actually shrink inside the flex
-             column — without it a flex item refuses to go below its content
-             and the dossier is pushed off the bottom of the window. */
-          expanded && "min-h-0 flex-1",
+/* `min-h-0` is what lets the sheet actually shrink inside the flex
+               column — without it a flex item refuses to go below its content
+               and the dossier is pushed off the bottom of the window. `h-full`
+               is belt-and-braces for the lg grid, in case the row sizing ever
+               regresses. */
+            expanded && "min-h-0 flex-1 lg:h-full",
         )}
       >
         <div
@@ -409,7 +480,7 @@ export function ExpeditionMap({
                 label="Reset view"
                 onClick={() => {
                   if (fitRef.current) mapRef.current?.fitBounds(fitRef.current);
-                  else mapRef.current?.setView([20, 0], 2);
+                  else mapRef.current?.setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM);
                 }}
               >
                 <IconRefresh size={14} />
@@ -483,7 +554,7 @@ export function ExpeditionMap({
                 href={`/travel/explore/places/${active.slug}`}
                 className="xp-label mt-auto inline-flex items-center gap-1.5 pt-6 text-[var(--xp-primary)] transition-opacity hover:opacity-80"
               >
-                Open the record →
+                View details →
               </Link>
             </>
           ) : (
@@ -516,21 +587,33 @@ export function ExpeditionMap({
  * Written as a string because that is Leaflet's `divIcon` contract — it takes
  * HTML, not a React node. The anchor makes each marker a real link, so a
  * keyboard reader can tab the archive's positions and a reader can open one in
- * a new tab, which a click handler on a circle never allows.
+ * a new tab, which a click handler on a circle never allows. The plain click
+ * is prevented from navigating: the archive's convention is that a pound on a
+ * marker opens the dossier beside the map, and the record is reached only
+ * through the panel's own "View details".
  */
 function markerHtml(place: ExploredPlace, visited: boolean, dimmed: boolean): string {
   const label = escapeHtml(`${place.name}${place.city ? `, ${place.city}` : ""}`);
   const href = `/travel/explore/places/${place.slug}`;
   const opacity = dimmed ? 0.3 : 1;
+  const height = visited ? 35 : 30;
 
-  const dot = visited
-    ? `<span style="position:absolute;inset:9px;border-radius:9999px;background:var(--xp-expedition)"></span>
-       <span style="position:absolute;inset:4px;border-radius:9999px;background:var(--xp-expedition);opacity:.22"></span>`
-    : `<span style="position:absolute;inset:7px;border-radius:9999px;background:var(--xp-bg);border:1.6px dashed var(--xp-brass)"></span>`;
+  const glyph = visited
+    ? /* A filled teardrop in expedition red with a white rim and core, so it
+         reads as a real map pin against any basemap. Inset to the top edge so
+         the tip at the bottom lands exactly on the anchor. */
+      `<svg viewBox="0 0 30 35" width="30" height="35" aria-hidden="true"
+          style="display:block;position:absolute;top:0;left:0">
+        <path d="M15 1C22 1 27 6 27 12C27 18.5 22.5 24.5 15 35C7.5 24.5 3 18.5 3 12C3 6 8 1 15 1Z"
+          fill="var(--xp-expedition)" stroke="rgba(255,255,255,.95)" stroke-width="2"/>
+        <circle cx="15" cy="12" r="5.5" fill="#ffffff"/>
+      </svg>`
+    : `<span style="position:absolute;inset:6px;border-radius:9999px;background:var(--xp-bg);border:1.7px dashed var(--xp-brass)"></span>`;
 
   return `<a href="${href}" aria-label="${label}"
-    style="display:block;position:relative;width:30px;height:30px;opacity:${opacity}">
-    ${dot}
+    onclick="if (!event.metaKey && !event.ctrlKey && !event.shiftKey && event.button === 0) event.preventDefault()"
+    style="display:block;position:relative;width:30px;height:${height}px;opacity:${opacity}">
+    ${glyph}
   </a>`;
 }
 
