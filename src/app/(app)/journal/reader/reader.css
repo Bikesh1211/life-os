@@ -12,6 +12,13 @@
 }
 .sidebar-main { padding: 0 !important; background: transparent !important; margin: 0 !important; overflow: visible !important; }
 .sidebar-main > div { padding: 0 !important; }
+
+/* Force-hide every piece of the Life OS shell the reader must not show.
+   data-reading="on" in globals.css already handles header/navbar/main padding.
+   These are belt-and-suspenders in case something leaks through. */
+.mantine-AppShell-header,
+.mantine-AppShell-navbar,
+.mantine-AppShell-footer,
 .ctx-band { display: none !important; }
 
 /* ── Reset ── */

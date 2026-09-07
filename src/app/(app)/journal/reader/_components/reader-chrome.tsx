@@ -15,7 +15,11 @@ export function ReaderChrome({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setMinimalChrome(true);
-    return () => setMinimalChrome(false);
+    document.documentElement.setAttribute("data-reading", "on");
+    return () => {
+      setMinimalChrome(false);
+      document.documentElement.removeAttribute("data-reading");
+    };
   }, [setMinimalChrome]);
 
   return (
