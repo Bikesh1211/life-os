@@ -2,7 +2,8 @@
 
 import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Stack, Title, Group, Button, Tabs, Text } from "@mantine/core";
+import Link from "next/link";
+import { Card, Group, Stack, Tabs, Text, Title, Button } from "@mantine/core";
 import {
   IconCards,
   IconTimelineEvent,
@@ -12,6 +13,8 @@ import {
   IconHistory,
   IconBook2,
   IconPlus,
+  IconArrowRight,
+  IconBook,
 } from "@tabler/icons-react";
 import { StoryView } from "../timeline/components/StoryView";
 import { EntryCard } from "./components/EntryCard";
@@ -95,6 +98,36 @@ export function JournalContent({ entries, streak, stats, defaultTab = "browse" }
         </Group>
 
         <QuickJournalInput onCreated={handleCreated} />
+
+        <Card
+          component={Link}
+          href="/journal/reader"
+          withBorder
+          radius="md"
+          padding="md"
+          className="group transition-colors hover:border-[var(--mantine-color-orange-5)]"
+        >
+          <Group justify="space-between" wrap="nowrap" gap="md">
+            <Group gap="md" wrap="nowrap">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-[var(--mantine-color-orange-light)]">
+                <IconBook size={22} className="text-[var(--mantine-color-orange-filled)]" />
+              </div>
+              <div className="min-w-0">
+                <Text fw={600} size="sm">
+                  Reader Mode — A Collection of Ordinary Days
+                </Text>
+                <Text size="xs" c="dimmed" lineClamp={1}>
+                  Your journal entries as a beautiful reading experience — themes, search, keyboard
+                  navigation and more.
+                </Text>
+              </div>
+            </Group>
+            <IconArrowRight
+              size={18}
+              className="shrink-0 text-[var(--mantine-color-dimmed)] transition-transform group-hover:translate-x-0.5"
+            />
+          </Group>
+        </Card>
 
         <Tabs value={activeTab} onChange={handleTabChange}>
           <Tabs.List>
