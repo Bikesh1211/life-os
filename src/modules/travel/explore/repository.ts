@@ -1,33 +1,19 @@
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
-import { db } from "@/core/database";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  travelJournals,
-  travelPhotos,
-  travelTripDays,
-  travelTrips,
-  travelVisitedPlaces,
-  travelWishlist,
-} from "../schema";
+  TravelTripModel,
+  TravelVisitedPlaceModel,
+  TravelWishlistModel,
+  TravelPhotoModel,
+  TravelJournalModel,
+  TravelTripDayModel,
+} from "@/lib/models";
 
-/**
- * The archive's reads.
- *
- * Every query here is scoped by `userId`, which is the reason this layer exists
- * separately from the derivation in `explore.server.ts`: an archive is one
- * person's record of where they have been, and a missing `where` clause on any
- * one of these six tables would quietly hand a reader somebody else's journeys.
- *
- * `travel_trip_days` is the one table with no `user_id` of its own — it is
- * owned through its trip — so its scope comes from trip ids the caller has
- * already been given, and never from a parameter a caller could widen.
- */
-
-export type TripRow = typeof travelTrips.$inferSelect;
-export type VisitedRow = typeof travelVisitedPlaces.$inferSelect;
-export type WishRow = typeof travelWishlist.$inferSelect;
-export type PhotoRow = typeof travelPhotos.$inferSelect;
-export type JournalRow = typeof travelJournals.$inferSelect;
-export type TripDayRow = typeof travelTripDays.$inferSelect;
+export type TripRow = any;
+export type VisitedRow = any;
+export type WishRow = any;
+export type PhotoRow = any;
+export type JournalRow = any;
+export type TripDayRow = any;
 
 export interface ArchiveRows {
   trips: TripRow[];
@@ -39,48 +25,32 @@ export interface ArchiveRows {
 }
 
 export async function readArchiveRows(userId: string): Promise<ArchiveRows> {
+  await connectToDatabase();
+
   const [trips, visited, wishlist, album, journals] = await Promise.all([
-    db
-      .select()
-      .from(travelTrips)
-      .where(and(eq(travelTrips.userId, userId), isNull(travelTrips.deletedAt)))
-      .orderBy(desc(travelTrips.startDate)),
-    db
-      .select()
-      .from(travelVisitedPlaces)
-      .where(and(eq(travelVisitedPlaces.userId, userId), isNull(travelVisitedPlaces.deletedAt)))
-      .orderBy(desc(travelVisitedPlaces.visitStart)),
-    db
-      .select()
-      .from(travelWishlist)
-      .where(and(eq(travelWishlist.userId, userId), isNull(travelWishlist.deletedAt))),
-    db
-      .select()
-      .from(travelPhotos)
-      .where(and(eq(travelPhotos.userId, userId), isNull(travelPhotos.deletedAt)))
-      .orderBy(desc(travelPhotos.dateTaken)),
-    db
-      .select()
-      .from(travelJournals)
-      .where(and(eq(travelJournals.userId, userId), isNull(travelJournals.deletedAt)))
-      .orderBy(desc(travelJournals.date)),
+    TravelTripModel.find({ userId, deletedAt: null })
+      .sort({ startDate: -1 })
+      .lean(),
+    TravelVisitedPlaceModel.find({ userId, deletedAt: null })
+      .sort({ visitStart: -1 })
+      .lean(),
+    TravelWishlistModel.find({ userId, deletedAt: null }).lean(),
+    TravelPhotoModel.find({ userId, deletedAt: null })
+      .sort({ dateTaken: -1 })
+      .lean(),
+    TravelJournalModel.find({ userId, deletedAt: null })
+      .sort({ date: -1 })
+      .lean(),
   ]);
 
-  /* Skipped entirely when there are no trips, which also keeps `inArray` off an
-     empty list — Postgres reads `IN ()` as a syntax error. */
   const days =
     trips.length === 0
       ? []
-      : await db
-          .select()
-          .from(travelTripDays)
-          .where(
-            inArray(
-              travelTripDays.tripId,
-              trips.map((t) => t.id),
-            ),
-          )
-          .orderBy(asc(travelTripDays.dayNumber));
+      : await TravelTripDayModel.find({
+          tripId: { $in: trips.map((t: any) => t._id) },
+        })
+          .sort({ dayNumber: 1 })
+          .lean();
 
   return { trips, visited, wishlist, album, journals, days };
 }

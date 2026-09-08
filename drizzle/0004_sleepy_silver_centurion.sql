@@ -1,1 +1,0 @@
-ALTER TABLE "journal_entries" ADD COLUMN "event_date" timestamp with time zone;

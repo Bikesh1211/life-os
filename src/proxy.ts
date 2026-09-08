@@ -1,6 +1,6 @@
-import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { verifySessionToken } from "@/core/auth";
 
 const isPublicRoute = (req: NextRequest) => {
   const path = req.nextUrl.pathname;
@@ -10,11 +10,6 @@ const isPublicRoute = (req: NextRequest) => {
     path.startsWith("/forgot-password") ||
     path.startsWith("/reset-password") ||
     path.startsWith("/api") ||
-    /* The theme stylesheet is a static asset that happens to be generated, so
-       it lives under `app/` and was being matched as an application route —
-       the browser got a 307 to /sign-in instead of CSS, and every theme in the
-       application silently did nothing. It contains no user data: it is a list
-       of colours. */
     path === "/theme.css"
   );
 };
@@ -26,37 +21,21 @@ export async function proxy(req: NextRequest) {
     return res;
   }
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const token = req.cookies.get("session_token")?.value;
 
-  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return req.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        for (const { name, value, options } of cookiesToSet) {
-          res.cookies.set(name, value, options);
-        }
-      },
-    },
-  });
-
-  let user;
-  try {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
-  } catch {
-    // Supabase unreachable (ETIMEDOUT, network error) — allow the
-    // request through. Each API route and server component re-checks
-    // auth via getCurrentUserId() and will deny access independently.
-    return res;
-  }
-
-  if (!user) {
+  if (!token) {
     const signInUrl = new URL("/sign-in", req.url);
     signInUrl.searchParams.set("redirect_url", req.nextUrl.pathname + req.nextUrl.search);
     return NextResponse.redirect(signInUrl);
+  }
+
+  const session = verifySessionToken(token);
+  if (!session) {
+    const signInUrl = new URL("/sign-in", req.url);
+    signInUrl.searchParams.set("redirect_url", req.nextUrl.pathname + req.nextUrl.search);
+    const response = NextResponse.redirect(signInUrl);
+    response.cookies.delete("session_token");
+    return response;
   }
 
   return res;

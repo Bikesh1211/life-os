@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
   const items = status
     ? await repo.getWatchlistByStatus(userId, status as any)
     : await repo.getWatchlist(userId);
-  const tmdbIds = [...new Set(items.map((item) => parseCompositeId(item.mediaId)).filter(Boolean))] as string[];
+  const tmdbIds = [...new Set(items.map((item: any) => parseCompositeId(item.mediaId)).filter(Boolean))] as string[];
   const mediaRows = await repo.getMediaByTmdbIds(tmdbIds);
-  const mediaByTmdbId = new Map(mediaRows.map((m) => [m.tmdbId, m]));
-  const hydrated = items.map((item) => {
+  const mediaByTmdbId = new Map<string, any>(mediaRows.map((m: any) => [m.tmdbId, m]));
+  const hydrated = items.map((item: any) => {
     const tmdbId = parseCompositeId(item.mediaId);
     if (!tmdbId) return { ...item, mediaTitle: null, mediaPosterUrl: null };
     const media = mediaByTmdbId.get(tmdbId);

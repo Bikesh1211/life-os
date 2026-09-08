@@ -78,10 +78,10 @@ export async function GET(
       new Date(0),
       new Date(),
     );
-    const totalPlays = plays.filter((p) => p.trackId).length;
+    const totalPlays = plays.filter((p: any) => p.trackId).length;
 
     const favorite = await repo.getFavoritesByType(userId, "artist");
-    const isFavorited = favorite.some((f) => f.entityId === artist.id);
+    const isFavorited = favorite.some((f: any) => f.entityId === artist.id);
 
     return NextResponse.json({
       id: artist.id,
@@ -92,14 +92,14 @@ export async function GET(
       genres: artist.genres ?? [],
       popularity: artist.spotifyPopularity ?? null,
       isFavorited,
-      albums: albums.map((a) => ({
+      albums: albums.map((a: any) => ({
         id: a.id,
         spotifyId: a.spotifyId,
         title: a.title,
         coverArtUrl: a.coverArtUrl,
         releaseDate: a.releaseDate?.toISOString() ?? null,
       })),
-      topTracks: topTracks.map((t) => ({
+      topTracks: topTracks.map((t: any) => ({
         id: t.id,
         title: t.title,
         duration: t.duration,

@@ -49,7 +49,34 @@ import { useRouter } from "next/navigation";
 import type { ReadingItem, ReadingAnnotation, ReadingNote, ReadingSession } from "@/modules/reading";
 import { apiFetch } from "@/core/api/http";
 
+// ─── Extended types (Mongoose model has fields the TS type doesn't declare) ──
+
+type ReadingItemUI = ReadingItem & {
+  authors?: string[];
+  pageCount?: number;
+  isFavorited?: boolean;
+  subtitle?: string;
+  description?: string;
+  publisher?: string;
+  publishedYear?: number;
+  language?: string;
+  lastOpenedAt?: string;
+};
+
+type ReadingAnnotationUI = ReadingAnnotation & {
+  type?: string;
+  text?: string;
+  note?: string;
+  isFavorited?: boolean;
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────
+
+function getAuthors(item: ReadingItemUI): string[] {
+  if (item.authors && item.authors.length > 0) return item.authors;
+  if (item.author) return [item.author];
+  return [];
+}
 
 const TYPE_LABELS: Record<string, string> = {
   book: "Book", article: "Article", pdf: "PDF", research_paper: "Research Paper",
@@ -67,8 +94,8 @@ const STATUS_LABELS: Record<string, string> = {
 // ─── Props ────────────────────────────────────────────────────────
 
 type Props = {
-  item: ReadingItem;
-  initialAnnotations: ReadingAnnotation[];
+  item: ReadingItemUI;
+  initialAnnotations: ReadingAnnotationUI[];
   initialNotes: ReadingNote[];
   initialSessions: ReadingSession[];
 };
@@ -84,7 +111,7 @@ function AddAnnotationModal({
   opened: boolean;
   onClose: () => void;
   readingItemId: string;
-  onCreated: (a: ReadingAnnotation) => void;
+  onCreated: (a: ReadingAnnotationUI) => void;
 }) {
   const [type, setType] = useState<string>("highlight");
   const [text, setText] = useState("");
@@ -96,7 +123,7 @@ function AddAnnotationModal({
     if (!text.trim()) return;
     setLoading(true);
     try {
-      const annotation = await apiFetch<ReadingAnnotation>(`/api/reading/items/${readingItemId}/annotations`, {
+      const annotation = await apiFetch<ReadingAnnotationUI>(`/api/reading/items/${readingItemId}/annotations`, {
         method: "POST",
         body: JSON.stringify({ type, text, note, page }),
       });
@@ -163,7 +190,7 @@ function AddSessionModal({
   onClose: () => void;
   readingItemId: string;
   onCreated: (s: ReadingSession) => void;
-  item: ReadingItem;
+  item: ReadingItemUI;
 }) {
   const [pagesRead, setPagesRead] = useState<number | undefined>();
   const [note, setNote] = useState("");
@@ -292,7 +319,7 @@ export function ItemDetailContent({ item: initialItem, initialAnnotations, initi
   const Icon = TYPE_ICONS[item.type] ?? IconBook;
 
   const handleStatusChange = async (status: string) => {
-    const updated = await apiFetch<ReadingItem>(`/api/reading/items/${item.id}`, {
+    const updated = await apiFetch<ReadingItemUI>(`/api/reading/items/${item.id}`, {
       method: "PUT",
       body: JSON.stringify({ status }),
     });
@@ -301,7 +328,7 @@ export function ItemDetailContent({ item: initialItem, initialAnnotations, initi
   };
 
   const handleToggleFavorite = async () => {
-    const updated = await apiFetch<ReadingItem>(`/api/reading/items/${item.id}`, {
+    const updated = await apiFetch<ReadingItemUI>(`/api/reading/items/${item.id}`, {
       method: "PUT",
       body: JSON.stringify({ isFavorited: !item.isFavorited }),
     });
@@ -370,8 +397,8 @@ export function ItemDetailContent({ item: initialItem, initialAnnotations, initi
             <Box style={{ flex: 1 }}>
               <Title order={2}>{item.title}</Title>
               {item.subtitle && <Text c="dimmed" size="sm">{item.subtitle}</Text>}
-              {item.authors && item.authors.length > 0 && (
-                <Text size="sm" mt={4}>{item.authors.join(", ")}</Text>
+              {getAuthors(item).length > 0 && (
+                <Text size="sm" mt={4}>{getAuthors(item).join(", ")}</Text>
               )}
 
               <Group gap="xs" mt="sm">
@@ -503,11 +530,11 @@ export function ItemDetailContent({ item: initialItem, initialAnnotations, initi
                       <Box style={{ flex: 1 }}>
                         <Group gap={4} mb={2}>
                           <Badge size="xs" variant="light" color={a.type === "quote" ? "yellow" : "blue"}>
-                            {a.type}
+                            {a.type ?? "highlight"}
                           </Badge>
                           {a.page && <Badge size="xs" variant="outline">p.{a.page}</Badge>}
                         </Group>
-                        <Text size="sm" fs="italic">"{a.text}"</Text>
+                        <Text size="sm" fs="italic">"{a.text ?? a.content}"</Text>
                         {a.note && <Text size="xs" c="dimmed" mt={4}>{a.note}</Text>}
                       </Box>
                       <ActionIcon variant="subtle" size="sm" color="red" onClick={() => handleDeleteAnnotation(a.id)}>
@@ -600,7 +627,7 @@ export function ItemDetailContent({ item: initialItem, initialAnnotations, initi
                             {mins > 0 && <Text size="sm">{mins} min</Text>}
                             {s.pagesRead && <Text size="sm">{s.pagesRead} pages</Text>}
                           </Group>
-                          {s.note && <Text size="xs" c="dimmed" mt={2}>{s.note}</Text>}
+                          {s.notes && <Text size="xs" c="dimmed" mt={2}>{s.notes}</Text>}
                         </Box>
                       </Group>
                     </Paper>

@@ -1,102 +1,182 @@
-import { db } from "@/core/database";
-import { and, eq, gte, lte, sql, count, desc, asc, isNull } from "drizzle-orm";
-import { habits, habitCompletions, habitCategoryEnum } from "./schema";
+import { connectToDatabase } from "@/lib/mongodb";
+import { Habit as HabitModel, HabitCompletion as HabitCompletionModel } from "@/lib/models/habits";
 
-export type Habit = typeof habits.$inferSelect;
-export type HabitCompletion = typeof habitCompletions.$inferSelect;
-export type CreateHabitInput = typeof habits.$inferInsert;
-export type CreateCompletionInput = typeof habitCompletions.$inferInsert;
+export type Habit = {
+  id: string;
+  userId: string;
+  title: string;
+  description: string | null;
+  category: string;
+  frequency: string;
+  frequencyType: string;
+  frequencyInterval: number | null;
+  frequencyWeekdays: number[] | null;
+  frequencyMonthDay: number | null;
+  color: string;
+  icon: string | null;
+  targetCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+};
 
-export const habitCategories = habitCategoryEnum.enumValues;
+export type HabitCompletion = {
+  id: string;
+  userId: string;
+  habitId: string;
+  completedDate: string;
+  completedAt: Date;
+  notes: string | null;
+  metadata: unknown;
+};
+
+export type CreateHabitInput = Partial<Omit<Habit, "id" | "createdAt" | "updatedAt" | "deletedAt">> & {
+  userId: string;
+  title: string;
+};
+
+export type CreateCompletionInput = {
+  userId: string;
+  habitId: string;
+  completedDate: string;
+  notes?: string | null;
+  metadata?: unknown;
+};
+
+export const habitCategories = [
+  "health", "fitness", "learning", "productivity", "mindfulness",
+  "social", "creative", "finance", "self-care", "other",
+];
+
+function mapHabit(doc: any): Habit {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    title: doc.title,
+    description: doc.description ?? null,
+    category: doc.category,
+    frequency: doc.frequency,
+    frequencyType: doc.frequencyType,
+    frequencyInterval: doc.frequencyInterval ?? null,
+    frequencyWeekdays: doc.frequencyWeekdays ?? null,
+    frequencyMonthDay: doc.frequencyMonthDay ?? null,
+    color: doc.color,
+    icon: doc.icon ?? null,
+    targetCount: doc.targetCount,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+    deletedAt: doc.deletedAt ?? null,
+  };
+}
+
+function mapCompletion(doc: any): HabitCompletion {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    habitId: doc.habitId,
+    completedDate: doc.completedDate,
+    completedAt: doc.completedAt,
+    notes: doc.notes ?? null,
+    metadata: doc.metadata ?? null,
+  };
+}
 
 export async function getHabits(userId: string) {
-  return db
-    .select()
-    .from(habits)
-    .where(and(eq(habits.userId, userId), isNull(habits.deletedAt)))
-    .orderBy(asc(habits.createdAt));
+  await connectToDatabase();
+  const docs = await HabitModel.find({ userId, deletedAt: null })
+    .sort({ createdAt: 1 })
+    .lean();
+  return docs.map(mapHabit);
 }
 
 export async function getHabitById(id: string, userId: string) {
-  return db
-    .select()
-    .from(habits)
-    .where(and(eq(habits.id, id), eq(habits.userId, userId)))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await HabitModel.findOne({ _id: id, userId }).lean();
+  return doc ? mapHabit(doc) : null;
 }
 
 export async function createCompletion(input: CreateCompletionInput) {
-  const [completion] = await db.insert(habitCompletions).values(input).returning();
-  return completion;
+  await connectToDatabase();
+  const doc = await HabitCompletionModel.create({
+    userId: input.userId,
+    habitId: input.habitId,
+    completedDate: input.completedDate,
+    completedAt: new Date(),
+    notes: input.notes ?? undefined,
+    metadata: input.metadata ?? undefined,
+  } as any);
+  return mapCompletion(doc.toObject());
 }
 
 export async function getCompletions(
   userId: string,
   opts: { habitId?: string; dateFrom?: string; dateTo?: string } = {},
 ) {
-  const conditions = [eq(habitCompletions.userId, userId)];
-  if (opts.habitId) conditions.push(eq(habitCompletions.habitId, opts.habitId));
-  if (opts.dateFrom) conditions.push(gte(habitCompletions.completedDate, opts.dateFrom));
-  if (opts.dateTo) conditions.push(lte(habitCompletions.completedDate, opts.dateTo));
-  return db.select().from(habitCompletions).where(and(...conditions)).orderBy(desc(habitCompletions.completedDate));
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.habitId) filter.habitId = opts.habitId;
+  if (opts.dateFrom || opts.dateTo) {
+    filter.completedDate = {};
+    if (opts.dateFrom) filter.completedDate.$gte = opts.dateFrom;
+    if (opts.dateTo) filter.completedDate.$lte = opts.dateTo;
+  }
+  const docs = await HabitCompletionModel.find(filter)
+    .sort({ completedDate: -1 })
+    .lean();
+  return docs.map(mapCompletion);
 }
 
 export async function getOverallStats(userId: string) {
+  await connectToDatabase();
   const today = new Date().toISOString().slice(0, 10);
   const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
 
-  const [habitCount, activeCount, todayCompletions, previousCompletions] = await Promise.all([
-    db.select({ count: count() }).from(habits).where(and(eq(habits.userId, userId), isNull(habits.deletedAt))),
-    db
-      .select({ count: count() })
-      .from(habits)
-      .where(and(eq(habits.userId, userId), isNull(habits.deletedAt))),
-    db
-      .select({ count: count() })
-      .from(habitCompletions)
-      .where(and(eq(habitCompletions.userId, userId), eq(habitCompletions.completedDate, today))),
-    db
-      .select({ count: count() })
-      .from(habitCompletions)
-      .where(and(eq(habitCompletions.userId, userId), eq(habitCompletions.completedDate, thirtyDaysAgo))),
+  const [totalHabits, activeHabits, completedToday, previousCompletedToday] = await Promise.all([
+    HabitModel.countDocuments({ userId, deletedAt: null }),
+    HabitModel.countDocuments({ userId, deletedAt: null }),
+    HabitCompletionModel.countDocuments({ userId, completedDate: today }),
+    HabitCompletionModel.countDocuments({ userId, completedDate: thirtyDaysAgo }),
   ]);
 
   return {
-    totalHabits: Number(habitCount[0]?.count ?? 0),
-    activeHabits: Number(activeCount[0]?.count ?? 0),
-    completedToday: Number(todayCompletions[0]?.count ?? 0),
-    previousCompletedToday: Number(previousCompletions[0]?.count ?? 0),
+    totalHabits,
+    activeHabits,
+    completedToday,
+    previousCompletedToday,
   };
 }
 
 export async function getCompletionRate(userId: string, dateFrom: string, dateTo: string) {
-  const activeHabits = await db
-    .select({
-      id: habits.id,
-      frequency: habits.frequency,
-      frequencyType: habits.frequencyType,
-      frequencyInterval: habits.frequencyInterval,
-      frequencyWeekdays: habits.frequencyWeekdays,
-    })
-    .from(habits)
-    .where(and(eq(habits.userId, userId), isNull(habits.deletedAt)));
+  await connectToDatabase();
+  const activeHabits = await HabitModel.find({ userId, deletedAt: null })
+    .select({ _id: 1, frequency: 1, frequencyType: 1, frequencyInterval: 1, frequencyWeekdays: 1 })
+    .lean();
 
   if (activeHabits.length === 0) return { rate: 0, totalExpected: 0, totalCompleted: 0 };
 
-  const completions = await db
-    .select({
-      habitId: habitCompletions.habitId,
-      count: count(),
-    })
-    .from(habitCompletions)
-    .where(and(eq(habitCompletions.userId, userId), gte(habitCompletions.completedDate, dateFrom), lte(habitCompletions.completedDate, dateTo)))
-    .groupBy(habitCompletions.habitId);
+  const completions = await HabitCompletionModel.aggregate([
+    {
+      $match: {
+        userId,
+        completedDate: { $gte: dateFrom, $lte: dateTo },
+      },
+    },
+    {
+      $group: {
+        _id: "$habitId",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
 
-  const daysInRange = Math.max(1, Math.round(
-    (new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000
-  ));
+  const daysInRange = Math.max(
+    1,
+    Math.round(
+      (new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000,
+    ),
+  );
 
-  const completionMap = new Map(completions.map((c) => [c.habitId, Number(c.count)]));
+  const completionMap = new Map<string, number>(completions.map((c: any) => [c._id, c.count]));
   let totalCompleted = 0;
   let totalExpected = 0;
 
@@ -104,7 +184,8 @@ export async function getCompletionRate(userId: string, dateFrom: string, dateTo
   const monthsInRange = Math.max(1, Math.round(daysInRange / 30));
 
   for (const habit of activeHabits) {
-    const completed = completionMap.get(habit.id) ?? 0;
+    const id = habit._id.toString();
+    const completed: number = completionMap.get(id) ?? 0;
     totalCompleted += completed;
 
     if (habit.frequencyType === "every_x_days" && habit.frequencyInterval) {
@@ -131,161 +212,203 @@ export async function getCompletionRate(userId: string, dateFrom: string, dateTo
 }
 
 export async function getCompletionRatesByHabit(userId: string, dateFrom: string, dateTo: string) {
-  const activeHabits = await db
-    .select()
-    .from(habits)
-    .where(and(eq(habits.userId, userId), isNull(habits.deletedAt)));
+  await connectToDatabase();
+  const activeHabits = await HabitModel.find({ userId, deletedAt: null }).lean();
 
-  const completions = await db
-    .select({
-      habitId: habitCompletions.habitId,
-      count: count(),
-    })
-    .from(habitCompletions)
-    .where(and(eq(habitCompletions.userId, userId), gte(habitCompletions.completedDate, dateFrom), lte(habitCompletions.completedDate, dateTo)))
-    .groupBy(habitCompletions.habitId);
+  const completions = await HabitCompletionModel.aggregate([
+    {
+      $match: {
+        userId,
+        completedDate: { $gte: dateFrom, $lte: dateTo },
+      },
+    },
+    {
+      $group: {
+        _id: "$habitId",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
 
-  const completionMap = new Map(completions.map((c) => [c.habitId, Number(c.count)]));
-  const daysInRange = Math.max(1, Math.round(
-    (new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000
-  ));
+  const completionMap = new Map<string, number>(completions.map((c: any) => [c._id, c.count]));
+  const daysInRange = Math.max(
+    1,
+    Math.round(
+      (new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000,
+    ),
+  );
 
   const weeksInRange = Math.max(1, Math.round(daysInRange / 7));
   const monthsInRange = Math.max(1, Math.round(daysInRange / 30));
 
-  return activeHabits.map((habit) => {
-    const completed = completionMap.get(habit.id) ?? 0;
-    let expected = 0;
+  return activeHabits
+    .map((habit: any) => {
+      const id = habit._id.toString();
+      const completed = completionMap.get(id) ?? 0;
+      let expected = 0;
 
-    if (habit.frequencyType === "every_x_days" && habit.frequencyInterval) {
-      expected = Math.max(1, Math.round(daysInRange / habit.frequencyInterval));
-    } else if (habit.frequencyType === "every_x_weeks" && habit.frequencyInterval) {
-      expected = Math.max(1, Math.round(weeksInRange / habit.frequencyInterval));
-    } else if (habit.frequencyType === "specific_weekdays" && habit.frequencyWeekdays) {
-      const weekdayCount = habit.frequencyWeekdays.length;
-      expected = Math.max(1, Math.round((daysInRange / 7) * weekdayCount));
-    } else if (habit.frequencyType === "specific_dates") {
-      expected = Math.max(1, Math.round(monthsInRange));
-    } else {
-      if (habit.frequency === "daily") expected = daysInRange;
-      else if (habit.frequency === "weekly") expected = weeksInRange;
-      else if (habit.frequency === "monthly") expected = monthsInRange;
-    }
+      if (habit.frequencyType === "every_x_days" && habit.frequencyInterval) {
+        expected = Math.max(1, Math.round(daysInRange / habit.frequencyInterval));
+      } else if (habit.frequencyType === "every_x_weeks" && habit.frequencyInterval) {
+        expected = Math.max(1, Math.round(weeksInRange / habit.frequencyInterval));
+      } else if (habit.frequencyType === "specific_weekdays" && habit.frequencyWeekdays) {
+        const weekdayCount = habit.frequencyWeekdays.length;
+        expected = Math.max(1, Math.round((daysInRange / 7) * weekdayCount));
+      } else if (habit.frequencyType === "specific_dates") {
+        expected = Math.max(1, Math.round(monthsInRange));
+      } else {
+        if (habit.frequency === "daily") expected = daysInRange;
+        else if (habit.frequency === "weekly") expected = weeksInRange;
+        else if (habit.frequency === "monthly") expected = monthsInRange;
+      }
 
-    return {
-      habitId: habit.id,
-      title: habit.title,
-      category: habit.category,
-      frequency: habit.frequency,
-      frequencyType: habit.frequencyType,
-      completed,
-      expected,
-      rate: expected > 0 ? Math.round((completed / expected) * 100) : 0,
-    };
-  }).sort((a, b) => b.rate - a.rate);
+      return {
+        habitId: id,
+        title: habit.title,
+        category: habit.category,
+        frequency: habit.frequency,
+        frequencyType: habit.frequencyType,
+        completed,
+        expected,
+        rate: expected > 0 ? Math.round((completed / expected) * 100) : 0,
+      };
+    })
+    .sort((a: any, b: any) => b.rate - a.rate);
 }
 
 export async function getDailyCompletionTrend(userId: string, dateFrom: string, dateTo: string) {
-  const rows = await db
-    .select({
-      date: habitCompletions.completedDate,
-      count: count(),
-    })
-    .from(habitCompletions)
-    .where(and(eq(habitCompletions.userId, userId), gte(habitCompletions.completedDate, dateFrom), lte(habitCompletions.completedDate, dateTo)))
-    .groupBy(habitCompletions.completedDate)
-    .orderBy(asc(habitCompletions.completedDate));
+  await connectToDatabase();
+  const rows = await HabitCompletionModel.aggregate([
+    {
+      $match: {
+        userId,
+        completedDate: { $gte: dateFrom, $lte: dateTo },
+      },
+    },
+    {
+      $group: {
+        _id: "$completedDate",
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { _id: 1 },
+    },
+  ]);
 
-  return rows.map((r) => ({ date: r.date, count: Number(r.count) }));
+  return rows.map((r: any) => ({ date: r._id, count: r.count }));
 }
 
 export async function getCategoryDistribution(userId: string, dateFrom: string, dateTo: string) {
-  const rows = await db
-    .select({
-      category: habits.category,
-      completed: count(habitCompletions.id),
-    })
-    .from(habits)
-    .leftJoin(habitCompletions, eq(habits.id, habitCompletions.habitId))
-    .where(and(eq(habits.userId, userId), isNull(habits.deletedAt), gte(habitCompletions.completedDate, dateFrom), lte(habitCompletions.completedDate, dateTo)))
-    .groupBy(habits.category);
+  await connectToDatabase();
+  const rows = await HabitCompletionModel.aggregate([
+    {
+      $match: {
+        userId,
+        completedDate: { $gte: dateFrom, $lte: dateTo },
+      },
+    },
+    {
+      $lookup: {
+        from: "habits",
+        localField: "habitId",
+        foreignField: "_id",
+        as: "habit",
+      },
+    },
+    { $unwind: { path: "$habit", preserveNullAndEmptyArrays: true } },
+    {
+      $group: {
+        _id: "$habit.category",
+        completed: { $sum: 1 },
+      },
+    },
+  ]);
 
-  return rows.map((r) => ({ category: r.category ?? "uncategorized", completed: Number(r.completed) }));
+  return rows.map((r: any) => ({
+    category: r._id ?? "uncategorized",
+    completed: r.completed,
+  }));
 }
 
 export async function getHeatmapData(userId: string, dateFrom: string, dateTo: string) {
-  const rows = await db
-    .select({
-      date: habitCompletions.completedDate,
-      count: count(),
-    })
-    .from(habitCompletions)
-    .where(and(eq(habitCompletions.userId, userId), gte(habitCompletions.completedDate, dateFrom), lte(habitCompletions.completedDate, dateTo)))
-    .groupBy(habitCompletions.completedDate);
+  await connectToDatabase();
+  const rows = await HabitCompletionModel.aggregate([
+    {
+      $match: {
+        userId,
+        completedDate: { $gte: dateFrom, $lte: dateTo },
+      },
+    },
+    {
+      $group: {
+        _id: "$completedDate",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
 
-  const map = new Map(rows.map((r) => [r.date, Number(r.count)]));
+  const map = new Map<string, number>(rows.map((r: any) => [r._id, r.count]));
   const result: Array<{ date: string; count: number }> = [];
   const start = new Date(dateFrom);
   const end = new Date(dateTo);
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
     const key = d.toISOString().slice(0, 10);
-    result.push({ date: key, count: map.get(key) ?? 0 });
+    result.push({ date: key, count: (map.get(key) ?? 0) as number });
   }
   return result;
 }
 
 /**
  * The distinct dates on which something was completed, oldest first.
- *
- * Only ever consumed by streak maths, which cares whether a day was hit at
- * all — so the previous one-row-per-completion result meant transferring (and
- * de-duplicating in JS) up to one row per habit per day, for the whole
- * history. `selectDistinct` moves that de-duplication into Postgres, where the
- * index on (user_id, completed_date) already has the rows in order.
  */
 export async function getCompletionDates(userId: string, habitId?: string) {
-  const conditions = [eq(habitCompletions.userId, userId)];
-  if (habitId) conditions.push(eq(habitCompletions.habitId, habitId));
-  const rows = await db
-    .selectDistinct({ date: habitCompletions.completedDate })
-    .from(habitCompletions)
-    .where(and(...conditions))
-    .orderBy(asc(habitCompletions.completedDate));
-  return rows.map((r) => r.date);
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (habitId) filter.habitId = habitId;
+
+  const rows = await HabitCompletionModel.aggregate([
+    { $match: filter },
+    {
+      $group: {
+        _id: "$completedDate",
+      },
+    },
+    {
+      $sort: { _id: 1 },
+    },
+  ]);
+
+  return rows.map((r: any) => r._id);
 }
 
 export async function getHabitsWithCompletions(userId: string, dateFrom: string, dateTo: string) {
-  const activeHabits = await db
-    .select()
-    .from(habits)
-    .where(and(eq(habits.userId, userId), isNull(habits.deletedAt)));
+  await connectToDatabase();
+  const activeHabits = await HabitModel.find({ userId, deletedAt: null }).lean();
 
-  const completions = await db
-    .select({
-      habitId: habitCompletions.habitId,
-      date: habitCompletions.completedDate,
-    })
-    .from(habitCompletions)
-    .where(and(eq(habitCompletions.userId, userId), gte(habitCompletions.completedDate, dateFrom), lte(habitCompletions.completedDate, dateTo)))
-    .orderBy(asc(habitCompletions.completedDate));
+  const completions = await HabitCompletionModel.find({
+    userId,
+    completedDate: { $gte: dateFrom, $lte: dateTo },
+  })
+    .select({ habitId: 1, completedDate: 1, _id: 0 })
+    .sort({ completedDate: 1 })
+    .lean();
 
   const grouped = new Map<string, string[]>();
   for (const c of completions) {
-    const arr = grouped.get(c.habitId) ?? [];
-    arr.push(c.date);
-    grouped.set(c.habitId, arr);
+    const hid = String(c.habitId);
+    const arr = grouped.get(hid) ?? [];
+    arr.push(String(c.completedDate));
+    grouped.set(hid, arr);
   }
 
-  return activeHabits.map((h) => ({
-    ...h,
-    completionDates: grouped.get(h.id) ?? [],
+  return activeHabits.map((h: any) => ({
+    ...mapHabit(h),
+    completionDates: grouped.get(h._id.toString()) ?? [],
   }));
 }
 
 export async function getHabitCount(userId: string) {
-  return db
-    .select({ count: count() })
-    .from(habits)
-    .where(and(eq(habits.userId, userId), isNull(habits.deletedAt)))
-    .then((r) => Number(r[0]?.count ?? 0));
+  await connectToDatabase();
+  return HabitModel.countDocuments({ userId, deletedAt: null });
 }

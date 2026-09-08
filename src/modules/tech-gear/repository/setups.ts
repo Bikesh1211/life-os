@@ -1,62 +1,72 @@
-import { db } from "@/core/database";
-import { techSetups } from "../schema/setups";
-import { techSetupItems } from "../schema/setup-items";
-import { eq, and, isNull, desc } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { TechSetupModel, TechSetupItemModel } from "@/lib/models/tech-gear";
 
-export type Setup = typeof techSetups.$inferSelect;
-export type CreateSetupInput = typeof techSetups.$inferInsert;
+export type Setup = any;
+export type CreateSetupInput = any;
+
+function toPlain(doc: any) {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  const { _id, __v, ...rest } = obj;
+  return { ...rest, id: _id.toString() };
+}
+
+function toPlainArray(docs: any[]) {
+  return docs.map(toPlain);
+}
 
 export async function createSetup(input: CreateSetupInput) {
-  const [setup] = await db.insert(techSetups).values(input).returning();
-  return setup;
+  await connectToDatabase();
+  const doc = await TechSetupModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getSetupsForUser(userId: string) {
-  return db
-    .select()
-    .from(techSetups)
-    .where(and(eq(techSetups.userId, userId), isNull(techSetups.deletedAt)))
-    .orderBy(desc(techSetups.createdAt));
+  await connectToDatabase();
+  const docs = await TechSetupModel.find({ userId, deletedAt: null })
+    .sort({ createdAt: -1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getSetupById(id: string, userId: string) {
-  const [setup] = await db
-    .select()
-    .from(techSetups)
-    .where(and(eq(techSetups.id, id), eq(techSetups.userId, userId), isNull(techSetups.deletedAt)));
+  await connectToDatabase();
+  const setup = await TechSetupModel.findOne({ _id: id, userId, deletedAt: null }).lean();
   if (!setup) return null;
 
-  const items = await db
-    .select()
-    .from(techSetupItems)
-    .where(eq(techSetupItems.setupId, id))
-    .orderBy(techSetupItems.position);
+  const items = await TechSetupItemModel.find({ setupId: id })
+    .sort({ position: 1 })
+    .lean();
 
-  return { ...setup, items };
+  return { ...toPlain(setup), items: toPlainArray(items) };
 }
 
 export async function updateSetup(id: string, userId: string, input: Partial<CreateSetupInput>) {
-  const [setup] = await db
-    .update(techSetups)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(techSetups.id, id), eq(techSetups.userId, userId)))
-    .returning();
-  return setup ?? null;
+  await connectToDatabase();
+  const doc = await TechSetupModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function deleteSetup(id: string, userId: string) {
-  const [setup] = await db
-    .update(techSetups)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(techSetups.id, id), eq(techSetups.userId, userId), isNull(techSetups.deletedAt)))
-    .returning();
-  return setup ?? null;
+  await connectToDatabase();
+  const doc = await TechSetupModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { deletedAt: new Date(), updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function setSetupItems(setupId: string, itemIds: string[]) {
-  await db.delete(techSetupItems).where(eq(techSetupItems.setupId, setupId));
+  await connectToDatabase();
+  await TechSetupItemModel.deleteMany({ setupId });
   if (itemIds.length === 0) return [];
-  return db.insert(techSetupItems).values(
-    itemIds.map((itemId, index) => ({ setupId, itemId, position: index }))
-  ).returning();
+  const docs = await TechSetupItemModel.insertMany(
+    itemIds.map((itemId, index) => ({ setupId, itemId, position: index })),
+  );
+  return toPlainArray(docs);
 }

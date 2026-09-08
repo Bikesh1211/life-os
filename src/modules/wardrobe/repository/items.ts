@@ -1,9 +1,8 @@
-import { db } from "@/core/database";
-import { clothingItems } from "../schema/items";
-import { eq, and, isNull, desc, asc, sql, inArray } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { ClothingItemModel } from "@/lib/models/wardrobe";
 
-export type ClothingItem = typeof clothingItems.$inferSelect;
-export type CreateItemInput = typeof clothingItems.$inferInsert;
+export type ClothingItem = any;
+export type CreateItemInput = any;
 
 export type ItemFilters = {
   category?: string;
@@ -16,84 +15,97 @@ export type ItemFilters = {
   sort?: string;
 };
 
+function toPlain(doc: any) {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  const { _id, __v, ...rest } = obj;
+  return { ...rest, id: _id.toString() };
+}
+
+function toPlainArray(docs: any[]) {
+  return docs.map(toPlain);
+}
+
 export async function createItem(input: CreateItemInput) {
-  const [item] = await db.insert(clothingItems).values(input).returning();
-  return item;
+  await connectToDatabase();
+  const doc = await ClothingItemModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getItemsForUser(userId: string, filters?: ItemFilters) {
-  const conditions = [eq(clothingItems.userId, userId)];
+  await connectToDatabase();
+  const filter: any = { userId, deletedAt: null };
 
   if (!filters?.isArchived) {
-    conditions.push(eq(clothingItems.isArchived, false));
+    filter.isArchived = false;
   }
-  if (filters?.category) conditions.push(eq(clothingItems.category, filters.category as any));
-  if (filters?.condition) conditions.push(eq(clothingItems.condition, filters.condition as any));
-  if (filters?.season) conditions.push(eq(clothingItems.season, filters.season as any));
-  if (filters?.laundryStatus) conditions.push(eq(clothingItems.laundryStatus, filters.laundryStatus));
-  if (filters?.isFavorite !== undefined) conditions.push(eq(clothingItems.isFavorite, filters.isFavorite));
+  if (filters?.category) filter.category = filters.category;
+  if (filters?.condition) filter.condition = filters.condition;
+  if (filters?.season) filter.season = filters.season;
+  if (filters?.laundryStatus) filter.laundryStatus = filters.laundryStatus;
+  if (filters?.isFavorite !== undefined) filter.isFavorite = filters.isFavorite;
   if (filters?.search) {
-    conditions.push(
-      sql`(${clothingItems.name} ILIKE ${`%${filters.search}%`} OR ${clothingItems.brand} ILIKE ${`%${filters.search}%`} OR ${clothingItems.description} ILIKE ${`%${filters.search}%`})`
-    );
+    filter.$or = [
+      { name: { $regex: filters.search, $options: "i" } },
+      { brand: { $regex: filters.search, $options: "i" } },
+      { description: { $regex: filters.search, $options: "i" } },
+    ];
   }
 
-  conditions.push(isNull(clothingItems.deletedAt));
-
-  let orderBy = desc(clothingItems.createdAt);
+  let sort: any = { createdAt: -1 };
   if (filters?.sort) {
     switch (filters.sort) {
-      case "name": orderBy = asc(clothingItems.name); break;
-      case "newest": orderBy = desc(clothingItems.createdAt); break;
-      case "oldest": orderBy = asc(clothingItems.createdAt); break;
-      case "price-high": orderBy = desc(clothingItems.purchasePrice); break;
-      case "price-low": orderBy = asc(clothingItems.purchasePrice); break;
-      case "most-worn": orderBy = desc(clothingItems.wearCount); break;
-      case "least-worn": orderBy = asc(clothingItems.wearCount); break;
-      case "last-worn": orderBy = desc(clothingItems.lastWorn); break;
+      case "name": sort = { name: 1 }; break;
+      case "newest": sort = { createdAt: -1 }; break;
+      case "oldest": sort = { createdAt: 1 }; break;
+      case "price-high": sort = { purchasePrice: -1 }; break;
+      case "price-low": sort = { purchasePrice: 1 }; break;
+      case "most-worn": sort = { wearCount: -1 }; break;
+      case "least-worn": sort = { wearCount: 1 }; break;
+      case "last-worn": sort = { lastWorn: -1 }; break;
     }
   }
 
-  return db.select().from(clothingItems).where(and(...conditions)).orderBy(orderBy);
+  const docs = await ClothingItemModel.find(filter).sort(sort).lean();
+  return toPlainArray(docs);
 }
 
 export async function getItemById(id: string, userId: string) {
-  const [item] = await db
-    .select()
-    .from(clothingItems)
-    .where(and(eq(clothingItems.id, id), eq(clothingItems.userId, userId), isNull(clothingItems.deletedAt)));
-  return item ?? null;
+  await connectToDatabase();
+  const doc = await ClothingItemModel.findOne({ _id: id, userId, deletedAt: null }).lean();
+  return toPlain(doc);
 }
 
 export async function updateItem(id: string, userId: string, input: Partial<CreateItemInput>) {
-  const [item] = await db
-    .update(clothingItems)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(clothingItems.id, id), eq(clothingItems.userId, userId)))
-    .returning();
-  return item ?? null;
+  await connectToDatabase();
+  const doc = await ClothingItemModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function deleteItem(id: string, userId: string) {
-  const [item] = await db
-    .update(clothingItems)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(clothingItems.id, id), eq(clothingItems.userId, userId), isNull(clothingItems.deletedAt)))
-    .returning();
-  return item ?? null;
+  await connectToDatabase();
+  const doc = await ClothingItemModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { deletedAt: new Date(), updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function getDashboardStats(userId: string) {
-  const items = await db
-    .select()
-    .from(clothingItems)
-    .where(and(eq(clothingItems.userId, userId), isNull(clothingItems.deletedAt)));
+  await connectToDatabase();
+  const items = await ClothingItemModel.find({ userId, deletedAt: null }).lean();
 
   const totalItems = items.length;
-  const favoriteItems = items.filter(i => i.isFavorite).length;
-  const needsLaundry = items.filter(i => i.laundryStatus !== "ready").length;
-  const totalValue = items.reduce((sum, i) => sum + (parseFloat(i.currentValue || "0")), 0);
-  const totalSpent = items.reduce((sum, i) => sum + (parseFloat(i.purchasePrice || "0")), 0);
+  const favoriteItems = items.filter((i: any) => i.isFavorite).length;
+  const needsLaundry = items.filter((i: any) => i.laundryStatus !== "ready").length;
+  const totalValue = items.reduce((sum: number, i: any) => sum + (parseFloat(i.currentValue || "0")), 0);
+  const totalSpent = items.reduce((sum: number, i: any) => sum + (parseFloat(i.purchasePrice || "0")), 0);
+
   const categoryBreakdown: Record<string, number> = {};
   const brandCount: Record<string, number> = {};
   let totalWearCount = 0;
@@ -101,7 +113,7 @@ export async function getDashboardStats(userId: string) {
   for (const item of items) {
     categoryBreakdown[item.category] = (categoryBreakdown[item.category] || 0) + 1;
     if (item.brand) brandCount[item.brand] = (brandCount[item.brand] || 0) + 1;
-    totalWearCount += item.wearCount;
+    totalWearCount += item.wearCount ?? 0;
   }
 
   const topBrands = Object.entries(brandCount)
@@ -109,8 +121,14 @@ export async function getDashboardStats(userId: string) {
     .slice(0, 5)
     .map(([brand, count]) => ({ brand, count }));
 
-  const recentlyAdded = items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 8);
-  const mostWorn = items.sort((a, b) => b.wearCount - a.wearCount).slice(0, 8);
+  const recentlyAdded = items
+    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 8)
+    .map(toPlain);
+  const mostWorn = items
+    .sort((a: any, b: any) => (b.wearCount ?? 0) - (a.wearCount ?? 0))
+    .slice(0, 8)
+    .map(toPlain);
 
   return {
     totalItems,

@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       overview: mediaDetail.overview ?? null,
       posterPath: mediaDetail.poster_path,
       backdropPath: mediaDetail.backdrop_path,
-      releaseDate: mediaDetail.release_date || mediaDetail.first_air_date ? new Date(mediaDetail.release_date ?? mediaDetail.first_air_date!) : null,
+      releaseDate: mediaDetail.release_date || mediaDetail.first_air_date ? new Date(mediaDetail.release_date ?? mediaDetail.first_air_date!) : undefined,
       genres: (mediaDetail.genres ?? []).map((g: any) => g.name),
       voteAverage: mediaDetail.vote_average ?? null,
       runtime: mediaDetail.runtime ?? null,

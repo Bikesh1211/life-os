@@ -71,7 +71,7 @@ export async function GET(
     const tracks = await repo.getTracksByAlbum(album.id);
     const rating = await repo.getRatingByEntity(userId, "album", album.id);
     const favorite = await repo.getFavoritesByType(userId, "album");
-    const isFavorited = favorite.some((f) => f.entityId === album.id);
+    const isFavorited = favorite.some((f: any) => f.entityId === album.id);
 
     return NextResponse.json({
       id: album.id,
@@ -83,7 +83,7 @@ export async function GET(
       releaseDate: album.releaseDate?.toISOString() ?? null,
       totalTracks: album.totalTracks ?? tracks.length,
       isFavorited,
-      tracks: tracks.map((t) => ({
+      tracks: tracks.map((t: any) => ({
         id: t.id,
         spotifyId: t.spotifyId,
         title: t.title,

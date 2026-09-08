@@ -1,84 +1,177 @@
-import { db } from "@/core/database";
-import { goals, goalMilestones } from "./schema";
-import { eq, and, isNull, asc, inArray, desc, count, sql } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { Goal as GoalModel, GoalMilestone as GoalMilestoneModel } from "@/lib/models/goals";
 
-export type Goal = typeof goals.$inferSelect;
-export type CreateGoalInput = typeof goals.$inferInsert;
-export type GoalMilestone = typeof goalMilestones.$inferSelect;
-export type CreateMilestoneInput = typeof goalMilestones.$inferInsert;
+export type Goal = {
+  id: string;
+  userId: string;
+  title: string;
+  description: string | null;
+  type: string;
+  deadline: Date | null;
+  progress: number;
+  status: string;
+  category: string | null;
+  tags: string[];
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+};
+
+export type CreateGoalInput = {
+  userId: string;
+  title: string;
+  description?: string | null;
+  type?: string;
+  deadline?: Date | null;
+  progress?: number;
+  status?: string;
+  category?: string | null;
+  tags?: string[];
+};
+
+export type GoalMilestone = {
+  id: string;
+  goalId: string;
+  title: string;
+  completed: boolean;
+  order: number;
+  targetDate: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateMilestoneInput = {
+  goalId: string;
+  title: string;
+  completed?: boolean;
+  order?: number;
+  targetDate?: Date | null;
+};
 
 export const allowedGoalTypes = ["long-term", "short-term"] as const;
 export const allowedGoalStatuses = ["draft", "active", "completed", "cancelled"] as const;
 
+function mapGoal(doc: any): Goal {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    title: doc.title,
+    description: doc.description ?? null,
+    type: doc.type,
+    deadline: doc.deadline ?? null,
+    progress: doc.progress,
+    status: doc.status,
+    category: doc.category ?? null,
+    tags: doc.tags ?? [],
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+    deletedAt: doc.deletedAt ?? null,
+  };
+}
+
+function mapMilestone(doc: any): GoalMilestone {
+  return {
+    id: doc._id.toString(),
+    goalId: doc.goalId,
+    title: doc.title,
+    completed: doc.completed,
+    order: doc.order,
+    targetDate: doc.targetDate ?? null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
+
 export async function getGoals(userId: string, status?: string, type?: string) {
-  const conditions = [eq(goals.userId, userId), isNull(goals.deletedAt)];
-  if (status) conditions.push(eq(goals.status, status as any));
-  if (type) conditions.push(eq(goals.type, type));
-  return db
-    .select()
-    .from(goals)
-    .where(and(...conditions))
-    .orderBy(desc(goals.createdAt));
+  await connectToDatabase();
+  const filter: any = { userId, deletedAt: null };
+  if (status) filter.status = status;
+  if (type) filter.type = type;
+
+  const docs = await GoalModel.find(filter)
+    .sort({ createdAt: -1 })
+    .lean();
+  return docs.map(mapGoal);
 }
 
 export async function getGoalById(userId: string, goalId: string) {
-  const result = await db
-    .select()
-    .from(goals)
-    .where(and(eq(goals.id, goalId), eq(goals.userId, userId), isNull(goals.deletedAt)))
-    .limit(1);
-  return result[0] ?? null;
+  await connectToDatabase();
+  const doc = await GoalModel.findOne({
+    _id: goalId,
+    userId,
+    deletedAt: null,
+  }).lean();
+  return doc ? mapGoal(doc) : null;
 }
 
 export async function createGoal(input: CreateGoalInput) {
-  const result = await db.insert(goals).values(input).returning();
-  return result[0];
+  await connectToDatabase();
+  const doc = await GoalModel.create({
+    userId: input.userId,
+    title: input.title,
+    description: input.description ?? undefined,
+    type: input.type ?? "short-term",
+    deadline: input.deadline ?? undefined,
+    progress: input.progress ?? 0,
+    status: input.status ?? "draft",
+    category: input.category ?? undefined,
+    tags: input.tags ?? [],
+  } as any);
+  return mapGoal(doc.toObject());
 }
 
 export async function updateGoal(userId: string, goalId: string, input: Partial<CreateGoalInput>) {
-  const result = await db
-    .update(goals)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(goals.id, goalId), eq(goals.userId, userId)))
-    .returning();
-  return result[0] ?? null;
+  await connectToDatabase();
+  const doc = await GoalModel.findOneAndUpdate(
+    { _id: goalId, userId },
+    { $set: { ...input, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapGoal(doc) : null;
 }
 
 export async function deleteGoal(userId: string, goalId: string) {
-  const result = await db
-    .update(goals)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(goals.id, goalId), eq(goals.userId, userId)))
-    .returning();
-  return result[0] ?? null;
+  await connectToDatabase();
+  const doc = await GoalModel.findOneAndUpdate(
+    { _id: goalId, userId },
+    { $set: { deletedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapGoal(doc) : null;
 }
 
 /**
- * Restricts a milestone query to milestones hanging off a goal the user owns.
- * Applied as a subquery so ownership is enforced inside the same statement as
- * the read/write — there is no window between check and use.
+ * Returns the set of goal IDs owned by a user, used to enforce ownership
+ * on milestone queries.
  */
-function ownedByUser(userId: string) {
-  return inArray(
-    goalMilestones.goalId,
-    db
-      .select({ id: goals.id })
-      .from(goals)
-      .where(and(eq(goals.userId, userId), isNull(goals.deletedAt))),
-  );
+async function getOwnedGoalIds(userId: string): Promise<string[]> {
+  const goals = await GoalModel.find({ userId, deletedAt: null })
+    .select({ _id: 1 })
+    .lean();
+  return goals.map((g: any) => g._id.toString());
 }
 
 export async function getMilestones(goalId: string, userId: string) {
-  return db
-    .select()
-    .from(goalMilestones)
-    .where(and(eq(goalMilestones.goalId, goalId), ownedByUser(userId)))
-    .orderBy(asc(goalMilestones.order));
+  await connectToDatabase();
+  const ownedIds = await getOwnedGoalIds(userId);
+  if (!ownedIds.includes(goalId)) return [];
+
+  const docs = await GoalMilestoneModel.find({ goalId })
+    .sort({ order: 1 })
+    .lean();
+  return docs.map(mapMilestone);
 }
 
 export async function createMilestone(input: CreateMilestoneInput) {
-  const result = await db.insert(goalMilestones).values(input).returning();
-  return result[0];
+  await connectToDatabase();
+  const doc = await GoalMilestoneModel.create({
+    goalId: input.goalId,
+    title: input.title,
+    completed: input.completed ?? false,
+    order: input.order ?? 0,
+    targetDate: input.targetDate ?? undefined,
+  } as any);
+  return mapMilestone(doc.toObject());
 }
 
 export async function updateMilestone(
@@ -86,37 +179,48 @@ export async function updateMilestone(
   userId: string,
   input: Partial<CreateMilestoneInput>,
 ) {
-  const result = await db
-    .update(goalMilestones)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(goalMilestones.id, milestoneId), ownedByUser(userId)))
-    .returning();
-  return result[0] ?? null;
+  await connectToDatabase();
+  const ownedIds = await getOwnedGoalIds(userId);
+
+  const milestone = await GoalMilestoneModel.findOne({ _id: milestoneId }).lean();
+  if (!milestone || !ownedIds.includes(milestone.goalId.toString())) return null;
+
+  const doc = await GoalMilestoneModel.findOneAndUpdate(
+    { _id: milestoneId },
+    { $set: { ...input, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapMilestone(doc) : null;
 }
 
 export async function deleteMilestone(milestoneId: string, userId: string) {
-  const result = await db
-    .delete(goalMilestones)
-    .where(and(eq(goalMilestones.id, milestoneId), ownedByUser(userId)))
-    .returning();
-  return result[0] ?? null;
+  await connectToDatabase();
+  const ownedIds = await getOwnedGoalIds(userId);
+
+  const milestone = await GoalMilestoneModel.findOne({ _id: milestoneId }).lean();
+  if (!milestone || !ownedIds.includes(milestone.goalId.toString())) return null;
+
+  const doc = await GoalMilestoneModel.findOneAndDelete({ _id: milestoneId });
+  return doc ? mapMilestone(doc.toObject()) : null;
 }
 
 export async function getGoalCounts(userId: string) {
-  const rows = await db
-    .select({
-      status: goals.status,
-      value: count(),
-    })
-    .from(goals)
-    .where(and(eq(goals.userId, userId), isNull(goals.deletedAt)))
-    .groupBy(goals.status);
+  await connectToDatabase();
+  const rows = await GoalModel.aggregate([
+    { $match: { userId, deletedAt: null } },
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
 
   let total = 0;
   const counts: Record<string, number> = {};
   for (const row of rows) {
-    counts[row.status as string] = Number(row.value);
-    total += Number(row.value);
+    counts[row._id] = row.count;
+    total += row.count;
   }
 
   return {
@@ -128,27 +232,24 @@ export async function getGoalCounts(userId: string) {
 }
 
 export async function getRecentGoals(userId: string, limit = 5) {
-  return db
-    .select()
-    .from(goals)
-    .where(and(eq(goals.userId, userId), isNull(goals.deletedAt)))
-    .orderBy(desc(goals.updatedAt))
-    .limit(limit);
+  await connectToDatabase();
+  const docs = await GoalModel.find({ userId, deletedAt: null })
+    .sort({ updatedAt: -1 })
+    .limit(limit)
+    .lean();
+  return docs.map(mapGoal);
 }
 
 export async function getOverdueGoals(userId: string, limit = 10) {
-  const now = new Date();
-  return db
-    .select()
-    .from(goals)
-    .where(
-      and(
-        eq(goals.userId, userId),
-        eq(goals.status, "active" as any),
-        isNull(goals.deletedAt),
-        sql`${goals.deadline} < now()`,
-      ),
-    )
-    .orderBy(asc(goals.deadline))
-    .limit(limit);
+  await connectToDatabase();
+  const docs = await GoalModel.find({
+    userId,
+    status: "active",
+    deletedAt: null,
+    deadline: { $lt: new Date() },
+  })
+    .sort({ deadline: 1 })
+    .limit(limit)
+    .lean();
+  return docs.map(mapGoal);
 }

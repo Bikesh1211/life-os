@@ -1,16 +1,4 @@
 export {
-  scripts,
-  scriptSections,
-  scriptCategories,
-  scriptVersions,
-  scriptPracticeSessions,
-  scriptQuestions,
-  scriptActionItems,
-  scriptChecklistItems,
-  scriptStructureTemplates,
-} from "./schema";
-
-export {
   createNewScript,
   getScripts,
   getScript,

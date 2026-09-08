@@ -1,17 +1,13 @@
 import { getJournalEntries } from "@/modules/journal";
 import { getMoodLogs } from "@/modules/wellness";
 import { getHeatmap } from "@/modules/habits";
-import { travelService } from "@/modules/travel";
 import { getEventsByDateRange } from "./repository";
-import type { TimelineEvent } from "./repository";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  travelTrips,
-  travelJournals as travelJournalsTable,
-  travelPhotos,
-  travelVisitedPlaces,
-} from "@/modules/travel/schema";
-import { db } from "@/core/database";
-import { eq, isNull, and, sql, asc } from "drizzle-orm";
+  TravelTripModel,
+  TravelJournalModel,
+  TravelPhotoModel,
+} from "@/lib/models/travel";
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -239,63 +235,51 @@ async function collectTravelData(
   const start = new Date(dateFrom);
   const end = new Date(dateTo);
 
-  // Trips overlapping the date range
-  const trips = await db
-    .select()
-    .from(travelTrips)
-    .where(
-      and(
-        eq(travelTrips.userId, userId),
-        isNull(travelTrips.deletedAt),
-        sql`${travelTrips.startDate} <= ${end.toISOString()}`,
-        sql`${travelTrips.endDate} >= ${start.toISOString()}`,
-      ),
-    );
+  await connectToDatabase();
+
+  const trips = await TravelTripModel.find({
+    userId,
+    deletedAt: null,
+    startDate: { $lte: end },
+    endDate: { $gte: start },
+  }).lean();
 
   for (const trip of trips) {
-    if (linkedKeys.has(`trip:${trip.id}`)) continue;
-    linkedKeys.add(`trip:${trip.id}`);
+    const tripId = trip._id.toString();
+    if (linkedKeys.has(`trip:${tripId}`)) continue;
+    linkedKeys.add(`trip:${tripId}`);
     const tripDate = toDateStr(trip.startDate ?? trip.createdAt);
     cards.push({
-      id: trip.id,
+      id: tripId,
       source: "travel",
       type: "trip",
       title: `Trip: ${trip.title}`,
-      description: `${trip.destination}${trip.country ? `, ${trip.country}` : ""}`,
+      description: trip.destination,
       timestamp: (trip.startDate ?? trip.createdAt).toISOString(),
       date: tripDate,
       metadata: {
         destination: trip.destination,
-        country: trip.country,
         status: trip.status,
         startDate: trip.startDate?.toISOString(),
         endDate: trip.endDate?.toISOString(),
         budget: trip.budget,
-        currency: trip.currency,
-        travelers: trip.travelers,
       },
     });
   }
 
-  // Travel journals in date range
-  const journals = await db
-    .select()
-    .from(travelJournalsTable)
-    .where(
-      and(
-        eq(travelJournalsTable.userId, userId),
-        isNull(travelJournalsTable.deletedAt),
-        sql`${travelJournalsTable.date} >= ${start.toISOString()}`,
-        sql`${travelJournalsTable.date} <= ${end.toISOString()}`,
-      ),
-    );
+  const journals = await TravelJournalModel.find({
+    userId,
+    deletedAt: null,
+    date: { $gte: start, $lte: end },
+  }).lean();
 
   for (const journal of journals) {
-    if (linkedKeys.has(`travel_journal:${journal.id}`)) continue;
-    linkedKeys.add(`travel_journal:${journal.id}`);
+    const journalId = journal._id.toString();
+    if (linkedKeys.has(`travel_journal:${journalId}`)) continue;
+    linkedKeys.add(`travel_journal:${journalId}`);
     const date = journal.date ? toDateStr(journal.date) : toDateStr(journal.createdAt);
     cards.push({
-      id: journal.id,
+      id: journalId,
       source: "travel",
       type: "travel_journal",
       title: journal.title,
@@ -305,46 +289,36 @@ async function collectTravelData(
       metadata: {
         location: journal.location,
         mood: journal.mood,
-        favoriteMoment: journal.favoriteMoment,
-        foodTried: journal.foodTried,
       },
     });
   }
 
-  // Photos in date range
-  const photos = await db
-    .select()
-    .from(travelPhotos)
-    .where(
-      and(
-        eq(travelPhotos.userId, userId),
-        isNull(travelPhotos.deletedAt),
-        sql`${travelPhotos.dateTaken} >= ${start.toISOString()}`,
-        sql`${travelPhotos.dateTaken} <= ${end.toISOString()}`,
-      ),
-    );
+  const photos = await TravelPhotoModel.find({
+    userId,
+    deletedAt: null,
+    date: { $gte: start, $lte: end },
+  }).lean();
 
   for (const photo of photos) {
-    if (linkedKeys.has(`photo:${photo.id}`)) continue;
-    linkedKeys.add(`photo:${photo.id}`);
-    const date = photo.dateTaken
-      ? toDateStr(photo.dateTaken)
+    const photoId = photo._id.toString();
+    if (linkedKeys.has(`photo:${photoId}`)) continue;
+    linkedKeys.add(`photo:${photoId}`);
+    const date = photo.date
+      ? toDateStr(photo.date)
       : toDateStr(photo.createdAt);
     cards.push({
-      id: photo.id,
+      id: photoId,
       source: "travel",
       type: "photo",
       title: photo.caption ?? "Photo",
       description: photo.location ?? undefined,
-      timestamp: (photo.dateTaken ?? photo.createdAt).toISOString(),
+      timestamp: (photo.date ?? photo.createdAt).toISOString(),
       date,
       metadata: {
         url: photo.url,
-        thumbnail: photo.thumbnail,
         caption: photo.caption,
         location: photo.location,
         tags: photo.tags,
-        album: photo.album,
       },
     });
   }
@@ -359,10 +333,8 @@ export async function getStory(params: GetStoryParams): Promise<StoryDay[]> {
   const startDate = new Date(dateFrom);
   const endDate = new Date(dateTo);
 
-  // Track linked entities to deduplicate
   const linkedKeys = new Set<string>();
 
-  // Gather cards from all active sources
   const allCards: StoryCard[] = [];
   const sourceSet = sources
     ? new Set<StoryCardSource>(sources)
@@ -391,13 +363,11 @@ export async function getStory(params: GetStoryParams): Promise<StoryDay[]> {
     allCards.push(...cards);
   }
 
-  // Apply keyword filter
   let filtered = allCards;
   if (keyword) {
     filtered = applyKeywordFilter(allCards, keyword);
   }
 
-  // Group by day
   const dayMap = new Map<string, StoryCard[]>();
   for (const card of filtered) {
     const existing = dayMap.get(card.date);
@@ -408,7 +378,6 @@ export async function getStory(params: GetStoryParams): Promise<StoryDay[]> {
     }
   }
 
-  // Build sorted days
   const days: StoryDay[] = [];
   for (const [date, cards] of dayMap) {
     cards.sort(

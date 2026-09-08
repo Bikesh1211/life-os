@@ -844,7 +844,7 @@ export function WellnessDashboard({
         />
         <SummaryCard
           title="Heart Rate"
-          value={latestHr ? `${latestHr.average ?? latestHr.resting ?? "—"} bpm` : "—"}
+          value={latestHr ? `${latestHr.bpm} bpm` : "—"}
           subtitle={recentHr.length > 0 ? `${recentHr.length} recordings` : "No data"}
           icon={IconActivity}
           color="grape"
@@ -888,7 +888,7 @@ export function WellnessDashboard({
               return (
                 <Paper key={goal.id} withBorder p="sm">
                   <Group justify="space-between" mb={4}>
-                    <Text size="sm" fw={500}>{goal.title}</Text>
+                    <Text size="sm" fw={500}>{goal.goalType}</Text>
                     <Badge size="sm" color={progress >= 100 ? "teal" : "blue"}>
                       {Number(goal.currentValue)}/{Number(goal.targetValue)} {goal.unit}
                     </Badge>

@@ -1,4 +1,3 @@
-export { notes, noteTags, noteFolders, noteLinks } from "./schema";
 export {
   createNoteEntry,
   getNote,

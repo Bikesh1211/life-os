@@ -104,7 +104,7 @@ export function MedicinesContent({
                   <Table.Td><Text fw={500}>{r.name}</Text></Table.Td>
                   <Table.Td>{r.dosage}</Table.Td>
                   <Table.Td><Badge>{r.frequency}</Badge></Table.Td>
-                  <Table.Td>{r.time}</Table.Td>
+                  <Table.Td>{r.times[0] ?? "—"}</Table.Td>
                   <Table.Td>
                     <Switch checked={r.isActive} onChange={() => handleToggle(r.id, r.isActive)} size="xs" />
                   </Table.Td>
@@ -134,13 +134,13 @@ export function MedicinesContent({
             <Table.Tbody>
               {recentLogs.slice(0, 20).map((l) => (
                 <Table.Tr key={l.id}>
-                  <Table.Td>{new Date(l.date || l.createdAt).toLocaleDateString()}</Table.Td>
+                  <Table.Td>{new Date(l.takenAt || l.createdAt).toLocaleDateString()}</Table.Td>
                   <Table.Td>
-                    <Badge color={l.status === "taken" ? "green" : l.status === "skipped" ? "red" : "yellow"}>
-                      {l.status}
+                    <Badge color={l.name ? "green" : "yellow"}>
+                      {l.name ? "taken" : "logged"}
                     </Badge>
                   </Table.Td>
-                  <Table.Td>{l.scheduledTime}</Table.Td>
+                  <Table.Td>{l.dosage ?? "—"}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

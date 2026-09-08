@@ -1,11 +1,4 @@
 export {
-  readingItems,
-  readingAnnotations,
-  readingNotes,
-  readingSessions,
-} from "./schema";
-
-export {
   createReadingItem,
   getReadingItems,
   getReadingItem,

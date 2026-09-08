@@ -52,6 +52,20 @@ import { notifications } from "@mantine/notifications";
 import type { ReadingItem, OpenLibraryBook } from "@/modules/reading";
 import { apiFetch, toSearchParams } from "@/core/api/http";
 
+// ─── Extended types (Mongoose model has fields the TS type doesn't declare) ──
+
+type ReadingItemUI = ReadingItem & {
+  authors?: string[];
+  pageCount?: number;
+  isFavorited?: boolean;
+  subtitle?: string;
+  description?: string;
+  publisher?: string;
+  publishedYear?: number;
+  language?: string;
+  lastOpenedAt?: string;
+};
+
 // ─── Types ────────────────────────────────────────────────────────
 
 type DashboardData = {
@@ -63,13 +77,19 @@ type DashboardData = {
   pagesRead: number;
   hoursRead: number;
   totalQuotes: number;
-  currentlyReading: ReadingItem[];
+  currentlyReading: ReadingItemUI[];
   currentlyReadingCount: number;
 };
 
 type ViewMode = "grid" | "list" | "compact";
 
 // ─── Helpers ──────────────────────────────────────────────────────
+
+function getAuthors(item: ReadingItemUI): string[] {
+  if (item.authors && item.authors.length > 0) return item.authors;
+  if (item.author) return [item.author];
+  return [];
+}
 
 const TYPE_LABELS: Record<string, string> = {
   book: "Book",
@@ -179,7 +199,7 @@ function StatCard({ icon: Icon, value, label }: { icon: React.ElementType; value
 
 // ─── Currently Reading ────────────────────────────────────────────
 
-function CurrentlyReading({ items }: { items: ReadingItem[] }) {
+function CurrentlyReading({ items }: { items: ReadingItemUI[] }) {
   if (items.length === 0) return null;
 
   return (
@@ -201,7 +221,7 @@ function CurrentlyReading({ items }: { items: ReadingItem[] }) {
               )}
               <Box style={{ flex: 1, minWidth: 0 }}>
                 <Text fw={600} size="sm" lineClamp={2}>{item.title}</Text>
-                <Text size="xs" c="dimmed">{item.authors?.[0]}</Text>
+                <Text size="xs" c="dimmed">{getAuthors(item)[0]}</Text>
                 {item.pageCount && item.pageCount > 0 && (
                   <Group gap={4} mt={4}>
                     <Progress
@@ -233,11 +253,11 @@ function ReadingCard({
   onDelete,
   onToggleFavorite,
 }: {
-  item: ReadingItem;
+  item: ReadingItemUI;
   viewMode: ViewMode;
-  onEdit: (item: ReadingItem) => void;
+  onEdit: (item: ReadingItemUI) => void;
   onDelete: (id: string) => void;
-  onToggleFavorite: (item: ReadingItem) => void;
+  onToggleFavorite: (item: ReadingItemUI) => void;
 }) {
   const progress = item.pageCount && item.pageCount > 0
     ? Math.round(((item.currentPage ?? 0) / item.pageCount) * 100)
@@ -248,7 +268,7 @@ function ReadingCard({
       <Group gap="sm" py={6} px="sm" className="hover:bg-[var(--mantine-color-dark-6)] rounded-md transition-colors">
         <Badge size="sm" color={STATUS_COLORS[item.status]} variant="dot" />
         <Text size="sm" fw={500} style={{ flex: 1 }} lineClamp={1}>{item.title}</Text>
-        <Text size="xs" c="dimmed" className="tabular-nums">{item.authors?.[0]}</Text>
+        <Text size="xs" c="dimmed" className="tabular-nums">{getAuthors(item)[0]}</Text>
         {progress > 0 && <Text size="xs" c="dimmed" className="tabular-nums">{progress}%</Text>}
         <ActionIcon variant="subtle" size="sm" onClick={() => onToggleFavorite(item)}>
           {item.isFavorited ? <IconHeartFilled size={14} className="text-red-500" /> : <IconHeart size={14} />}
@@ -277,8 +297,8 @@ function ReadingCard({
               </Badge>
             </Group>
             <Text fw={600} size="sm" lineClamp={1}>{item.title}</Text>
-            {item.authors && item.authors.length > 0 && (
-              <Text size="xs" c="dimmed">{item.authors.join(", ")}</Text>
+            {getAuthors(item).length > 0 && (
+              <Text size="xs" c="dimmed">{getAuthors(item).join(", ")}</Text>
             )}
             {progress > 0 && (
               <Group gap={4} mt={4}>
@@ -329,8 +349,8 @@ function ReadingCard({
       <Text fw={600} size="sm" lineClamp={2} mt={4}>
         {item.title}
       </Text>
-      {item.authors && item.authors.length > 0 && (
-        <Text size="xs" c="dimmed" lineClamp={1}>{item.authors.join(", ")}</Text>
+      {getAuthors(item).length > 0 && (
+        <Text size="xs" c="dimmed" lineClamp={1}>{getAuthors(item).join(", ")}</Text>
       )}
 
       {progress > 0 && (
@@ -364,7 +384,7 @@ function AddItemModal({
 }: {
   opened: boolean;
   onClose: () => void;
-  onCreated: (item: ReadingItem) => void;
+  onCreated: (item: ReadingItemUI) => void;
 }) {
   const [type, setType] = useState<string>("book");
   const [title, setTitle] = useState("");
@@ -406,7 +426,7 @@ function AddItemModal({
       if (pageCount) body.pageCount = parseInt(pageCount, 10);
       if (coverUrl) body.coverUrl = coverUrl;
 
-      const item = await apiFetch<ReadingItem>("/api/reading/items", {
+      const item = await apiFetch<ReadingItemUI>("/api/reading/items", {
         method: "POST",
         body: JSON.stringify(body),
       });
@@ -567,12 +587,12 @@ function EditItemModal({
   onClose,
   onUpdated,
 }: {
-  item: ReadingItem;
+  item: ReadingItemUI;
   onClose: () => void;
-  onUpdated: (item: ReadingItem) => void;
+  onUpdated: (item: ReadingItemUI) => void;
 }) {
   const [title, setTitle] = useState(item.title);
-  const [authors, setAuthors] = useState(item.authors?.join(", ") ?? "");
+  const [authors, setAuthors] = useState(getAuthors(item).join(", "));
   const [status, setStatus] = useState<string>(item.status);
   const [pageCount, setPageCount] = useState(String(item.pageCount ?? ""));
   const [currentPage, setCurrentPage] = useState(String(item.currentPage ?? ""));
@@ -595,7 +615,7 @@ function EditItemModal({
       if (isbn) body.isbn = isbn;
       if (coverUrl) body.coverUrl = coverUrl;
 
-      const updated = await apiFetch<ReadingItem>(`/api/reading/items/${item.id}`, {
+      const updated = await apiFetch<ReadingItemUI>(`/api/reading/items/${item.id}`, {
         method: "PUT",
         body: JSON.stringify(body),
       });
@@ -671,7 +691,7 @@ function EditItemModal({
 
 export function LibraryContent({ initialDashboard }: Props) {
   const [dashboard, setDashboard] = useState(initialDashboard);
-  const [items, setItems] = useState<ReadingItem[]>([]);
+  const [items, setItems] = useState<ReadingItemUI[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string | null>("all");
   const [search, setSearch] = useState("");
@@ -679,7 +699,7 @@ export function LibraryContent({ initialDashboard }: Props) {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [addOpened, { open: openAdd, close: closeAdd }] = useDisclosure(false);
-  const [editingItem, setEditingItem] = useState<ReadingItem | null>(null);
+  const [editingItem, setEditingItem] = useState<ReadingItemUI | null>(null);
 
   const TAB_MAP: Record<string, { type?: string; label: string; icon: React.ReactNode }> = {
     all: { label: "All", icon: <IconBooks size={14} /> },
@@ -693,7 +713,7 @@ export function LibraryContent({ initialDashboard }: Props) {
     setLoading(true);
     try {
       const tab = TAB_MAP[activeTab ?? "all"];
-      const data = await apiFetch<ReadingItem[]>(
+      const data = await apiFetch<ReadingItemUI[]>(
         `/api/reading/items${toSearchParams({ type: tab?.type, search, status: statusFilter, sortBy, limit: 100 })}`,
       );
       setItems(data);
@@ -706,7 +726,7 @@ export function LibraryContent({ initialDashboard }: Props) {
     fetchItems();
   }, [fetchItems]);
 
-  const handleCreated = (item: ReadingItem) => {
+  const handleCreated = (item: ReadingItemUI) => {
     setItems((prev) => [item, ...prev]);
     if (dashboard) {
       setDashboard({
@@ -727,7 +747,7 @@ export function LibraryContent({ initialDashboard }: Props) {
     notifications.show({ title: "Deleted", message: "Item removed from library", color: "red" });
   };
 
-  const handleToggleFavorite = async (item: ReadingItem) => {
+  const handleToggleFavorite = async (item: ReadingItemUI) => {
     await apiFetch(`/api/reading/items/${item.id}`, {
       method: "PUT",
       body: JSON.stringify({ isFavorited: !item.isFavorited }),
@@ -735,11 +755,11 @@ export function LibraryContent({ initialDashboard }: Props) {
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, isFavorited: !i.isFavorited } : i)));
   };
 
-  const handleEdit = (item: ReadingItem) => {
+  const handleEdit = (item: ReadingItemUI) => {
     setEditingItem(item);
   };
 
-  const handleUpdated = (updated: ReadingItem) => {
+  const handleUpdated = (updated: ReadingItemUI) => {
     setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
     if (dashboard) {
       setDashboard((prev) => prev ? { ...prev } : prev);

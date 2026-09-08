@@ -35,20 +35,20 @@ export async function syncMediaFromTmdb(tmdbId: string, mediaType: "movie" | "tv
     tmdbId: String(data.id),
     mediaType: data.media_type,
     title: data.title ?? data.name ?? "",
-    overview: data.overview ?? null,
-    posterPath: data.poster_path,
-    backdropPath: data.backdrop_path,
-    releaseDate: data.release_date || data.first_air_date ? new Date(data.release_date ?? data.first_air_date!) : null,
+    overview: data.overview ?? undefined,
+    posterPath: data.poster_path ?? undefined,
+    backdropPath: data.backdrop_path ?? undefined,
+    releaseDate: data.release_date || data.first_air_date ? new Date(data.release_date ?? data.first_air_date!) : undefined,
     genres: [],
-    voteAverage: data.vote_average ?? null,
-    episodeRuntime: null, seasons: null, episodes: null,
+    voteAverage: data.vote_average ?? undefined,
+    episodeRuntime: undefined, seasons: undefined, episodes: undefined,
   });
 }
 
 // === FAVORITES ===
 export async function toggleFavorite(userId: string, mediaId: string) {
   const existing = await repo.getFavorites(userId);
-  const found = existing.find((f) => f.mediaId === mediaId);
+  const found = existing.find((f: any) => f.mediaId === mediaId);
   if (found) {
     await repo.removeFavorite(userId, mediaId);
     return { favorited: false };
@@ -67,18 +67,18 @@ export async function createMemory(userId: string, params: z.infer<typeof create
   const validated = createMemorySchema.parse(params);
   return repo.createMemory({
     userId,
-    mediaId: validated.mediaId ?? null,
-    watchedWith: validated.watchedWith ?? null,
-    location: validated.location ?? null,
-    mood: validated.mood ?? null,
+    mediaId: validated.mediaId ?? undefined,
+    watchedWith: validated.watchedWith ?? undefined,
+    location: validated.location ?? undefined,
+    mood: validated.mood ?? undefined,
     contextText: validated.contextText,
     photoUrls: validated.photoUrls ?? [],
     ticketUrls: validated.ticketUrls ?? [],
     screenshotUrls: validated.screenshotUrls ?? [],
     tags: validated.tags ?? [],
-    watchDate: validated.watchDate ? new Date(validated.watchDate) : null,
-    linkedEventId: validated.linkedEventId ?? null,
-    title: validated.title ?? null,
+    watchDate: validated.watchDate ? new Date(validated.watchDate) : undefined,
+    linkedEventId: validated.linkedEventId ?? undefined,
+    title: validated.title ?? undefined,
   });
 }
 
@@ -92,13 +92,13 @@ export async function searchMedia(query: string) {
         tmdbId: String(r.id),
         mediaType: r.media_type,
         title: r.title ?? r.name ?? "",
-        overview: r.overview ?? null,
-        posterPath: r.poster_path,
-        backdropPath: r.backdrop_path,
-        releaseDate: r.release_date || r.first_air_date ? new Date(r.release_date ?? r.first_air_date!) : null,
+        overview: r.overview ?? undefined,
+        posterPath: r.poster_path ?? undefined,
+        backdropPath: r.backdrop_path ?? undefined,
+        releaseDate: r.release_date || r.first_air_date ? new Date(r.release_date ?? r.first_air_date!) : undefined,
         genres: [],
-        voteAverage: r.vote_average ?? null,
-        runtime: null, episodeRuntime: null, seasons: null, episodes: null,
+        voteAverage: r.vote_average ?? undefined,
+        runtime: undefined, episodeRuntime: undefined, seasons: undefined, episodes: undefined,
       }),
     ),
   );
@@ -109,12 +109,12 @@ export async function searchPeople(query: string) {
   const local = await repo.searchLocalPeople(query);
   if (local.length > 0) return local;
   const results = await tmdb.searchPeople(query);
-  return Promise.all(
-    results.map((r) => repo.upsertPerson({
+    return Promise.all(
+    results.map((r: any) => repo.upsertPerson({
       tmdbId: String(r.id),
       name: r.name,
-      profilePath: r.profile_path,
-      knownForDepartment: r.known_for_department ?? null,
+      profilePath: r.profile_path ?? undefined,
+      knownForDepartment: r.known_for_department ?? undefined,
     })),
   );
 }

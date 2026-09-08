@@ -21,9 +21,9 @@ async function hydrateMedia(memories: any[]) {
     if (parsed && !mediaIdToMemory.has(parsed.tmdbId)) mediaIdToMemory.set(parsed.tmdbId, parsed);
   }
   const mediaRows = await repo.getMediaByTmdbIds([...mediaIdToMemory.keys()]);
-  const mediaByTmdbId = new Map(mediaRows.map((m) => [m.tmdbId, m]));
+  const mediaByTmdbId = new Map<string, any>(mediaRows.map((m: any) => [m.tmdbId, m]));
 
-  return memories.map((memory) => {
+  return memories.map((memory: any) => {
     if (!memory.mediaId) return { ...memory, mediaTitle: null, mediaPosterUrl: null };
     const parsed = parseCompositeId(memory.mediaId);
     if (!parsed) return { ...memory, mediaTitle: null, mediaPosterUrl: null };

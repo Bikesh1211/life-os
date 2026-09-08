@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   if (!collection) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const hydratedItems = await Promise.all(
-    items.map(async (item) => {
+    items.map(async (item: any) => {
       const tmdbId = parseCompositeId(item.mediaId);
       if (!tmdbId) return { ...item, mediaTitle: null, mediaPosterUrl: null };
       const media = await repo.getMediaByTmdbId(tmdbId);

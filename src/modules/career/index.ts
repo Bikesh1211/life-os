@@ -1,17 +1,4 @@
 export {
-  careerProfile,
-  careerResumes,
-  careerResumeVersions,
-  jobApplications,
-  careerInterviewPrep,
-  careerCertifications,
-  portfolioProjects,
-  careerAchievements,
-  careerSalaryRecords,
-  applicationStatusEnum,
-} from "./schema";
-
-export {
   getProfile,
   upsertProfile,
   getResumes,

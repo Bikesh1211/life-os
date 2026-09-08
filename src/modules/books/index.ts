@@ -1,21 +1,4 @@
 export {
-  books,
-  bookParts,
-  bookChapters,
-  bookVersions,
-  bookCollaborators,
-  bookComments,
-  bookReadingProgress,
-  bookBookmarks,
-  bookHighlights,
-  bookCharacters,
-  bookResearchNotes,
-  bookChapterCharacters,
-  bookChapterResearchNotes,
-  bookWritingSessions,
-} from "./schema";
-
-export {
   createNewBook,
   getBooks,
   getBook,

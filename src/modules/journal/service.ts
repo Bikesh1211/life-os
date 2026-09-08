@@ -1,6 +1,5 @@
 import { cache } from "react";
 import { z } from "zod";
-import { moodEnum } from "./schema";
 import {
   createEntry,
   getEntryById,
@@ -31,7 +30,7 @@ import {
 } from "./repository";
 import { createTimelineEvent } from "@/modules/timeline";
 
-const moodValues = moodEnum.enumValues;
+const moodValues = ["happy", "sad", "neutral", "anxious", "stressed", "motivated", "excited"] as const;
 
 export const createEntrySchema = z.object({
   title: z.string().min(1).max(300),

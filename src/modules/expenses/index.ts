@@ -1,4 +1,3 @@
-export { accounts, accountTypeEnum, expenseCategories, transactions, transactionTypeEnum, paymentMethodEnum, recurrenceEnum, tags, transactionTags, budgets, budgetPeriodEnum } from "./schema";
 export {
   createFinancialAccount,
   getFinancialAccounts,

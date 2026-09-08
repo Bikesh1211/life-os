@@ -1,48 +1,78 @@
-import { cache } from "react";
-import { redirect } from "next/navigation";
-import { createServerSupabaseClient } from "@/core/supabase/server";
-import { UnauthorizedError } from "@/core/errors";
+import jwt from "jsonwebtoken";
+import { cookies } from "next/headers";
+import { connectToDatabase } from "@/lib/mongodb";
+import { UserModel } from "@/lib/models/user";
 
-/**
- * Resolves the signed-in user for a server component, redirecting to sign-in
- * when there is none.
- *
- * Server components must not fall back to `getCurrentUserId()!`. A null id
- * asserted to string reaches Drizzle as `where user_id = NULL`, which matches
- * no rows — so an unauthenticated visitor renders a fully populated but empty
- * page instead of being sent to sign-in. The proxy lets requests through when
- * Supabase is unreachable, so this path is reachable in practice.
- */
-export async function requireAuth(): Promise<string> {
-  const userId = await getCurrentUserId();
-  if (!userId) redirect("/sign-in");
-  return userId;
+const JWT_SECRET = process.env.JWT_SECRET || process.env.AUTH_SECRET || "fallback-secret-change-me";
+const SESSION_COOKIE_NAME = "session_token";
+const SESSION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+
+export interface SessionPayload {
+  userId: string;
+  email: string;
 }
 
-/**
- * `supabase.auth.getUser()` is a network call to the Supabase auth server —
- * ~300ms measured from here. It was being made once in the proxy, again in the
- * page's `requireAuth()`, and again in every API route the page then calls, so
- * a single screen paid for it several times over with the identical answer.
- *
- * `cache()` scopes one call to one server request: every caller within a
- * request shares the first result, and the next request starts clean. It is
- * per-request memoisation, not a cache with a lifetime, so a signed-out or
- * swapped-over user is never served a previous request's identity.
- */
-export const getCurrentUserId = cache(async (): Promise<string | null> => {
+export function createSessionToken(payload: SessionPayload): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: SESSION_MAX_AGE });
+}
+
+export function verifySessionToken(token: string): SessionPayload | null {
   try {
-    const supabase = await createServerSupabaseClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    return user?.id ?? null;
+    return jwt.verify(token, JWT_SECRET) as SessionPayload;
   } catch {
     return null;
   }
-});
+}
+
+export async function setSessionCookie(payload: SessionPayload): Promise<string> {
+  const token = createSessionToken(payload);
+  const cookieStore = await cookies();
+  cookieStore.set(SESSION_COOKIE_NAME, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: SESSION_MAX_AGE,
+    path: "/",
+  });
+  return token;
+}
+
+export async function clearSessionCookie(): Promise<void> {
+  const cookieStore = await cookies();
+  cookieStore.delete(SESSION_COOKIE_NAME);
+}
+
+export async function getSessionFromCookies(): Promise<SessionPayload | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  if (!token) return null;
+  return verifySessionToken(token);
+}
+
+export async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const session = await getSessionFromCookies();
+    if (!session?.userId) return null;
+    await connectToDatabase();
+    const user = await UserModel.findById(session.userId).select("_id").lean();
+    return user?._id?.toString() ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function requireAuth(): Promise<string> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    const { redirect } = await import("next/navigation");
+    redirect("/sign-in");
+  }
+  return userId!;
+}
 
 export function requireUserId(userId: string | null): string {
   if (!userId) {
-    throw new UnauthorizedError();
+    throw new Error("Unauthorized");
   }
   return userId;
 }

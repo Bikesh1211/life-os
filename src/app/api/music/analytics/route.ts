@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/core/auth";
-import { db } from "@/core/database";
-import { eq, sql, count, desc } from "drizzle-orm";
-import { musicJournal, calculateStreak } from "@/modules/music";
+import { connectToDatabase } from "@/lib/mongodb";
+import { MusicJournalModel } from "@/lib/models";
+import { calculateStreak } from "@/modules/music";
 import * as repo from "@/modules/music/repository";
 
 export async function GET() {
@@ -10,25 +10,22 @@ export async function GET() {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    await connectToDatabase();
+
     const [topArtists, streaks, totalHours, yearlyStats, moodData] = await Promise.all([
       repo.getMostListenedArtists(userId),
       repo.getListeningStreaks(userId),
       repo.getTotalListeningHours(userId),
       repo.getYearlyListeningStats(userId, new Date().getFullYear()),
-      db
-        .select({
-          mood: musicJournal.mood,
-          count: count(),
-        })
-        .from(musicJournal)
-        .where(eq(musicJournal.userId, userId))
-        .groupBy(musicJournal.mood)
-        .orderBy(desc(count())),
+      MusicJournalModel.aggregate([
+        { $match: { userId } },
+        { $group: { _id: "$mood", count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+      ]),
     ]);
 
     const streakDates = streaks.map((s: any) => s.date);
 
-    // Today's stats
     const today = new Date().toISOString().slice(0, 10);
     const todayEntry = streaks.find((s: any) => s.date === today);
     const todayMinutes = Math.round((totalHours ?? 0) * 60);
@@ -56,11 +53,9 @@ export async function GET() {
         uniqueArtists: 0,
         uniqueAlbums: 0,
       },
-      moodData: moodData.map((m) => ({ mood: m.mood ?? "unset", count: Number(m.count) })),
+      moodData: moodData.map((m: any) => ({ mood: m._id ?? "unset", count: Number(m.count) })),
     });
   } catch {
     return NextResponse.json({ error: "Failed to fetch analytics" }, { status: 500 });
   }
 }
-
-

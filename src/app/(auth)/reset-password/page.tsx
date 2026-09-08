@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { useMantineColorScheme } from "@mantine/core";
-import { createBrowserSupabaseClient } from "@/core/supabase/browser";
 
 const cardVariants = {
   hidden: { opacity: 0, y: 20, scale: 0.97 },
@@ -16,13 +15,14 @@ const cardVariants = {
   },
 };
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const { colorScheme } = useMantineColorScheme();
   const isDark = mounted && colorScheme === "dark";
   const router = useRouter();
-  const supabase = createBrowserSupabaseClient();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
 
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -33,15 +33,31 @@ export default function ResetPasswordPage() {
     setError(null);
     setLoading(true);
 
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-
-    if (updateError) {
-      setError(updateError.message);
+    if (!token) {
+      setError("Invalid reset link");
       setLoading(false);
       return;
     }
 
-    router.push("/sign-in?reset=true");
+    try {
+      const res = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password, token }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to update password");
+        setLoading(false);
+        return;
+      }
+
+      router.push("/sign-in?reset=true");
+    } catch {
+      setError("Something went wrong");
+      setLoading(false);
+    }
   };
 
   return (
@@ -123,5 +139,17 @@ export default function ResetPasswordPage() {
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-sm text-[var(--mantine-color-dimmed)]">Loading...</p>
+      </div>
+    }>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }

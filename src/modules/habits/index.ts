@@ -1,4 +1,3 @@
-export { habits, habitCompletions, habitCategoryEnum, habitFrequencyEnum, habitFrequencyTypeEnum } from "./schema";
 export { habitCategories } from "./repository";
 export type { Habit, HabitCompletion, CreateHabitInput, CreateCompletionInput } from "./repository";
 export {

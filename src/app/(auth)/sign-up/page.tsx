@@ -5,12 +5,9 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { APP_NAME, APP_TAGLINE } from "@/core/constants";
-import { useSupabase } from "@/infrastructure/providers/supabase-provider";
 import { AuthCard } from "../_components/AuthCard";
 import { AuthInput } from "../_components/AuthInput";
 import { AuthButton } from "../_components/AuthButton";
-import { GoogleButton } from "../_components/GoogleButton";
-import { AuthDivider } from "../_components/AuthDivider";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -24,10 +21,10 @@ const fadeUp = {
 
 export default function SignUpPage() {
   const router = useRouter();
-  const { supabase } = useSupabase();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -35,31 +32,29 @@ export default function SignUpPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/api/auth/callback` },
-    });
-    if (signUpError) {
-      setError(signUpError.message);
-      setLoading(false);
-      return;
-    }
-    router.push("/sign-in?verified=true");
-  }, [email, password, router, supabase.auth]);
 
-  const handleGoogleSignUp = useCallback(async () => {
-    setError(null);
-    setLoading(true);
-    const { error: signInError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/api/auth/callback` },
-    });
-    if (signInError) {
-      setError(signInError.message);
+    try {
+      const res = await fetch("/api/auth/sign-up", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, fullName }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Failed to create account");
+        setLoading(false);
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
       setLoading(false);
     }
-  }, [supabase.auth]);
+  }, [email, password, fullName, router]);
 
   return (
     <motion.div
@@ -100,13 +95,23 @@ export default function SignUpPage() {
 
           <form onSubmit={handleEmailSignUp} className="space-y-4">
             <AuthInput
+              label="Full Name"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Your full name"
+              autoComplete="name"
+              autoFocus
+              required
+            />
+
+            <AuthInput
               label="Email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
-              autoFocus
               required
             />
 
@@ -126,10 +131,6 @@ export default function SignUpPage() {
               Create account
             </AuthButton>
           </form>
-
-          <AuthDivider />
-
-          <GoogleButton onClick={handleGoogleSignUp} loading={loading} />
 
           <p className="text-center text-sm text-[var(--mantine-color-dimmed)]">
             Already have an account?{" "}

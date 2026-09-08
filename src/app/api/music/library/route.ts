@@ -14,17 +14,17 @@ export async function GET(request: Request) {
 
   try {
     const library = await service.getLibrary(userId, limit, offset);
-    const trackIds = library.map((e) => e.trackId);
+    const trackIds = library.map((e: any) => e.trackId);
 
     const trackRows = await repo.getTracksByIds(trackIds);
     const artistIds = [...new Set(trackRows.map((t) => t.artistId))];
     const artistRows = await repo.getArtistsByIds(artistIds);
 
-    const trackById = new Map(trackRows.map((t) => [t.id, t]));
-    const artistById = new Map(artistRows.map((a) => [a.id, a]));
-    const addedAtByTrack = new Map(library.map((e) => [e.trackId, e.addedAt]));
+    const trackById = new Map<string, any>(trackRows.map((t: any) => [t.id, t]));
+    const artistById = new Map<string, any>(artistRows.map((a: any) => [a.id, a]));
+    const addedAtByTrack = new Map<string, Date>(library.map((e: any) => [e.trackId, e.addedAt]));
 
-    const tracks = library.map((entry) => {
+    const tracks = library.map((entry: any) => {
       const track = trackById.get(entry.trackId);
       if (!track) return null;
       const artist = artistById.get(track.artistId);

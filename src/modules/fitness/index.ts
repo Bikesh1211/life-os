@@ -1,25 +1,3 @@
-// Schema tables & enums
-export {
-  fitnessProfiles,
-  fitnessBodyMeasurements,
-  fitnessExerciseLibrary,
-  fitnessWorkoutPrograms,
-  fitnessProgramDays,
-  fitnessProgramExercises,
-  fitnessWorkoutSessions,
-  fitnessExerciseSets,
-  fitnessPersonalRecords,
-  genderEnum,
-  activityLevelEnum,
-  fitnessGoalEnum,
-  muscleGroupEnum,
-  equipmentEnum,
-  forceTypeEnum,
-  difficultyEnum,
-  workoutGoalEnum,
-  recordTypeEnum,
-} from "./schema";
-
 // Service functions
 export {
   getFitnessProfile,

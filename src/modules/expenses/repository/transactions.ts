@@ -1,13 +1,51 @@
-import { db } from "@/core/database";
-import { transactions } from "../schema/transactions";
-import { TRANSACTION_TYPES } from "../constants";
-import { eq, and, isNull, desc, asc, sql, inArray, gte, lte } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { Transaction as TransactionModel } from "@/lib/models/expenses";
 
-type TransactionType = typeof TRANSACTION_TYPES[number];
+type TransactionType = string;
 
-export type Transaction = typeof transactions.$inferSelect;
-export type CreateTransactionInput = typeof transactions.$inferInsert;
-export type UpdateTransactionInput = Partial<Omit<CreateTransactionInput, "id" | "userId">>;
+export type Transaction = {
+  id: string;
+  userId: string;
+  accountId?: string;
+  categoryId?: string;
+  type: string;
+  amount: number;
+  currency: string;
+  merchant?: string;
+  description?: string;
+  paymentMethod?: string;
+  transactionDate: Date;
+  location?: string;
+  isRecurring: boolean;
+  recurrence: string;
+  recurrenceEndDate?: Date;
+  attachments: string[];
+  notes?: string;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateTransactionInput = {
+  userId: string;
+  accountId?: string;
+  categoryId?: string;
+  type: string;
+  amount: number;
+  currency?: string;
+  merchant?: string;
+  description?: string;
+  paymentMethod?: string;
+  transactionDate: Date;
+  location?: string;
+  isRecurring?: boolean;
+  recurrence?: string;
+  recurrenceEndDate?: Date;
+  attachments?: string[];
+  notes?: string;
+};
+
+export type UpdateTransactionInput = Partial<Omit<CreateTransactionInput, "userId">>;
 
 export type TransactionFilters = {
   userId: string;
@@ -24,104 +62,182 @@ export type TransactionFilters = {
   offset?: number;
 };
 
-export async function createTransaction(input: CreateTransactionInput) {
-  const [transaction] = await db.insert(transactions).values(input).returning();
-  return transaction;
+function mapTransaction(doc: any): Transaction {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    accountId: doc.accountId?.toString?.(),
+    categoryId: doc.categoryId?.toString?.(),
+    type: doc.type,
+    amount: doc.amount,
+    currency: doc.currency,
+    merchant: doc.merchant,
+    description: doc.description,
+    paymentMethod: doc.paymentMethod,
+    transactionDate: doc.transactionDate,
+    location: doc.location,
+    isRecurring: doc.isRecurring,
+    recurrence: doc.recurrence,
+    recurrenceEndDate: doc.recurrenceEndDate,
+    attachments: doc.attachments,
+    notes: doc.notes,
+    deletedAt: doc.deletedAt,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
 }
 
-export async function getTransactions(filters: TransactionFilters) {
-  const conditions = [
-    eq(transactions.userId, filters.userId),
-    isNull(transactions.deletedAt),
-  ];
+export async function createTransaction(input: CreateTransactionInput): Promise<Transaction> {
+  await connectToDatabase();
+  const doc = await TransactionModel.create({
+    userId: input.userId,
+    accountId: input.accountId,
+    categoryId: input.categoryId,
+    type: input.type,
+    amount: input.amount,
+    currency: input.currency ?? "NPR",
+    merchant: input.merchant,
+    description: input.description,
+    paymentMethod: input.paymentMethod,
+    transactionDate: input.transactionDate,
+    location: input.location,
+    isRecurring: input.isRecurring ?? false,
+    recurrence: input.recurrence ?? "none",
+    recurrenceEndDate: input.recurrenceEndDate,
+    attachments: input.attachments ?? [],
+    notes: input.notes,
+  });
+  return mapTransaction(doc);
+}
 
-  if (filters.type) conditions.push(eq(transactions.type, filters.type as TransactionType));
-  if (filters.categoryId) conditions.push(eq(transactions.categoryId, filters.categoryId));
-  if (filters.accountId) conditions.push(eq(transactions.accountId, filters.accountId));
-  if (filters.merchant) conditions.push(sql`LOWER(${transactions.merchant}) LIKE ${`%${filters.merchant.toLowerCase()}%`}`);
-  if (filters.startDate) conditions.push(gte(transactions.transactionDate, filters.startDate));
-  if (filters.endDate) conditions.push(lte(transactions.transactionDate, filters.endDate));
+export async function getTransactions(filters: TransactionFilters): Promise<Transaction[]> {
+  await connectToDatabase();
+  const conditions: Record<string, any> = {
+    userId: filters.userId,
+    deletedAt: null,
+  };
+
+  if (filters.type) conditions.type = filters.type;
+  if (filters.categoryId) conditions.categoryId = filters.categoryId;
+  if (filters.accountId) conditions.accountId = filters.accountId;
+  if (filters.merchant) {
+    conditions.merchant = { $regex: filters.merchant, $options: "i" };
+  }
+  if (filters.startDate || filters.endDate) {
+    conditions.transactionDate = {};
+    if (filters.startDate) conditions.transactionDate.$gte = filters.startDate;
+    if (filters.endDate) conditions.transactionDate.$lte = filters.endDate;
+  }
   if (filters.search) {
-    const term = `%${filters.search.toLowerCase()}%`;
-    conditions.push(
-      sql`(LOWER(${transactions.merchant}) LIKE ${term} OR LOWER(${transactions.description}) LIKE ${term} OR LOWER(${transactions.notes}) LIKE ${term})`,
-    );
+    const term = filters.search;
+    conditions.$or = [
+      { merchant: { $regex: term, $options: "i" } },
+      { description: { $regex: term, $options: "i" } },
+      { notes: { $regex: term, $options: "i" } },
+    ];
   }
 
-  const orderBy = filters.sortBy === "amount"
-    ? filters.sortOrder === "asc" ? asc(transactions.amount) : desc(transactions.amount)
-    : filters.sortOrder === "asc" ? asc(transactions.transactionDate) : desc(transactions.transactionDate);
+  const sortField = filters.sortBy === "amount" ? "amount" : "transactionDate";
+  const sortOrder = filters.sortOrder === "asc" ? 1 : -1;
 
-  return db
-    .select()
-    .from(transactions)
-    .where(and(...conditions))
-    .orderBy(orderBy)
+  const docs = await TransactionModel.find(conditions)
+    .sort({ [sortField]: sortOrder })
+    .skip(filters.offset ?? 0)
     .limit(filters.limit ?? 50)
-    .offset(filters.offset ?? 0);
+    .lean();
+
+  return docs.map(mapTransaction);
 }
 
-export async function getTransactionById(id: string, userId: string) {
-  const [transaction] = await db
-    .select()
-    .from(transactions)
-    .where(and(eq(transactions.id, id), eq(transactions.userId, userId), isNull(transactions.deletedAt)));
-  return transaction ?? null;
+export async function getTransactionById(
+  id: string,
+  userId: string,
+): Promise<Transaction | null> {
+  await connectToDatabase();
+  const doc = await TransactionModel.findOne({
+    _id: id,
+    userId,
+    deletedAt: null,
+  }).lean();
+  return doc ? mapTransaction(doc) : null;
 }
 
-export async function updateTransaction(id: string, userId: string, input: UpdateTransactionInput) {
-  const [transaction] = await db
-    .update(transactions)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(transactions.id, id), eq(transactions.userId, userId), isNull(transactions.deletedAt)))
-    .returning();
-  return transaction ?? null;
+export async function updateTransaction(
+  id: string,
+  userId: string,
+  input: UpdateTransactionInput,
+): Promise<Transaction | null> {
+  await connectToDatabase();
+  const doc = await TransactionModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapTransaction(doc) : null;
 }
 
-export async function deleteTransaction(id: string, userId: string) {
-  const [transaction] = await db
-    .update(transactions)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(transactions.id, id), eq(transactions.userId, userId), isNull(transactions.deletedAt)))
-    .returning();
-  return transaction ?? null;
+export async function deleteTransaction(
+  id: string,
+  userId: string,
+): Promise<Transaction | null> {
+  await connectToDatabase();
+  const doc = await TransactionModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { deletedAt: new Date(), updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapTransaction(doc) : null;
 }
 
-export async function getTransactionsByIds(ids: string[], userId: string) {
-  return db
-    .select()
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        isNull(transactions.deletedAt),
-        inArray(transactions.id, ids),
-      ),
-    )
-    .orderBy(desc(transactions.transactionDate));
+export async function getTransactionsByIds(
+  ids: string[],
+  userId: string,
+): Promise<Transaction[]> {
+  await connectToDatabase();
+  const docs = await TransactionModel.find({
+    _id: { $in: ids },
+    userId,
+    deletedAt: null,
+  })
+    .sort({ transactionDate: -1 })
+    .lean();
+  return docs.map(mapTransaction);
 }
 
-export async function getRecentMerchants(userId: string, limit = 10) {
-  const rows = await db
-    .select({ merchant: transactions.merchant })
-    .from(transactions)
-    .where(and(eq(transactions.userId, userId), isNull(transactions.deletedAt), sql`${transactions.merchant} IS NOT NULL`))
-    .groupBy(transactions.merchant)
-    .orderBy(desc(sql`COUNT(*)`))
-    .limit(limit);
-  return rows.map((r) => r.merchant).filter(Boolean) as string[];
+export async function getRecentMerchants(userId: string, limit = 10): Promise<string[]> {
+  await connectToDatabase();
+
+  const results = await TransactionModel.aggregate([
+    {
+      $match: {
+        userId,
+        deletedAt: null,
+        merchant: { $exists: true, $ne: null },
+      },
+    },
+    {
+      $group: {
+        _id: "$merchant",
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { count: -1 },
+    },
+    { $limit: limit },
+  ]);
+
+  return results.map((r: any) => r._id).filter(Boolean);
 }
 
-export async function getRecurringTransactions(userId: string) {
-  return db
-    .select()
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.isRecurring, true),
-        isNull(transactions.deletedAt),
-      ),
-    )
-    .orderBy(desc(transactions.transactionDate));
+export async function getRecurringTransactions(userId: string): Promise<Transaction[]> {
+  await connectToDatabase();
+  const docs = await TransactionModel.find({
+    userId,
+    isRecurring: true,
+    deletedAt: null,
+  })
+    .sort({ transactionDate: -1 })
+    .lean();
+  return docs.map(mapTransaction);
 }

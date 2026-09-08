@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { cache } from "react";
-import { and, eq, gte, lte, inArray, count } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
 import * as repo from "./repository";
 import { awardXp } from "@/modules/gamification";
 import { createTimelineEvent } from "@/modules/timeline";
@@ -375,7 +375,7 @@ export async function getSleepDashboard(userId: string) {
   ]);
 
   const sleepGoalHours = preference?.sleepGoalHours ?? 8;
-  const statsRow = stats?.[0] ?? null;
+  const statsRow = stats ?? null;
 
   const mainSleep = todaysRecords.length > 0
     ? todaysRecords.reduce((longest, r) => {
@@ -485,7 +485,7 @@ export async function getSleepAnalytics(userId: string, filters: AnalyticsFilter
 
 export async function getSleepStatistics(userId: string) {
   const statsArr = await repo.getSleepStatistics(userId);
-  const stats = statsArr?.[0] ?? null;
+  const stats = statsArr ?? null;
   if (!stats || Number(stats.totalNights) === 0) {
     return {
       totalSleptHours: 0,
@@ -736,7 +736,7 @@ export async function upsertSleepGoal(userId: string, sleepGoalHours: number) {
 
 export async function createHydrationEntry(userId: string, params: CreateHydrationEntryParams) {
   const validated = createHydrationEntrySchema.parse(params);
-  const entry = await repo.createHydrationEntry({ userId, ...validated });
+  const entry = await repo.createHydrationEntry({ userId, ...validated, date: new Date(validated.date) } as any);
 
   try {
     await awardXp(userId, "hydration_logged", entry.id, "Water intake logged", 1);
@@ -758,7 +758,7 @@ export async function getHydrationDailyTotal(userId: string, date: string) {
 
 export async function upsertConfidenceCheckin(userId: string, params: CreateConfidenceCheckinParams) {
   const validated = createConfidenceCheckinSchema.parse(params);
-  const checkin = await repo.upsertConfidenceCheckin({ userId, ...validated });
+  const checkin = await repo.upsertConfidenceCheckin({ userId, ...validated, date: new Date(validated.date) } as any);
 
   try {
     await awardXp(userId, "confidence_checkin", checkin.id, "Confidence check-in", 2);
@@ -792,9 +792,16 @@ export async function createHabitEnrichment(userId: string, params: CreateHabitE
   const validated = createHabitEnrichmentSchema.parse(params);
   return repo.createHabitEnrichment({
     userId,
-    ...validated,
-    estimatedCost: validated.estimatedCost != null ? String(validated.estimatedCost) : undefined,
-  });
+    habitId: validated.habitId,
+    wellnessType: validated.wellnessType,
+    subcategory: validated.subcategory,
+    lastCompletedDate: validated.lastCompletedDate,
+    nextDueDate: validated.nextDueDate,
+    reminderDaysBefore: validated.reminderDaysBefore,
+    seasonalMonths: validated.seasonalMonths,
+    estimatedCost: validated.estimatedCost != null ? validated.estimatedCost : undefined,
+    notes: validated.notes,
+  } as any);
 }
 
 export async function getHabitEnrichments(userId: string, wellnessType?: string) {
@@ -918,12 +925,12 @@ export async function setupGroomingTemplates(userId: string) {
   const existing = await repo.getHabitEnrichments(userId, "grooming");
   if (existing.length > 0) return { created: false, count: existing.length };
 
-  const { db } = await import("@/core/database");
-  const { habits } = await import("@/modules/habits/schema");
+  await connectToDatabase();
+  const { Habit: HabitModel } = await import("@/lib/models/habits");
 
   let created = 0;
   for (const template of GROOMING_DEFAULT_TEMPLATES) {
-    const [habit] = await db.insert(habits).values({
+    const habitDoc = await HabitModel.create({
       userId,
       title: template.name,
       description: template.description,
@@ -933,27 +940,27 @@ export async function setupGroomingTemplates(userId: string) {
       frequencyInterval: template.defaultFrequencyInterval ?? null,
       frequencyWeekdays: template.defaultFrequencyWeekdays ?? null,
       timesPerDay: 1,
-    }).returning();
+    } as any);
 
     await repo.createHabitEnrichment({
       userId,
-      habitId: habit.id,
+      habitId: habitDoc._id.toString(),
       wellnessType: "grooming",
       groomingCategory: template.groomingCategory,
       icon: template.icon,
       color: template.color,
-      preferredTime: template.preferredTime ?? null,
-      estimatedDurationMinutes: template.estimatedDurationMinutes ?? null,
+      preferredTime: template.preferredTime ?? undefined,
+      estimatedDurationMinutes: template.estimatedDurationMinutes ?? undefined,
       sortOrder: template.sortOrder,
       isArchived: false,
-      notes: null,
-      subcategory: null,
-      lastCompletedDate: null,
-      nextDueDate: null,
+      notes: undefined,
+      subcategory: undefined,
+      lastCompletedDate: undefined,
+      nextDueDate: undefined,
       reminderDaysBefore: 1,
-      seasonalMonths: null,
-      estimatedCost: null,
-      reminderConfig: null,
+      seasonalMonths: undefined,
+      estimatedCost: undefined,
+      reminderConfig: undefined,
     });
     created++;
   }
@@ -967,9 +974,6 @@ export async function completeGroomingActivity(
 ) {
   const validated = completeGroomingSchema.parse(params);
 
-  const { db } = await import("@/core/database");
-  const { habitCompletions } = await import("@/modules/habits/schema");
-  const { habits } = await import("@/modules/habits/schema");
   const { logCompletion } = await import("@/modules/habits");
 
   const completion = await logCompletion(
@@ -980,18 +984,21 @@ export async function completeGroomingActivity(
   );
 
   if (validated.metadata) {
-    await db.update(habitCompletions)
-      .set({ metadata: validated.metadata as Record<string, unknown> })
-      .where(eq(habitCompletions.id, completion.id));
+    await connectToDatabase();
+    const { HabitCompletion: HabitCompletionModel } = await import("@/lib/models/habits");
+    await HabitCompletionModel.findOneAndUpdate(
+      { _id: completion.id },
+      { $set: { metadata: validated.metadata as Record<string, unknown> } },
+    );
   }
 
   const enrichment = await repo.getHabitEnrichment(validated.habitId, userId);
   if (enrichment) {
-    const [habitRow] = await db.select({
-      frequencyType: habits.frequencyType,
-      frequencyInterval: habits.frequencyInterval,
-      frequencyWeekdays: habits.frequencyWeekdays,
-    }).from(habits).where(eq(habits.id, validated.habitId));
+    await connectToDatabase();
+  const { Habit: HabitModel } = await import("@/lib/models/habits");
+    const habitRow = await HabitModel.findById(validated.habitId)
+      .select({ frequencyType: 1, frequencyInterval: 1, frequencyWeekdays: 1 })
+      .lean();
 
     const nextDue = habitRow && enrichment.lastCompletedDate
       ? computeNextDueDate(
@@ -1003,8 +1010,8 @@ export async function completeGroomingActivity(
       : null;
 
     await repo.updateHabitEnrichment(enrichment.id, userId, {
-      lastCompletedDate: validated.completedDate,
-      nextDueDate: nextDue,
+      lastCompletedDate: validated.completedDate ? new Date(validated.completedDate) : undefined,
+      nextDueDate: nextDue ? new Date(nextDue) : undefined,
     });
   }
 
@@ -1013,7 +1020,7 @@ export async function completeGroomingActivity(
       userId,
       "grooming_completed",
       completion.id,
-      `Grooming: ${completion.note ?? "Activity completed"}`,
+      `Grooming: ${completion.notes ?? "Activity completed"}`,
       10,
     );
   } catch {}
@@ -1025,37 +1032,31 @@ export async function getGroomingActivities(userId: string) {
   const enrichments = await repo.getHabitEnrichments(userId, "grooming");
   if (enrichments.length === 0) return [];
 
-  const { db } = await import("@/core/database");
-  const { habits, habitCompletions } = await import("@/modules/habits/schema");
+  await connectToDatabase();
+  const { Habit: HabitModel, HabitCompletion: HabitCompletionModel } = await import("@/lib/models/habits");
 
   const habitIds = enrichments.map((e) => e.habitId);
-  const habitRows = await db
-    .select()
-    .from(habits)
-    .where(inArray(habits.id, habitIds));
+  const habitDocs = await HabitModel.find({ _id: { $in: habitIds } }).lean();
 
   const today = new Date().toISOString().slice(0, 10);
-  const todayCompletions = await db
-    .select({ habitId: habitCompletions.habitId })
-    .from(habitCompletions)
-    .where(
-      and(
-        eq(habitCompletions.userId, userId),
-        eq(habitCompletions.completedDate, today),
-        inArray(habitCompletions.habitId, habitIds),
-      ),
-    );
+  const todayCompletions = await HabitCompletionModel.find({
+    userId,
+    completedDate: today,
+    habitId: { $in: habitIds },
+  })
+    .select({ habitId: 1, _id: 0 })
+    .lean();
 
-  const todayCompletedIds = new Set(todayCompletions.map((c) => c.habitId));
+  const todayCompletedIds = new Set(todayCompletions.map((c: any) => c.habitId));
 
   return enrichments
     .map((e) => {
-      const habit = habitRows.find((h) => h.id === e.habitId);
+      const habit = habitDocs.find((h: any) => h._id.toString() === e.habitId);
       if (!habit) return null;
       return {
         ...e,
         habit: {
-          id: habit.id,
+          id: habit._id.toString(),
           title: habit.title,
           description: habit.description,
           frequency: habit.frequency,
@@ -1064,7 +1065,7 @@ export async function getGroomingActivities(userId: string) {
           frequencyWeekdays: habit.frequencyWeekdays,
           timesPerDay: habit.timesPerDay,
         },
-        isCompletedToday: todayCompletedIds.has(habit.id),
+        isCompletedToday: todayCompletedIds.has(habit._id.toString()),
       };
     })
     .filter((e): e is NonNullable<typeof e> => e !== null)
@@ -1085,58 +1086,44 @@ export async function getGroomingScore(userId: string): Promise<number> {
 export async function getGroomingDashboardStats(userId: string) {
   const activities = await getGroomingActivities(userId);
   const habitIds = activities.map((a) => a.habitId);
-  const { db } = await import("@/core/database");
-  const { habitCompletions } = await import("@/modules/habits/schema");
+  await connectToDatabase();
+  const { HabitCompletion: HabitCompletionModel } = await import("@/lib/models/habits");
 
   const today = new Date().toISOString().slice(0, 10);
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
 
   const [todayCount, weekCount, allDates] = await Promise.all([
     habitIds.length > 0
-      ? db
-          .select({ value: count() })
-          .from(habitCompletions)
-          .where(
-            and(
-              eq(habitCompletions.userId, userId),
-              eq(habitCompletions.completedDate, today),
-              inArray(habitCompletions.habitId, habitIds),
-            ),
-          )
-      : Promise.resolve([{ value: 0 }]),
+      ? HabitCompletionModel.countDocuments({
+          userId,
+          completedDate: today,
+          habitId: { $in: habitIds },
+        })
+      : Promise.resolve(0),
     habitIds.length > 0
-      ? db
-          .select({ value: count() })
-          .from(habitCompletions)
-          .where(
-            and(
-              eq(habitCompletions.userId, userId),
-              gte(habitCompletions.completedDate, weekAgo),
-              lte(habitCompletions.completedDate, today),
-              inArray(habitCompletions.habitId, habitIds),
-            ),
-          )
-      : Promise.resolve([{ value: 0 }]),
+      ? HabitCompletionModel.countDocuments({
+          userId,
+          completedDate: { $gte: weekAgo, $lte: today },
+          habitId: { $in: habitIds },
+        })
+      : Promise.resolve(0),
     habitIds.length > 0
-      ? db
-          .select({ date: habitCompletions.completedDate })
-          .from(habitCompletions)
-          .where(
-            and(
-              eq(habitCompletions.userId, userId),
-              inArray(habitCompletions.habitId, habitIds),
-            ),
-          )
-          .orderBy(habitCompletions.completedDate)
+      ? HabitCompletionModel.find({
+          userId,
+          habitId: { $in: habitIds },
+        })
+          .select({ completedDate: 1, _id: 0 })
+          .sort({ completedDate: 1 })
+          .lean()
       : Promise.resolve([]),
   ]);
 
-  const completionDates = allDates.map((r) => r.date);
+  const completionDates = allDates.map((r: any) => r.completedDate);
   const uniqueDates = [...new Set(completionDates)].sort();
 
   const { calculateStreak } = await import("@/modules/habits");
 
-  const streak = calculateStreak(uniqueDates);
+  const streak = calculateStreak(uniqueDates as string[]);
 
   const overdue = activities.filter(
     (a) => a.nextDueDate && a.nextDueDate < today && !a.isCompletedToday,
@@ -1152,8 +1139,8 @@ export async function getGroomingDashboardStats(userId: string) {
 
   return {
     totalActivities: activities.length,
-    completedToday: Number(todayCount[0]?.value ?? 0),
-    completedThisWeek: Number(weekCount[0]?.value ?? 0),
+    completedToday: todayCount,
+    completedThisWeek: weekCount,
     overdueCount: overdue.length,
     overdueActivities: overdue,
     upcomingCount: upcoming.length,
@@ -1479,13 +1466,14 @@ export async function getWellnessInsights(userId: string): Promise<WellnessInsig
 // ── Weight Entries ──
 
 export async function createWeightEntry(userId: string, params: CreateWeightEntryParams) {
-  const { bodyFatPercentage, musclePercentage, weightKg, ...rest } = createWeightEntrySchema.parse(params);
+  const { bodyFatPercentage, musclePercentage, weightKg, date, ...rest } = createWeightEntrySchema.parse(params);
   return repo.createWeightEntry({
     userId,
     ...rest,
-    weightKg: String(weightKg),
-    bodyFatPercentage: bodyFatPercentage ? String(bodyFatPercentage) : null,
-    musclePercentage: musclePercentage ? String(musclePercentage) : null,
+    weightKg,
+    bodyFatPercentage: bodyFatPercentage ?? undefined,
+    musclePercentage: musclePercentage ?? undefined,
+    date: new Date(date),
   });
 }
 
@@ -1501,11 +1489,12 @@ export async function deleteWeightEntry(id: string, userId: string) {
 // ── Workout Entries ──
 
 export async function createWorkoutEntry(userId: string, params: CreateWorkoutEntryParams) {
-  const { distanceKm, ...rest } = createWorkoutEntrySchema.parse(params);
+  const { distanceKm, date, ...rest } = createWorkoutEntrySchema.parse(params);
   const entry = await repo.createWorkoutEntry({
     userId,
     ...rest,
-    distanceKm: distanceKm ? String(distanceKm) : null,
+    distanceKm,
+    date: new Date(date),
   });
   try { await awardXp(userId, "workout_logged", entry.id, "Workout logged", 5); } catch { }
   return entry;
@@ -1527,7 +1516,7 @@ export async function deleteWorkoutEntry(id: string, userId: string) {
 
 export async function upsertStepEntry(userId: string, params: CreateStepEntryParams) {
   const validated = createStepEntrySchema.parse(params);
-  const entry = await repo.upsertStepEntry({ userId, ...validated });
+  const entry = await repo.upsertStepEntry({ userId, ...validated, date: new Date(validated.date) } as any);
   try { await awardXp(userId, "steps_logged", entry.id, "Steps logged", 1); } catch { }
   return entry;
 }
@@ -1540,13 +1529,14 @@ export async function getStepEntries(userId: string, filters: AnalyticsFilterPar
 // ── Calorie Entries ──
 
 export async function createCalorieEntry(userId: string, params: CreateCalorieEntryParams) {
-  const { proteinG, carbsG, fatG, ...rest } = createCalorieEntrySchema.parse(params);
+  const { proteinG, carbsG, fatG, date, ...rest } = createCalorieEntrySchema.parse(params);
   return repo.createCalorieEntry({
     userId,
     ...rest,
-    proteinG: proteinG ? String(proteinG) : null,
-    carbsG: carbsG ? String(carbsG) : null,
-    fatG: fatG ? String(fatG) : null,
+    proteinG,
+    carbsG,
+    fatG,
+    date: new Date(date),
   });
 }
 
@@ -1559,7 +1549,7 @@ export async function getCalorieEntries(userId: string, filters: AnalyticsFilter
 
 export async function createBloodPressureEntry(userId: string, params: CreateBpEntryParams) {
   const validated = createBpEntrySchema.parse(params);
-  return repo.createBloodPressureEntry({ userId, ...validated });
+  return repo.createBloodPressureEntry({ userId, ...validated, date: new Date(validated.date) } as any);
 }
 
 export async function getBloodPressureEntries(
@@ -1574,7 +1564,7 @@ export async function getBloodPressureEntries(
 
 export async function upsertHeartRateEntry(userId: string, params: CreateHrEntryParams) {
   const validated = createHrEntrySchema.parse(params);
-  return repo.upsertHeartRateEntry({ userId, ...validated });
+  return repo.upsertHeartRateEntry({ userId, ...validated, date: new Date(validated.date) } as any);
 }
 
 export async function getHeartRateEntries(userId: string, filters: AnalyticsFilterParams = {}) {
@@ -1586,7 +1576,7 @@ export async function getHeartRateEntries(userId: string, filters: AnalyticsFilt
 
 export async function createMedicineReminder(userId: string, params: CreateMedicineReminderParams) {
   const validated = createMedicineReminderSchema.parse(params);
-  return repo.createMedicineReminder({ userId, ...validated });
+  return repo.createMedicineReminder({ userId, ...validated, times: validated.time ? [validated.time] : [] } as any);
 }
 
 export async function getMedicineReminders(userId: string) {
@@ -1610,7 +1600,7 @@ export async function deleteMedicineReminder(id: string, userId: string) {
 
 export async function createMedicineLog(userId: string, params: CreateMedicineLogParams) {
   const validated = createMedicineLogSchema.parse(params);
-  return repo.createMedicineLog({ userId, ...validated });
+  return repo.createMedicineLog({ userId, ...validated } as any);
 }
 
 export async function getMedicineLogs(
@@ -1623,12 +1613,14 @@ export async function getMedicineLogs(
 // ── User Goals ──
 
 export async function createUserGoal(userId: string, params: CreateUserGoalParams) {
-  const { targetValue, currentValue, ...rest } = createUserGoalSchema.parse(params);
+  const { targetValue, currentValue, startDate, endDate, ...rest } = createUserGoalSchema.parse(params);
   return repo.createUserGoal({
     userId,
     ...rest,
-    targetValue: String(targetValue),
-    currentValue: currentValue !== undefined ? String(currentValue) : "0",
+    targetValue,
+    currentValue: currentValue ?? 0,
+    startDate: startDate ? new Date(startDate) : undefined,
+    endDate: endDate ? new Date(endDate) : undefined,
   });
 }
 
@@ -1644,9 +1636,9 @@ export async function updateUserGoal(
   const { targetValue, currentValue, ...rest } = updateUserGoalSchema.parse(params);
   return repo.updateUserGoal(id, userId, {
     ...rest,
-    ...(targetValue !== undefined ? { targetValue: String(targetValue) } : {}),
-    ...(currentValue !== undefined ? { currentValue: String(currentValue) } : {}),
-  });
+    ...(targetValue !== undefined ? { targetValue } : {}),
+    ...(currentValue !== undefined ? { currentValue } : {}),
+  } as any);
 }
 
 export async function deleteUserGoal(id: string, userId: string) {

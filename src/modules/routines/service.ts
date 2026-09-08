@@ -127,7 +127,7 @@ function isScheduledToday(routine: {
   if (routine.scheduleType === "weekdays") return WEEKDAYS.includes(dayName as typeof WEEKDAYS[number]);
   if (routine.scheduleType === "weekends") return WEEKENDS.includes(dayName as typeof WEEKENDS[number]);
   if (routine.scheduleType === "custom") {
-    return routine.customDays?.map((d) => d.toLowerCase().slice(0, 3)).includes(dayName) ?? false;
+    return routine.customDays?.map((d: string) => d.toLowerCase().slice(0, 3)).includes(dayName) ?? false;
   }
   return false;
 }
@@ -142,7 +142,7 @@ function isScheduledForDate(
   if (routine.scheduleType === "weekdays") return WEEKDAYS.includes(dayName as typeof WEEKDAYS[number]);
   if (routine.scheduleType === "weekends") return WEEKENDS.includes(dayName as typeof WEEKENDS[number]);
   if (routine.scheduleType === "custom") {
-    return routine.customDays?.map((d) => d.toLowerCase().slice(0, 3)).includes(dayName) ?? false;
+    return routine.customDays?.map((d: string) => d.toLowerCase().slice(0, 3)).includes(dayName) ?? false;
   }
   return false;
 }
@@ -152,7 +152,7 @@ function isScheduledForDate(
 export async function getRoutines(userId: string) {
   const routineList = await repo.getRoutines(userId);
   const routinesWithItems = await Promise.all(
-    routineList.map(async (routine) => ({
+    routineList.map(async (routine: any) => ({
       ...routine,
       items: await repo.getRoutineItems(routine.id),
     })),
@@ -172,25 +172,25 @@ export async function createRoutineForUser(userId: string, params: CreateRoutine
   const routine = await repo.createRoutine({
     userId,
     name: validated.name,
-    description: validated.description ?? null,
-    color: validated.color ?? null,
-    icon: validated.icon ?? null,
+    description: validated.description ?? undefined,
+    color: validated.color ?? undefined,
+    icon: validated.icon ?? undefined,
     isActive: validated.isActive ?? true,
     scheduleType: validated.scheduleType,
-    customDays: validated.customDays ?? null,
+    customDays: validated.customDays ?? undefined,
   });
 
   if (validated.items && validated.items.length > 0) {
-    const itemInputs = validated.items.map((item) => ({
+    const itemInputs: any[] = validated.items.map((item: any) => ({
       routineId: routine.id,
       title: item.title,
-      description: item.description ?? null,
+      description: item.description ?? undefined,
       startTime: item.startTime,
-      endTime: item.endTime ?? null,
+      endTime: item.endTime ?? undefined,
       order: item.order,
       isOptional: item.isOptional,
-      linkedHabitId: item.linkedHabitId ?? null,
-      linkedTaskId: item.linkedTaskId ?? null,
+      linkedHabitId: item.linkedHabitId ?? undefined,
+      linkedTaskId: item.linkedTaskId ?? undefined,
     }));
     await repo.createRoutineItems(itemInputs);
   }
@@ -206,7 +206,7 @@ export async function updateRoutineForUser(
   const validated = updateRoutineSchema.parse(params);
   const routine = await repo.updateRoutine(id, userId, {
     ...validated,
-    customDays: validated.customDays ?? null,
+    customDays: validated.customDays ?? undefined,
   });
   if (!routine) return null;
   return getRoutine(routine.id, userId);
@@ -232,7 +232,7 @@ export async function duplicateRoutine(routineId: string, userId: string) {
   });
 
   if (original.items.length > 0) {
-    const itemInputs = original.items.map((item) => ({
+    const itemInputs: any[] = original.items.map((item: any) => ({
       routineId: newRoutine.id,
       title: item.title,
       description: item.description,
@@ -265,13 +265,13 @@ export async function addRoutineItem(routineId: string, userId: string, params: 
   return repo.createRoutineItem({
     routineId,
     title: validated.title,
-    description: validated.description ?? null,
+    description: validated.description ?? undefined,
     startTime: validated.startTime,
-    endTime: validated.endTime ?? null,
+    endTime: validated.endTime ?? undefined,
     order: validated.order,
     isOptional: validated.isOptional,
-    linkedHabitId: validated.linkedHabitId ?? null,
-    linkedTaskId: validated.linkedTaskId ?? null,
+    linkedHabitId: validated.linkedHabitId ?? undefined,
+    linkedTaskId: validated.linkedTaskId ?? undefined,
   });
 }
 
@@ -283,8 +283,8 @@ export async function updateRoutineItemForUser(
   const validated = updateRoutineItemSchema.parse(params);
   return repo.updateRoutineItem(itemId, {
     ...validated,
-    linkedHabitId: validated.linkedHabitId ?? null,
-    linkedTaskId: validated.linkedTaskId ?? null,
+    linkedHabitId: validated.linkedHabitId ?? undefined,
+    linkedTaskId: validated.linkedTaskId ?? undefined,
   });
 }
 
@@ -306,11 +306,11 @@ export async function reorderRoutineItemsForUser(
 export async function getTodayRoutines(userId: string) {
   const activeRoutines = await repo.getActiveRoutines(userId);
   const today = dayjs().format("YYYY-MM-DD");
-  const scheduled = activeRoutines.filter((r) => isScheduledToday(r));
+  const scheduled = activeRoutines.filter((r: any) => isScheduledToday(r));
 
   if (scheduled.length === 0) return [];
 
-  const routineIds = scheduled.map((r) => r.id);
+  const routineIds = scheduled.map((r: any) => r.id);
 
   const [allItems, existingExecutions] = await Promise.all([
     repo.getRoutineItemsByRoutineIds(routineIds),
@@ -324,9 +324,9 @@ export async function getTodayRoutines(userId: string) {
     else itemsByRoutineId.set(item.routineId!, [item]);
   }
 
-  const executionByRoutineId = new Map(existingExecutions.map((e) => [e.routineId, e]));
+  const executionByRoutineId = new Map(existingExecutions.map((e: any) => [e.routineId, e]));
 
-  const toCreate = scheduled.filter((r) => !executionByRoutineId.has(r.id));
+  const toCreate = scheduled.filter((r: any) => !executionByRoutineId.has(r.id));
   const createdExecutions: typeof existingExecutions = [];
 
   for (const routine of toCreate) {
@@ -337,17 +337,17 @@ export async function getTodayRoutines(userId: string) {
       routineId: routine.id,
       userId,
       date: today,
-      plannedStart: firstItem?.startTime ?? null,
-      plannedEnd: lastItem?.endTime ?? null,
+      plannedStart: firstItem?.startTime ?? undefined,
+      plannedEnd: lastItem?.endTime ?? undefined,
       status: "pending",
       completionRate: 0,
     });
 
-    const executionItems = items.map((item) => ({
+    const executionItems = items.map((item: any) => ({
       executionId: execution.id,
       routineItemId: item.id,
       plannedStart: item.startTime,
-      plannedEnd: item.endTime ?? null,
+      plannedEnd: item.endTime ?? undefined,
       status: "pending" as const,
     }));
     await repo.createExecutionItems(executionItems);
@@ -359,7 +359,7 @@ export async function getTodayRoutines(userId: string) {
   }
 
   const executionIds = scheduled
-    .map((r) => executionByRoutineId.get(r.id)?.id)
+    .map((r: any) => executionByRoutineId.get(r.id)?.id)
     .filter(Boolean) as string[];
 
   const allExecutionItems = await repo.getExecutionItemsByExecutionIds(executionIds);
@@ -370,7 +370,7 @@ export async function getTodayRoutines(userId: string) {
     else itemsByExecutionId.set(ei.executionId, [ei]);
   }
 
-  return scheduled.map((routine) => {
+  return scheduled.map((routine: any) => {
     const items = itemsByRoutineId.get(routine.id) ?? [];
     const execution = executionByRoutineId.get(routine.id)!;
     const executionItems = itemsByExecutionId.get(execution.id) ?? [];
@@ -409,7 +409,7 @@ export async function completeExecutionItem(
   });
   if (!updated) return null;
 
-  const executionItem = await repo.getExecutionItemById
+  const executionItem = repo.getExecutionItemById
     ? await repo.getExecutionItemById(executionItemId)
     : updated;
 
@@ -484,15 +484,15 @@ export async function seedTemplates() {
       color: tmpl.color,
       icon: tmpl.icon,
       scheduleType: tmpl.scheduleType,
-      customDays: tmpl.customDays ?? null,
+      customDays: tmpl.customDays ?? undefined,
     });
 
-    const itemInputs = tmpl.items.map((item) => ({
+    const itemInputs: any[] = tmpl.items.map((item: any) => ({
       templateId: template.id,
       title: item.title,
-      description: item.description ?? null,
+      description: item.description ?? undefined,
       startTime: item.startTime,
-      endTime: item.endTime ?? null,
+      endTime: item.endTime ?? undefined,
       order: item.order,
       isOptional: item.isOptional,
     }));
@@ -505,7 +505,7 @@ export async function seedTemplates() {
 export async function getTemplates() {
   const templates = await repo.getTemplates();
   return Promise.all(
-    templates.map(async (t) => ({
+    templates.map(async (t: any) => ({
       ...t,
       items: await repo.getTemplateItems(t.id),
     })),
@@ -530,7 +530,7 @@ export async function cloneTemplate(templateId: string, userId: string) {
   });
 
   if (items.length > 0) {
-    const itemInputs = items.map((item) => ({
+    const itemInputs: any[] = items.map((item: any) => ({
       routineId: routine.id,
       title: item.title,
       description: item.description,
@@ -570,7 +570,7 @@ export async function getAnalytics(userId: string, params: AnalyticsFilterParams
 
   const routineNames = itemStats.length > 0
     ? await Promise.all(
-        itemStats.map(async (stat) => {
+        itemStats.map(async (stat: any) => {
           const item = await repo.getRoutineItemById(stat.routineItemId);
           return { ...stat, itemTitle: item?.title ?? "Unknown" };
         }),
@@ -578,20 +578,20 @@ export async function getAnalytics(userId: string, params: AnalyticsFilterParams
     : [];
 
   const bestDay = dailyTrend.length > 0
-    ? dailyTrend.reduce((best, d) => (d.rate > best.rate ? d : best))
+    ? dailyTrend.reduce((best: any, d: any) => (d.rate > best.rate ? d : best))
     : null;
 
   const worstDay = dailyTrend.length > 0
-    ? dailyTrend.reduce((worst, d) => (d.rate < worst.rate ? d : worst))
+    ? dailyTrend.reduce((worst: any, d: any) => (d.rate < worst.rate ? d : worst))
     : null;
 
   const mostFollowedRoutine = routinePerformance.length > 0
-    ? routinePerformance.reduce((best, r) => (r.completed > best.completed ? r : best))
+    ? routinePerformance.reduce((best: any, r: any) => (r.completed > best.completed ? r : best))
     : null;
 
   const mostMissedItems = routineNames
-    .filter((s) => s.rate < 50)
-    .sort((a, b) => a.rate - b.rate)
+    .filter((s: any) => s.rate < 50)
+    .sort((a: any, b: any) => a.rate - b.rate)
     .slice(0, 5);
 
   return {
@@ -617,17 +617,17 @@ export async function getRoutineAnalytics(routineId: string, userId: string, par
   const { dateFrom, dateTo } = getDateRange(params);
 
   const allExecutions = await repo.getExecutionsInRange(userId, dateFrom, dateTo);
-  const routineExecs = allExecutions.filter((e) => e.routineId === routineId);
+  const routineExecs = allExecutions.filter((e: any) => e.routineId === routineId);
 
-  const completed = routineExecs.filter((e) => e.status === "completed").length;
+  const completed = routineExecs.filter((e: any) => e.status === "completed").length;
   const total = routineExecs.length;
   const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   const avgCompletionRate = routineExecs.length > 0
-    ? Math.round(routineExecs.reduce((sum, e) => sum + e.completionRate, 0) / routineExecs.length)
+    ? Math.round(routineExecs.reduce((sum: number, e: any) => sum + e.completionRate, 0) / routineExecs.length)
     : 0;
 
-  const dailyData = routineExecs.map((e) => ({
+  const dailyData = routineExecs.map((e: any) => ({
     date: e.date,
     status: e.status,
     completionRate: e.completionRate,
@@ -676,9 +676,9 @@ export async function getDayPlan(userId: string, date: string): Promise<{
     repo.getDayMetrics(userId, date),
   ]);
 
-  const scheduled = activeRoutines.filter((r) => isScheduledForDate(r, date));
+  const scheduled = activeRoutines.filter((r: any) => isScheduledForDate(r, date));
 
-  const routineItemsPromises = scheduled.map(async (routine) => {
+  const routineItemsPromises = scheduled.map(async (routine: any) => {
     const items = await repo.getRoutineItemsForDate(routine.id);
     let execution = await repo.getExecutionByRoutineAndDate(routine.id, date);
 
@@ -689,17 +689,17 @@ export async function getDayPlan(userId: string, date: string): Promise<{
         routineId: routine.id,
         userId,
         date,
-        plannedStart: firstItem?.startTime ?? null,
-        plannedEnd: lastItem?.endTime ?? null,
+        plannedStart: firstItem?.startTime ?? undefined,
+        plannedEnd: lastItem?.endTime ?? undefined,
         status: "pending",
         completionRate: 0,
       });
 
-      const executionItems = items.map((item) => ({
+      const executionItems = items.map((item: any) => ({
         executionId: execution!.id,
         routineItemId: item.id,
         plannedStart: item.startTime,
-        plannedEnd: item.endTime ?? null,
+        plannedEnd: item.endTime ?? undefined,
         status: "pending" as const,
       }));
       await repo.createExecutionItems(executionItems);
@@ -711,8 +711,8 @@ export async function getDayPlan(userId: string, date: string): Promise<{
 
   const routineResults = await Promise.all(routineItemsPromises);
 
-  const routineDayItems: DayPlanItem[] = routineResults.flatMap(({ routine, execution, executionItems }) =>
-    executionItems.map((ei) => {
+  const routineDayItems: DayPlanItem[] = routineResults.flatMap(({ routine, execution, executionItems }: any) =>
+    executionItems.map((ei: any) => {
       const item = ei.routineItem;
       return {
         id: ei.id,
@@ -738,7 +738,7 @@ export async function getDayPlan(userId: string, date: string): Promise<{
     }),
   );
 
-  const adhocDayItems: DayPlanItem[] = adhocItems.map((item) => ({
+  const adhocDayItems: DayPlanItem[] = adhocItems.map((item: any) => ({
     id: item.id,
     title: item.title,
     description: item.description,
@@ -787,18 +787,18 @@ export async function createAdhocItem(userId: string, params: CreateAdhocItemPar
   return repo.createRoutineItem({
     userId,
     title: validated.title,
-    description: validated.description ?? null,
+    description: validated.description ?? undefined,
     startTime: validated.startTime,
-    endTime: validated.endTime ?? null,
+    endTime: validated.endTime ?? undefined,
     date: validated.date,
-    category: validated.category ?? null,
-    priority: validated.priority ?? null,
-    location: validated.location ?? null,
+    category: validated.category ?? undefined,
+    priority: validated.priority ?? undefined,
+    location: validated.location ?? undefined,
     order: 0,
     isOptional: false,
     status: "pending",
-    linkedHabitId: null,
-    linkedTaskId: null,
+    linkedHabitId: undefined,
+    linkedTaskId: undefined,
   });
 }
 
@@ -826,15 +826,15 @@ export async function updateAdhocItem(itemId: string, userId: string, params: Up
     }
   }
 
-  const updateData: Record<string, string | null> = {};
+  const updateData: Record<string, string | undefined> = {};
   if (validated.title !== undefined) updateData.title = validated.title;
-  if (validated.description !== undefined) updateData.description = validated.description ?? null;
+  if (validated.description !== undefined) updateData.description = validated.description ?? undefined;
   if (validated.startTime !== undefined) updateData.startTime = validated.startTime;
-  if (validated.endTime !== undefined) updateData.endTime = validated.endTime ?? null;
-  if (validated.date !== undefined) updateData.date = validated.date ?? null;
-  if (validated.category !== undefined) updateData.category = validated.category ?? null;
-  if (validated.priority !== undefined) updateData.priority = validated.priority ?? null;
-  if (validated.location !== undefined) updateData.location = validated.location ?? null;
+  if (validated.endTime !== undefined) updateData.endTime = validated.endTime ?? undefined;
+  if (validated.date !== undefined) updateData.date = validated.date ?? undefined;
+  if (validated.category !== undefined) updateData.category = validated.category ?? undefined;
+  if (validated.priority !== undefined) updateData.priority = validated.priority ?? undefined;
+  if (validated.location !== undefined) updateData.location = validated.location ?? undefined;
 
   return repo.updateRoutineItem(itemId, updateData);
 }
@@ -929,12 +929,12 @@ export async function setDailyGoal(userId: string, date: string, params: z.infer
     date,
     title: validated.title,
     isCompleted: validated.isCompleted,
-    taskId: validated.taskId ?? null,
+    taskId: validated.taskId ?? undefined,
   });
 }
 
 export async function toggleDailyGoal(id: string, userId: string, isCompleted: boolean) {
-  return repo.updateDailyGoal(id, userId, { isCompleted, updatedAt: new Date() as any });
+  return repo.updateDailyGoal(id, userId, { isCompleted });
 }
 
 export const getDailyPlannerData = cache(async (userId: string, date: string) => {
@@ -956,15 +956,15 @@ export async function addDailyPriority(userId: string, date: string, params: z.i
     userId,
     date,
     title: validated.title,
-    estimatedDuration: validated.estimatedDuration ?? null,
+    estimatedDuration: validated.estimatedDuration ?? undefined,
     status: validated.status,
     sortOrder: validated.sortOrder,
-    taskId: validated.taskId ?? null,
+    taskId: validated.taskId ?? undefined,
   });
 }
 
 export async function updateDailyPriorityStatus(id: string, userId: string, status: string) {
-  return repo.updateDailyPriority(id, userId, { status, updatedAt: new Date() as any });
+  return repo.updateDailyPriority(id, userId, { status });
 }
 
 export async function removeDailyPriority(id: string, userId: string) {
@@ -975,9 +975,9 @@ export async function saveDailyNote(userId: string, date: string, params: z.infe
   const validated = dailyNoteSchema.parse(params);
   const existing = await repo.getDailyNote(userId, date);
   if (existing) {
-    return repo.updateDailyNote(existing.id, userId, { content: validated.content ?? null, updatedAt: new Date() as any });
+    return repo.updateDailyNote(existing.id, userId, { content: validated.content ?? undefined });
   }
-  return repo.upsertDailyNote({ userId, date, content: validated.content ?? null });
+  return repo.upsertDailyNote({ userId, date, content: validated.content ?? undefined });
 }
 
 export async function computeProductivityScore(userId: string, date: string) {

@@ -218,10 +218,10 @@ export async function saveManualVersion(userId: string, summary?: string) {
   const versionNumber = await getNextVersionNumber(userId);
   const wordCount = await getSectionWordCount(userId);
 
-  const snapshot = sections.map((s) => ({
+  const snapshot = sections.map((s: any) => ({
     sectionType: s.sectionType,
     content: s.content,
-    sortOrder: s.sortOrder,
+    sortOrder: s.order,
     isPinned: s.isPinned,
   }));
 

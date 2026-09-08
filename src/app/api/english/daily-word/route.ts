@@ -14,9 +14,9 @@ export async function GET() {
       id: word.id,
       word: word.word,
       pronunciation: word.pronunciation ?? "",
-      definition: (word.definitions as string[])?.[0] ?? "",
+      definition: word.definition ?? "",
       partOfSpeech: word.partOfSpeech ?? "",
-      exampleSentence: (word.exampleSentences as string[])?.[0] ?? "",
+      exampleSentence: word.example ?? "",
     });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch daily word" }, { status: 500 });

@@ -1,4 +1,3 @@
-export { timelineEvents } from "./schema";
 export {
   createTimelineEvent,
   getTimelineEvents,

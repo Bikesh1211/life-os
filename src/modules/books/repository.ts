@@ -1,52 +1,61 @@
-import { db } from "@/core/database";
-import { eq, and, isNull, desc, asc, gte, lte, sql, inArray } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  books,
-  bookParts,
-  bookChapters,
-  bookVersions,
-  bookCollaborators,
-  bookComments,
-  bookReadingProgress,
-  bookBookmarks,
-  bookHighlights,
-  bookCharacters,
-  bookResearchNotes,
-  bookChapterCharacters,
-  bookChapterResearchNotes,
-  bookWritingSessions,
-} from "./schema";
+  BookModel,
+  BookPartModel,
+  BookChapterModel,
+  BookVersionModel,
+  BookCollaboratorModel,
+  BookCommentModel,
+  BookReadingProgressModel,
+  BookBookmarkModel,
+  BookHighlightModel,
+  BookCharacterModel,
+  BookResearchNoteModel,
+  BookChapterCharacterModel,
+  BookChapterResearchNoteModel,
+  BookWritingSessionModel,
+} from "@/lib/models/books";
 
-export type Book = typeof books.$inferSelect;
-export type BookPart = typeof bookParts.$inferSelect;
-export type BookChapter = typeof bookChapters.$inferSelect;
-export type BookVersion = typeof bookVersions.$inferSelect;
-export type BookCollaborator = typeof bookCollaborators.$inferSelect;
-export type BookComment = typeof bookComments.$inferSelect;
-export type BookReadingProgress = typeof bookReadingProgress.$inferSelect;
-export type BookBookmark = typeof bookBookmarks.$inferSelect;
-export type BookHighlight = typeof bookHighlights.$inferSelect;
+export type Book = any;
+export type BookPart = any;
+export type BookChapter = any;
+export type BookVersion = any;
+export type BookCollaborator = any;
+export type BookComment = any;
+export type BookReadingProgress = any;
+export type BookBookmark = any;
+export type BookHighlight = any;
 
-export type CreateBookInput = typeof books.$inferInsert;
-export type CreatePartInput = typeof bookParts.$inferInsert;
-export type CreateChapterInput = typeof bookChapters.$inferInsert;
-export type CreateVersionInput = typeof bookVersions.$inferInsert;
-export type CreateCollaboratorInput = typeof bookCollaborators.$inferInsert;
-export type CreateCommentInput = typeof bookComments.$inferInsert;
-export type CreateProgressInput = typeof bookReadingProgress.$inferInsert;
-export type CreateBookmarkInput = typeof bookBookmarks.$inferInsert;
-export type CreateHighlightInput = typeof bookHighlights.$inferInsert;
-export type CreateCharacterInput = typeof bookCharacters.$inferInsert;
-export type CreateResearchNoteInput = typeof bookResearchNotes.$inferInsert;
-export type CreateChapterCharacterInput = typeof bookChapterCharacters.$inferInsert;
-export type CreateChapterResearchNoteInput = typeof bookChapterResearchNotes.$inferInsert;
-export type CreateWritingSessionInput = typeof bookWritingSessions.$inferInsert;
+export type CreateBookInput = any;
+export type CreatePartInput = any;
+export type CreateChapterInput = any;
+export type CreateVersionInput = any;
+export type CreateCollaboratorInput = any;
+export type CreateCommentInput = any;
+export type CreateProgressInput = any;
+export type CreateBookmarkInput = any;
+export type CreateHighlightInput = any;
+export type CreateCharacterInput = any;
+export type CreateResearchNoteInput = any;
+export type CreateChapterCharacterInput = any;
+export type CreateChapterResearchNoteInput = any;
+export type CreateWritingSessionInput = any;
+
+function toPlain(doc: any) {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  const { _id, __v, ...rest } = obj;
+  return { ...rest, id: _id.toString() };
+}
+
+function toPlainArray(docs: any[]) {
+  return docs.map(toPlain);
+}
 
 export async function createBook(input: CreateBookInput) {
-  const [book] = await db.insert(books).values(input).returning();
-  return book;
+  await connectToDatabase();
+  const doc = await BookModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getBooksForUser(
@@ -62,142 +71,113 @@ export async function getBooksForUser(
     includeTrashed?: boolean;
   } = {},
 ) {
-  const isTrash = opts.includeTrashed;
-  const conditions: SQL[] = [
-    eq(books.userId, userId),
-    isTrash ? sql`${books.deletedAt} is not null` : isNull(books.deletedAt),
-  ];
+  await connectToDatabase();
+  const filter: any = { userId };
+  filter.deletedAt = opts.includeTrashed ? { $ne: null } : null;
 
-  if (opts.status) conditions.push(eq(books.status, opts.status as never));
+  if (opts.status) filter.status = opts.status;
   if (opts.search) {
-    conditions.push(
-      sql`to_tsvector('english', ${books.title} || ' ' || coalesce(${books.description}, '')) @@ plainto_tsquery('english', ${opts.search})`,
-    );
+    filter.$or = [
+      { title: { $regex: opts.search, $options: "i" } },
+      { description: { $regex: opts.search, $options: "i" } },
+    ];
   }
   if (opts.tags && opts.tags.length > 0) {
-    conditions.push(
-      sql`${books.tags} && ${sql`ARRAY[${sql.join(opts.tags.map((t) => sql`${t}`), sql`, `)}]::text[]`}`,
-    );
+    filter.tags = { $in: opts.tags };
   }
 
-  const orderCol = opts.sortBy ? books[opts.sortBy] : books.createdAt;
-  const orderFn = opts.sortOrder === "asc" ? asc : desc;
+  const sortField = opts.sortBy ?? "createdAt";
+  const sortDir = opts.sortOrder === "asc" ? 1 : -1;
 
-  return db
-    .select()
-    .from(books)
-    .where(and(...conditions))
-    .orderBy(orderFn(orderCol))
+  const docs = await BookModel.find(filter)
+    .sort({ [sortField]: sortDir })
+    .skip(opts.offset ?? 0)
     .limit(opts.limit ?? 100)
-    .offset(opts.offset ?? 0);
-}
-
-/**
- * Ownership guards for book child tables.
- *
- * Routes verify the book named in the URL belongs to the caller, but the child
- * id in the path is user-supplied and need not belong to that book — owning any
- * one book would otherwise grant write access to every user's chapters. These
- * subqueries re-assert ownership on the child row itself, inside the same
- * statement as the read/write.
- */
-function bookOwnedByUser(column: AnyPgColumn, userId: string) {
-  return inArray(
-    column,
-    db
-      .select({ id: books.id })
-      .from(books)
-      .where(and(eq(books.userId, userId), isNull(books.deletedAt))),
-  );
-}
-
-function chapterOwnedByUser(column: AnyPgColumn, userId: string) {
-  return inArray(
-    column,
-    db
-      .select({ id: bookChapters.id })
-      .from(bookChapters)
-      .where(bookOwnedByUser(bookChapters.bookId, userId)),
-  );
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getBookById(id: string, userId: string) {
-  const [book] = await db
-    .select()
-    .from(books)
-    .where(and(eq(books.id, id), eq(books.userId, userId), isNull(books.deletedAt)));
-  return book ?? null;
+  await connectToDatabase();
+  const doc = await BookModel.findOne({ _id: id, userId, deletedAt: null }).lean();
+  return toPlain(doc);
 }
 
 export async function getPublishedBookById(id: string) {
-  const [book] = await db
-    .select()
-    .from(books)
-    .where(and(eq(books.id, id), eq(books.status, "published"), isNull(books.deletedAt)));
-  return book ?? null;
+  await connectToDatabase();
+  const doc = await BookModel.findOne({ _id: id, status: "published", deletedAt: null }).lean();
+  return toPlain(doc);
 }
 
 export async function updateBook(id: string, userId: string, input: Partial<CreateBookInput>) {
-  const [book] = await db
-    .update(books)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(books.id, id), eq(books.userId, userId), isNull(books.deletedAt)))
-    .returning();
-  return book ?? null;
+  await connectToDatabase();
+  const doc = await BookModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function updateBookById(id: string, input: Partial<CreateBookInput>) {
-  const [book] = await db
-    .update(books)
-    .set({ ...input, updatedAt: new Date() })
-    .where(eq(books.id, id))
-    .returning();
-  return book ?? null;
+  await connectToDatabase();
+  const doc = await BookModel.findOneAndUpdate(
+    { _id: id },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function deleteBook(id: string, userId: string) {
-  const [book] = await db
-    .update(books)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(books.id, id), eq(books.userId, userId), isNull(books.deletedAt)))
-    .returning();
-  return book ?? null;
+  await connectToDatabase();
+  const doc = await BookModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { deletedAt: new Date(), updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function getBookDashboardStats(userId: string) {
-  const items = await db
-    .select({
-      status: books.status,
-      count: sql<number>`count(*)`,
-      totalWords: sql<number>`coalesce(sum(${books.wordCount}), 0)`,
-      goalWords: sql<number>`coalesce(sum(${books.targetWordCount}), 0)`,
-      booksWithGoals: sql<number>`count(*) filter (where ${books.targetWordCount} is not null)`,
-    })
-    .from(books)
-    .where(and(eq(books.userId, userId), isNull(books.deletedAt)))
-    .groupBy(books.status);
+  await connectToDatabase();
+  const items = await BookModel.aggregate([
+    { $match: { userId, deletedAt: null } },
+    {
+      $group: {
+        _id: "$status",
+        count: { $sum: 1 },
+        totalWords: { $sum: { $ifNull: ["$wordCount", 0] } },
+        goalWords: { $sum: { $ifNull: ["$targetWordCount", 0] } },
+        booksWithGoals: {
+          $sum: { $cond: [{ $ne: ["$targetWordCount", null] }, 1, 0] },
+        },
+      },
+    },
+  ]);
 
-  const totalBooks = items.reduce((s, i) => s + Number(i.count), 0);
-  const draftBooks = items.find((i) => i.status === "draft");
-  const publishedBooks = items.find((i) => i.status === "published");
-  const archivedBooks = items.find((i) => i.status === "archived");
-  const totalWords = items.reduce((s, i) => s + Number(i.totalWords), 0);
-  const totalGoalWords = items.reduce((s, i) => s + Number(i.goalWords), 0);
-  const totalBooksWithGoals = items.reduce((s, i) => s + Number(i.booksWithGoals), 0);
-  const totalChapters = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(bookChapters)
-    .innerJoin(books, eq(bookChapters.bookId, books.id))
-    .where(and(eq(books.userId, userId), isNull(books.deletedAt)))
-    .then((r) => Number(r[0]?.count ?? 0));
+  const totalBooks = items.reduce((s: number, i: any) => s + Number(i.count), 0);
+  const draftBooks = items.find((i: any) => i._id === "draft");
+  const publishedBooks = items.find((i: any) => i._id === "published");
+  const archivedBooks = items.find((i: any) => i._id === "archived");
+  const totalWords = items.reduce((s: number, i: any) => s + Number(i.totalWords), 0);
+  const totalGoalWords = items.reduce((s: number, i: any) => s + Number(i.goalWords), 0);
+  const totalBooksWithGoals = items.reduce((s: number, i: any) => s + Number(i.booksWithGoals), 0);
+
+  const totalChapters = await BookChapterModel.aggregate([
+    { $lookup: { from: "books", localField: "bookId", foreignField: "_id", as: "book" } },
+    { $unwind: "$book" },
+    { $match: { "book.userId": userId, "book.deletedAt": null } },
+    { $count: "count" },
+  ]).then((r: any[]) => Number(r[0]?.count ?? 0));
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [wordsToday] = await db
-    .select({ words: sql<number>`coalesce(sum(${bookWritingSessions.wordsAdded}), 0)` })
-    .from(bookWritingSessions)
-    .where(and(eq(bookWritingSessions.userId, userId), gte(bookWritingSessions.startedAt, today)));
+  const [wordsToday] = await BookWritingSessionModel.aggregate([
+    { $match: { userId, startedAt: { $gte: today } } },
+    { $group: { _id: null, words: { $sum: { $ifNull: ["$wordsAdded", 0] } } } },
+  ]);
 
   return {
     totalBooks: Number(totalBooks),
@@ -205,7 +185,7 @@ export async function getBookDashboardStats(userId: string) {
     publishedBooks: Number(publishedBooks?.count ?? 0),
     archivedBooks: Number(archivedBooks?.count ?? 0),
     totalWords: Number(totalWords),
-    totalChapters: Number(totalChapters),
+    totalChapters,
     totalGoalWords: Number(totalGoalWords),
     booksWithGoals: Number(totalBooksWithGoals),
     wordsToday: Number(wordsToday?.words ?? 0),
@@ -213,308 +193,302 @@ export async function getBookDashboardStats(userId: string) {
 }
 
 export async function createPart(input: CreatePartInput) {
-  const [part] = await db.insert(bookParts).values(input).returning();
-  return part;
+  await connectToDatabase();
+  const doc = await BookPartModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getPartsForBook(bookId: string) {
-  return db
-    .select()
-    .from(bookParts)
-    .where(eq(bookParts.bookId, bookId))
-    .orderBy(asc(bookParts.order));
+  await connectToDatabase();
+  const docs = await BookPartModel.find({ bookId }).sort({ order: 1 }).lean();
+  return toPlainArray(docs);
 }
 
 export async function updatePart(id: string, input: Partial<CreatePartInput>) {
-  const [part] = await db
-    .update(bookParts)
-    .set(input)
-    .where(eq(bookParts.id, id))
-    .returning();
-  return part ?? null;
+  await connectToDatabase();
+  const doc = await BookPartModel.findOneAndUpdate({ _id: id }, input, { new: true }).lean();
+  return toPlain(doc);
 }
 
 export async function deletePart(id: string) {
-  const [part] = await db
-    .delete(bookParts)
-    .where(eq(bookParts.id, id))
-    .returning();
-  return part ?? null;
+  await connectToDatabase();
+  const doc = await BookPartModel.findOneAndDelete({ _id: id }).lean();
+  return toPlain(doc);
 }
 
 export async function createChapter(input: CreateChapterInput) {
-  const [chapter] = await db.insert(bookChapters).values(input).returning();
-  return chapter;
+  await connectToDatabase();
+  const doc = await BookChapterModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getChaptersForBook(bookId: string) {
-  return db
-    .select()
-    .from(bookChapters)
-    .where(eq(bookChapters.bookId, bookId))
-    .orderBy(asc(bookChapters.order));
+  await connectToDatabase();
+  const docs = await BookChapterModel.find({ bookId }).sort({ order: 1 }).lean();
+  return toPlainArray(docs);
 }
 
 export async function getChapterById(id: string, userId: string) {
-  const [chapter] = await db
-    .select()
-    .from(bookChapters)
-    .where(and(eq(bookChapters.id, id), bookOwnedByUser(bookChapters.bookId, userId)));
-  return chapter ?? null;
+  await connectToDatabase();
+  const chapter = await BookChapterModel.findOne({ _id: id }).lean();
+  if (!chapter) return null;
+  const book = await BookModel.findOne({ _id: chapter.bookId, userId, deletedAt: null }).lean();
+  if (!book) return null;
+  return toPlain(chapter);
 }
 
-export async function updateChapter(
-  id: string,
-  userId: string,
-  input: Partial<CreateChapterInput>,
-) {
-  const [chapter] = await db
-    .update(bookChapters)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(bookChapters.id, id), bookOwnedByUser(bookChapters.bookId, userId)))
-    .returning();
-  return chapter ?? null;
+export async function updateChapter(id: string, userId: string, input: Partial<CreateChapterInput>) {
+  await connectToDatabase();
+  const chapter = await BookChapterModel.findOne({ _id: id }).lean();
+  if (!chapter) return null;
+  const book = await BookModel.findOne({ _id: chapter.bookId, userId, deletedAt: null }).lean();
+  if (!book) return null;
+
+  const doc = await BookChapterModel.findOneAndUpdate(
+    { _id: id },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function deleteChapter(id: string, userId: string) {
-  const [chapter] = await db
-    .delete(bookChapters)
-    .where(and(eq(bookChapters.id, id), bookOwnedByUser(bookChapters.bookId, userId)))
-    .returning();
-  return chapter ?? null;
+  await connectToDatabase();
+  const chapter = await BookChapterModel.findOne({ _id: id }).lean();
+  if (!chapter) return null;
+  const book = await BookModel.findOne({ _id: chapter.bookId, userId, deletedAt: null }).lean();
+  if (!book) return null;
+
+  const doc = await BookChapterModel.findOneAndDelete({ _id: id }).lean();
+  return toPlain(doc);
 }
 
 export async function reorderChapters(
   items: { id: string; order: number; partId?: string | null }[],
 ) {
-  await db.transaction(async (tx) => {
-    for (const item of items) {
-      await tx
-        .update(bookChapters)
-        .set({ order: item.order, partId: item.partId ?? null })
-        .where(eq(bookChapters.id, item.id));
-    }
-  });
+  await connectToDatabase();
+  for (const item of items) {
+    await BookChapterModel.findOneAndUpdate(
+      { _id: item.id },
+      { order: item.order, partId: item.partId ?? null },
+    );
+  }
 }
 
 export async function getBookWordCount(bookId: string) {
-  const [result] = await db
-    .select({
-      total: sql<number>`coalesce(sum(${bookChapters.wordCount}), 0)`,
-      count: sql<number>`count(*)`,
-    })
-    .from(bookChapters)
-    .where(eq(bookChapters.bookId, bookId));
+  await connectToDatabase();
+  const [result] = await BookChapterModel.aggregate([
+    { $match: { bookId } },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: { $ifNull: ["$wordCount", 0] } },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
   return { totalWords: Number(result?.total ?? 0), chapterCount: Number(result?.count ?? 0) };
 }
 
 export async function createVersion(input: CreateVersionInput) {
-  const [version] = await db.insert(bookVersions).values(input).returning();
-  return version;
+  await connectToDatabase();
+  const doc = await BookVersionModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getVersionsForChapter(chapterId: string, userId: string) {
-  return db
-    .select()
-    .from(bookVersions)
-    .where(
-      and(
-        eq(bookVersions.chapterId, chapterId),
-        chapterOwnedByUser(bookVersions.chapterId, userId),
-      ),
-    )
-    .orderBy(desc(bookVersions.createdAt));
+  await connectToDatabase();
+  const chapter = await BookChapterModel.findOne({ _id: chapterId }).lean();
+  if (!chapter) return [];
+  const book = await BookModel.findOne({ _id: chapter.bookId, userId, deletedAt: null }).lean();
+  if (!book) return [];
+
+  const docs = await BookVersionModel.find({ chapterId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getVersionById(id: string, userId: string) {
-  const [version] = await db
-    .select()
-    .from(bookVersions)
-    .where(and(eq(bookVersions.id, id), chapterOwnedByUser(bookVersions.chapterId, userId)));
-  return version ?? null;
+  await connectToDatabase();
+  const version = await BookVersionModel.findOne({ _id: id }).lean();
+  if (!version) return null;
+  const chapter = await BookChapterModel.findOne({ _id: version.chapterId }).lean();
+  if (!chapter) return null;
+  const book = await BookModel.findOne({ _id: chapter.bookId, userId, deletedAt: null }).lean();
+  if (!book) return null;
+  return toPlain(version);
 }
 
 export async function createCollaborator(input: CreateCollaboratorInput) {
-  const [collaborator] = await db.insert(bookCollaborators).values(input).returning();
-  return collaborator;
+  await connectToDatabase();
+  const doc = await BookCollaboratorModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getCollaboratorsForBook(bookId: string) {
-  return db
-    .select()
-    .from(bookCollaborators)
-    .where(eq(bookCollaborators.bookId, bookId))
-    .orderBy(asc(bookCollaborators.createdAt));
+  await connectToDatabase();
+  const docs = await BookCollaboratorModel.find({ bookId }).sort({ createdAt: 1 }).lean();
+  return toPlainArray(docs);
 }
 
 export async function getCollaborator(bookId: string, userId: string) {
-  const [collaborator] = await db
-    .select()
-    .from(bookCollaborators)
-    .where(and(eq(bookCollaborators.bookId, bookId), eq(bookCollaborators.userId, userId)));
-  return collaborator ?? null;
+  await connectToDatabase();
+  const doc = await BookCollaboratorModel.findOne({ bookId, userId }).lean();
+  return toPlain(doc);
 }
 
 export async function getUserCollaboratorRole(bookId: string, userId: string) {
-  const [collaborator] = await db
-    .select({ role: bookCollaborators.role })
-    .from(bookCollaborators)
-    .where(and(eq(bookCollaborators.bookId, bookId), eq(bookCollaborators.userId, userId)));
-  return collaborator?.role ?? null;
+  await connectToDatabase();
+  const doc = await BookCollaboratorModel.findOne({ bookId, userId }).lean();
+  return doc?.role ?? null;
 }
 
-export async function updateCollaborator(
-  id: string,
-  userId: string,
-  input: Partial<CreateCollaboratorInput>,
-) {
-  const [collaborator] = await db
-    .update(bookCollaborators)
-    .set(input)
-    .where(and(eq(bookCollaborators.id, id), bookOwnedByUser(bookCollaborators.bookId, userId)))
-    .returning();
-  return collaborator ?? null;
+export async function updateCollaborator(id: string, userId: string, input: Partial<CreateCollaboratorInput>) {
+  await connectToDatabase();
+  const collab = await BookCollaboratorModel.findOne({ _id: id }).lean();
+  if (!collab) return null;
+  const book = await BookModel.findOne({ _id: collab.bookId, userId }).lean();
+  if (!book) return null;
+
+  const doc = await BookCollaboratorModel.findOneAndUpdate({ _id: id }, input, { new: true }).lean();
+  return toPlain(doc);
 }
 
 export async function deleteCollaborator(id: string, userId: string) {
-  const [collaborator] = await db
-    .delete(bookCollaborators)
-    .where(and(eq(bookCollaborators.id, id), bookOwnedByUser(bookCollaborators.bookId, userId)))
-    .returning();
-  return collaborator ?? null;
+  await connectToDatabase();
+  const collab = await BookCollaboratorModel.findOne({ _id: id }).lean();
+  if (!collab) return null;
+  const book = await BookModel.findOne({ _id: collab.bookId, userId }).lean();
+  if (!book) return null;
+
+  const doc = await BookCollaboratorModel.findOneAndDelete({ _id: id }).lean();
+  return toPlain(doc);
 }
 
 export async function createComment(input: CreateCommentInput) {
-  const [comment] = await db.insert(bookComments).values(input).returning();
-  return comment;
+  await connectToDatabase();
+  const doc = await BookCommentModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getCommentsForChapter(chapterId: string, userId: string) {
-  return db
-    .select()
-    .from(bookComments)
-    .where(
-      and(
-        eq(bookComments.chapterId, chapterId),
-        chapterOwnedByUser(bookComments.chapterId, userId),
-      ),
-    )
-    .orderBy(asc(bookComments.createdAt));
+  await connectToDatabase();
+  const chapter = await BookChapterModel.findOne({ _id: chapterId }).lean();
+  if (!chapter) return [];
+  const book = await BookModel.findOne({ _id: chapter.bookId, userId, deletedAt: null }).lean();
+  if (!book) return [];
+
+  const docs = await BookCommentModel.find({ chapterId })
+    .sort({ createdAt: 1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function updateComment(id: string, userId: string, text: string) {
-  const [comment] = await db
-    .update(bookComments)
-    .set({ text, updatedAt: new Date() })
-    .where(and(eq(bookComments.id, id), eq(bookComments.userId, userId)))
-    .returning();
-  return comment ?? null;
+  await connectToDatabase();
+  const doc = await BookCommentModel.findOneAndUpdate(
+    { _id: id, userId },
+    { text, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function deleteComment(id: string, userId: string) {
-  const [comment] = await db
-    .delete(bookComments)
-    .where(and(eq(bookComments.id, id), eq(bookComments.userId, userId)))
-    .returning();
-  return comment ?? null;
+  await connectToDatabase();
+  const doc = await BookCommentModel.findOneAndDelete({ _id: id, userId }).lean();
+  return toPlain(doc);
 }
 
 export async function upsertReadingProgress(input: CreateProgressInput) {
-  const existing = await db
-    .select()
-    .from(bookReadingProgress)
-    .where(
-      and(
-        eq(bookReadingProgress.userId, input.userId),
-        eq(bookReadingProgress.bookId, input.bookId),
-      ),
-    )
-    .then((rows) => rows[0] ?? null);
+  await connectToDatabase();
+  const existing = await BookReadingProgressModel.findOne({
+    userId: input.userId,
+    bookId: input.bookId,
+  }).lean();
 
   if (existing) {
-    const [progress] = await db
-      .update(bookReadingProgress)
-      .set({
+    const doc = await BookReadingProgressModel.findOneAndUpdate(
+      { _id: existing.id },
+      {
         chapterId: input.chapterId,
         scrollPosition: input.scrollPosition,
         percentage: input.percentage,
         updatedAt: new Date(),
-      })
-      .where(eq(bookReadingProgress.id, existing.id))
-      .returning();
-    return progress;
+      },
+      { new: true },
+    ).lean();
+    return toPlain(doc);
   }
 
-  const [progress] = await db.insert(bookReadingProgress).values(input).returning();
-  return progress;
+  const doc = await BookReadingProgressModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getReadingProgress(userId: string, bookId: string) {
-  const [progress] = await db
-    .select()
-    .from(bookReadingProgress)
-    .where(and(eq(bookReadingProgress.userId, userId), eq(bookReadingProgress.bookId, bookId)));
-  return progress ?? null;
+  await connectToDatabase();
+  const doc = await BookReadingProgressModel.findOne({ userId, bookId }).lean();
+  return toPlain(doc);
 }
 
 export async function getRecentReadingProgress(userId: string, limit = 5) {
-  return db
-    .select()
-    .from(bookReadingProgress)
-    .where(eq(bookReadingProgress.userId, userId))
-    .orderBy(desc(bookReadingProgress.updatedAt))
-    .limit(limit);
+  await connectToDatabase();
+  const docs = await BookReadingProgressModel.find({ userId })
+    .sort({ updatedAt: -1 })
+    .limit(limit)
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function createBookmark(input: CreateBookmarkInput) {
-  const [bookmark] = await db.insert(bookBookmarks).values(input).returning();
-  return bookmark;
+  await connectToDatabase();
+  const doc = await BookBookmarkModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getBookmarks(bookId: string, userId: string) {
-  return db
-    .select()
-    .from(bookBookmarks)
-    .where(and(eq(bookBookmarks.bookId, bookId), eq(bookBookmarks.userId, userId)))
-    .orderBy(desc(bookBookmarks.createdAt));
+  await connectToDatabase();
+  const docs = await BookBookmarkModel.find({ bookId, userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function deleteBookmark(id: string, userId: string) {
-  const [bookmark] = await db
-    .delete(bookBookmarks)
-    .where(and(eq(bookBookmarks.id, id), eq(bookBookmarks.userId, userId)))
-    .returning();
-  return bookmark ?? null;
+  await connectToDatabase();
+  const doc = await BookBookmarkModel.findOneAndDelete({ _id: id, userId }).lean();
+  return toPlain(doc);
 }
 
 export async function createHighlight(input: CreateHighlightInput) {
-  const [highlight] = await db.insert(bookHighlights).values(input).returning();
-  return highlight;
+  await connectToDatabase();
+  const doc = await BookHighlightModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getHighlights(bookId: string, userId: string) {
-  return db
-    .select()
-    .from(bookHighlights)
-    .where(and(eq(bookHighlights.bookId, bookId), eq(bookHighlights.userId, userId)))
-    .orderBy(desc(bookHighlights.createdAt));
+  await connectToDatabase();
+  const docs = await BookHighlightModel.find({ bookId, userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function updateHighlight(id: string, userId: string, input: Partial<CreateHighlightInput>) {
-  const [highlight] = await db
-    .update(bookHighlights)
-    .set(input)
-    .where(and(eq(bookHighlights.id, id), eq(bookHighlights.userId, userId)))
-    .returning();
-  return highlight ?? null;
+  await connectToDatabase();
+  const doc = await BookHighlightModel.findOneAndUpdate(
+    { _id: id, userId },
+    input,
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function deleteHighlight(id: string, userId: string) {
-  const [highlight] = await db
-    .delete(bookHighlights)
-    .where(and(eq(bookHighlights.id, id), eq(bookHighlights.userId, userId)))
-    .returning();
-  return highlight ?? null;
+  await connectToDatabase();
+  const doc = await BookHighlightModel.findOneAndDelete({ _id: id, userId }).lean();
+  return toPlain(doc);
 }
 
 export async function searchBooks(
@@ -522,222 +496,227 @@ export async function searchBooks(
   query: string,
   opts: { limit?: number; offset?: number } = {},
 ) {
-  const conditions: SQL[] = [
-    eq(books.userId, userId),
-    isNull(books.deletedAt),
-    sql`to_tsvector('english', ${books.title} || ' ' || coalesce(${books.description}, '')) @@ plainto_tsquery('english', ${query})`,
-  ];
+  await connectToDatabase();
+  const bookFilter = {
+    userId,
+    deletedAt: null,
+    $or: [
+      { title: { $regex: query, $options: "i" } },
+      { description: { $regex: query, $options: "i" } },
+    ],
+  };
 
-  const bookResults = await db
-    .select()
-    .from(books)
-    .where(and(...conditions))
+  const bookResults = await BookModel.find(bookFilter)
+    .skip(opts.offset ?? 0)
     .limit(opts.limit ?? 20)
-    .offset(opts.offset ?? 0);
+    .lean();
 
-  const chapterConditions: SQL[] = [
-    sql`to_tsvector('english', ${bookChapters.title} || ' ' || coalesce(${bookChapters.content}::text, '')) @@ plainto_tsquery('english', ${query})`,
-  ];
-
-  const chapterResults = await db
-    .select({
-      chapter: bookChapters,
-      book: books,
-    })
-    .from(bookChapters)
-    .innerJoin(books, eq(bookChapters.bookId, books.id))
-    .where(and(eq(books.userId, userId), isNull(books.deletedAt), ...chapterConditions))
+  const chapters = await BookChapterModel.find({
+    $or: [
+      { title: { $regex: query, $options: "i" } },
+      { content: { $regex: query, $options: "i" } },
+    ],
+  })
     .limit(opts.limit ?? 20)
-    .offset(opts.offset ?? 0);
+    .skip(opts.offset ?? 0)
+    .lean();
 
-  return { books: bookResults, chapters: chapterResults };
+  const chapterResults = [];
+  for (const ch of chapters) {
+    const book = await BookModel.findOne({ _id: ch.bookId, userId, deletedAt: null }).lean();
+    if (book) chapterResults.push({ chapter: toPlain(ch), book: toPlain(book) });
+  }
+
+  return { books: toPlainArray(bookResults), chapters: chapterResults };
 }
 
 // Characters
 export async function createCharacter(input: CreateCharacterInput) {
-  const [character] = await db.insert(bookCharacters).values(input).returning();
-  return character;
+  await connectToDatabase();
+  const doc = await BookCharacterModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getCharactersForBook(bookId: string) {
-  return db
-    .select()
-    .from(bookCharacters)
-    .where(eq(bookCharacters.bookId, bookId))
-    .orderBy(asc(bookCharacters.name));
+  await connectToDatabase();
+  const docs = await BookCharacterModel.find({ bookId }).sort({ name: 1 }).lean();
+  return toPlainArray(docs);
 }
 
 export async function getCharacterById(id: string) {
-  const [character] = await db
-    .select()
-    .from(bookCharacters)
-    .where(eq(bookCharacters.id, id));
-  return character ?? null;
+  await connectToDatabase();
+  const doc = await BookCharacterModel.findOne({ _id: id }).lean();
+  return toPlain(doc);
 }
 
 export async function updateCharacter(id: string, input: Partial<CreateCharacterInput>) {
-  const [character] = await db
-    .update(bookCharacters)
-    .set({ ...input, updatedAt: new Date() })
-    .where(eq(bookCharacters.id, id))
-    .returning();
-  return character ?? null;
+  await connectToDatabase();
+  const doc = await BookCharacterModel.findOneAndUpdate(
+    { _id: id },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function deleteCharacter(id: string) {
-  const [character] = await db
-    .delete(bookCharacters)
-    .where(eq(bookCharacters.id, id))
-    .returning();
-  return character ?? null;
+  await connectToDatabase();
+  const doc = await BookCharacterModel.findOneAndDelete({ _id: id }).lean();
+  return toPlain(doc);
 }
 
 // Research Notes
 export async function createResearchNote(input: CreateResearchNoteInput) {
-  const [note] = await db.insert(bookResearchNotes).values(input).returning();
-  return note;
+  await connectToDatabase();
+  const doc = await BookResearchNoteModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getResearchNotesForBook(bookId: string) {
-  return db
-    .select()
-    .from(bookResearchNotes)
-    .where(eq(bookResearchNotes.bookId, bookId))
-    .orderBy(desc(bookResearchNotes.createdAt));
+  await connectToDatabase();
+  const docs = await BookResearchNoteModel.find({ bookId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getResearchNoteById(id: string) {
-  const [note] = await db
-    .select()
-    .from(bookResearchNotes)
-    .where(eq(bookResearchNotes.id, id));
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await BookResearchNoteModel.findOne({ _id: id }).lean();
+  return toPlain(doc);
 }
 
 export async function updateResearchNote(id: string, input: Partial<CreateResearchNoteInput>) {
-  const [note] = await db
-    .update(bookResearchNotes)
-    .set({ ...input, updatedAt: new Date() })
-    .where(eq(bookResearchNotes.id, id))
-    .returning();
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await BookResearchNoteModel.findOneAndUpdate(
+    { _id: id },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function deleteResearchNote(id: string) {
-  const [note] = await db
-    .delete(bookResearchNotes)
-    .where(eq(bookResearchNotes.id, id))
-    .returning();
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await BookResearchNoteModel.findOneAndDelete({ _id: id }).lean();
+  return toPlain(doc);
 }
 
 // Chapter-Character linking
 export async function linkChapterToCharacter(input: CreateChapterCharacterInput) {
-  const [link] = await db.insert(bookChapterCharacters).values(input).returning();
-  return link;
+  await connectToDatabase();
+  const doc = await BookChapterCharacterModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getCharactersForChapter(chapterId: string) {
-  return db
-    .select({ character: bookCharacters })
-    .from(bookChapterCharacters)
-    .innerJoin(bookCharacters, eq(bookChapterCharacters.characterId, bookCharacters.id))
-    .where(eq(bookChapterCharacters.chapterId, chapterId));
+  await connectToDatabase();
+  const links = await BookChapterCharacterModel.find({ chapterId }).lean();
+  const characterIds = links.map((l: any) => l.characterId);
+  const characters = await BookCharacterModel.find({ _id: { $in: characterIds } }).lean();
+  return characters.map((c: any) => ({ character: toPlain(c) }));
 }
 
 export async function unlinkChapterCharacter(chapterId: string, characterId: string) {
-  const [link] = await db
-    .delete(bookChapterCharacters)
-    .where(and(eq(bookChapterCharacters.chapterId, chapterId), eq(bookChapterCharacters.characterId, characterId)))
-    .returning();
-  return link ?? null;
+  await connectToDatabase();
+  const doc = await BookChapterCharacterModel.findOneAndDelete({ chapterId, characterId }).lean();
+  return toPlain(doc);
 }
 
 // Chapter-Research Note linking
 export async function linkChapterToResearchNote(input: CreateChapterResearchNoteInput) {
-  const [link] = await db.insert(bookChapterResearchNotes).values(input).returning();
-  return link;
+  await connectToDatabase();
+  const doc = await BookChapterResearchNoteModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getResearchNotesForChapter(chapterId: string) {
-  return db
-    .select({ note: bookResearchNotes })
-    .from(bookChapterResearchNotes)
-    .innerJoin(bookResearchNotes, eq(bookChapterResearchNotes.noteId, bookResearchNotes.id))
-    .where(eq(bookChapterResearchNotes.chapterId, chapterId));
+  await connectToDatabase();
+  const links = await BookChapterResearchNoteModel.find({ chapterId }).lean();
+  const noteIds = links.map((l: any) => l.noteId);
+  const notes = await BookResearchNoteModel.find({ _id: { $in: noteIds } }).lean();
+  return notes.map((n: any) => ({ note: toPlain(n) }));
 }
 
 export async function unlinkChapterResearchNote(chapterId: string, noteId: string) {
-  const [link] = await db
-    .delete(bookChapterResearchNotes)
-    .where(and(eq(bookChapterResearchNotes.chapterId, chapterId), eq(bookChapterResearchNotes.noteId, noteId)))
-    .returning();
-  return link ?? null;
+  await connectToDatabase();
+  const doc = await BookChapterResearchNoteModel.findOneAndDelete({ chapterId, noteId }).lean();
+  return toPlain(doc);
 }
 
 // Writing Sessions
 export async function createWritingSession(input: CreateWritingSessionInput) {
-  const [session] = await db.insert(bookWritingSessions).values(input).returning();
-  return session;
+  await connectToDatabase();
+  const doc = await BookWritingSessionModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getWritingSessionById(id: string) {
-  const [session] = await db
-    .select()
-    .from(bookWritingSessions)
-    .where(eq(bookWritingSessions.id, id));
-  return session ?? null;
+  await connectToDatabase();
+  const doc = await BookWritingSessionModel.findOne({ _id: id }).lean();
+  return toPlain(doc);
 }
 
 export async function updateWritingSession(id: string, input: Partial<CreateWritingSessionInput>) {
-  const [session] = await db
-    .update(bookWritingSessions)
-    .set(input)
-    .where(eq(bookWritingSessions.id, id))
-    .returning();
-  return session ?? null;
+  await connectToDatabase();
+  const doc = await BookWritingSessionModel.findOneAndUpdate(
+    { _id: id },
+    input,
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function getWritingSessionsForBook(
   bookId: string,
   opts: { from?: Date; to?: Date; limit?: number } = {},
 ) {
-  const conditions: SQL[] = [eq(bookWritingSessions.bookId, bookId)];
-  if (opts.from) conditions.push(gte(bookWritingSessions.startedAt, opts.from));
-  if (opts.to) conditions.push(lte(bookWritingSessions.startedAt, opts.to));
+  await connectToDatabase();
+  const filter: any = { bookId };
+  if (opts.from || opts.to) {
+    filter.startedAt = {};
+    if (opts.from) filter.startedAt.$gte = opts.from;
+    if (opts.to) filter.startedAt.$lte = opts.to;
+  }
 
-  return db
-    .select()
-    .from(bookWritingSessions)
-    .where(and(...conditions))
-    .orderBy(desc(bookWritingSessions.startedAt))
-    .limit(opts.limit ?? 100);
+  const docs = await BookWritingSessionModel.find(filter)
+    .sort({ startedAt: -1 })
+    .limit(opts.limit ?? 100)
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getWritingSessionStats(userId: string) {
+  await connectToDatabase();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const weekStart = new Date(today);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
-  const [todayStats] = await db
-    .select({
-      words: sql<number>`coalesce(sum(${bookWritingSessions.wordsAdded}), 0)`,
-      sessions: sql<number>`count(*)`,
-      seconds: sql<number>`coalesce(sum(${bookWritingSessions.durationSeconds}), 0)`,
-    })
-    .from(bookWritingSessions)
-    .where(and(eq(bookWritingSessions.userId, userId), gte(bookWritingSessions.startedAt, today)));
+  const [todayStats] = await BookWritingSessionModel.aggregate([
+    { $match: { userId, startedAt: { $gte: today } } },
+    {
+      $group: {
+        _id: null,
+        words: { $sum: { $ifNull: ["$wordsAdded", 0] } },
+        sessions: { $sum: 1 },
+        seconds: { $sum: { $ifNull: ["$durationSeconds", 0] } },
+      },
+    },
+  ]);
 
-  const [weekStats] = await db
-    .select({
-      words: sql<number>`coalesce(sum(${bookWritingSessions.wordsAdded}), 0)`,
-      sessions: sql<number>`count(*)`,
-      seconds: sql<number>`coalesce(sum(${bookWritingSessions.durationSeconds}), 0)`,
-    })
-    .from(bookWritingSessions)
-    .where(and(eq(bookWritingSessions.userId, userId), gte(bookWritingSessions.startedAt, weekStart)));
+  const [weekStats] = await BookWritingSessionModel.aggregate([
+    { $match: { userId, startedAt: { $gte: weekStart } } },
+    {
+      $group: {
+        _id: null,
+        words: { $sum: { $ifNull: ["$wordsAdded", 0] } },
+        sessions: { $sum: 1 },
+        seconds: { $sum: { $ifNull: ["$durationSeconds", 0] } },
+      },
+    },
+  ]);
 
   return {
     today: {

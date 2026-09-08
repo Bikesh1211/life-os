@@ -1,4 +1,3 @@
-export { englishWords, englishUserVocabulary, englishQuizAttempts, englishDailyWords } from "./schema";
 export {
   searchEnglishWords,
   getEnglishWord,

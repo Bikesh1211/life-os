@@ -1,43 +1,51 @@
-import { db } from "@/core/database";
-import { loanRepayments } from "../schema/loan-repayments";
-import { eq, and, desc, sql, sum } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { LoanRepaymentModel } from "@/lib/models/loans";
 
-export type Repayment = typeof loanRepayments.$inferSelect;
-export type CreateRepaymentInput = typeof loanRepayments.$inferInsert;
+export type Repayment = any;
+export type CreateRepaymentInput = any;
+
+function toPlain(doc: any) {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  const { _id, __v, ...rest } = obj;
+  return { ...rest, id: _id.toString() };
+}
+
+function toPlainArray(docs: any[]) {
+  return docs.map(toPlain);
+}
 
 export async function createRepayment(input: CreateRepaymentInput) {
-  const [repayment] = await db.insert(loanRepayments).values(input).returning();
-  return repayment;
+  await connectToDatabase();
+  const doc = await LoanRepaymentModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getRepaymentsByLoanId(loanId: string) {
-  return db
-    .select()
-    .from(loanRepayments)
-    .where(eq(loanRepayments.loanId, loanId))
-    .orderBy(desc(loanRepayments.date));
+  await connectToDatabase();
+  const docs = await LoanRepaymentModel.find({ loanId })
+    .sort({ date: -1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getTotalPaidForLoan(loanId: string): Promise<number> {
-  const [result] = await db
-    .select({ total: sum(loanRepayments.amount) })
-    .from(loanRepayments)
-    .where(eq(loanRepayments.loanId, loanId));
+  await connectToDatabase();
+  const [result] = await LoanRepaymentModel.aggregate([
+    { $match: { loanId } },
+    { $group: { _id: null, total: { $sum: { $ifNull: ["$amount", 0] } } } },
+  ]);
   return Number(result?.total ?? 0);
 }
 
 export async function getRepaymentById(id: string) {
-  const [repayment] = await db
-    .select()
-    .from(loanRepayments)
-    .where(eq(loanRepayments.id, id));
-  return repayment ?? null;
+  await connectToDatabase();
+  const doc = await LoanRepaymentModel.findOne({ _id: id }).lean();
+  return toPlain(doc);
 }
 
 export async function deleteRepayment(id: string) {
-  const [repayment] = await db
-    .delete(loanRepayments)
-    .where(eq(loanRepayments.id, id))
-    .returning();
-  return repayment ?? null;
+  await connectToDatabase();
+  const doc = await LoanRepaymentModel.findOneAndDelete({ _id: id }).lean();
+  return toPlain(doc);
 }

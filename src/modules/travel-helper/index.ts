@@ -1,4 +1,3 @@
-export { travelHelperRoutes } from "./schema";
 export type { TravelHelperRoute, CreateRouteInput } from "./repository";
 export {
   getRoutes,

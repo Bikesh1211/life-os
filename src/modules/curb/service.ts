@@ -146,12 +146,12 @@ export async function getCategories(userId: string) {
 
 export async function createCategory(userId: string, input: unknown) {
   const data = createCategorySchema.parse(input);
-  return repo.createCategory({ ...data, userId });
+  return repo.createCategory({ ...data, userId } as any);
 }
 
 export async function updateCategory(categoryId: string, userId: string, input: unknown) {
   const data = updateCategorySchema.parse(input);
-  return repo.updateCategory(categoryId, userId, data);
+  return repo.updateCategory(categoryId, userId, data as any);
 }
 
 export async function deleteCategory(categoryId: string, userId: string) {
@@ -170,12 +170,12 @@ export async function getHabitById(habitId: string, userId: string) {
 
 export async function createHabit(userId: string, input: unknown) {
   const data = createHabitSchema.parse(input);
-  return repo.createHabit({ ...data, userId });
+  return repo.createHabit({ ...data, userId } as any);
 }
 
 export async function updateHabit(habitId: string, userId: string, input: unknown) {
   const data = updateHabitSchema.parse(input);
-  return repo.updateHabit(habitId, userId, data);
+  return repo.updateHabit(habitId, userId, data as any);
 }
 
 export async function archiveHabit(habitId: string, userId: string) {

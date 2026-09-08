@@ -141,16 +141,16 @@ export const getFitnessProfile = cache(async (userId: string) => {
 export async function saveFitnessProfile(userId: string, params: UpdateProfileParams) {
   const validated = updateProfileSchema.parse(params);
   const input: UpdateFitnessProfileInput = {};
-  if (validated.heightCm !== undefined) input.heightCm = validated.heightCm?.toString() ?? null;
-  if (validated.dateOfBirth !== undefined) input.dateOfBirth = validated.dateOfBirth;
+  if (validated.heightCm !== undefined) input.heightCm = validated.heightCm;
+  if (validated.dateOfBirth !== undefined) input.dateOfBirth = validated.dateOfBirth ? new Date(validated.dateOfBirth) : null;
   if (validated.gender !== undefined) input.gender = validated.gender;
   if (validated.activityLevel !== undefined) input.activityLevel = validated.activityLevel;
   if (validated.fitnessGoal !== undefined) input.fitnessGoal = validated.fitnessGoal;
-  if (validated.targetWeightKg !== undefined) input.targetWeightKg = validated.targetWeightKg?.toString() ?? null;
+  if (validated.targetWeightKg !== undefined) input.targetWeightKg = validated.targetWeightKg;
   if (validated.weeklyWorkoutGoal !== undefined) input.weeklyWorkoutGoal = validated.weeklyWorkoutGoal;
-  if (validated.dailyCalorieGoal !== undefined) input.dailyCalorieGoal = validated.dailyCalorieGoal ?? null;
-  if (validated.dailyProteinGoal !== undefined) input.dailyProteinGoal = validated.dailyProteinGoal ?? null;
-  if (validated.dailyWaterGoalMl !== undefined) input.dailyWaterGoalMl = validated.dailyWaterGoalMl ?? null;
+  if (validated.dailyCalorieGoal !== undefined) input.dailyCalorieGoal = validated.dailyCalorieGoal;
+  if (validated.dailyProteinGoal !== undefined) input.dailyProteinGoal = validated.dailyProteinGoal;
+  if (validated.dailyWaterGoalMl !== undefined) input.dailyWaterGoalMl = validated.dailyWaterGoalMl;
   return upsertProfile(userId, input);
 }
 
@@ -159,16 +159,15 @@ export async function saveFitnessProfile(userId: string, params: UpdateProfilePa
 export async function logBodyMeasurement(userId: string, params: CreateMeasurementParams) {
   const validated = createMeasurementSchema.parse(params);
   const input: CreateBodyMeasurementInput = { userId, date: validated.date };
-  if (validated.weightKg !== undefined) input.weightKg = validated.weightKg?.toString() ?? null;
-  if (validated.bodyFatPercentage !== undefined) input.bodyFatPercentage = validated.bodyFatPercentage?.toString() ?? null;
-  if (validated.muscleMassKg !== undefined) input.muscleMassKg = validated.muscleMassKg?.toString() ?? null;
-  if (validated.waistCm !== undefined) input.waistCm = validated.waistCm?.toString() ?? null;
-  if (validated.hipsCm !== undefined) input.hipsCm = validated.hipsCm?.toString() ?? null;
-  if (validated.chestCm !== undefined) input.chestCm = validated.chestCm?.toString() ?? null;
-  if (validated.armsCm !== undefined) input.armsCm = validated.armsCm?.toString() ?? null;
-  if (validated.thighsCm !== undefined) input.thighsCm = validated.thighsCm?.toString() ?? null;
-  if (validated.neckCm !== undefined) input.neckCm = validated.neckCm?.toString() ?? null;
-  if (validated.notes !== undefined) input.notes = validated.notes ?? null;
+  if (validated.weightKg !== undefined) input.weightKg = validated.weightKg;
+  if (validated.bodyFatPercentage !== undefined) input.bodyFatPercentage = validated.bodyFatPercentage;
+  if (validated.muscleMassKg !== undefined) input.muscleMassKg = validated.muscleMassKg;
+  if (validated.waistCm !== undefined) input.waistCm = validated.waistCm;
+  if (validated.hipsCm !== undefined) input.hipsCm = validated.hipsCm;
+  if (validated.chestCm !== undefined) input.chestCm = validated.chestCm;
+  if (validated.armsCm !== undefined) input.armsCm = validated.armsCm;
+  if (validated.thighsCm !== undefined) input.thighsCm = validated.thighsCm;
+  if (validated.neckCm !== undefined) input.neckCm = validated.neckCm;
   return createBodyMeasurement(input);
 }
 
@@ -298,7 +297,10 @@ export async function completeWorkoutSession(id: string, userId: string) {
   if (!session) return null;
 
   const duration = session.startTime && session.endTime
-    ? computeDurationMinutes(session.startTime, session.endTime)
+    ? computeDurationMinutes(
+        session.startTime instanceof Date ? session.startTime.toTimeString().slice(0, 5) : String(session.startTime),
+        session.endTime instanceof Date ? session.endTime.toTimeString().slice(0, 5) : String(session.endTime),
+      )
     : null;
 
   const updated = await updateWorkoutSession(id, userId, {
@@ -310,7 +312,7 @@ export async function completeWorkoutSession(id: string, userId: string) {
   // Check for personal records
   const sets = await getExerciseSets(id);
   for (const set of sets) {
-    await checkAndUpdatePR(userId, set);
+    await checkAndUpdatePR(userId, set as SetRecordCheck);
   }
 
   // Fire cross-plugin events
@@ -378,7 +380,7 @@ async function checkAndUpdatePR(userId: string, set: SetRecordCheck) {
         userId,
         set.exerciseId,
         check.type,
-        check.value.toString(),
+        check.value,
         set.reps,
         set.sessionId ?? null,
       );

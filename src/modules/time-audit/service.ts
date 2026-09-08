@@ -138,14 +138,14 @@ export async function createTimeEntry(userId: string, params: CreateEntryParams)
     userId,
     title: validated.title,
     description: validated.description,
-    categoryId: validated.categoryId ?? null,
-    projectId: validated.projectId ?? null,
+    categoryId: validated.categoryId ?? undefined as any,
+    projectId: validated.projectId ?? undefined as any,
     tags: validated.tags ?? [],
     startTime: new Date(validated.startTime),
     endTime: validated.endTime ? new Date(validated.endTime) : null,
     durationMinutes: durationMinutes ?? null,
     isBillable: validated.isBillable ?? false,
-    notes: validated.notes ?? null,
+    notes: validated.notes,
   });
 
   try {
@@ -207,7 +207,7 @@ export async function updateTimeEntry(id: string, userId: string, params: Update
     await checkTimeOverlap(userId, startDate, endDate, id);
   }
 
-  return repo.updateEntry(id, userId, input);
+  return repo.updateEntry(id, userId, input as any);
 }
 
 export async function deleteTimeEntry(id: string, userId: string) {
@@ -265,8 +265,8 @@ export async function startTimer(userId: string, params: StartTimerParams) {
     userId,
     title: validated.title,
     description: validated.description ?? null,
-    categoryId: validated.categoryId ?? null,
-    projectId: validated.projectId ?? null,
+    categoryId: validated.categoryId ?? undefined as any,
+    projectId: validated.projectId ?? undefined as any,
     tags: validated.tags ?? [],
     startTime: now,
     endTime: null,
@@ -383,7 +383,9 @@ export async function createCategory(userId: string, params: CreateCategoryParam
   const cats = await repo.getCategories(userId);
   return repo.createCategory({
     userId,
-    ...validated,
+    name: validated.name,
+    icon: validated.icon ?? "dots",
+    color: validated.color ?? "gray",
     sortOrder: validated.sortOrder ?? cats.length,
   });
 }
@@ -522,7 +524,6 @@ export async function getProjectAnalysis(userId: string, period: string = "month
 
 export async function getWeeklyTrend(userId: string) {
   const now = dayjs();
-  const startOfYear = now.startOf("year");
   const weeks: { week: string; totalMinutes: number; sessionCount: number }[] = [];
 
   for (let i = 0; i < 12; i++) {
@@ -742,20 +743,17 @@ export async function updateWidgetVisibility(
 
 export async function getAvailableProjects(userId: string) {
   try {
-    const [{ taskProjects }, { db }, { eq }] = await Promise.all([
-      import("@/modules/tasks/schema"),
-      import("@/core/database"),
-      import("drizzle-orm"),
-    ]);
-    const projects = await db
-      .select({
-        id: taskProjects.id,
-        title: taskProjects.title,
-        color: taskProjects.color,
-      })
-      .from(taskProjects)
-      .where(eq(taskProjects.userId, userId));
-    return projects;
+    const { connectToDatabase } = await import("@/lib/mongodb");
+    const { TaskProject } = await import("@/lib/models/tasks");
+    await connectToDatabase();
+    const docs = await TaskProject.find({ userId })
+      .select({ _id: 1, title: 1, color: 1 })
+      .lean();
+    return docs.map((doc: any) => ({
+      id: doc._id.toString(),
+      title: doc.title,
+      color: doc.color,
+    }));
   } catch {
     return [];
   }

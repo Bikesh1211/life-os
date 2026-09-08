@@ -152,8 +152,8 @@ async function syncArtist(mbid: string) {
   return repo.createArtist({
     musicBrainzId: mbArtist.id,
     name: mbArtist.name,
-    country: mbArtist.country ?? null,
-    type: mbArtist.type?.toLowerCase() ?? null,
+    country: mbArtist.country ?? undefined,
+    type: mbArtist.type?.toLowerCase() ?? undefined,
     genres: genres.length > 0 ? genres : [],
   });
 }
@@ -169,14 +169,14 @@ async function syncAlbum(mbid: string) {
 
   const artist = await syncArtist(artistCredit.artist.id);
 
-  const coverArtUrl = await getCoverArtUrl(mbid).catch(() => null);
+  const coverArtUrl = await getCoverArtUrl(mbid).catch(() => null) ?? undefined;
   return repo.createAlbum({
     musicBrainzId: mbAlbum.id,
     artistId: artist.id,
     title: mbAlbum.title,
-    releaseDate: mbAlbum["first-release-date"] ? new Date(mbAlbum["first-release-date"]) : null,
+    releaseDate: mbAlbum["first-release-date"] ? new Date(mbAlbum["first-release-date"]) : undefined,
     coverArtUrl,
-    totalTracks: null,
+    totalTracks: undefined,
   });
 }
 
@@ -219,16 +219,16 @@ export async function searchAlbums(query: string) {
       const artist = await tryMusicBrainz(() => syncArtist(artistCredit.artist.id));
       if (!artist) return null;
 
-      const coverArtUrl = await getCoverArtUrl(r.entity.id).catch(() => null);
+      const coverArtUrl = await getCoverArtUrl(r.entity.id).catch(() => null) ?? undefined;
       return repo.createAlbum({
         musicBrainzId: r.entity.id,
         artistId: artist.id,
         title: r.entity.title,
         releaseDate: r.entity["first-release-date"]
           ? new Date(r.entity["first-release-date"])
-          : null,
+          : undefined,
         coverArtUrl,
-        totalTracks: null,
+        totalTracks: undefined,
       });
     }),
   );
@@ -256,10 +256,10 @@ export async function searchTracks(query: string) {
 
       return repo.createTrack({
         musicBrainzId: mbid,
-        albumId: null,
+        albumId: undefined,
         artistId: artist.id,
         title: r.entity.title,
-        duration: r.entity.length ? Math.round(r.entity.length / 1000) : null,
+        duration: r.entity.length ? Math.round(r.entity.length / 1000) : undefined,
       });
     }),
   );
@@ -272,12 +272,12 @@ export async function logListening(userId: string, params: CreateListeningParams
   const validated = createListeningSchema.parse(params);
   return repo.createListeningEntry({
     userId,
-    trackId: validated.trackId ?? null,
-    artistName: validated.artistName ?? null,
-    trackName: validated.trackName ?? null,
+    trackId: validated.trackId ?? undefined,
+    artistName: validated.artistName ?? undefined,
+    trackName: validated.trackName ?? undefined,
     listenedAt: validated.listenedAt ? new Date(validated.listenedAt) : new Date(),
-    duration: validated.duration ?? null,
-    sessionId: validated.sessionId ?? null,
+    duration: validated.duration ?? undefined,
+    sessionId: validated.sessionId ?? undefined,
   });
 }
 
@@ -291,10 +291,10 @@ export async function createJournalEntry(userId: string, params: CreateJournalPa
   const validated = createJournalSchema.parse(params);
   return repo.createJournalEntry({
     userId,
-    trackId: validated.trackId ?? null,
-    albumId: validated.albumId ?? null,
-    artistId: validated.artistId ?? null,
-    mood: validated.mood ?? null,
+    trackId: validated.trackId ?? undefined,
+    albumId: validated.albumId ?? undefined,
+    artistId: validated.artistId ?? undefined,
+    mood: validated.mood ?? undefined,
     journalEntry: validated.journalEntry,
   });
 }
@@ -322,15 +322,15 @@ export async function createMemory(userId: string, params: CreateMemoryParams) {
   const validated = createMemorySchema.parse(params);
   return repo.createMemory({
     userId,
-    trackId: validated.trackId ?? null,
-    albumId: validated.albumId ?? null,
-    artistId: validated.artistId ?? null,
-    title: validated.title ?? null,
+    trackId: validated.trackId ?? undefined,
+    albumId: validated.albumId ?? undefined,
+    artistId: validated.artistId ?? undefined,
+    title: validated.title ?? undefined,
     contextText: validated.contextText,
-    mood: validated.mood ?? null,
+    mood: validated.mood ?? undefined,
     photoUrls: validated.photoUrls ?? [],
-    memoryDate: validated.memoryDate ? new Date(validated.memoryDate) : null,
-    linkedEventId: validated.linkedEventId ?? null,
+    memoryDate: validated.memoryDate ? new Date(validated.memoryDate) : undefined,
+    linkedEventId: validated.linkedEventId ?? undefined,
   });
 }
 
@@ -346,7 +346,7 @@ export async function updateMemory(id: string, userId: string, params: UpdateMem
     ...(validated.albumId !== undefined && { albumId: validated.albumId }),
     ...(validated.artistId !== undefined && { artistId: validated.artistId }),
     ...(validated.linkedEventId !== undefined && { linkedEventId: validated.linkedEventId }),
-  });
+  } as any);
 }
 
 export async function getMemories(userId: string, limit = 50, offset = 0) {
@@ -436,9 +436,9 @@ export async function addSongToJournal(
   const validated = addJournalSongSchema.parse(params);
   return repo.addSongToJournal({
     journalId,
-    trackId: validated.trackId ?? null,
-    albumId: validated.albumId ?? null,
-    artistId: validated.artistId ?? null,
+    trackId: validated.trackId ?? undefined,
+    albumId: validated.albumId ?? undefined,
+    artistId: validated.artistId ?? undefined,
     position: validated.position ?? 0,
   });
 }
@@ -458,7 +458,7 @@ export async function createMoodEntry(userId: string, params: CreateMoodEntryPar
   return repo.createMoodEntry({
     userId,
     mood: validated.mood,
-    note: validated.note ?? null,
+    note: validated.note ?? undefined,
     date: validated.date ? new Date(validated.date) : new Date(),
   });
 }
@@ -488,7 +488,7 @@ export async function createRating(userId: string, params: CreateRatingParams) {
     entityType: validated.entityType,
     entityId: validated.entityId,
     score: validated.score,
-    review: validated.review ?? null,
+    review: validated.review ?? undefined,
   });
 }
 
@@ -529,14 +529,14 @@ export async function getFavorites(userId: string) {
   if (favorites.length === 0) return [];
 
   const trackIds = favorites
-    .filter((f) => f.entityType === "track" && uuidRegex.test(f.entityId))
-    .map((f) => f.entityId);
+    .filter((f: any) => f.entityType === "track" && uuidRegex.test(f.entityId))
+    .map((f: any) => f.entityId);
   const albumIds = favorites
-    .filter((f) => f.entityType === "album" && uuidRegex.test(f.entityId))
-    .map((f) => f.entityId);
+    .filter((f: any) => f.entityType === "album" && uuidRegex.test(f.entityId))
+    .map((f: any) => f.entityId);
   const artistIds = favorites
-    .filter((f) => f.entityType === "artist" && uuidRegex.test(f.entityId))
-    .map((f) => f.entityId);
+    .filter((f: any) => f.entityType === "artist" && uuidRegex.test(f.entityId))
+    .map((f: any) => f.entityId);
 
   const [tracks, albums, artists] = await Promise.all([
     trackIds.length > 0 ? repo.getTracksByIds(trackIds) : [],
@@ -544,17 +544,17 @@ export async function getFavorites(userId: string) {
     artistIds.length > 0 ? repo.getArtistsByIds(artistIds) : [],
   ]);
 
-  const trackMap = new Map(tracks.map((t) => [t.id, t]));
-  const albumMap = new Map(albums.map((a) => [a.id, a]));
-  const artistMap = new Map(artists.map((a) => [a.id, a]));
+  const trackMap = new Map<string, any>(tracks.map((t: any) => [t.id, t]));
+  const albumMap = new Map<string, any>(albums.map((a: any) => [a.id, a]));
+  const artistMap = new Map<string, any>(artists.map((a: any) => [a.id, a]));
 
   const itunesFavorites = favorites.filter(
-    (f) => !uuidRegex.test(f.entityId) && f.entityId.startsWith("itunes-"),
+    (f: any) => !uuidRegex.test(f.entityId) && f.entityId.startsWith("itunes-"),
   );
   const itunesResults = new Map<string, { entityName: string | null; imageUrl: string | null }>();
   if (itunesFavorites.length > 0) {
-    const itunesIds = [...new Set(itunesFavorites.map((f) => f.entityId.replace("itunes-", "")))];
-    const results = await Promise.allSettled(itunesIds.map((id) => lookupItunesEntity(id)));
+    const itunesIds = [...new Set(itunesFavorites.map((f: any) => f.entityId.replace("itunes-", "")))];
+    const results = await Promise.allSettled((itunesIds as string[]).map((id) => lookupItunesEntity(id) as any));
     for (const result of results) {
       if (result.status === "fulfilled" && result.value) {
         itunesResults.set(result.value.id, {
@@ -565,7 +565,7 @@ export async function getFavorites(userId: string) {
     }
   }
 
-  return favorites.map((fav) => {
+  return favorites.map((fav: any) => {
     let entityName: string | null = null;
     let imageUrl: string | null = null;
 
@@ -610,9 +610,9 @@ export async function createCollection(userId: string, params: CreateCollectionP
   return repo.createCollection({
     userId,
     title: validated.title,
-    description: validated.description ?? null,
+    description: validated.description ?? undefined,
     isSmart: validated.isSmart ?? false,
-    smartFilter: validated.smartFilter ?? null,
+    smartFilter: validated.smartFilter ?? undefined,
   });
 }
 
@@ -665,8 +665,8 @@ export async function createGoalConfig(userId: string, params: CreateGoalConfigP
     userId,
     goalId: validated.goalId,
     targetType: validated.targetType,
-    targetValue: validated.targetValue ?? null,
-    targetCount: validated.targetCount ?? null,
+    targetValue: validated.targetValue ?? undefined,
+    targetCount: validated.targetCount ?? undefined,
     currentCount: 0,
   });
 }

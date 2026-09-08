@@ -1,4 +1,3 @@
-export { goals, goalMilestones, goalStatusEnum } from "./schema";
 export {
   getGoals,
   getGoalById,

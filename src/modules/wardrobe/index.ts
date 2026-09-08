@@ -1,13 +1,3 @@
-export { clothingItems, clothingCategoryEnum, clothingConditionEnum, clothingSeasonEnum, clothingSizeEnum } from "./schema/items";
-export { clothingImages } from "./schema/images";
-export { outfits, outfitOccasionEnum, outfitMoodEnum } from "./schema/outfits";
-export { outfitItems } from "./schema/outfit-items";
-export { wearHistory } from "./schema/wear-history";
-export { laundryItems, laundryStatusEnum } from "./schema/laundry";
-export { wishlistItems } from "./schema/wishlist";
-export { packingLists, packingListItems } from "./schema/packing";
-export { wardrobeTags, wardrobeItemTags } from "./schema/tags";
-
 export {
   createClothingItem,
   getClothingItems,

@@ -8,6 +8,7 @@ export async function createExpenseBudget(userId: string, params: CreateBudgetPa
   return createBudget({
     ...validated,
     userId,
+    amount: Number(validated.amount),
     startDate: new Date(validated.startDate),
     endDate: validated.endDate ? new Date(validated.endDate) : undefined,
   });

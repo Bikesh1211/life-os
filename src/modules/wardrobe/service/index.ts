@@ -88,7 +88,7 @@ export async function deleteOutfit(userId: string, id: string) {
 
 export async function logWearHistory(userId: string, input: unknown) {
   const data = logWearSchema.parse(stripNulls(input as Record<string, unknown>));
-  return wearRepo.logWear({ ...data, userId, wornDate: data.wornDate });
+  return wearRepo.logWear({ ...data, userId, wornDate: new Date(data.wornDate) });
 }
 
 export async function getWearHistory(userId: string, limit?: number) {

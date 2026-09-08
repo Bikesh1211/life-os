@@ -1,4 +1,3 @@
-export { curbCategories, curbHabits, curbLogs } from "./schema";
 export type { CurbCategory, CurbHabit, CurbLog, CreateCategoryInput, CreateHabitInput, CreateLogInput } from "./repository";
 export {
   getCategories,

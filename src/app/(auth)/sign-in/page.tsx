@@ -5,12 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { APP_NAME, APP_TAGLINE } from "@/core/constants";
-import { useSupabase } from "@/infrastructure/providers/supabase-provider";
 import { AuthCard } from "../_components/AuthCard";
 import { AuthInput } from "../_components/AuthInput";
 import { AuthButton } from "../_components/AuthButton";
-import { GoogleButton } from "../_components/GoogleButton";
-import { AuthDivider } from "../_components/AuthDivider";
 
 const stagger = {
   hidden: { opacity: 0 },
@@ -25,27 +22,16 @@ const fadeUp = {
 function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { supabase } = useSupabase();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const oauthError = searchParams.get("error");
-    if (oauthError) {
-      let msg = `OAuth failed: ${oauthError}`;
-      const desc = searchParams.get("error_description");
-      if (desc) msg = decodeURIComponent(desc.replace(/\+/g, " "));
-      const hash = window.location.hash;
-      if (hash) {
-        const hp = new URLSearchParams(hash.replace("#", ""));
-        const hd = hp.get("error_description");
-        if (hd) msg = decodeURIComponent(hd.replace(/\+/g, " "));
-      }
-      setError(msg);
+    const urlError = searchParams.get("error");
+    if (urlError) {
+      setError(decodeURIComponent(urlError));
       window.history.replaceState(null, "", window.location.pathname);
     }
   }, [searchParams]);
@@ -53,35 +39,31 @@ function SignInContent() {
   const handleEmailSignIn = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setEmailLoading(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    if (signInError) {
-      setError(signInError.message);
-      setEmailLoading(false);
-      return;
-    }
-    const redirectTo = searchParams.get("redirect_url") || "/";
-    router.push(redirectTo);
-    router.refresh();
-  }, [email, password, router, searchParams, supabase.auth]);
+    setLoading(true);
 
-  const handleGoogleSignIn = useCallback(async () => {
-    setError(null);
-    setGoogleLoading(true);
-    const redirectTo = searchParams.get("redirect_url") || "/";
-    const { data, error: signInError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?redirect_url=${encodeURIComponent(redirectTo)}`,
-      },
-    });
-    if (signInError) {
-      setError(signInError.message);
-      setGoogleLoading(false);
-      return;
+    try {
+      const res = await fetch("/api/auth/sign-in", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Invalid email or password");
+        setLoading(false);
+        return;
+      }
+
+      const redirectTo = searchParams.get("redirect_url") || "/";
+      router.push(redirectTo);
+      router.refresh();
+    } catch {
+      setError("Something went wrong. Please try again.");
+      setLoading(false);
     }
-    if (data?.url) window.location.href = data.url;
-  }, [searchParams, supabase.auth]);
+  }, [email, password, router, searchParams]);
 
   return (
     <motion.div
@@ -154,21 +136,13 @@ function SignInContent() {
             </div>
 
             {error && (
-              <p className="text-sm text-red-500">
-                {error === "Invalid login credentials"
-                  ? "Invalid email or password. Please try again."
-                  : error}
-              </p>
+              <p className="text-sm text-red-500">{error}</p>
             )}
 
-            <AuthButton type="submit" loading={emailLoading} disabled={googleLoading}>
+            <AuthButton type="submit" loading={loading}>
               Sign in
             </AuthButton>
           </form>
-
-          <AuthDivider />
-
-          <GoogleButton onClick={handleGoogleSignIn} loading={googleLoading} disabled={emailLoading} />
 
           <p className="text-center text-sm text-[var(--mantine-color-dimmed)]">
             Don&apos;t have an account?{" "}

@@ -24,7 +24,7 @@ export function ProgramDetailContent({ program, days }: Props) {
         <IconBarbell size={24} />
         <Text fw={700} size="xl">{program.name}</Text>
         <Badge size="sm" tt="capitalize">{program.difficulty}</Badge>
-        <Badge size="sm" variant="light" tt="capitalize">{program.goal.replace(/_/g, " ")}</Badge>
+        <Badge size="sm" variant="light" tt="capitalize">{program.goal?.replace(/_/g, " ") ?? "—"}</Badge>
       </Group>
 
       {program.description && (

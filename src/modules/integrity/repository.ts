@@ -1,15 +1,144 @@
-import { db } from "@/core/database";
-import { integrityCommitments, integrityCommitmentEvents, integrityDailyCheckins, integrityDailySnapshots } from "./schema";
-import { eq, and, isNull, desc, asc, count, gte, lte, inArray, sql } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import {
+  IntegrityCommitment,
+  IntegrityCommitmentEvent,
+  IntegrityDailyCheckin,
+  IntegrityDailySnapshot,
+} from "@/lib/models/integrity";
 
-export type Commitment = typeof integrityCommitments.$inferSelect;
-export type CreateCommitmentInput = typeof integrityCommitments.$inferInsert;
-export type CommitmentEvent = typeof integrityCommitmentEvents.$inferSelect;
-export type CreateEventInput = typeof integrityCommitmentEvents.$inferInsert;
-export type DailyCheckin = typeof integrityDailyCheckins.$inferSelect;
-export type CreateCheckinInput = typeof integrityDailyCheckins.$inferInsert;
-export type DailySnapshot = typeof integrityDailySnapshots.$inferSelect;
-export type CreateSnapshotInput = typeof integrityDailySnapshots.$inferInsert;
+// ── Helpers ──
+
+function toDoc(doc: any) {
+  if (!doc) return null;
+  const { _id, ...rest } = doc;
+  return { id: _id.toString(), ...rest };
+}
+
+function toDocs(docs: any[]) {
+  return docs.map(toDoc);
+}
+
+// ── Types ──
+
+export type Commitment = {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  category?: string;
+  priority?: string;
+  difficulty: string;
+  estimatedTime?: number;
+  dueDate?: Date;
+  dueTime?: string;
+  startDate?: Date;
+  tags: string[];
+  color?: string;
+  icon?: string;
+  evidenceRequired: boolean;
+  location?: string;
+  repeatRule: string;
+  reminderMinutesBefore?: number;
+  status: string;
+  linkedEntityType?: string;
+  linkedEntityId?: string;
+  completedAt?: Date;
+  failedAt?: Date;
+  missedAt?: Date;
+  cancelledAt?: Date;
+  cancellationReason?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
+};
+
+export type CreateCommitmentInput = {
+  userId: string;
+  title: string;
+  description?: string;
+  category?: string;
+  priority?: string;
+  difficulty?: string;
+  estimatedTime?: number;
+  dueDate?: Date;
+  dueTime?: string;
+  startDate?: Date;
+  tags?: string[];
+  color?: string;
+  icon?: string;
+  evidenceRequired?: boolean;
+  location?: string;
+  repeatRule?: string;
+  reminderMinutesBefore?: number;
+  status?: string;
+  linkedEntityType?: string;
+  linkedEntityId?: string;
+};
+
+export type CommitmentEvent = {
+  id: string;
+  commitmentId: string;
+  userId: string;
+  eventType: string;
+  metadata?: Record<string, unknown>;
+  timestamp: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateEventInput = {
+  commitmentId: string;
+  userId: string;
+  eventType: string;
+  metadata?: Record<string, unknown>;
+  timestamp?: Date;
+};
+
+export type DailyCheckin = {
+  id: string;
+  userId: string;
+  date: Date;
+  blockers?: string;
+  improvementNotes?: string;
+  summary?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateCheckinInput = {
+  userId: string;
+  date: Date;
+  blockers?: string;
+  improvementNotes?: string;
+  summary?: string;
+};
+
+export type DailySnapshot = {
+  id: string;
+  userId: string;
+  date: Date;
+  score: number;
+  streak: number;
+  level?: string;
+  subScores: Record<string, unknown>;
+  commitmentRate: number;
+  allCompleted: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateSnapshotInput = {
+  userId: string;
+  date: Date;
+  score: number;
+  streak: number;
+  level?: string;
+  subScores: Record<string, unknown>;
+  commitmentRate: number;
+  allCompleted: boolean;
+};
+
+// ── Commitments ──
 
 export async function getCommitments(
   userId: string,
@@ -18,51 +147,44 @@ export async function getCommitments(
   difficulty?: string,
   priority?: string,
 ) {
-  const conditions = [eq(integrityCommitments.userId, userId), isNull(integrityCommitments.deletedAt)];
-  if (status) conditions.push(eq(integrityCommitments.status, status as any));
-  if (category) conditions.push(eq(integrityCommitments.category, category));
-  if (difficulty) conditions.push(eq(integrityCommitments.difficulty, difficulty as any));
-  if (priority) conditions.push(eq(integrityCommitments.priority, priority));
+  await connectToDatabase();
+  const filter: any = { userId, deletedAt: { $exists: false } };
+  if (status) filter.status = status;
+  if (category) filter.category = category;
+  if (difficulty) filter.difficulty = difficulty;
+  if (priority) filter.priority = priority;
 
-  return db
-    .select()
-    .from(integrityCommitments)
-    .where(and(...conditions))
-    .orderBy(desc(integrityCommitments.createdAt));
+  const docs = await IntegrityCommitment.find(filter)
+    .sort({ createdAt: -1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function getCommitmentById(userId: string, commitmentId: string) {
-  const result = await db
-    .select()
-    .from(integrityCommitments)
-    .where(
-      and(
-        eq(integrityCommitments.id, commitmentId),
-        eq(integrityCommitments.userId, userId),
-        isNull(integrityCommitments.deletedAt),
-      ),
-    )
-    .limit(1);
-  return result[0] ?? null;
+  await connectToDatabase();
+  const doc = await IntegrityCommitment.findOne({
+    _id: commitmentId,
+    userId,
+    deletedAt: { $exists: false },
+  }).lean();
+  return toDoc(doc);
 }
 
 export async function getCommitmentsByIds(userId: string, commitmentIds: string[]) {
   if (commitmentIds.length === 0) return [];
-  return db
-    .select()
-    .from(integrityCommitments)
-    .where(
-      and(
-        inArray(integrityCommitments.id, commitmentIds),
-        eq(integrityCommitments.userId, userId),
-        isNull(integrityCommitments.deletedAt),
-      ),
-    );
+  await connectToDatabase();
+  const docs = await IntegrityCommitment.find({
+    _id: { $in: commitmentIds },
+    userId,
+    deletedAt: { $exists: false },
+  }).lean();
+  return toDocs(docs);
 }
 
 export async function createCommitment(input: CreateCommitmentInput) {
-  const result = await db.insert(integrityCommitments).values(input).returning();
-  return result[0];
+  await connectToDatabase();
+  const doc = await IntegrityCommitment.create(input);
+  return toDoc(doc);
 }
 
 export async function updateCommitment(
@@ -70,127 +192,134 @@ export async function updateCommitment(
   commitmentId: string,
   input: Partial<CreateCommitmentInput>,
 ) {
-  const result = await db
-    .update(integrityCommitments)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(integrityCommitments.id, commitmentId), eq(integrityCommitments.userId, userId)))
-    .returning();
-  return result[0] ?? null;
+  await connectToDatabase();
+  const doc = await IntegrityCommitment.findOneAndUpdate(
+    { _id: commitmentId, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toDoc(doc);
 }
 
 export async function deleteCommitment(userId: string, commitmentId: string) {
-  const result = await db
-    .update(integrityCommitments)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(integrityCommitments.id, commitmentId), eq(integrityCommitments.userId, userId)))
-    .returning();
-  return result[0] ?? null;
+  await connectToDatabase();
+  const doc = await IntegrityCommitment.findOneAndUpdate(
+    { _id: commitmentId, userId },
+    { deletedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toDoc(doc);
 }
 
 export async function getCommitmentCounts(userId: string) {
-  const baseCondition = and(eq(integrityCommitments.userId, userId), isNull(integrityCommitments.deletedAt));
+  await connectToDatabase();
+  const baseFilter = { userId, deletedAt: { $exists: false } };
 
-  const [totalResult] = await db
-    .select({ value: count() })
-    .from(integrityCommitments)
-    .where(baseCondition);
+  const total = await IntegrityCommitment.countDocuments(baseFilter);
 
-  const statuses = ["pending", "in_progress", "completed_unverified", "completed_verified", "failed", "missed", "cancelled"] as const;
-  const counts: Record<string, number> = {};
-  counts.all = Number(totalResult?.value ?? 0);
+  const statuses = [
+    "pending",
+    "in_progress",
+    "completed_unverified",
+    "completed_verified",
+    "failed",
+    "missed",
+    "cancelled",
+  ] as const;
 
+  const counts: Record<string, number> = { all: total };
   for (const s of statuses) {
-    const [r] = await db
-      .select({ value: count() })
-      .from(integrityCommitments)
-      .where(and(baseCondition, eq(integrityCommitments.status, s as any)));
-    counts[s] = Number(r?.value ?? 0);
+    counts[s] = await IntegrityCommitment.countDocuments({ ...baseFilter, status: s });
   }
 
-  return counts as Record<string, number>;
+  return counts;
 }
 
+// ── Events ──
+
 export async function createEvent(input: CreateEventInput) {
-  const result = await db.insert(integrityCommitmentEvents).values(input).returning();
-  return result[0];
+  await connectToDatabase();
+  const doc = await IntegrityCommitmentEvent.create(input);
+  return toDoc(doc);
 }
 
 export async function getEventsForCommitment(commitmentId: string) {
-  return db
-    .select()
-    .from(integrityCommitmentEvents)
-    .where(eq(integrityCommitmentEvents.commitmentId, commitmentId))
-    .orderBy(asc(integrityCommitmentEvents.timestamp));
+  await connectToDatabase();
+  const docs = await IntegrityCommitmentEvent.find({ commitmentId })
+    .sort({ timestamp: 1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function getRecentEvents(userId: string, limit = 50) {
-  const commitmentIds = db
-    .select({ id: integrityCommitments.id })
-    .from(integrityCommitments)
-    .where(eq(integrityCommitments.userId, userId));
+  await connectToDatabase();
 
-  return db
-    .select()
-    .from(integrityCommitmentEvents)
-    .where(inArray(integrityCommitmentEvents.commitmentId, commitmentIds))
-    .orderBy(desc(integrityCommitmentEvents.timestamp))
-    .limit(limit);
+  const commitmentDocs = await IntegrityCommitment.find({ userId })
+    .select({ _id: 1 })
+    .lean();
+  const commitmentIds = commitmentDocs.map((c: any) => c._id);
+
+  if (commitmentIds.length === 0) return [];
+
+  const docs = await IntegrityCommitmentEvent.find({ commitmentId: { $in: commitmentIds } })
+    .sort({ timestamp: -1 })
+    .limit(limit)
+    .lean();
+  return toDocs(docs);
 }
 
+// ── Daily Check-ins ──
+
 export async function getCheckin(userId: string, date: string) {
-  const result = await db
-    .select()
-    .from(integrityDailyCheckins)
-    .where(
-      and(
-        eq(integrityDailyCheckins.userId, userId),
-        eq(integrityDailyCheckins.date, date),
-      ),
-    )
-    .limit(1);
-  return result[0] ?? null;
+  await connectToDatabase();
+  const doc = await IntegrityDailyCheckin.findOne({
+    userId,
+    date: new Date(date),
+  }).lean();
+  return toDoc(doc);
 }
 
 export async function upsertCheckin(input: CreateCheckinInput & { id?: string }) {
+  await connectToDatabase();
+
   if (input.id) {
-    const result = await db
-      .update(integrityDailyCheckins)
-      .set({
-        accomplishments: input.accomplishments ?? null,
-        excuses: input.excuses ?? null,
-        distractions: input.distractions ?? null,
-        proudOf: input.proudOf ?? null,
-        improvement: input.improvement ?? null,
-        excuseTags: input.excuseTags ?? null,
+    const doc = await IntegrityDailyCheckin.findOneAndUpdate(
+      { _id: input.id },
+      {
+        blockers: input.blockers ?? null,
+        improvementNotes: input.improvementNotes ?? null,
+        summary: input.summary ?? null,
         updatedAt: new Date(),
-      })
-      .where(eq(integrityDailyCheckins.id, input.id))
-      .returning();
-    return result[0];
+      },
+      { new: true },
+    ).lean();
+    return toDoc(doc);
   }
-  const result = await db.insert(integrityDailyCheckins).values(input).returning();
-  return result[0];
+
+  const doc = await IntegrityDailyCheckin.create(input);
+  return toDoc(doc);
 }
 
 export async function getCheckinsInRange(userId: string, dateFrom: string, dateTo: string) {
-  return db
-    .select()
-    .from(integrityDailyCheckins)
-    .where(
-      and(
-        eq(integrityDailyCheckins.userId, userId),
-        gte(integrityDailyCheckins.date, dateFrom),
-        lte(integrityDailyCheckins.date, dateTo),
-      ),
-    )
-    .orderBy(asc(integrityDailyCheckins.date));
+  await connectToDatabase();
+  const docs = await IntegrityDailyCheckin.find({
+    userId,
+    date: { $gte: new Date(dateFrom), $lte: new Date(dateTo) },
+  })
+    .sort({ date: 1 })
+    .lean();
+  return toDocs(docs);
 }
 
+// ── Commitment Queries ──
+
 export async function getAllCommitmentsForUser(userId: string) {
-  return db
-    .select()
-    .from(integrityCommitments)
-    .where(and(eq(integrityCommitments.userId, userId), isNull(integrityCommitments.deletedAt)));
+  await connectToDatabase();
+  const docs = await IntegrityCommitment.find({
+    userId,
+    deletedAt: { $exists: false },
+  }).lean();
+  return toDocs(docs);
 }
 
 export async function getCommitmentsByDateRange(
@@ -198,73 +327,86 @@ export async function getCommitmentsByDateRange(
   dateFrom: Date,
   dateTo: Date,
 ) {
-  return db
-    .select()
-    .from(integrityCommitments)
-    .where(
-      and(
-        eq(integrityCommitments.userId, userId),
-        isNull(integrityCommitments.deletedAt),
-        gte(integrityCommitments.createdAt, dateFrom),
-        lte(integrityCommitments.createdAt, dateTo),
-      ),
-    );
+  await connectToDatabase();
+  const docs = await IntegrityCommitment.find({
+    userId,
+    deletedAt: { $exists: false },
+    createdAt: { $gte: dateFrom, $lte: dateTo },
+  }).lean();
+  return toDocs(docs);
 }
 
+// ── Analytics ──
+
 export async function getCategoryDistribution(userId: string) {
-  const result = await db
-    .select({
-      category: integrityCommitments.category,
-      count: count(),
-    })
-    .from(integrityCommitments)
-    .where(and(eq(integrityCommitments.userId, userId), isNull(integrityCommitments.deletedAt)))
-    .groupBy(integrityCommitments.category)
-    .orderBy(desc(count()));
-  return result;
+  await connectToDatabase();
+  const results = await IntegrityCommitment.aggregate([
+    { $match: { userId, deletedAt: { $exists: false } } },
+    { $group: { _id: "$category", count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+  ]);
+
+  return results.map((r: any) => ({ category: r._id, count: r.count }));
 }
 
 export async function getDifficultyDistribution(userId: string) {
-  const result = await db
-    .select({
-      difficulty: integrityCommitments.difficulty,
-      count: count(),
-      completed: sql<number>`COUNT(*) FILTER (WHERE status IN ('completed_unverified', 'completed_verified'))`,
-    })
-    .from(integrityCommitments)
-    .where(and(eq(integrityCommitments.userId, userId), isNull(integrityCommitments.deletedAt)))
-    .groupBy(integrityCommitments.difficulty);
-  return result;
+  await connectToDatabase();
+  const results = await IntegrityCommitment.aggregate([
+    { $match: { userId, deletedAt: { $exists: false } } },
+    {
+      $group: {
+        _id: "$difficulty",
+        count: { $sum: 1 },
+        completed: {
+          $sum: {
+            $cond: [
+              { $in: ["$status", ["completed_unverified", "completed_verified"]] },
+              1,
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  return results.map((r: any) => ({
+    difficulty: r._id,
+    count: r.count,
+    completed: r.completed,
+  }));
 }
 
 export async function getCompletionTrend(userId: string, dateFrom: string, dateTo: string) {
-  const result = await db
-    .select({
-      date: sql<string>`DATE(created_at)`,
-      count: count(),
-    })
-    .from(integrityCommitments)
-    .where(
-      and(
-        eq(integrityCommitments.userId, userId),
-        isNull(integrityCommitments.deletedAt),
-        gte(integrityCommitments.createdAt, new Date(dateFrom)),
-        lte(integrityCommitments.createdAt, new Date(dateTo + "T23:59:59")),
-      ),
-    )
-    .groupBy(sql`DATE(created_at)`)
-    .orderBy(asc(sql`DATE(created_at)`));
-  return result;
+  await connectToDatabase();
+  const results = await IntegrityCommitment.aggregate([
+    {
+      $match: {
+        userId,
+        deletedAt: { $exists: false },
+        createdAt: { $gte: new Date(dateFrom), $lte: new Date(dateTo + "T23:59:59") },
+      },
+    },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  return results.map((r: any) => ({ date: r._id, count: r.count }));
 }
 
 export async function getDayOfWeekDistribution(userId: string) {
-  const all = await db
-    .select({
-      createdAt: integrityCommitments.createdAt,
-      status: integrityCommitments.status,
-    })
-    .from(integrityCommitments)
-    .where(and(eq(integrityCommitments.userId, userId), isNull(integrityCommitments.deletedAt)));
+  await connectToDatabase();
+  const all = await IntegrityCommitment.find({
+    userId,
+    deletedAt: { $exists: false },
+  })
+    .select({ createdAt: 1, status: 1 })
+    .lean();
 
   const dayCounts: Record<string, { total: number; completed: number }> = {
     Sunday: { total: 0, completed: 0 },
@@ -287,107 +429,100 @@ export async function getDayOfWeekDistribution(userId: string) {
   return dayCounts;
 }
 
+// ── Snapshots ──
+
 export async function getSnapshot(userId: string, date: string) {
-  const result = await db
-    .select()
-    .from(integrityDailySnapshots)
-    .where(
-      and(
-        eq(integrityDailySnapshots.userId, userId),
-        eq(integrityDailySnapshots.date, date),
-      ),
-    )
-    .limit(1);
-  return result[0] ?? null;
+  await connectToDatabase();
+  const doc = await IntegrityDailySnapshot.findOne({
+    userId,
+    date: new Date(date),
+  }).lean();
+  return toDoc(doc);
 }
 
 export async function getLatestSnapshot(userId: string) {
-  const result = await db
-    .select()
-    .from(integrityDailySnapshots)
-    .where(eq(integrityDailySnapshots.userId, userId))
-    .orderBy(desc(integrityDailySnapshots.date))
-    .limit(1);
-  return result[0] ?? null;
+  await connectToDatabase();
+  const doc = await IntegrityDailySnapshot.findOne({ userId })
+    .sort({ date: -1 })
+    .lean();
+  return toDoc(doc);
 }
 
 export async function upsertSnapshot(input: CreateSnapshotInput & { id?: string }) {
+  await connectToDatabase();
+
   if (input.id) {
-    const result = await db
-      .update(integrityDailySnapshots)
-      .set({
+    const doc = await IntegrityDailySnapshot.findOneAndUpdate(
+      { _id: input.id },
+      {
         score: input.score,
         streak: input.streak,
         level: input.level,
-        levelTitle: input.levelTitle,
         subScores: input.subScores,
         commitmentRate: input.commitmentRate,
-        isAllCompleted: input.isAllCompleted,
+        allCompleted: input.allCompleted,
         updatedAt: new Date(),
-      })
-      .where(eq(integrityDailySnapshots.id, input.id))
-      .returning();
-    return result[0];
+      },
+      { new: true },
+    ).lean();
+    return toDoc(doc);
   }
-  const result = await db.insert(integrityDailySnapshots).values(input).returning();
-  return result[0];
+
+  const doc = await IntegrityDailySnapshot.create(input);
+  return toDoc(doc);
 }
 
 export async function getSnapshotsInRange(userId: string, dateFrom: string, dateTo: string) {
-  return db
-    .select()
-    .from(integrityDailySnapshots)
-    .where(
-      and(
-        eq(integrityDailySnapshots.userId, userId),
-        gte(integrityDailySnapshots.date, dateFrom),
-        lte(integrityDailySnapshots.date, dateTo),
-      ),
-    )
-    .orderBy(asc(integrityDailySnapshots.date));
+  await connectToDatabase();
+  const docs = await IntegrityDailySnapshot.find({
+    userId,
+    date: { $gte: new Date(dateFrom), $lte: new Date(dateTo) },
+  })
+    .sort({ date: 1 })
+    .lean();
+  return toDocs(docs);
 }
 
+// ── Excuse Tags ──
+
 export async function getExcuseTagDistribution(userId: string, dateFrom?: string, dateTo?: string) {
-  const conditions = [eq(integrityDailyCheckins.userId, userId)];
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (dateFrom || dateTo) {
+    filter.date = {};
+    if (dateFrom) filter.date.$gte = new Date(dateFrom);
+    if (dateTo) filter.date.$lte = new Date(dateTo);
+  }
 
-  if (dateFrom) conditions.push(gte(integrityDailyCheckins.date, dateFrom));
-  if (dateTo) conditions.push(lte(integrityDailyCheckins.date, dateTo));
-
-  const results = await db
-    .select({
-      date: integrityDailyCheckins.date,
-      excuseTags: integrityDailyCheckins.excuseTags,
-    })
-    .from(integrityDailyCheckins)
-    .where(and(...conditions))
-    .orderBy(desc(integrityDailyCheckins.date));
+  const results = await IntegrityDailyCheckin.find(filter)
+    .select({ excuseTags: 1 })
+    .sort({ date: -1 })
+    .lean();
 
   const tagCounts: Record<string, number> = {};
   for (const row of results) {
-    if (row.excuseTags) {
-      for (const tag of row.excuseTags) {
+    const tags = (row as any).excuseTags;
+    if (tags) {
+      for (const tag of tags) {
         tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
       }
     }
   }
 
-  const sorted = Object.entries(tagCounts)
+  return Object.entries(tagCounts)
     .map(([tag, count]) => ({ tag, count }))
     .sort((a, b) => b.count - a.count);
-
-  return sorted;
 }
 
+// ── Linked Commitments ──
+
 export async function getLinkedCommitments(userId: string, entityType: string, entityId: string) {
-  return db
-    .select()
-    .from(integrityCommitments)
-    .where(
-      and(
-        eq(integrityCommitments.userId, userId),
-        eq(integrityCommitments.linkedEntityType, entityType),
-        eq(integrityCommitments.linkedEntityId, entityId),
-        isNull(integrityCommitments.deletedAt),
-      ),
-    );
+  await connectToDatabase();
+  const docs = await IntegrityCommitment.find({
+    userId,
+    linkedEntityType: entityType,
+    linkedEntityId: entityId,
+    deletedAt: { $exists: false },
+  }).lean();
+  return toDocs(docs);
 }
