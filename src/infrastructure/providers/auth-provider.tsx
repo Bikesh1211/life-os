@@ -40,9 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    await fetch("/api/auth/sign-out", { method: "POST" });
     setUser(null);
-    window.location.href = "/sign-in";
+    window.location.replace("/sign-in");
+    try {
+      await fetch("/api/auth/sign-out", { method: "POST", keepalive: true });
+    } catch {
+    }
   };
 
   return (
