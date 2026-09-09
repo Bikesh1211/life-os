@@ -17,12 +17,12 @@ import { connectToDatabase } from "../src/lib/mongodb";
 
 const args = process.argv.slice(2);
 const DRY_RUN = args.includes("--dry-run");
-const email = args.find((a) => !a.startsWith("--"));
+const emailArg = args.find((a) => !a.startsWith("--"));
 
-if (!email) {
-  console.error('Usage: npx tsx scripts/link-data-to-user.ts <email> [--dry-run]');
-  process.exit(1);
+if (!emailArg) {
+  throw new Error('Usage: npx tsx scripts/link-data-to-user.ts <email> [--dry-run]');
 }
+const email: string = emailArg;
 
 async function main() {
   const conn = await connectToDatabase();
