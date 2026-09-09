@@ -68,16 +68,9 @@ type MigrationEntry = {
 };
 
 const MIGRATIONS: MigrationEntry[] = [
-  // ── Auth ──
-  { table: "users", model: UserModel, transform: (r) => ({
-    _id: r.id, email: r.email, fullName: r.fullName || r.full_name || null,
-    avatarUrl: r.avatarUrl || r.avatar_url || null, createdAt: r.createdAt || r.created_at,
-    updatedAt: r.updatedAt || r.updated_at,
-  })},
-
   // ── Journal ──
   { table: "journal_entries", model: JournalEntryModel, transform: (r) => ({
-    _id: r.id, userId: r.userId || r.user_id, title: r.title, content: r.content,
+    pgId: r.id, userId: r.userId || r.user_id, title: r.title, content: r.content,
     mood: r.mood, tags: r.tags || [], reflectionScore: r.reflectionScore || r.reflection_score,
     isPinned: r.isPinned || r.is_pinned, isPrivate: r.isPrivate ?? r.is_private ?? true,
     eventDate: r.eventDate || r.event_date, deletedAt: r.deletedAt || r.deleted_at,
@@ -86,7 +79,7 @@ const MIGRATIONS: MigrationEntry[] = [
 
   // ── Timeline ──
   { table: "timeline_events", model: TimelineEvent, transform: (r) => ({
-    _id: r.id, userId: r.userId || r.user_id, title: r.title, description: r.description,
+    pgId: r.id, userId: r.userId || r.user_id, title: r.title, description: r.description,
     category: r.category, importance: r.importance || "medium",
     eventDate: r.eventDate || r.event_date, startTime: r.startTime || r.start_time,
     endTime: r.endTime || r.end_time, location: r.location, mood: r.mood,
@@ -384,9 +377,10 @@ function defaultTransform(row: Record<string, any>): Record<string, any> {
   const doc: Record<string, any> = {};
 
   for (const [k, v] of Object.entries(camel)) {
-    // Map id → _id (PG uses `id`, Mongoose uses `_id`)
+    // Keep PG uuid in `pgId`, let Mongo generate its own ObjectId `_id`
+    // (PG uuid strings are not valid ObjectIds and would fail validation)
     if (k === "id") {
-      doc._id = v;
+      doc.pgId = v;
     } else {
       doc[k] = mongoValue(v);
     }
@@ -426,8 +420,11 @@ async function main() {
   // Connect to MongoDB
   console.log("Connecting to MongoDB...");
   mongoose.set("strictQuery", false);
-  await connectToDatabase();
-  console.log("✓ MongoDB connected\n");
+  if (!mongoUri.includes(".mongodb.net/")) {
+    console.warn("⚠ MONGODB_URI has no database path — defaulting to `test`. Use ...mongodb.net/life-os");
+  }
+  const conn = await connectToDatabase();
+  console.log(`✓ MongoDB connected → host: ${conn.connection.host} | db: "${conn.connection.name}"\n`);
 
   // Filter migrations
   const migrations = ONLY_TABLES
@@ -479,8 +476,17 @@ async function main() {
     let offset = 0;
     let inserted = 0;
 
+    // Determine ORDER BY column - try 'id' first, fall back to no ordering
+    let orderClause = '';
+    try {
+      await pgClient.query(`SELECT "id" FROM "${table}" LIMIT 1`);
+      orderClause = 'ORDER BY "id"';
+    } catch {
+      orderClause = '';
+    }
+
     while (offset < pgRows) {
-      const rows = await pgClient.query(`SELECT * FROM "${table}" ORDER BY id LIMIT $1 OFFSET $2`, [
+      const rows = await pgClient.query(`SELECT * FROM "${table}" ${orderClause} LIMIT $1 OFFSET $2`, [
         BATCH_SIZE,
         offset,
       ]);
@@ -547,6 +553,20 @@ async function main() {
   console.log(`│ Total inserted:     ${String(totalInserted).padStart(8)}                        │`);
   console.log(`│ Duplicates skipped: ${String(totalSkipped).padStart(8)}                        │`);
   console.log("└──────────────────────────────────────────────────────┘");
+
+  // Read-back verification: confirm data is actually in Mongo
+  if (!DRY_RUN) {
+    console.log(`\n┌─ Read-back check (db: "${mongoose.connection.name}") ─`);
+    for (const { table, model } of migrations) {
+      try {
+        const n = await model.countDocuments({});
+        if (n > 0) console.log(`│ ${model.collection.name.padEnd(32)} ${String(n).padStart(6)} docs  (← ${table})`);
+      } catch (e: any) {
+        console.log(`│ ${table} read-back error: ${e.message}`);
+      }
+    }
+    console.log("└─ In Atlas open this exact db name, search these collection names ─");
+  }
 
   // Cleanup
   await pgClient.end();
