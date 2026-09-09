@@ -1,8 +1,3 @@
-export { techItems, ownershipStatusEnum, conditionEnum } from "./schema/items";
-export { techSetups } from "./schema/setups";
-export { techSetupItems } from "./schema/setup-items";
-export { techMaintenanceLog } from "./schema/maintenance";
-
 export {
   createTechItem,
   getTechItems,

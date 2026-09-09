@@ -1,10 +1,31 @@
-import { db } from "@/core/database/client";
-import { strategySections, strategyVersions } from "./schema";
-import { and, eq, isNull, asc, desc, sql } from "drizzle-orm";
-import type { InferSelectModel } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { StrategySectionModel, StrategyVersionModel } from "@/lib/models/strategy";
 
-export type StrategySection = InferSelectModel<typeof strategySections>;
-export type StrategyVersion = InferSelectModel<typeof strategyVersions>;
+// ─── Types ────────────────────────────────────────────────────────
+
+export type StrategySection = {
+  id: string;
+  userId: string;
+  sectionType: string;
+  title?: string;
+  content: Record<string, any>;
+  order: number;
+  isPinned: boolean;
+  metadata?: Record<string, any>;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type StrategyVersion = {
+  id: string;
+  userId: string;
+  sections: Record<string, any>;
+  snapshot: Record<string, any>;
+  note?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export type CreateSectionInput = {
   userId: string;
@@ -27,64 +48,79 @@ export type CreateVersionInput = {
   wordCount: number;
 };
 
+// ─── Helpers ──────────────────────────────────────────────────────
+
+function mapSection(doc: any): StrategySection {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapVersion(doc: any): StrategyVersion {
+  return { ...doc, id: doc._id.toString() };
+}
+
+// ─── Sections ─────────────────────────────────────────────────────
+
 export async function getAllSections(userId: string): Promise<StrategySection[]> {
-  return db
-    .select()
-    .from(strategySections)
-    .where(and(eq(strategySections.userId, userId), isNull(strategySections.deletedAt)))
-    .orderBy(asc(strategySections.sectionType), asc(strategySections.sortOrder));
+  await connectToDatabase();
+  const docs = await StrategySectionModel.find({ userId, deletedAt: null })
+    .sort({ sectionType: 1, order: 1 })
+    .lean();
+  return docs.map(mapSection);
 }
 
 export async function getSectionsByType(userId: string, sectionType: string): Promise<StrategySection[]> {
-  return db
-    .select()
-    .from(strategySections)
-    .where(
-      and(eq(strategySections.userId, userId), eq(strategySections.sectionType, sectionType), isNull(strategySections.deletedAt)),
-    )
-    .orderBy(asc(strategySections.sortOrder));
+  await connectToDatabase();
+  const docs = await StrategySectionModel.find({ userId, sectionType, deletedAt: null })
+    .sort({ order: 1 })
+    .lean();
+  return docs.map(mapSection);
 }
 
 export async function createSection(input: CreateSectionInput): Promise<StrategySection> {
-  const [section] = await db
-    .insert(strategySections)
-    .values({
-      userId: input.userId,
-      sectionType: input.sectionType,
-      content: input.content,
-      sortOrder: input.sortOrder ?? 0,
-      isPinned: input.isPinned ?? false,
-    })
-    .returning();
-  return section;
+  await connectToDatabase();
+  const doc = await StrategySectionModel.create({
+    userId: input.userId,
+    sectionType: input.sectionType,
+    content: input.content,
+    order: input.sortOrder ?? 0,
+    isPinned: input.isPinned ?? false,
+  });
+  return mapSection(doc.toObject());
 }
 
 export async function updateSection(id: string, userId: string, input: UpdateSectionInput): Promise<StrategySection | null> {
-  const [section] = await db
-    .update(strategySections)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(strategySections.id, id), eq(strategySections.userId, userId), isNull(strategySections.deletedAt)))
-    .returning();
-  return section ?? null;
+  await connectToDatabase();
+  const updateData: Record<string, any> = {};
+  if (input.content !== undefined) updateData.content = input.content;
+  if (input.sortOrder !== undefined) updateData.order = input.sortOrder;
+  if (input.isPinned !== undefined) updateData.isPinned = input.isPinned;
+  updateData.updatedAt = new Date();
+
+  const doc = await StrategySectionModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { $set: updateData },
+    { new: true },
+  ).lean();
+  return doc ? mapSection(doc) : null;
 }
 
 export async function softDeleteSection(id: string, userId: string): Promise<StrategySection | null> {
-  const [section] = await db
-    .update(strategySections)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(strategySections.id, id), eq(strategySections.userId, userId)))
-    .returning();
-  return section ?? null;
+  await connectToDatabase();
+  const doc = await StrategySectionModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: { deletedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapSection(doc) : null;
 }
 
 export async function getNextSortOrder(userId: string, sectionType: string): Promise<number> {
-  const [result] = await db
-    .select({ max: sql<number>`COALESCE(MAX(${strategySections.sortOrder}), -1) + 1` })
-    .from(strategySections)
-    .where(
-      and(eq(strategySections.userId, userId), eq(strategySections.sectionType, sectionType), isNull(strategySections.deletedAt)),
-    );
-  return result.max;
+  await connectToDatabase();
+  const result = await StrategySectionModel.aggregate([
+    { $match: { userId, sectionType, deletedAt: null } },
+    { $group: { _id: null, maxOrder: { $max: "$order" } } },
+  ]);
+  return (result[0]?.maxOrder ?? -1) + 1;
 }
 
 export async function getSectionWordCount(userId: string): Promise<number> {
@@ -98,43 +134,46 @@ export async function getSectionWordCount(userId: string): Promise<number> {
 
 function countWordsInContent(content: unknown): number {
   if (!content) return 0;
-  return JSON.stringify(content).trim().split(/\s+/).filter(Boolean).length;
+  return JSON.stringify(content)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
 }
 
+// ─── Versions ─────────────────────────────────────────────────────
+
 export async function getNextVersionNumber(userId: string): Promise<number> {
-  const [result] = await db
-    .select({ max: sql<number>`COALESCE(MAX(${strategyVersions.versionNumber}), 0) + 1` })
-    .from(strategyVersions)
-    .where(eq(strategyVersions.userId, userId));
-  return result.max;
+  await connectToDatabase();
+  const result = await StrategyVersionModel.aggregate([
+    { $match: { userId } },
+    { $group: { _id: null, maxVersion: { $max: "$versionNumber" } } },
+  ]);
+  return (result[0]?.maxVersion ?? 0) + 1;
 }
 
 export async function createVersion(input: CreateVersionInput & { versionNumber: number }): Promise<StrategyVersion> {
-  const [version] = await db
-    .insert(strategyVersions)
-    .values({
-      userId: input.userId,
-      versionNumber: input.versionNumber,
-      snapshot: input.snapshot,
-      summary: input.summary,
-      wordCount: input.wordCount,
-    })
-    .returning();
-  return version;
+  await connectToDatabase();
+  const doc = await StrategyVersionModel.create({
+    userId: input.userId,
+    versionNumber: input.versionNumber,
+    snapshot: input.snapshot,
+    sections: input.snapshot,
+    note: input.summary,
+    wordCount: input.wordCount,
+  });
+  return mapVersion(doc.toObject());
 }
 
 export async function getVersions(userId: string): Promise<StrategyVersion[]> {
-  return db
-    .select()
-    .from(strategyVersions)
-    .where(eq(strategyVersions.userId, userId))
-    .orderBy(desc(strategyVersions.versionNumber));
+  await connectToDatabase();
+  const docs = await StrategyVersionModel.find({ userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return docs.map(mapVersion);
 }
 
 export async function getVersionById(id: string, userId: string): Promise<StrategyVersion | null> {
-  const [version] = await db
-    .select()
-    .from(strategyVersions)
-    .where(and(eq(strategyVersions.id, id), eq(strategyVersions.userId, userId)));
-  return version ?? null;
+  await connectToDatabase();
+  const doc = await StrategyVersionModel.findOne({ _id: id, userId }).lean();
+  return doc ? mapVersion(doc) : null;
 }

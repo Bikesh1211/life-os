@@ -1,19 +1,30 @@
-import { db } from "@/core/database";
-import { techMaintenanceLog } from "../schema/maintenance";
-import { eq, desc } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { TechMaintenanceLogModel } from "@/lib/models/tech-gear";
 
-export type MaintenanceEntry = typeof techMaintenanceLog.$inferSelect;
-export type CreateMaintenanceInput = typeof techMaintenanceLog.$inferInsert;
+export type MaintenanceEntry = any;
+export type CreateMaintenanceInput = any;
+
+function toPlain(doc: any) {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  const { _id, __v, ...rest } = obj;
+  return { ...rest, id: _id.toString() };
+}
+
+function toPlainArray(docs: any[]) {
+  return docs.map(toPlain);
+}
 
 export async function createMaintenance(input: CreateMaintenanceInput) {
-  const [entry] = await db.insert(techMaintenanceLog).values(input).returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await TechMaintenanceLogModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getMaintenanceForItem(itemId: string) {
-  return db
-    .select()
-    .from(techMaintenanceLog)
-    .where(eq(techMaintenanceLog.itemId, itemId))
-    .orderBy(desc(techMaintenanceLog.date));
+  await connectToDatabase();
+  const docs = await TechMaintenanceLogModel.find({ itemId })
+    .sort({ date: -1 })
+    .lean();
+  return toPlainArray(docs);
 }

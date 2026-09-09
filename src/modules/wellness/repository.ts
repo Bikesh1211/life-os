@@ -1,91 +1,433 @@
-import { db } from "@/core/database";
-import { and, eq, gte, lte, desc, asc, sql, isNull, inArray, sum } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  wellnessMoodLogs,
-  wellnessSleepRecords,
-  wellnessUserPreferences,
-  wellnessHydrationEntries,
-  wellnessConfidenceCheckins,
-  wellnessHabitEnrichment,
-  wellnessWeightEntries,
-  wellnessWorkoutEntries,
-  wellnessStepEntries,
-  wellnessCalorieEntries,
-  wellnessBloodPressureEntries,
-  wellnessHeartRateEntries,
-  wellnessMedicineReminders,
-  wellnessMedicineLogs,
-  wellnessUserGoals,
-  wellnessAchievements,
-} from "./schema";
+  WellnessMoodLog,
+  WellnessSleepRecord,
+  WellnessUserPreference,
+  WellnessHydrationEntry,
+  WellnessConfidenceCheckin,
+  WellnessHabitEnrichment,
+  WellnessWeightEntry,
+  WellnessWorkoutEntry,
+  WellnessStepEntry,
+  WellnessCalorieEntry,
+  WellnessBloodPressureEntry,
+  WellnessHeartRateEntry,
+  WellnessMedicineReminder,
+  WellnessMedicineLog,
+  WellnessUserGoal,
+  WellnessAchievement,
+} from "@/lib/models/wellness";
+
+// ── Helpers ──
+
+function toDoc(doc: any) {
+  if (!doc) return null;
+  const { _id, ...rest } = doc;
+  return { id: _id.toString(), ...rest };
+}
+
+function toDocs(docs: any[]) {
+  return docs.map(toDoc);
+}
 
 // ── Types ──
 
-export type WellnessMoodLog = typeof wellnessMoodLogs.$inferSelect;
-export type WellnessSleepRecord = typeof wellnessSleepRecords.$inferSelect;
-export type WellnessHydrationEntry = typeof wellnessHydrationEntries.$inferSelect;
-export type WellnessConfidenceCheckin = typeof wellnessConfidenceCheckins.$inferSelect;
-export type WellnessHabitEnrichment = typeof wellnessHabitEnrichment.$inferSelect;
-export type WellnessHabitEnrichmentInsert = typeof wellnessHabitEnrichment.$inferInsert;
+export type WellnessMoodLog = {
+  id: string;
+  userId: string;
+  loggedAt: Date;
+  happiness: number;
+  stress: number;
+  anxiety: number;
+  motivation: number;
+  energy: number;
+  confidence: number;
+  focus: number;
+  mentalFatigue: number;
+  notes?: string;
+  tags: string[];
+  emoji?: string;
+  voiceNoteUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-export type CreateMoodLogInput = typeof wellnessMoodLogs.$inferInsert;
-export type CreateSleepRecordInput = typeof wellnessSleepRecords.$inferInsert;
-export type CreateHydrationEntryInput = typeof wellnessHydrationEntries.$inferInsert;
-export type CreateConfidenceCheckinInput = typeof wellnessConfidenceCheckins.$inferInsert;
-export type CreateHabitEnrichmentInput = typeof wellnessHabitEnrichment.$inferInsert;
-export type WellnessWeightEntry = typeof wellnessWeightEntries.$inferSelect;
-export type WellnessWorkoutEntry = typeof wellnessWorkoutEntries.$inferSelect;
-export type WellnessStepEntry = typeof wellnessStepEntries.$inferSelect;
-export type WellnessCalorieEntry = typeof wellnessCalorieEntries.$inferSelect;
-export type WellnessBloodPressureEntry = typeof wellnessBloodPressureEntries.$inferSelect;
-export type WellnessHeartRateEntry = typeof wellnessHeartRateEntries.$inferSelect;
-export type WellnessMedicineReminder = typeof wellnessMedicineReminders.$inferSelect;
-export type WellnessMedicineLog = typeof wellnessMedicineLogs.$inferSelect;
-export type WellnessUserGoal = typeof wellnessUserGoals.$inferSelect;
-export type WellnessAchievement = typeof wellnessAchievements.$inferSelect;
-export type CreateWeightEntryInput = typeof wellnessWeightEntries.$inferInsert;
-export type CreateWorkoutEntryInput = typeof wellnessWorkoutEntries.$inferInsert;
-export type CreateStepEntryInput = typeof wellnessStepEntries.$inferInsert;
-export type CreateCalorieEntryInput = typeof wellnessCalorieEntries.$inferInsert;
-export type CreateBloodPressureEntryInput = typeof wellnessBloodPressureEntries.$inferInsert;
-export type CreateHeartRateEntryInput = typeof wellnessHeartRateEntries.$inferInsert;
-export type CreateMedicineReminderInput = typeof wellnessMedicineReminders.$inferInsert;
-export type CreateMedicineLogInput = typeof wellnessMedicineLogs.$inferInsert;
-export type CreateUserGoalInput = typeof wellnessUserGoals.$inferInsert;
-export type CreateAchievementInput = typeof wellnessAchievements.$inferInsert;
+export type WellnessSleepRecord = {
+  id: string;
+  userId: string;
+  bedtime: Date;
+  wakeTime: Date;
+  quality?: number;
+  interruptions: number;
+  sleepLatencyMinutes?: number;
+  moodAfterWaking?: string;
+  energyLevel?: number;
+  importSource?: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessHydrationEntry = {
+  id: string;
+  userId: string;
+  date: Date;
+  amountMl: number;
+  loggedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessConfidenceCheckin = {
+  id: string;
+  userId: string;
+  date: Date;
+  score: number;
+  selfEsteem?: number;
+  socialComfort?: number;
+  publicSpeakingConfidence?: number;
+  appearanceSatisfaction?: number;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessHabitEnrichment = {
+  id: string;
+  userId: string;
+  habitId: string;
+  wellnessType: string;
+  subcategory?: string;
+  lastCompletedDate?: Date;
+  nextDueDate?: Date;
+  reminderDaysBefore: number;
+  seasonalMonths?: number[];
+  estimatedCost?: number;
+  notes?: string;
+  groomingCategory?: string;
+  icon?: string;
+  color?: string;
+  preferredTime?: string;
+  estimatedDurationMinutes?: number;
+  sortOrder: number;
+  isArchived: boolean;
+  reminderConfig?: Record<string, unknown>;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessHabitEnrichmentInsert = Partial<WellnessHabitEnrichment>;
+
+export type CreateMoodLogInput = {
+  userId: string;
+  loggedAt?: Date;
+  happiness: number;
+  stress: number;
+  anxiety: number;
+  motivation: number;
+  energy: number;
+  confidence: number;
+  focus: number;
+  mentalFatigue: number;
+  notes?: string;
+  tags?: string[];
+  emoji?: string;
+  voiceNoteUrl?: string;
+};
+
+export type CreateSleepRecordInput = {
+  userId: string;
+  bedtime: Date;
+  wakeTime: Date;
+  quality?: number;
+  interruptions?: number;
+  sleepLatencyMinutes?: number;
+  moodAfterWaking?: string;
+  energyLevel?: number;
+  importSource?: string;
+  notes?: string;
+};
+
+export type CreateHydrationEntryInput = {
+  userId: string;
+  date: Date;
+  amountMl: number;
+  loggedAt?: Date;
+};
+
+export type CreateConfidenceCheckinInput = {
+  userId: string;
+  date: Date;
+  score: number;
+  selfEsteem?: number;
+  socialComfort?: number;
+  publicSpeakingConfidence?: number;
+  appearanceSatisfaction?: number;
+  notes?: string;
+};
+
+export type CreateHabitEnrichmentInput = {
+  userId: string;
+  habitId: string;
+  wellnessType: string;
+  subcategory?: string;
+  lastCompletedDate?: Date;
+  nextDueDate?: Date;
+  reminderDaysBefore?: number;
+  seasonalMonths?: number[];
+  estimatedCost?: number;
+  notes?: string;
+  groomingCategory?: string;
+  icon?: string;
+  color?: string;
+  preferredTime?: string;
+  estimatedDurationMinutes?: number;
+  sortOrder?: number;
+  isArchived?: boolean;
+  reminderConfig?: Record<string, unknown>;
+};
+
+export type WellnessWeightEntry = {
+  id: string;
+  userId: string;
+  weightKg: number;
+  bodyFatPercentage?: number;
+  musclePercentage?: number;
+  date: Date;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessWorkoutEntry = {
+  id: string;
+  userId: string;
+  workoutType: string;
+  durationMinutes: number;
+  caloriesBurned?: number;
+  distanceKm?: number;
+  notes?: string;
+  date: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessStepEntry = {
+  id: string;
+  userId: string;
+  steps: number;
+  date: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessCalorieEntry = {
+  id: string;
+  userId: string;
+  mealType: string;
+  calories: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+  date: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessBloodPressureEntry = {
+  id: string;
+  userId: string;
+  systolic: number;
+  diastolic: number;
+  pulse?: number;
+  date: Date;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessHeartRateEntry = {
+  id: string;
+  userId: string;
+  bpm: number;
+  type?: string;
+  date: Date;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessMedicineReminder = {
+  id: string;
+  userId: string;
+  name: string;
+  dosage?: string;
+  frequency: string;
+  times: string[];
+  isActive: boolean;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessMedicineLog = {
+  id: string;
+  userId: string;
+  reminderId?: string;
+  name: string;
+  dosage?: string;
+  takenAt: Date;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessUserGoal = {
+  id: string;
+  userId: string;
+  goalType: string;
+  targetValue: number;
+  currentValue: number;
+  unit?: string;
+  startDate: Date;
+  endDate?: Date;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WellnessAchievement = {
+  id: string;
+  userId: string;
+  achievementType: string;
+  title: string;
+  description?: string;
+  achievedAt: Date;
+  icon?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateWeightEntryInput = {
+  userId: string;
+  weightKg: number;
+  bodyFatPercentage?: number;
+  musclePercentage?: number;
+  date: Date;
+  notes?: string;
+};
+
+export type CreateWorkoutEntryInput = {
+  userId: string;
+  workoutType: string;
+  durationMinutes: number;
+  caloriesBurned?: number;
+  distanceKm?: number;
+  notes?: string;
+  date: Date;
+};
+
+export type CreateStepEntryInput = {
+  userId: string;
+  steps: number;
+  date: Date;
+};
+
+export type CreateCalorieEntryInput = {
+  userId: string;
+  mealType: string;
+  calories: number;
+  proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
+  date: Date;
+};
+
+export type CreateBloodPressureEntryInput = {
+  userId: string;
+  systolic: number;
+  diastolic: number;
+  pulse?: number;
+  date: Date;
+  notes?: string;
+};
+
+export type CreateHeartRateEntryInput = {
+  userId: string;
+  bpm: number;
+  type?: string;
+  date: Date;
+  notes?: string;
+};
+
+export type CreateMedicineReminderInput = {
+  userId: string;
+  name: string;
+  dosage?: string;
+  frequency: string;
+  times: string[];
+  isActive?: boolean;
+  notes?: string;
+};
+
+export type CreateMedicineLogInput = {
+  userId: string;
+  reminderId?: string;
+  name: string;
+  dosage?: string;
+  takenAt?: Date;
+  notes?: string;
+};
+
+export type CreateUserGoalInput = {
+  userId: string;
+  goalType: string;
+  targetValue: number;
+  currentValue?: number;
+  unit?: string;
+  startDate?: Date;
+  endDate?: Date;
+  isActive?: boolean;
+};
+
+export type CreateAchievementInput = {
+  userId: string;
+  achievementType: string;
+  title: string;
+  description?: string;
+  achievedAt?: Date;
+  icon?: string;
+};
 
 // ── Mood Logs ──
 
 export async function createMoodLog(input: CreateMoodLogInput) {
-  const [log] = await db.insert(wellnessMoodLogs).values(input).returning();
-  return log;
+  await connectToDatabase();
+  const doc = await WellnessMoodLog.create(input);
+  return toDoc(doc);
 }
 
 export async function getMoodLogById(id: string, userId: string) {
-  const [log] = await db
-    .select()
-    .from(wellnessMoodLogs)
-    .where(and(eq(wellnessMoodLogs.id, id), eq(wellnessMoodLogs.userId, userId)))
-    .limit(1);
-  return log ?? null;
+  await connectToDatabase();
+  const doc = await WellnessMoodLog.findOne({ _id: id, userId }).lean();
+  return toDoc(doc);
 }
 
 export async function getMoodLogs(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string; limit?: number; offset?: number } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessMoodLogs.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessMoodLogs.loggedAt, new Date(opts.dateFrom)));
-  if (opts.dateTo) conditions.push(lte(wellnessMoodLogs.loggedAt, new Date(opts.dateTo)));
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.loggedAt = { ...filter.loggedAt, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.loggedAt = { ...filter.loggedAt, $lte: new Date(opts.dateTo) };
 
-  return db
-    .select()
-    .from(wellnessMoodLogs)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessMoodLogs.loggedAt))
+  const docs = await WellnessMoodLog.find(filter)
+    .sort({ loggedAt: -1 })
+    .skip(opts.offset ?? 0)
     .limit(opts.limit ?? 50)
-    .offset(opts.offset ?? 0);
+    .lean();
+  return toDocs(docs);
 }
 
 export async function getMoodAverages(
@@ -93,60 +435,73 @@ export async function getMoodAverages(
   dateFrom: string,
   dateTo: string,
 ) {
-  const [result] = await db
-    .select({
-      avgHappiness: sql<number>`avg(${wellnessMoodLogs.happiness})`,
-      avgStress: sql<number>`avg(${wellnessMoodLogs.stress})`,
-      avgAnxiety: sql<number>`avg(${wellnessMoodLogs.anxiety})`,
-      avgMotivation: sql<number>`avg(${wellnessMoodLogs.motivation})`,
-      avgEnergy: sql<number>`avg(${wellnessMoodLogs.energy})`,
-      avgConfidence: sql<number>`avg(${wellnessMoodLogs.confidence})`,
-      avgFocus: sql<number>`avg(${wellnessMoodLogs.focus})`,
-      avgMentalFatigue: sql<number>`avg(${wellnessMoodLogs.mentalFatigue})`,
-      count: sql<number>`count(*)`,
-    })
-    .from(wellnessMoodLogs)
-    .where(
-      and(
-        eq(wellnessMoodLogs.userId, userId),
-        gte(wellnessMoodLogs.loggedAt, new Date(dateFrom)),
-        lte(wellnessMoodLogs.loggedAt, new Date(dateTo)),
-      ),
-    );
+  await connectToDatabase();
+  const [result] = await WellnessMoodLog.aggregate([
+    {
+      $match: {
+        userId,
+        loggedAt: { $gte: new Date(dateFrom), $lte: new Date(dateTo) },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        avgHappiness: { $avg: "$happiness" },
+        avgStress: { $avg: "$stress" },
+        avgAnxiety: { $avg: "$anxiety" },
+        avgMotivation: { $avg: "$motivation" },
+        avgEnergy: { $avg: "$energy" },
+        avgConfidence: { $avg: "$confidence" },
+        avgFocus: { $avg: "$focus" },
+        avgMentalFatigue: { $avg: "$mentalFatigue" },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
 
-  return result;
+  return result
+    ? {
+        avgHappiness: result.avgHappiness,
+        avgStress: result.avgStress,
+        avgAnxiety: result.avgAnxiety,
+        avgMotivation: result.avgMotivation,
+        avgEnergy: result.avgEnergy,
+        avgConfidence: result.avgConfidence,
+        avgFocus: result.avgFocus,
+        avgMentalFatigue: result.avgMentalFatigue,
+        count: result.count,
+      }
+    : null;
 }
 
 // ── Sleep Records ──
 
 export async function createSleepRecord(input: CreateSleepRecordInput) {
-  const [record] = await db.insert(wellnessSleepRecords).values(input).returning();
-  return record;
+  await connectToDatabase();
+  const doc = await WellnessSleepRecord.create(input);
+  return toDoc(doc);
 }
 
 export async function getSleepRecordById(id: string, userId: string) {
-  const [record] = await db
-    .select()
-    .from(wellnessSleepRecords)
-    .where(and(eq(wellnessSleepRecords.id, id), eq(wellnessSleepRecords.userId, userId)))
-    .limit(1);
-  return record ?? null;
+  await connectToDatabase();
+  const doc = await WellnessSleepRecord.findOne({ _id: id, userId }).lean();
+  return toDoc(doc);
 }
 
 export async function getSleepRecords(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string; limit?: number } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessSleepRecords.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessSleepRecords.bedtime, new Date(opts.dateFrom)));
-  if (opts.dateTo) conditions.push(lte(wellnessSleepRecords.bedtime, new Date(opts.dateTo)));
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.bedtime = { ...filter.bedtime, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.bedtime = { ...filter.bedtime, $lte: new Date(opts.dateTo) };
 
-  return db
-    .select()
-    .from(wellnessSleepRecords)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessSleepRecords.bedtime))
-    .limit(opts.limit ?? 30);
+  const docs = await WellnessSleepRecord.find(filter)
+    .sort({ bedtime: -1 })
+    .limit(opts.limit ?? 30)
+    .lean();
+  return toDocs(docs);
 }
 
 export async function updateSleepRecord(
@@ -154,20 +509,19 @@ export async function updateSleepRecord(
   userId: string,
   input: Partial<CreateSleepRecordInput>,
 ) {
-  const [record] = await db
-    .update(wellnessSleepRecords)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(wellnessSleepRecords.id, id), eq(wellnessSleepRecords.userId, userId)))
-    .returning();
-  return record ?? null;
+  await connectToDatabase();
+  const doc = await WellnessSleepRecord.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toDoc(doc);
 }
 
 export async function deleteSleepRecord(id: string, userId: string) {
-  const [record] = await db
-    .delete(wellnessSleepRecords)
-    .where(and(eq(wellnessSleepRecords.id, id), eq(wellnessSleepRecords.userId, userId)))
-    .returning();
-  return record ?? null;
+  await connectToDatabase();
+  const doc = await WellnessSleepRecord.findOneAndDelete({ _id: id, userId });
+  return toDoc(doc);
 }
 
 export async function getSleepRecordsByDateRange(
@@ -175,34 +529,67 @@ export async function getSleepRecordsByDateRange(
   dateFrom: string,
   dateTo: string,
 ) {
-  return db
-    .select()
-    .from(wellnessSleepRecords)
-    .where(
-      and(
-        eq(wellnessSleepRecords.userId, userId),
-        gte(wellnessSleepRecords.bedtime, new Date(dateFrom)),
-        lte(wellnessSleepRecords.bedtime, new Date(dateTo + "T23:59:59.999Z")),
-      ),
-    )
-    .orderBy(desc(wellnessSleepRecords.bedtime));
+  await connectToDatabase();
+  const docs = await WellnessSleepRecord.find({
+    userId,
+    bedtime: { $gte: new Date(dateFrom), $lte: new Date(dateTo + "T23:59:59.999Z") },
+  })
+    .sort({ bedtime: -1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function getSleepStatistics(userId: string) {
-  const result = await db
-    .select({
-      totalSleptHours: sql<string>`coalesce(round(extract(epoch from sum(${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime})) / 3600, 1)::text, '0')`,
-      totalNights: sql<number>`count(*)`,
-      longestSleepHours: sql<string>`coalesce(round(max(extract(epoch from ${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime}) / 3600)::numeric, 1)::text, '0')`,
-      shortestSleepHours: sql<string>`coalesce(round(min(extract(epoch from ${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime}) / 3600)::numeric, 1)::text, '0')`,
-      avgBedtimeHour: sql<string>`coalesce(round(avg(extract(hour from ${wellnessSleepRecords.bedtime}) + extract(minute from ${wellnessSleepRecords.bedtime}) / 60)::numeric, 1)::text, '0')`,
-      avgWakeTimeHour: sql<string>`coalesce(round(avg(extract(hour from ${wellnessSleepRecords.wakeTime}) + extract(minute from ${wellnessSleepRecords.wakeTime}) / 60)::numeric, 1)::text, '0')`,
-      avgQuality: sql<string>`coalesce(round(avg(${wellnessSleepRecords.quality})::numeric, 1)::text, '0')`,
-    })
-    .from(wellnessSleepRecords)
-    .where(eq(wellnessSleepRecords.userId, userId));
+  await connectToDatabase();
+  const [result] = await WellnessSleepRecord.aggregate([
+    { $match: { userId } },
+    {
+      $project: {
+        sleepSeconds: { $subtract: ["$wakeTime", "$bedtime"] },
+        quality: 1,
+        bedtime: 1,
+        wakeTime: 1,
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalSleepSeconds: { $sum: "$sleepSeconds" },
+        totalNights: { $sum: 1 },
+        longestSleepSeconds: { $max: "$sleepSeconds" },
+        shortestSleepSeconds: { $min: "$sleepSeconds" },
+        avgBedtimeHour: {
+          $avg: {
+            $add: [
+              { $hour: "$bedtime" },
+              { $divide: [{ $minute: "$bedtime" }, 60] },
+            ],
+          },
+        },
+        avgWakeTimeHour: {
+          $avg: {
+            $add: [
+              { $hour: "$wakeTime" },
+              { $divide: [{ $minute: "$wakeTime" }, 60] },
+            ],
+          },
+        },
+        avgQuality: { $avg: "$quality" },
+      },
+    },
+  ]);
 
-  return result ?? null;
+  if (!result) return null;
+
+  return {
+    totalSleptHours: (result.totalSleepSeconds / 3600).toFixed(1),
+    totalNights: result.totalNights,
+    longestSleepHours: (result.longestSleepSeconds / 3600).toFixed(1),
+    shortestSleepHours: (result.shortestSleepSeconds / 3600).toFixed(1),
+    avgBedtimeHour: result.avgBedtimeHour.toFixed(1),
+    avgWakeTimeHour: result.avgWakeTimeHour.toFixed(1),
+    avgQuality: result.avgQuality.toFixed(1),
+  };
 }
 
 export async function getSleepDailyTotals(
@@ -210,132 +597,173 @@ export async function getSleepDailyTotals(
   dateFrom: string,
   dateTo: string,
 ) {
-  return db
-    .select({
-      date: sql<string>`${wellnessSleepRecords.bedtime}::date`,
-      totalHours: sql<string>`coalesce(round(sum(extract(epoch from ${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime}) / 3600)::numeric, 1)::text, '0')`,
-      avgQuality: sql<string>`coalesce(round(avg(${wellnessSleepRecords.quality})::numeric, 1)::text, '0')`,
-      count: sql<number>`count(*)`,
-      bedtime: sql<string>`min(${wellnessSleepRecords.bedtime})`,
-      wakeTime: sql<string>`max(${wellnessSleepRecords.wakeTime})`,
-    })
-    .from(wellnessSleepRecords)
-    .where(
-      and(
-        eq(wellnessSleepRecords.userId, userId),
-        gte(wellnessSleepRecords.bedtime, new Date(dateFrom)),
-        lte(wellnessSleepRecords.bedtime, new Date(dateTo + "T23:59:59.999Z")),
-      ),
-    )
-    .groupBy(sql`${wellnessSleepRecords.bedtime}::date`)
-    .orderBy(sql`${wellnessSleepRecords.bedtime}::date`);
+  await connectToDatabase();
+  const results = await WellnessSleepRecord.aggregate([
+    {
+      $match: {
+        userId,
+        bedtime: { $gte: new Date(dateFrom), $lte: new Date(dateTo + "T23:59:59.999Z") },
+      },
+    },
+    {
+      $project: {
+        date: { $dateToString: { format: "%Y-%m-%d", date: "$bedtime" } },
+        sleepSeconds: { $subtract: ["$wakeTime", "$bedtime"] },
+        quality: 1,
+        bedtime: 1,
+        wakeTime: 1,
+      },
+    },
+    {
+      $group: {
+        _id: "$date",
+        totalHours: { $sum: "$sleepSeconds" },
+        avgQuality: { $avg: "$quality" },
+        count: { $sum: 1 },
+        bedtime: { $min: "$bedtime" },
+        wakeTime: { $max: "$wakeTime" },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+
+  return results.map((r: any) => ({
+    date: r._id,
+    totalHours: (r.totalHours / 3600).toFixed(1),
+    avgQuality: r.avgQuality.toFixed(1),
+    count: r.count,
+    bedtime: r.bedtime,
+    wakeTime: r.wakeTime,
+  }));
 }
 
 export async function getSleepBestDay(userId: string) {
-  const [result] = await db
-    .select({
-      date: sql<string>`${wellnessSleepRecords.bedtime}::date`,
-      totalHours: sql<string>`coalesce(round(sum(extract(epoch from ${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime}) / 3600)::numeric, 1)::text, '0')`,
-      avgQuality: sql<string>`coalesce(round(avg(${wellnessSleepRecords.quality})::numeric, 1)::text, '0')`,
-    })
-    .from(wellnessSleepRecords)
-    .where(eq(wellnessSleepRecords.userId, userId))
-    .groupBy(sql`${wellnessSleepRecords.bedtime}::date`)
-    .orderBy(sql`avg(${wellnessSleepRecords.quality}) desc nulls last`)
-    .limit(1);
-  return result ?? null;
+  await connectToDatabase();
+  const results = await WellnessSleepRecord.aggregate([
+    { $match: { userId } },
+    {
+      $project: {
+        date: { $dateToString: { format: "%Y-%m-%d", date: "$bedtime" } },
+        sleepSeconds: { $subtract: ["$wakeTime", "$bedtime"] },
+        quality: 1,
+      },
+    },
+    {
+      $group: {
+        _id: "$date",
+        totalHours: { $sum: "$sleepSeconds" },
+        avgQuality: { $avg: "$quality" },
+      },
+    },
+    { $sort: { avgQuality: -1 } },
+    { $limit: 1 },
+  ]);
+
+  if (!results[0]) return null;
+  return {
+    date: results[0]._id,
+    totalHours: (results[0].totalHours / 3600).toFixed(1),
+    avgQuality: results[0].avgQuality.toFixed(1),
+  };
 }
 
 export async function getSleepWorstDay(userId: string) {
-  const [result] = await db
-    .select({
-      date: sql<string>`${wellnessSleepRecords.bedtime}::date`,
-      totalHours: sql<string>`coalesce(round(sum(extract(epoch from ${wellnessSleepRecords.wakeTime} - ${wellnessSleepRecords.bedtime}) / 3600)::numeric, 1)::text, '0')`,
-      avgQuality: sql<string>`coalesce(round(avg(${wellnessSleepRecords.quality})::numeric, 1)::text, '0')`,
-    })
-    .from(wellnessSleepRecords)
-    .where(eq(wellnessSleepRecords.userId, userId))
-    .groupBy(sql`${wellnessSleepRecords.bedtime}::date`)
-    .orderBy(sql`avg(${wellnessSleepRecords.quality}) asc`)
-    .limit(1);
-  return result ?? null;
+  await connectToDatabase();
+  const results = await WellnessSleepRecord.aggregate([
+    { $match: { userId } },
+    {
+      $project: {
+        date: { $dateToString: { format: "%Y-%m-%d", date: "$bedtime" } },
+        sleepSeconds: { $subtract: ["$wakeTime", "$bedtime"] },
+        quality: 1,
+      },
+    },
+    {
+      $group: {
+        _id: "$date",
+        totalHours: { $sum: "$sleepSeconds" },
+        avgQuality: { $avg: "$quality" },
+      },
+    },
+    { $sort: { avgQuality: 1 } },
+    { $limit: 1 },
+  ]);
+
+  if (!results[0]) return null;
+  return {
+    date: results[0]._id,
+    totalHours: (results[0].totalHours / 3600).toFixed(1),
+    avgQuality: results[0].avgQuality.toFixed(1),
+  };
 }
 
 // ── User Preferences ──
 
 export async function upsertUserPreference(
   userId: string,
-  input: Partial<typeof wellnessUserPreferences.$inferInsert>,
+  input: Partial<CreateUserGoalInput> & Record<string, any>,
 ) {
-  const [pref] = await db
-    .insert(wellnessUserPreferences)
-    .values({ userId, ...input })
-    .onConflictDoUpdate({
-      target: [wellnessUserPreferences.userId],
-      set: { ...input, updatedAt: new Date() },
-    })
-    .returning();
-  return pref;
+  await connectToDatabase();
+  const doc = await WellnessUserPreference.findOneAndUpdate(
+    { userId },
+    { $set: { ...input, userId, updatedAt: new Date() } },
+    { new: true, upsert: true },
+  ).lean();
+  return toDoc(doc);
 }
 
 export async function getUserPreference(userId: string) {
-  const [pref] = await db
-    .select()
-    .from(wellnessUserPreferences)
-    .where(eq(wellnessUserPreferences.userId, userId))
-    .limit(1);
-  return pref ?? null;
+  await connectToDatabase();
+  const doc = await WellnessUserPreference.findOne({ userId }).lean();
+  return toDoc(doc);
 }
 
 // ── Hydration Entries ──
 
 export async function createHydrationEntry(input: CreateHydrationEntryInput) {
-  const [entry] = await db.insert(wellnessHydrationEntries).values(input).returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await WellnessHydrationEntry.create(input);
+  return toDoc(doc);
 }
 
 export async function getHydrationEntries(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessHydrationEntries.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessHydrationEntries.date, opts.dateFrom));
-  if (opts.dateTo) conditions.push(lte(wellnessHydrationEntries.date, opts.dateTo));
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.date = { ...filter.date, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.date = { ...filter.date, $lte: new Date(opts.dateTo) };
 
-  return db
-    .select()
-    .from(wellnessHydrationEntries)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessHydrationEntries.loggedAt));
+  const docs = await WellnessHydrationEntry.find(filter)
+    .sort({ loggedAt: -1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function getHydrationDailyTotal(userId: string, date: string) {
-  const [result] = await db
-    .select({ total: sql<number>`coalesce(sum(${wellnessHydrationEntries.amountMl}), 0)` })
-    .from(wellnessHydrationEntries)
-    .where(
-      and(eq(wellnessHydrationEntries.userId, userId), eq(wellnessHydrationEntries.date, date)),
-    );
+  await connectToDatabase();
+  const [result] = await WellnessHydrationEntry.aggregate([
+    { $match: { userId, date: new Date(date) } },
+    { $group: { _id: null, total: { $sum: "$amountMl" } } },
+  ]);
   return result?.total ?? 0;
 }
 
 export async function deleteHydrationEntry(id: string, userId: string) {
-  const [entry] = await db
-    .delete(wellnessHydrationEntries)
-    .where(and(eq(wellnessHydrationEntries.id, id), eq(wellnessHydrationEntries.userId, userId)))
-    .returning();
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await WellnessHydrationEntry.findOneAndDelete({ _id: id, userId });
+  return toDoc(doc);
 }
 
 // ── Confidence Check-ins (one per day) ──
 
 export async function upsertConfidenceCheckin(input: CreateConfidenceCheckinInput) {
-  const [checkin] = await db
-    .insert(wellnessConfidenceCheckins)
-    .values(input)
-    .onConflictDoUpdate({
-      target: [wellnessConfidenceCheckins.userId, wellnessConfidenceCheckins.date],
-      set: {
+  await connectToDatabase();
+  const doc = await WellnessConfidenceCheckin.findOneAndUpdate(
+    { userId: input.userId, date: input.date },
+    {
+      $set: {
         score: input.score,
         selfEsteem: input.selfEsteem,
         socialComfort: input.socialComfort,
@@ -343,65 +771,60 @@ export async function upsertConfidenceCheckin(input: CreateConfidenceCheckinInpu
         appearanceSatisfaction: input.appearanceSatisfaction,
         notes: input.notes,
       },
-    })
-    .returning();
-  return checkin;
+    },
+    { new: true, upsert: true },
+  ).lean();
+  return toDoc(doc);
 }
 
 export async function getConfidenceCheckin(userId: string, date: string) {
-  const [checkin] = await db
-    .select()
-    .from(wellnessConfidenceCheckins)
-    .where(
-      and(eq(wellnessConfidenceCheckins.userId, userId), eq(wellnessConfidenceCheckins.date, date)),
-    )
-    .limit(1);
-  return checkin ?? null;
+  await connectToDatabase();
+  const doc = await WellnessConfidenceCheckin.findOne({
+    userId,
+    date: new Date(date),
+  }).lean();
+  return toDoc(doc);
 }
 
 export async function getConfidenceCheckins(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string; limit?: number } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessConfidenceCheckins.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessConfidenceCheckins.date, opts.dateFrom));
-  if (opts.dateTo) conditions.push(lte(wellnessConfidenceCheckins.date, opts.dateTo));
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.date = { ...filter.date, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.date = { ...filter.date, $lte: new Date(opts.dateTo) };
 
-  return db
-    .select()
-    .from(wellnessConfidenceCheckins)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessConfidenceCheckins.date))
-    .limit(opts.limit ?? 30);
+  const docs = await WellnessConfidenceCheckin.find(filter)
+    .sort({ date: -1 })
+    .limit(opts.limit ?? 30)
+    .lean();
+  return toDocs(docs);
 }
 
 // ── Wellness Habit Enrichment ──
 
 export async function createHabitEnrichment(input: CreateHabitEnrichmentInput) {
-  const [enrichment] = await db.insert(wellnessHabitEnrichment).values(input).returning();
-  return enrichment;
+  await connectToDatabase();
+  const doc = await WellnessHabitEnrichment.create(input);
+  return toDoc(doc);
 }
 
 export async function getHabitEnrichment(habitId: string, userId: string) {
-  const [enrichment] = await db
-    .select()
-    .from(wellnessHabitEnrichment)
-    .where(
-      and(eq(wellnessHabitEnrichment.habitId, habitId), eq(wellnessHabitEnrichment.userId, userId)),
-    )
-    .limit(1);
-  return enrichment ?? null;
+  await connectToDatabase();
+  const doc = await WellnessHabitEnrichment.findOne({ habitId, userId }).lean();
+  return toDoc(doc);
 }
 
 export async function getHabitEnrichments(userId: string, wellnessType?: string) {
-  const conditions: SQL[] = [eq(wellnessHabitEnrichment.userId, userId)];
-  if (wellnessType) conditions.push(eq(wellnessHabitEnrichment.wellnessType, wellnessType as any));
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (wellnessType) filter.wellnessType = wellnessType;
 
-  return db
-    .select()
-    .from(wellnessHabitEnrichment)
-    .where(and(...conditions))
-    .orderBy(asc(wellnessHabitEnrichment.nextDueDate));
+  const docs = await WellnessHabitEnrichment.find(filter)
+    .sort({ nextDueDate: 1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function updateHabitEnrichment(
@@ -409,241 +832,232 @@ export async function updateHabitEnrichment(
   userId: string,
   input: Partial<CreateHabitEnrichmentInput>,
 ) {
-  const [enrichment] = await db
-    .update(wellnessHabitEnrichment)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(wellnessHabitEnrichment.id, id), eq(wellnessHabitEnrichment.userId, userId)))
-    .returning();
-  return enrichment ?? null;
+  await connectToDatabase();
+  const doc = await WellnessHabitEnrichment.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toDoc(doc);
 }
 
 export async function deleteHabitEnrichment(id: string, userId: string) {
-  const [enrichment] = await db
-    .delete(wellnessHabitEnrichment)
-    .where(and(eq(wellnessHabitEnrichment.id, id), eq(wellnessHabitEnrichment.userId, userId)))
-    .returning();
-  return enrichment ?? null;
+  await connectToDatabase();
+  const doc = await WellnessHabitEnrichment.findOneAndDelete({ _id: id, userId });
+  return toDoc(doc);
 }
 
 export async function getOverdueEnrichments(userId: string) {
+  await connectToDatabase();
   const today = new Date().toISOString().slice(0, 10);
-  return db
-    .select()
-    .from(wellnessHabitEnrichment)
-    .where(
-      and(
-        eq(wellnessHabitEnrichment.userId, userId),
-        lte(wellnessHabitEnrichment.nextDueDate, today),
-      ),
-    )
-    .orderBy(asc(wellnessHabitEnrichment.nextDueDate));
+  const docs = await WellnessHabitEnrichment.find({
+    userId,
+    nextDueDate: { $lte: new Date(today) },
+  })
+    .sort({ nextDueDate: 1 })
+    .lean();
+  return toDocs(docs);
 }
 
 // ── Weight Entries ──
 
 export async function createWeightEntry(input: CreateWeightEntryInput) {
-  const [entry] = await db.insert(wellnessWeightEntries).values(input).returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await WellnessWeightEntry.create(input);
+  return toDoc(doc);
 }
 
 export async function getWeightEntries(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string; limit?: number } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessWeightEntries.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessWeightEntries.date, opts.dateFrom));
-  if (opts.dateTo) conditions.push(lte(wellnessWeightEntries.date, opts.dateTo));
-  return db
-    .select()
-    .from(wellnessWeightEntries)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessWeightEntries.date))
-    .limit(opts.limit ?? 50);
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.date = { ...filter.date, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.date = { ...filter.date, $lte: new Date(opts.dateTo) };
+
+  const docs = await WellnessWeightEntry.find(filter)
+    .sort({ date: -1 })
+    .limit(opts.limit ?? 50)
+    .lean();
+  return toDocs(docs);
 }
 
 export async function deleteWeightEntry(id: string, userId: string) {
-  const [entry] = await db
-    .delete(wellnessWeightEntries)
-    .where(and(eq(wellnessWeightEntries.id, id), eq(wellnessWeightEntries.userId, userId)))
-    .returning();
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await WellnessWeightEntry.findOneAndDelete({ _id: id, userId });
+  return toDoc(doc);
 }
 
 // ── Workout Entries ──
 
 export async function createWorkoutEntry(input: CreateWorkoutEntryInput) {
-  const [entry] = await db.insert(wellnessWorkoutEntries).values(input).returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await WellnessWorkoutEntry.create(input);
+  return toDoc(doc);
 }
 
 export async function getWorkoutEntries(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string; type?: string; limit?: number } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessWorkoutEntries.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessWorkoutEntries.date, opts.dateFrom));
-  if (opts.dateTo) conditions.push(lte(wellnessWorkoutEntries.date, opts.dateTo));
-  if (opts.type) conditions.push(eq(wellnessWorkoutEntries.workoutType, opts.type));
-  return db
-    .select()
-    .from(wellnessWorkoutEntries)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessWorkoutEntries.date))
-    .limit(opts.limit ?? 50);
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.date = { ...filter.date, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.date = { ...filter.date, $lte: new Date(opts.dateTo) };
+  if (opts.type) filter.workoutType = opts.type;
+
+  const docs = await WellnessWorkoutEntry.find(filter)
+    .sort({ date: -1 })
+    .limit(opts.limit ?? 50)
+    .lean();
+  return toDocs(docs);
 }
 
 export async function deleteWorkoutEntry(id: string, userId: string) {
-  const [entry] = await db
-    .delete(wellnessWorkoutEntries)
-    .where(and(eq(wellnessWorkoutEntries.id, id), eq(wellnessWorkoutEntries.userId, userId)))
-    .returning();
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await WellnessWorkoutEntry.findOneAndDelete({ _id: id, userId });
+  return toDoc(doc);
 }
 
 // ── Step Entries ──
 
 export async function upsertStepEntry(input: CreateStepEntryInput) {
-  const [entry] = await db
-    .insert(wellnessStepEntries)
-    .values(input)
-    .onConflictDoUpdate({
-      target: [wellnessStepEntries.userId, wellnessStepEntries.date],
-      set: { steps: input.steps },
-    })
-    .returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await WellnessStepEntry.findOneAndUpdate(
+    { userId: input.userId, date: input.date },
+    { $set: { steps: input.steps } },
+    { new: true, upsert: true },
+  ).lean();
+  return toDoc(doc);
 }
 
 export async function getStepEntries(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessStepEntries.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessStepEntries.date, opts.dateFrom));
-  if (opts.dateTo) conditions.push(lte(wellnessStepEntries.date, opts.dateTo));
-  return db
-    .select()
-    .from(wellnessStepEntries)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessStepEntries.date));
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.date = { ...filter.date, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.date = { ...filter.date, $lte: new Date(opts.dateTo) };
+
+  const docs = await WellnessStepEntry.find(filter)
+    .sort({ date: -1 })
+    .lean();
+  return toDocs(docs);
 }
 
 // ── Calorie Entries ──
 
 export async function createCalorieEntry(input: CreateCalorieEntryInput) {
-  const [entry] = await db.insert(wellnessCalorieEntries).values(input).returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await WellnessCalorieEntry.create(input);
+  return toDoc(doc);
 }
 
 export async function getCalorieEntries(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessCalorieEntries.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessCalorieEntries.date, opts.dateFrom));
-  if (opts.dateTo) conditions.push(lte(wellnessCalorieEntries.date, opts.dateTo));
-  return db
-    .select()
-    .from(wellnessCalorieEntries)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessCalorieEntries.date));
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.date = { ...filter.date, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.date = { ...filter.date, $lte: new Date(opts.dateTo) };
+
+  const docs = await WellnessCalorieEntry.find(filter)
+    .sort({ date: -1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function getCalorieDailyTotal(userId: string, date: string) {
-  const [result] = await db
-    .select({ total: sql<number>`coalesce(sum(${wellnessCalorieEntries.calories}), 0)` })
-    .from(wellnessCalorieEntries)
-    .where(
-      and(eq(wellnessCalorieEntries.userId, userId), eq(wellnessCalorieEntries.date, date)),
-    );
+  await connectToDatabase();
+  const [result] = await WellnessCalorieEntry.aggregate([
+    { $match: { userId, date: new Date(date) } },
+    { $group: { _id: null, total: { $sum: "$calories" } } },
+  ]);
   return result?.total ?? 0;
 }
 
 export async function deleteCalorieEntry(id: string, userId: string) {
-  const [entry] = await db
-    .delete(wellnessCalorieEntries)
-    .where(and(eq(wellnessCalorieEntries.id, id), eq(wellnessCalorieEntries.userId, userId)))
-    .returning();
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await WellnessCalorieEntry.findOneAndDelete({ _id: id, userId });
+  return toDoc(doc);
 }
 
 // ── Blood Pressure Entries ──
 
 export async function createBloodPressureEntry(input: CreateBloodPressureEntryInput) {
-  const [entry] = await db.insert(wellnessBloodPressureEntries).values(input).returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await WellnessBloodPressureEntry.create(input);
+  return toDoc(doc);
 }
 
 export async function getBloodPressureEntries(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string; limit?: number } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessBloodPressureEntries.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessBloodPressureEntries.date, opts.dateFrom));
-  if (opts.dateTo) conditions.push(lte(wellnessBloodPressureEntries.date, opts.dateTo));
-  return db
-    .select()
-    .from(wellnessBloodPressureEntries)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessBloodPressureEntries.date))
-    .limit(opts.limit ?? 30);
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.date = { ...filter.date, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.date = { ...filter.date, $lte: new Date(opts.dateTo) };
+
+  const docs = await WellnessBloodPressureEntry.find(filter)
+    .sort({ date: -1 })
+    .limit(opts.limit ?? 30)
+    .lean();
+  return toDocs(docs);
 }
 
 // ── Heart Rate Entries ──
 
 export async function upsertHeartRateEntry(input: CreateHeartRateEntryInput) {
-  const [entry] = await db
-    .insert(wellnessHeartRateEntries)
-    .values(input)
-    .onConflictDoUpdate({
-      target: [wellnessHeartRateEntries.userId, wellnessHeartRateEntries.date],
-      set: {
-        resting: input.resting,
-        average: input.average,
-        max: input.max,
-      },
-    })
-    .returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await WellnessHeartRateEntry.findOneAndUpdate(
+    { userId: input.userId, date: input.date },
+    { $set: { bpm: input.bpm, type: input.type, notes: input.notes } },
+    { new: true, upsert: true },
+  ).lean();
+  return toDoc(doc);
 }
 
 export async function getHeartRateEntries(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessHeartRateEntries.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessHeartRateEntries.date, opts.dateFrom));
-  if (opts.dateTo) conditions.push(lte(wellnessHeartRateEntries.date, opts.dateTo));
-  return db
-    .select()
-    .from(wellnessHeartRateEntries)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessHeartRateEntries.date));
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.date = { ...filter.date, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.date = { ...filter.date, $lte: new Date(opts.dateTo) };
+
+  const docs = await WellnessHeartRateEntry.find(filter)
+    .sort({ date: -1 })
+    .lean();
+  return toDocs(docs);
 }
 
 // ── Medicine Reminders ──
 
 export async function createMedicineReminder(input: CreateMedicineReminderInput) {
-  const [reminder] = await db.insert(wellnessMedicineReminders).values(input).returning();
-  return reminder;
+  await connectToDatabase();
+  const doc = await WellnessMedicineReminder.create(input);
+  return toDoc(doc);
 }
 
 export async function getMedicineReminders(userId: string) {
-  return db
-    .select()
-    .from(wellnessMedicineReminders)
-    .where(eq(wellnessMedicineReminders.userId, userId))
-    .orderBy(desc(wellnessMedicineReminders.createdAt));
+  await connectToDatabase();
+  const docs = await WellnessMedicineReminder.find({ userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function getActiveMedicineReminders(userId: string) {
-  return db
-    .select()
-    .from(wellnessMedicineReminders)
-    .where(
-      and(eq(wellnessMedicineReminders.userId, userId), eq(wellnessMedicineReminders.isActive, true)),
-    )
-    .orderBy(asc(wellnessMedicineReminders.time));
+  await connectToDatabase();
+  const docs = await WellnessMedicineReminder.find({ userId, isActive: true })
+    .sort({ createdAt: 1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function updateMedicineReminder(
@@ -651,57 +1065,59 @@ export async function updateMedicineReminder(
   userId: string,
   input: Partial<CreateMedicineReminderInput>,
 ) {
-  const [reminder] = await db
-    .update(wellnessMedicineReminders)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(wellnessMedicineReminders.id, id), eq(wellnessMedicineReminders.userId, userId)))
-    .returning();
-  return reminder ?? null;
+  await connectToDatabase();
+  const doc = await WellnessMedicineReminder.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toDoc(doc);
 }
 
 export async function deleteMedicineReminder(id: string, userId: string) {
-  const [reminder] = await db
-    .delete(wellnessMedicineReminders)
-    .where(and(eq(wellnessMedicineReminders.id, id), eq(wellnessMedicineReminders.userId, userId)))
-    .returning();
-  return reminder ?? null;
+  await connectToDatabase();
+  const doc = await WellnessMedicineReminder.findOneAndDelete({ _id: id, userId });
+  return toDoc(doc);
 }
 
 // ── Medicine Logs ──
 
 export async function createMedicineLog(input: CreateMedicineLogInput) {
-  const [log] = await db.insert(wellnessMedicineLogs).values(input).returning();
-  return log;
+  await connectToDatabase();
+  const doc = await WellnessMedicineLog.create(input);
+  return toDoc(doc);
 }
 
 export async function getMedicineLogs(
   userId: string,
   opts: { dateFrom?: string; dateTo?: string; medicineId?: string } = {},
 ) {
-  const conditions: SQL[] = [eq(wellnessMedicineLogs.userId, userId)];
-  if (opts.dateFrom) conditions.push(gte(wellnessMedicineLogs.date, opts.dateFrom));
-  if (opts.dateTo) conditions.push(lte(wellnessMedicineLogs.date, opts.dateTo));
-  if (opts.medicineId) conditions.push(eq(wellnessMedicineLogs.medicineId, opts.medicineId));
-  return db
-    .select()
-    .from(wellnessMedicineLogs)
-    .where(and(...conditions))
-    .orderBy(desc(wellnessMedicineLogs.takenAt));
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (opts.dateFrom) filter.takenAt = { ...filter.takenAt, $gte: new Date(opts.dateFrom) };
+  if (opts.dateTo) filter.takenAt = { ...filter.takenAt, $lte: new Date(opts.dateTo) };
+  if (opts.medicineId) filter.reminderId = opts.medicineId;
+
+  const docs = await WellnessMedicineLog.find(filter)
+    .sort({ takenAt: -1 })
+    .lean();
+  return toDocs(docs);
 }
 
 // ── User Goals ──
 
 export async function createUserGoal(input: CreateUserGoalInput) {
-  const [goal] = await db.insert(wellnessUserGoals).values(input).returning();
-  return goal;
+  await connectToDatabase();
+  const doc = await WellnessUserGoal.create(input);
+  return toDoc(doc);
 }
 
 export async function getUserGoals(userId: string) {
-  return db
-    .select()
-    .from(wellnessUserGoals)
-    .where(eq(wellnessUserGoals.userId, userId))
-    .orderBy(desc(wellnessUserGoals.createdAt));
+  await connectToDatabase();
+  const docs = await WellnessUserGoal.find({ userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function updateUserGoal(
@@ -709,39 +1125,39 @@ export async function updateUserGoal(
   userId: string,
   input: Partial<CreateUserGoalInput>,
 ) {
-  const [goal] = await db
-    .update(wellnessUserGoals)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(wellnessUserGoals.id, id), eq(wellnessUserGoals.userId, userId)))
-    .returning();
-  return goal ?? null;
+  await connectToDatabase();
+  const doc = await WellnessUserGoal.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toDoc(doc);
 }
 
 export async function deleteUserGoal(id: string, userId: string) {
-  const [goal] = await db
-    .delete(wellnessUserGoals)
-    .where(and(eq(wellnessUserGoals.id, id), eq(wellnessUserGoals.userId, userId)))
-    .returning();
-  return goal ?? null;
+  await connectToDatabase();
+  const doc = await WellnessUserGoal.findOneAndDelete({ _id: id, userId });
+  return toDoc(doc);
 }
 
 // ── Achievements ──
 
 export async function createAchievement(input: CreateAchievementInput) {
-  const [achievement] = await db
-    .insert(wellnessAchievements)
-    .values(input)
-    .onConflictDoNothing({
-      target: [wellnessAchievements.userId, wellnessAchievements.achievementType],
-    })
-    .returning();
-  return achievement ?? null;
+  await connectToDatabase();
+  const existing = await WellnessAchievement.findOne({
+    userId: input.userId,
+    achievementType: input.achievementType,
+  }).lean();
+  if (existing) return toDoc(existing);
+
+  const doc = await WellnessAchievement.create(input);
+  return toDoc(doc);
 }
 
 export async function getAchievements(userId: string) {
-  return db
-    .select()
-    .from(wellnessAchievements)
-    .where(eq(wellnessAchievements.userId, userId))
-    .orderBy(desc(wellnessAchievements.unlockedAt));
+  await connectToDatabase();
+  const docs = await WellnessAchievement.find({ userId })
+    .sort({ achievedAt: -1 })
+    .lean();
+  return toDocs(docs);
 }

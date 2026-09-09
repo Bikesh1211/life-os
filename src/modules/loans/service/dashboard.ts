@@ -1,8 +1,6 @@
 import * as repo from "../repository";
-import { db } from "@/core/database";
-import { loans } from "../schema/loans";
-import { loanRepayments } from "../schema/loan-repayments";
-import { eq, and, isNull, gte, lte, sql, sum } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { LoanModel, LoanRepaymentModel } from "@/lib/models/loans";
 import dayjs from "dayjs";
 
 export interface LoansDashboardData {
@@ -63,25 +61,35 @@ export async function getLoansDashboard(userId: string): Promise<LoansDashboardD
     if (loan.status === "fully_paid" || loan.status === "cancelled") closedLoans++;
   }
 
-  const monthlyRepayments = await db
-    .select({
-      direction: loans.direction,
-      total: sum(loanRepayments.amount),
-    })
-    .from(loanRepayments)
-    .innerJoin(loans, eq(loanRepayments.loanId, loans.id))
-    .where(
-      and(
-        eq(loans.userId, userId),
-        gte(loanRepayments.date, monthStart),
-        lte(loanRepayments.date, monthEnd),
-      ),
-    )
-    .groupBy(loans.direction);
+  await connectToDatabase();
+
+  const monthlyRepayments = await LoanRepaymentModel.aggregate([
+    {
+      $lookup: {
+        from: "loans",
+        localField: "loanId",
+        foreignField: "_id",
+        as: "loan",
+      },
+    },
+    { $unwind: "$loan" },
+    {
+      $match: {
+        "loan.userId": userId,
+        date: { $gte: monthStart, $lte: monthEnd },
+      },
+    },
+    {
+      $group: {
+        _id: "$loan.direction",
+        total: { $sum: { $ifNull: ["$amount", 0] } },
+      },
+    },
+  ]);
 
   for (const row of monthlyRepayments) {
     const total = Number(row.total ?? 0);
-    if (row.direction === "lent") amountRecoveredThisMonth += total;
+    if (row._id === "lent") amountRecoveredThisMonth += total;
     else amountRepaidThisMonth += total;
   }
 
@@ -121,27 +129,27 @@ async function getMonthlyTrend(userId: string, months = 12) {
     const end = month.endOf("month").toDate();
     const monthLabel = month.format("MMM YY");
 
-    const monthLoans = await db
-      .select({
-        direction: loans.direction,
-        total: sum(loans.principalAmount),
-      })
-      .from(loans)
-      .where(
-        and(
-          eq(loans.userId, userId),
-          isNull(loans.deletedAt),
-          gte(loans.loanDate, start),
-          lte(loans.loanDate, end),
-        ),
-      )
-      .groupBy(loans.direction);
+    const monthLoans = await LoanModel.aggregate([
+      {
+        $match: {
+          userId,
+          deletedAt: null,
+          loanDate: { $gte: start, $lte: end },
+        },
+      },
+      {
+        $group: {
+          _id: "$direction",
+          total: { $sum: { $ifNull: ["$principalAmount", 0] } },
+        },
+      },
+    ]);
 
     let lent = 0;
     let borrowed = 0;
     for (const row of monthLoans) {
       const total = Number(row.total ?? 0);
-      if (row.direction === "lent") lent += total;
+      if (row._id === "lent") lent += total;
       else borrowed += total;
     }
 
@@ -152,11 +160,19 @@ async function getMonthlyTrend(userId: string, months = 12) {
 }
 
 async function getTotalPaidAll(userId: string): Promise<number> {
-  const [result] = await db
-    .select({ total: sum(loanRepayments.amount) })
-    .from(loanRepayments)
-    .innerJoin(loans, eq(loanRepayments.loanId, loans.id))
-    .where(and(eq(loans.userId, userId), isNull(loans.deletedAt)));
+  const [result] = await LoanRepaymentModel.aggregate([
+    {
+      $lookup: {
+        from: "loans",
+        localField: "loanId",
+        foreignField: "_id",
+        as: "loan",
+      },
+    },
+    { $unwind: "$loan" },
+    { $match: { "loan.userId": userId, "loan.deletedAt": null } },
+    { $group: { _id: null, total: { $sum: { $ifNull: ["$amount", 0] } } } },
+  ]);
   return Number(result?.total ?? 0);
 }
 

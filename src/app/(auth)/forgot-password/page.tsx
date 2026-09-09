@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useMantineColorScheme } from "@mantine/core";
-import { useSupabase } from "@/infrastructure/providers/supabase-provider";
 import Link from "next/link";
 
 const cardVariants = {
@@ -21,7 +20,6 @@ export default function ForgotPasswordPage() {
   useEffect(() => setMounted(true), []);
   const { colorScheme } = useMantineColorScheme();
   const isDark = mounted && colorScheme === "dark";
-  const { supabase } = useSupabase();
 
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
@@ -33,17 +31,24 @@ export default function ForgotPasswordPage() {
     setError(null);
     setLoading(true);
 
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
 
-    if (resetError) {
-      setError(resetError.message);
-      setLoading(false);
-      return;
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Something went wrong");
+        setLoading(false);
+        return;
+      }
+
+      setSent(true);
+    } catch {
+      setError("Something went wrong");
     }
-
-    setSent(true);
     setLoading(false);
   };
 

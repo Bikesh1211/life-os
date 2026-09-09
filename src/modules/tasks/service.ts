@@ -114,7 +114,7 @@ export async function createTaskEntry(userId: string, params: CreateTaskParams) 
     startDate: validated.startDate ? new Date(validated.startDate) : null,
     estimatedMinutes: validated.estimatedMinutes ?? null,
     actualMinutes: validated.actualMinutes ?? null,
-    recurrence: validated.recurrence,
+    recurrence: validated.recurrence as any,
     recurrenceEndDate: validated.recurrenceEndDate ? new Date(validated.recurrenceEndDate) : null,
     order: validated.order,
   };
@@ -164,7 +164,7 @@ export const getTasks = cache(async (userId: string, filters: Partial<TaskFilter
 
   if (entries.length === 0) return [];
 
-  const labelRows = await getTaskLabelsBatch(entries.map((t) => t.id), userId);
+  const labelRows = await getTaskLabelsBatch(entries.map((t: any) => t.id), userId);
   const labelsByTaskId = new Map<string, { id: string; name: string; color: string }[]>();
   for (const row of labelRows) {
     const list = labelsByTaskId.get(row.taskId);
@@ -172,7 +172,7 @@ export const getTasks = cache(async (userId: string, filters: Partial<TaskFilter
     else labelsByTaskId.set(row.taskId, [row]);
   }
 
-  return entries.map((task) => ({
+  return entries.map((task: any) => ({
     ...task,
     labels: labelsByTaskId.get(task.id) ?? [],
   }));
@@ -193,7 +193,7 @@ export async function updateTaskEntry(id: string, userId: string, params: Update
   if (validated.startDate !== undefined) updateData.startDate = validated.startDate ? new Date(validated.startDate) : null;
   if (validated.estimatedMinutes !== undefined) updateData.estimatedMinutes = validated.estimatedMinutes;
   if (validated.actualMinutes !== undefined) updateData.actualMinutes = validated.actualMinutes;
-  if (validated.recurrence !== undefined) updateData.recurrence = validated.recurrence;
+  if (validated.recurrence !== undefined) updateData.recurrence = validated.recurrence as any;
   if (validated.recurrenceEndDate !== undefined) updateData.recurrenceEndDate = validated.recurrenceEndDate ? new Date(validated.recurrenceEndDate) : null;
   if (validated.order !== undefined) updateData.order = validated.order;
   if (validated.completedAt !== undefined) updateData.completedAt = validated.completedAt ? new Date(validated.completedAt) : null;

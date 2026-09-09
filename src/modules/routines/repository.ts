@@ -1,252 +1,343 @@
-import { db } from "@/core/database";
-import { and, eq, asc, count, gte, lte, sql, inArray, or, isNull, not } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  routines,
-  routineItems,
-  routineExecutions,
-  routineExecutionItems,
-  routineTemplates,
-  routineTemplateItems,
-  dailyGoals,
-  dailyPriorities,
-  dailyPlannerSnapshots,
-  dailyNotes,
-  plannerPreferences,
-} from "./schema";
+  RoutineModel,
+  RoutineItemModel,
+  RoutineExecutionModel,
+  RoutineExecutionItemModel,
+  RoutineTemplateModel,
+  RoutineTemplateItemModel,
+  DailyGoalModel,
+  DailyPriorityModel,
+  DailyPlannerSnapshotModel,
+  DailyNoteModel,
+  PlannerPreferenceModel,
+} from "@/lib/models/routines";
 
-export type Routine = typeof routines.$inferSelect;
-export type RoutineItem = typeof routineItems.$inferSelect;
-export type RoutineExecution = typeof routineExecutions.$inferSelect;
-export type RoutineExecutionItem = typeof routineExecutionItems.$inferSelect;
-export type RoutineTemplate = typeof routineTemplates.$inferSelect;
-export type RoutineTemplateItem = typeof routineTemplateItems.$inferSelect;
-export type DailyGoal = typeof dailyGoals.$inferSelect;
-export type DailyPriority = typeof dailyPriorities.$inferSelect;
-export type DailyPlannerSnapshot = typeof dailyPlannerSnapshots.$inferSelect;
-export type DailyNote = typeof dailyNotes.$inferSelect;
-export type PlannerPreferences = typeof plannerPreferences.$inferSelect;
+function mapDoc(doc: any) {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : doc;
+  const { _id, ...rest } = obj;
+  return { id: _id.toString(), ...rest };
+}
 
-export type CreateRoutineInput = typeof routines.$inferInsert;
-export type CreateRoutineItemInput = typeof routineItems.$inferInsert;
-export type CreateExecutionInput = typeof routineExecutions.$inferInsert;
-export type CreateExecutionItemInput = typeof routineExecutionItems.$inferInsert;
-export type CreateTemplateInput = typeof routineTemplates.$inferInsert;
-export type CreateTemplateItemInput = typeof routineTemplateItems.$inferInsert;
-export type CreateDailyGoalInput = typeof dailyGoals.$inferInsert;
-export type CreateDailyPriorityInput = typeof dailyPriorities.$inferInsert;
-export type CreateDailyPlannerSnapshotInput = typeof dailyPlannerSnapshots.$inferInsert;
-export type CreateDailyNoteInput = typeof dailyNotes.$inferInsert;
-export type CreatePlannerPreferencesInput = typeof plannerPreferences.$inferInsert;
+function mapDocs(docs: any[]) {
+  return docs.map((doc) => {
+    const obj = doc.toObject ? doc.toObject() : doc;
+    const { _id, ...rest } = obj;
+    return { id: _id.toString(), ...rest };
+  });
+}
+
+export type Routine = Awaited<ReturnType<typeof getRoutines>>[number];
+export type RoutineItem = Awaited<ReturnType<typeof getRoutineItems>>[number];
+export type RoutineExecution = Awaited<ReturnType<typeof getExecution>> & {};
+export type RoutineExecutionItem = any;
+export type RoutineTemplate = any;
+export type RoutineTemplateItem = any;
+export type DailyGoal = any;
+export type DailyPriority = any;
+export type DailyPlannerSnapshot = any;
+export type DailyNote = any;
+export type PlannerPreferences = any;
+
+export type CreateRoutineInput = {
+  userId: string;
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  isActive?: boolean;
+  scheduleType?: string;
+  customDays?: string[];
+};
+
+export type CreateRoutineItemInput = {
+  routineId?: string;
+  userId?: string;
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime?: string;
+  order?: number;
+  isOptional?: boolean;
+  category?: string;
+  priority?: string;
+  location?: string;
+  date?: string;
+  status?: string;
+  linkedHabitId?: string;
+  linkedTaskId?: string;
+};
+
+export type CreateExecutionInput = {
+  routineId: string;
+  userId: string;
+  date: string;
+  plannedStart?: string;
+  plannedEnd?: string;
+  actualStart?: string;
+  actualEnd?: string;
+  status?: string;
+  completionRate?: number;
+};
+
+export type CreateExecutionItemInput = {
+  executionId: string;
+  routineItemId: string;
+  plannedStart?: string;
+  plannedEnd?: string;
+  actualStart?: string;
+  actualEnd?: string;
+  status?: string;
+};
+
+export type CreateTemplateInput = {
+  name: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+  scheduleType?: string;
+  customDays?: string[];
+};
+
+export type CreateTemplateItemInput = {
+  templateId: string;
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime?: string;
+  order?: number;
+  isOptional?: boolean;
+};
+
+export type CreateDailyGoalInput = {
+  userId: string;
+  date: string;
+  title: string;
+  isCompleted?: boolean;
+  taskId?: string;
+};
+
+export type CreateDailyPriorityInput = {
+  userId: string;
+  date: string;
+  title: string;
+  estimatedDuration?: number;
+  status?: string;
+  sortOrder?: number;
+  taskId?: string;
+};
+
+export type CreateDailyPlannerSnapshotInput = {
+  userId: string;
+  date: string;
+  productivityScore: number;
+  subScores?: Record<string, unknown>;
+  tasksCompleted?: number;
+  tasksTotal?: number;
+  focusMinutes?: number;
+  habitsCompleted?: number;
+  habitsTotal?: number;
+  dailyGoalCompleted?: boolean;
+};
+
+export type CreateDailyNoteInput = {
+  userId: string;
+  date: string;
+  content?: string;
+};
+
+export type CreatePlannerPreferencesInput = {
+  userId: string;
+  morningReminderTime?: string;
+  eveningReminderTime?: string;
+  notificationConfig?: Record<string, unknown>;
+};
 
 export type DayMetrics = Awaited<ReturnType<typeof getDayMetrics>>;
 
 // ── Routines ──
 
 export async function getRoutines(userId: string) {
-  return db
-    .select()
-    .from(routines)
-    .where(eq(routines.userId, userId))
-    .orderBy(asc(routines.createdAt));
+  await connectToDatabase();
+  const docs = await RoutineModel.find({ userId }).sort({ createdAt: 1 }).lean();
+  return mapDocs(docs);
 }
 
 export async function getActiveRoutines(userId: string) {
-  return db
-    .select()
-    .from(routines)
-    .where(and(eq(routines.userId, userId), eq(routines.isActive, true)))
-    .orderBy(asc(routines.createdAt));
+  await connectToDatabase();
+  const docs = await RoutineModel.find({ userId, isActive: true }).sort({ createdAt: 1 }).lean();
+  return mapDocs(docs);
 }
 
 export async function getRoutineById(id: string, userId: string) {
-  return db
-    .select()
-    .from(routines)
-    .where(and(eq(routines.id, id), eq(routines.userId, userId)))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineModel.findOne({ _id: id, userId }).lean();
+  return mapDoc(doc);
 }
 
 export async function createRoutine(input: CreateRoutineInput) {
-  return db.insert(routines).values(input).returning().then((r) => r[0]);
+  await connectToDatabase();
+  const doc = await RoutineModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function updateRoutine(id: string, userId: string, input: Partial<CreateRoutineInput>) {
-  return db
-    .update(routines)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(routines.id, id), eq(routines.userId, userId)))
-    .returning()
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return mapDoc(doc);
 }
 
 export async function deleteRoutine(id: string, userId: string) {
-  return db
-    .delete(routines)
-    .where(and(eq(routines.id, id), eq(routines.userId, userId)))
-    .returning()
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineModel.findOneAndDelete({ _id: id, userId }).lean();
+  return mapDoc(doc);
 }
 
 export async function getRoutineCount(userId: string) {
-  return db
-    .select({ count: count() })
-    .from(routines)
-    .where(eq(routines.userId, userId))
-    .then((r) => Number(r[0]?.count ?? 0));
+  await connectToDatabase();
+  return RoutineModel.countDocuments({ userId });
 }
 
 // ── Routine Items ──
 
 export async function getRoutineItems(routineId: string) {
-  return db
-    .select()
-    .from(routineItems)
-    .where(eq(routineItems.routineId, routineId))
-    .orderBy(asc(routineItems.order));
+  await connectToDatabase();
+  const docs = await RoutineItemModel.find({ routineId }).sort({ order: 1 }).lean();
+  return mapDocs(docs);
 }
 
 export async function getRoutineItemsByRoutineIds(routineIds: string[]) {
   if (routineIds.length === 0) return [];
-  return db
-    .select()
-    .from(routineItems)
-    .where(inArray(routineItems.routineId, routineIds))
-    .orderBy(asc(routineItems.order));
+  await connectToDatabase();
+  const docs = await RoutineItemModel.find({ routineId: { $in: routineIds } }).sort({ order: 1 }).lean();
+  return mapDocs(docs);
 }
 
 export async function getRoutineItemById(id: string) {
-  return db
-    .select()
-    .from(routineItems)
-    .where(eq(routineItems.id, id))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineItemModel.findOne({ _id: id }).lean();
+  return mapDoc(doc);
 }
 
 export async function createRoutineItem(input: CreateRoutineItemInput) {
-  return db.insert(routineItems).values(input).returning().then((r) => r[0]);
+  await connectToDatabase();
+  const doc = await RoutineItemModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function createRoutineItems(inputs: CreateRoutineItemInput[]) {
   if (inputs.length === 0) return [];
-  return db.insert(routineItems).values(inputs).returning();
+  await connectToDatabase();
+  const docs = await RoutineItemModel.insertMany(inputs);
+  return mapDocs(docs);
 }
 
 export async function updateRoutineItem(id: string, input: Partial<CreateRoutineItemInput>) {
-  return db
-    .update(routineItems)
-    .set({ ...input, updatedAt: new Date() })
-    .where(eq(routineItems.id, id))
-    .returning()
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineItemModel.findOneAndUpdate(
+    { _id: id },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return mapDoc(doc);
 }
 
 export async function deleteRoutineItem(id: string) {
-  return db
-    .delete(routineItems)
-    .where(eq(routineItems.id, id))
-    .returning()
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineItemModel.findOneAndDelete({ _id: id }).lean();
+  return mapDoc(doc);
 }
 
 export async function reorderRoutineItems(items: Array<{ id: string; order: number }>) {
-  const promises = items.map((item) =>
-    db
-      .update(routineItems)
-      .set({ order: item.order, updatedAt: new Date() })
-      .where(eq(routineItems.id, item.id)),
+  await connectToDatabase();
+  await Promise.all(
+    items.map((item) =>
+      RoutineItemModel.findOneAndUpdate(
+        { _id: item.id },
+        { order: item.order, updatedAt: new Date() },
+      ),
+    ),
   );
-  await Promise.all(promises);
 }
 
 // ── Executions ──
 
 export async function getExecution(executionId: string, userId: string) {
-  return db
-    .select()
-    .from(routineExecutions)
-    .where(and(eq(routineExecutions.id, executionId), eq(routineExecutions.userId, userId)))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineExecutionModel.findOne({ _id: executionId, userId }).lean();
+  return mapDoc(doc);
 }
 
 export async function getExecutionByRoutineAndDate(routineId: string, date: string) {
-  return db
-    .select()
-    .from(routineExecutions)
-    .where(and(eq(routineExecutions.routineId, routineId), eq(routineExecutions.date, date)))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineExecutionModel.findOne({ routineId, date }).lean();
+  return mapDoc(doc);
 }
 
 export async function getExecutionsByRoutineIdsAndDate(routineIds: string[], date: string) {
   if (routineIds.length === 0) return [];
-  return db
-    .select()
-    .from(routineExecutions)
-    .where(and(inArray(routineExecutions.routineId, routineIds), eq(routineExecutions.date, date)));
+  await connectToDatabase();
+  const docs = await RoutineExecutionModel.find({ routineId: { $in: routineIds }, date }).lean();
+  return mapDocs(docs);
 }
 
 export async function createExecution(input: CreateExecutionInput) {
-  return db.insert(routineExecutions).values(input).returning().then((r) => r[0]);
+  await connectToDatabase();
+  const doc = await RoutineExecutionModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function updateExecution(id: string, input: Partial<CreateExecutionInput>) {
-  return db
-    .update(routineExecutions)
-    .set(input)
-    .where(eq(routineExecutions.id, id))
-    .returning()
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineExecutionModel.findOneAndUpdate(
+    { _id: id },
+    input,
+    { new: true },
+  ).lean();
+  return mapDoc(doc);
 }
 
 export async function getExecutionsForDate(userId: string, date: string) {
-  return db
-    .select()
-    .from(routineExecutions)
-    .where(and(eq(routineExecutions.userId, userId), eq(routineExecutions.date, date)))
-    .orderBy(asc(routineExecutions.createdAt));
+  await connectToDatabase();
+  const docs = await RoutineExecutionModel.find({ userId, date }).sort({ createdAt: 1 }).lean();
+  return mapDocs(docs);
 }
 
 export async function getExecutionsInRange(userId: string, dateFrom: string, dateTo: string) {
-  return db
-    .select()
-    .from(routineExecutions)
-    .where(
-      and(
-        eq(routineExecutions.userId, userId),
-        gte(routineExecutions.date, dateFrom),
-        lte(routineExecutions.date, dateTo),
-      ),
-    )
-    .orderBy(asc(routineExecutions.date));
+  await connectToDatabase();
+  const docs = await RoutineExecutionModel.find({
+    userId,
+    date: { $gte: dateFrom, $lte: dateTo },
+  })
+    .sort({ date: 1 })
+    .lean();
+  return mapDocs(docs);
 }
 
 export async function getExecutionCount(userId: string) {
-  return db
-    .select({ count: count() })
-    .from(routineExecutions)
-    .where(eq(routineExecutions.userId, userId))
-    .then((r) => Number(r[0]?.count ?? 0));
+  await connectToDatabase();
+  return RoutineExecutionModel.countDocuments({ userId });
 }
 
 // ── Execution Items ──
 
 export async function getExecutionItems(executionId: string) {
-  const items = await db
-    .select()
-    .from(routineExecutionItems)
-    .where(eq(routineExecutionItems.executionId, executionId))
-    .orderBy(asc(routineExecutionItems.createdAt));
+  await connectToDatabase();
+  const items = await RoutineExecutionItemModel.find({ executionId }).sort({ createdAt: 1 }).lean();
+  const mappedItems = mapDocs(items);
 
-  const itemIds = items.map((i) => i.routineItemId);
-  if (itemIds.length === 0) return items.map((ei) => ({ ...ei, routineItem: null }));
+  const itemIds = mappedItems.map((i: any) => i.routineItemId);
+  if (itemIds.length === 0) return mappedItems.map((ei: any) => ({ ...ei, routineItem: null }));
 
-  const itemRows = await db
-    .select()
-    .from(routineItems)
-    .where(inArray(routineItems.id, itemIds));
+  const routineItemDocs = await RoutineItemModel.find({ _id: { $in: itemIds } }).lean();
+  const routineItemMap = new Map(routineItemDocs.map((r: any) => [r._id.toString(), mapDoc(r)]));
 
-  const routineItemMap = new Map(itemRows.map((r) => [r.id, r]));
-
-  return items.map((ei) => ({
+  return mappedItems.map((ei: any) => ({
     ...ei,
     routineItem: routineItemMap.get(ei.routineItemId) ?? null,
   }));
@@ -254,124 +345,106 @@ export async function getExecutionItems(executionId: string) {
 
 export async function getExecutionItemsByExecutionIds(executionIds: string[]) {
   if (executionIds.length === 0) return [];
-  const items = await db
-    .select()
-    .from(routineExecutionItems)
-    .where(inArray(routineExecutionItems.executionId, executionIds))
-    .orderBy(asc(routineExecutionItems.createdAt));
+  await connectToDatabase();
+  const items = await RoutineExecutionItemModel.find({ executionId: { $in: executionIds } })
+    .sort({ createdAt: 1 })
+    .lean();
+  const mappedItems = mapDocs(items);
 
-  const itemIds = items.map((i) => i.routineItemId);
-  if (itemIds.length === 0) return items.map((ei) => ({ ...ei, routineItem: null }));
+  const itemIds = mappedItems.map((i: any) => i.routineItemId);
+  if (itemIds.length === 0) return mappedItems.map((ei: any) => ({ ...ei, routineItem: null }));
 
-  const itemRows = await db
-    .select()
-    .from(routineItems)
-    .where(inArray(routineItems.id, itemIds));
+  const routineItemDocs = await RoutineItemModel.find({ _id: { $in: itemIds } }).lean();
+  const routineItemMap = new Map(routineItemDocs.map((r: any) => [r._id.toString(), mapDoc(r)]));
 
-  const routineItemMap = new Map(itemRows.map((r) => [r.id, r]));
-
-  return items.map((ei) => ({
+  return mappedItems.map((ei: any) => ({
     ...ei,
     routineItem: routineItemMap.get(ei.routineItemId) ?? null,
   }));
 }
 
 export async function createExecutionItem(input: CreateExecutionItemInput) {
-  return db.insert(routineExecutionItems).values(input).returning().then((r) => r[0]);
+  await connectToDatabase();
+  const doc = await RoutineExecutionItemModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function createExecutionItems(inputs: CreateExecutionItemInput[]) {
   if (inputs.length === 0) return [];
-  return db.insert(routineExecutionItems).values(inputs).returning();
+  await connectToDatabase();
+  const docs = await RoutineExecutionItemModel.insertMany(inputs);
+  return mapDocs(docs);
 }
 
 export async function updateExecutionItem(id: string, input: Partial<CreateExecutionItemInput>) {
-  return db
-    .update(routineExecutionItems)
-    .set(input)
-    .where(eq(routineExecutionItems.id, id))
-    .returning()
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineExecutionItemModel.findOneAndUpdate(
+    { _id: id },
+    input,
+    { new: true },
+  ).lean();
+  return mapDoc(doc);
 }
 
 export async function getExecutionItemById(id: string) {
-  return db
-    .select()
-    .from(routineExecutionItems)
-    .where(eq(routineExecutionItems.id, id))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineExecutionItemModel.findOne({ _id: id }).lean();
+  return mapDoc(doc);
 }
 
 export async function getExecutionItemCountByStatus(
   executionId: string,
   status: "pending" | "in_progress" | "completed" | "skipped",
 ) {
-  return db
-    .select({ count: count() })
-    .from(routineExecutionItems)
-    .where(
-      and(
-        eq(routineExecutionItems.executionId, executionId),
-        eq(routineExecutionItems.status, status),
-      ),
-    )
-    .then((r) => Number(r[0]?.count ?? 0));
+  await connectToDatabase();
+  return RoutineExecutionItemModel.countDocuments({ executionId, status });
 }
 
 // ── Day Plan / Ad-hoc Items ──
 
 export async function getAdhocItemsForDate(userId: string, date: string) {
-  return db
-    .select()
-    .from(routineItems)
-    .where(
-      and(
-        isNull(routineItems.routineId),
-        eq(routineItems.userId, userId),
-        eq(routineItems.date, date),
-      ),
-    )
-    .orderBy(asc(routineItems.startTime));
+  await connectToDatabase();
+  const docs = await RoutineItemModel.find({
+    routineId: null,
+    userId,
+    date,
+  })
+    .sort({ startTime: 1 })
+    .lean();
+  return mapDocs(docs);
 }
 
 export async function getExecutionsForDateWithItems(userId: string, date: string) {
-  const executionList = await db
-    .select()
-    .from(routineExecutions)
-    .where(
-      and(
-        eq(routineExecutions.userId, userId),
-        eq(routineExecutions.date, date),
-      ),
-    )
-    .orderBy(asc(routineExecutions.createdAt));
+  await connectToDatabase();
+  const executionDocs = await RoutineExecutionModel.find({ userId, date })
+    .sort({ createdAt: 1 })
+    .lean();
 
-  if (executionList.length === 0) return [];
+  if (executionDocs.length === 0) return [];
 
-  const executionIds = executionList.map((e) => e.id);
-  const allExecutionItems = await db
-    .select()
-    .from(routineExecutionItems)
-    .where(inArray(routineExecutionItems.executionId, executionIds))
-    .orderBy(asc(routineExecutionItems.createdAt));
+  const executions = mapDocs(executionDocs);
+  const executionIds = executions.map((e: any) => e.id);
 
-  const itemIds = [...new Set(allExecutionItems.map((ei) => ei.routineItemId))];
-  const itemRows = itemIds.length > 0
-    ? await db.select().from(routineItems).where(inArray(routineItems.id, itemIds))
+  const itemDocs = await RoutineExecutionItemModel.find({ executionId: { $in: executionIds } })
+    .sort({ createdAt: 1 })
+    .lean();
+  const allExecutionItems = mapDocs(itemDocs);
+
+  const routineItemIds = [...new Set(allExecutionItems.map((ei: any) => ei.routineItemId))];
+  const routineItemDocs = routineItemIds.length > 0
+    ? await RoutineItemModel.find({ _id: { $in: routineItemIds } }).lean()
     : [];
+  const itemMap = new Map(routineItemDocs.map((r: any) => [r._id.toString(), mapDoc(r)]));
 
-  const itemMap = new Map(itemRows.map((r) => [r.id, r]));
-  const executionMap = new Map(executionList.map((e) => [e.id, e]));
-
-  const itemsByExecution = new Map<string, typeof allExecutionItems>();
+  const itemsByExecution = new Map<string, any[]>();
   for (const ei of allExecutionItems) {
     const existing = itemsByExecution.get(ei.executionId) ?? [];
     existing.push(ei);
     itemsByExecution.set(ei.executionId, existing);
   }
 
-  return executionList.map((execution) => {
-    const executionItems = (itemsByExecution.get(execution.id) ?? []).map((ei) => ({
+  return executions.map((execution: any) => {
+    const executionItems = (itemsByExecution.get(execution.id) ?? []).map((ei: any) => ({
       ...ei,
       routineItem: itemMap.get(ei.routineItemId) ?? null,
     }));
@@ -380,11 +453,9 @@ export async function getExecutionsForDateWithItems(userId: string, date: string
 }
 
 export async function getRoutineItemsForDate(routineId: string) {
-  return db
-    .select()
-    .from(routineItems)
-    .where(eq(routineItems.routineId, routineId))
-    .orderBy(asc(routineItems.startTime));
+  await connectToDatabase();
+  const docs = await RoutineItemModel.find({ routineId }).sort({ startTime: 1 }).lean();
+  return mapDocs(docs);
 }
 
 export async function checkTimeOverlap(params: {
@@ -395,87 +466,62 @@ export async function checkTimeOverlap(params: {
   excludeItemId?: string;
 }) {
   const { startTime, endTime, date, routineId, excludeItemId } = params;
+  await connectToDatabase();
 
-  const conditions: ReturnType<typeof and>[] = [];
-
-  if (routineId) {
-    conditions.push(eq(routineItems.routineId, routineId));
-  }
-  if (date) {
-    conditions.push(eq(routineItems.date, date));
-  }
-  if (excludeItemId) {
-    conditions.push(not(eq(routineItems.id, excludeItemId)));
-  }
+  const filter: any = {};
+  if (routineId) filter.routineId = routineId;
+  if (date) filter.date = date;
+  if (excludeItemId) filter._id = { $ne: excludeItemId };
 
   if (endTime) {
-    conditions.push(
-      or(
-        and(
-          gte(routineItems.startTime, startTime),
-          lte(routineItems.startTime, endTime),
-        ),
-        and(
-          gte(routineItems.startTime, startTime),
-          isNull(routineItems.endTime),
-        ),
-      ),
-    );
+    filter.$or = [
+      { startTime: { $gte: startTime, $lte: endTime } },
+      { startTime: { $gte: startTime }, endTime: null },
+    ];
   } else {
-    conditions.push(eq(routineItems.startTime, startTime));
+    filter.startTime = startTime;
   }
 
-  return db
-    .select({ id: routineItems.id })
-    .from(routineItems)
-    .where(and(...conditions))
-    .then((r) => r.length > 0);
+  const count = await RoutineItemModel.countDocuments(filter);
+  return count > 0;
 }
 
 export async function getDayMetrics(userId: string, date: string) {
-  const [executions, adhocItems] = await Promise.all([
-    db
-      .select()
-      .from(routineExecutions)
-      .where(
-        and(
-          eq(routineExecutions.userId, userId),
-          eq(routineExecutions.date, date),
-        ),
-      ),
-    db
-      .select()
-      .from(routineItems)
-      .where(
-        and(
-          isNull(routineItems.routineId),
-          eq(routineItems.userId, userId),
-          eq(routineItems.date, date),
-        ),
-      ),
+  await connectToDatabase();
+
+  const [executionDocs, adhocDocs] = await Promise.all([
+    RoutineExecutionModel.find({ userId, date }).lean(),
+    RoutineItemModel.find({ routineId: null, userId, date }).lean(),
   ]);
+
+  const executions = mapDocs(executionDocs);
+  const adhocItems = mapDocs(adhocDocs);
 
   let totalItems = 0;
   let completedItems = 0;
 
-  const executionIds = executions.map((e) => e.id);
+  const executionIds = executions.map((e: any) => e.id);
   if (executionIds.length > 0) {
-    const stats = await db
-      .select({
-        total: count(routineExecutionItems.id),
-        completed:
-          sql`COUNT(CASE WHEN ${routineExecutionItems.status} = 'completed' THEN 1 END)`.as<number>(),
-      })
-      .from(routineExecutionItems)
-      .where(inArray(routineExecutionItems.executionId, executionIds));
+    const stats = await RoutineExecutionItemModel.aggregate([
+      { $match: { executionId: { $in: executionIds.map((id: string) => id) } } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          completed: {
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
+          },
+        },
+      },
+    ]);
 
-    totalItems += Number(stats[0]?.total ?? 0);
-    completedItems += Number(stats[0]?.completed ?? 0);
+    totalItems += stats[0]?.total ?? 0;
+    completedItems += stats[0]?.completed ?? 0;
   }
 
   if (adhocItems.length > 0) {
     totalItems += adhocItems.length;
-    completedItems += adhocItems.filter((i) => i.status === "completed").length;
+    completedItems += adhocItems.filter((i: any) => i.status === "completed").length;
   }
 
   const plannedHours = calculateTotalPlannedHours(executions, adhocItems);
@@ -514,149 +560,152 @@ function calculateTotalPlannedHours(
 }
 
 export async function getTemplates() {
-  return db.select().from(routineTemplates).orderBy(asc(routineTemplates.createdAt));
+  await connectToDatabase();
+  const docs = await RoutineTemplateModel.find().sort({ createdAt: 1 }).lean();
+  return mapDocs(docs);
 }
 
 export async function getTemplateById(id: string) {
-  return db
-    .select()
-    .from(routineTemplates)
-    .where(eq(routineTemplates.id, id))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await RoutineTemplateModel.findOne({ _id: id }).lean();
+  return mapDoc(doc);
 }
 
 export async function createTemplate(input: CreateTemplateInput) {
-  return db.insert(routineTemplates).values(input).returning().then((r) => r[0]);
+  await connectToDatabase();
+  const doc = await RoutineTemplateModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function getTemplateItems(templateId: string) {
-  return db
-    .select()
-    .from(routineTemplateItems)
-    .where(eq(routineTemplateItems.templateId, templateId))
-    .orderBy(asc(routineTemplateItems.order));
+  await connectToDatabase();
+  const docs = await RoutineTemplateItemModel.find({ templateId }).sort({ order: 1 }).lean();
+  return mapDocs(docs);
 }
 
 export async function createTemplateItem(input: CreateTemplateItemInput) {
-  return db.insert(routineTemplateItems).values(input).returning().then((r) => r[0]);
+  await connectToDatabase();
+  const doc = await RoutineTemplateItemModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function createTemplateItems(inputs: CreateTemplateItemInput[]) {
   if (inputs.length === 0) return [];
-  return db.insert(routineTemplateItems).values(inputs).returning();
+  await connectToDatabase();
+  const docs = await RoutineTemplateItemModel.insertMany(inputs);
+  return mapDocs(docs);
 }
 
 // ── Analytics ──
 
 export async function getCompletionRate(userId: string, dateFrom: string, dateTo: string) {
-  const result = await db
-    .select({
-      total: count(routineExecutions.id),
-      completed: sql`COUNT(CASE WHEN ${routineExecutions.status} = 'completed' THEN 1 END)`.as<number>(),
-      skipped: sql`COUNT(CASE WHEN ${routineExecutions.status} = 'skipped' THEN 1 END)`.as<number>(),
-      missed: sql`COUNT(CASE WHEN ${routineExecutions.status} = 'missed' THEN 1 END)`.as<number>(),
-    })
-    .from(routineExecutions)
-    .where(
-      and(
-        eq(routineExecutions.userId, userId),
-        gte(routineExecutions.date, dateFrom),
-        lte(routineExecutions.date, dateTo),
-      ),
-    );
+  await connectToDatabase();
+  const result = await RoutineExecutionModel.aggregate([
+    { $match: { userId, date: { $gte: dateFrom, $lte: dateTo } } },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: 1 },
+        completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+        skipped: { $sum: { $cond: [{ $eq: ["$status", "skipped"] }, 1, 0] } },
+        missed: { $sum: { $cond: [{ $eq: ["$status", "missed"] }, 1, 0] } },
+      },
+    },
+  ]);
+
+  const total = result[0]?.total ?? 0;
+  const completed = result[0]?.completed ?? 0;
+  const skipped = result[0]?.skipped ?? 0;
+  const missed = result[0]?.missed ?? 0;
 
   return {
-    total: Number(result[0]?.total ?? 0),
-    completed: Number(result[0]?.completed ?? 0),
-    skipped: Number(result[0]?.skipped ?? 0),
-    missed: Number(result[0]?.missed ?? 0),
-    rate: Number(result[0]?.total ?? 0) > 0
-      ? Math.round((Number(result[0]?.completed ?? 0) / Number(result[0]?.total ?? 0)) * 100)
-      : 0,
+    total,
+    completed,
+    skipped,
+    missed,
+    rate: total > 0 ? Math.round((completed / total) * 100) : 0,
   };
 }
 
 export async function getDailyCompletionTrend(userId: string, dateFrom: string, dateTo: string) {
-  const rows = await db
-    .select({
-      date: routineExecutions.date,
-      completed: sql`COUNT(CASE WHEN ${routineExecutions.status} = 'completed' THEN 1 END)`.as<number>(),
-      total: count(routineExecutions.id),
-    })
-    .from(routineExecutions)
-    .where(
-      and(
-        eq(routineExecutions.userId, userId),
-        gte(routineExecutions.date, dateFrom),
-        lte(routineExecutions.date, dateTo),
-      ),
-    )
-    .groupBy(routineExecutions.date)
-    .orderBy(asc(routineExecutions.date));
+  await connectToDatabase();
+  const rows = await RoutineExecutionModel.aggregate([
+    { $match: { userId, date: { $gte: dateFrom, $lte: dateTo } } },
+    {
+      $group: {
+        _id: "$date",
+        completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+        total: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
 
-  return rows.map((r) => ({
-    date: r.date,
-    completed: Number(r.completed),
-    total: Number(r.total),
-    rate: Number(r.total) > 0 ? Math.round((Number(r.completed) / Number(r.total)) * 100) : 0,
+  return rows.map((r: any) => ({
+    date: r._id,
+    completed: r.completed,
+    total: r.total,
+    rate: r.total > 0 ? Math.round((r.completed / r.total) * 100) : 0,
   }));
 }
 
 export async function getRoutinePerformance(userId: string, dateFrom: string, dateTo: string) {
-  const rows = await db
-    .select({
-      routineId: routineExecutions.routineId,
-      total: count(routineExecutions.id),
-      completed: sql`COUNT(CASE WHEN ${routineExecutions.status} = 'completed' THEN 1 END)`.as<number>(),
-      avgCompletionRate: sql`AVG(${routineExecutions.completionRate})`.as<number>(),
-    })
-    .from(routineExecutions)
-    .where(
-      and(
-        eq(routineExecutions.userId, userId),
-        gte(routineExecutions.date, dateFrom),
-        lte(routineExecutions.date, dateTo),
-      ),
-    )
-    .groupBy(routineExecutions.routineId);
+  await connectToDatabase();
+  const rows = await RoutineExecutionModel.aggregate([
+    { $match: { userId, date: { $gte: dateFrom, $lte: dateTo } } },
+    {
+      $group: {
+        _id: "$routineId",
+        total: { $sum: 1 },
+        completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+        avgCompletionRate: { $avg: "$completionRate" },
+      },
+    },
+  ]);
 
-  return rows.map((r) => ({
-    routineId: r.routineId,
-    total: Number(r.total),
-    completed: Number(r.completed),
-    avgCompletionRate: Math.round(Number(r.avgCompletionRate) ?? 0),
-    rate: Number(r.total) > 0 ? Math.round((Number(r.completed) / Number(r.total)) * 100) : 0,
+  return rows.map((r: any) => ({
+    routineId: r._id?.toString() ?? null,
+    total: r.total,
+    completed: r.completed,
+    avgCompletionRate: Math.round(r.avgCompletionRate ?? 0),
+    rate: r.total > 0 ? Math.round((r.completed / r.total) * 100) : 0,
   }));
 }
 
 export async function getItemCompletionStats(userId: string, dateFrom: string, dateTo: string) {
-  const rows = await db
-    .select({
-      routineItemId: routineExecutionItems.routineItemId,
-      total: count(routineExecutionItems.id),
-      completed: sql`COUNT(CASE WHEN ${routineExecutionItems.status} = 'completed' THEN 1 END)`.as<number>(),
-      skipped: sql`COUNT(CASE WHEN ${routineExecutionItems.status} = 'skipped' THEN 1 END)`.as<number>(),
-    })
-    .from(routineExecutionItems)
-    .innerJoin(
-      routineExecutions,
-      eq(routineExecutionItems.executionId, routineExecutions.id),
-    )
-    .where(
-      and(
-        eq(routineExecutions.userId, userId),
-        gte(routineExecutions.date, dateFrom),
-        lte(routineExecutions.date, dateTo),
-      ),
-    )
-    .groupBy(routineExecutionItems.routineItemId);
+  await connectToDatabase();
+  const rows = await RoutineExecutionItemModel.aggregate([
+    {
+      $lookup: {
+        from: "routineexecutions",
+        localField: "executionId",
+        foreignField: "_id",
+        as: "execution",
+      },
+    },
+    { $unwind: "$execution" },
+    {
+      $match: {
+        "execution.userId": userId,
+        "execution.date": { $gte: dateFrom, $lte: dateTo },
+      },
+    },
+    {
+      $group: {
+        _id: "$routineItemId",
+        total: { $sum: 1 },
+        completed: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+        skipped: { $sum: { $cond: [{ $eq: ["$status", "skipped"] }, 1, 0] } },
+      },
+    },
+  ]);
 
-  return rows.map((r) => ({
-    routineItemId: r.routineItemId,
-    total: Number(r.total),
-    completed: Number(r.completed),
-    skipped: Number(r.skipped),
-    rate: Number(r.total) > 0 ? Math.round((Number(r.completed) / Number(r.total)) * 100) : 0,
+  return rows.map((r: any) => ({
+    routineItemId: r._id?.toString() ?? null,
+    total: r.total,
+    completed: r.completed,
+    skipped: r.skipped,
+    rate: r.total > 0 ? Math.round((r.completed / r.total) * 100) : 0,
   }));
 }
 
@@ -664,145 +713,125 @@ export async function getItemCompletionStats(userId: string, dateFrom: string, d
 
 // Daily Goal
 export async function getDailyGoal(userId: string, date: string): Promise<DailyGoal | null> {
-  const [goal] = await db
-    .select()
-    .from(dailyGoals)
-    .where(and(eq(dailyGoals.userId, userId), eq(dailyGoals.date, date)))
-    .limit(1);
-  return goal ?? null;
+  await connectToDatabase();
+  const doc = await DailyGoalModel.findOne({ userId, date }).lean();
+  return mapDoc(doc);
 }
 
 export async function upsertDailyGoal(input: CreateDailyGoalInput): Promise<DailyGoal> {
-  const existing = await getDailyGoal(input.userId, input.date);
+  await connectToDatabase();
+  const existing = await DailyGoalModel.findOne({ userId: input.userId, date: input.date }).lean();
   if (existing) {
-    const [goal] = await db
-      .update(dailyGoals)
-      .set({ title: input.title, isCompleted: input.isCompleted ?? false, taskId: input.taskId ?? null, updatedAt: new Date() })
-      .where(eq(dailyGoals.id, existing.id))
-      .returning();
-    return goal;
+    const doc = await DailyGoalModel.findOneAndUpdate(
+      { _id: existing._id },
+      { title: input.title, isCompleted: input.isCompleted ?? false, taskId: input.taskId ?? null, updatedAt: new Date() },
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   }
-  const [goal] = await db
-    .insert(dailyGoals)
-    .values(input)
-    .returning();
-  return goal;
+  const doc = await DailyGoalModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function updateDailyGoal(id: string, userId: string, data: Partial<CreateDailyGoalInput>): Promise<DailyGoal | null> {
-  const [goal] = await db
-    .update(dailyGoals)
-    .set({ ...data, updatedAt: new Date() })
-    .where(and(eq(dailyGoals.id, id), eq(dailyGoals.userId, userId)))
-    .returning();
-  return goal ?? null;
+  await connectToDatabase();
+  const doc = await DailyGoalModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...data, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return mapDoc(doc);
 }
 
 // Daily Priorities
 export async function getDailyPriorities(userId: string, date: string): Promise<DailyPriority[]> {
-  return db
-    .select()
-    .from(dailyPriorities)
-    .where(and(eq(dailyPriorities.userId, userId), eq(dailyPriorities.date, date)))
-    .orderBy(asc(dailyPriorities.sortOrder));
+  await connectToDatabase();
+  const docs = await DailyPriorityModel.find({ userId, date }).sort({ sortOrder: 1 }).lean();
+  return mapDocs(docs);
 }
 
 export async function createDailyPriority(input: CreateDailyPriorityInput): Promise<DailyPriority> {
-  const [item] = await db
-    .insert(dailyPriorities)
-    .values(input)
-    .returning();
-  return item;
+  await connectToDatabase();
+  const doc = await DailyPriorityModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function updateDailyPriority(id: string, userId: string, data: Partial<CreateDailyPriorityInput>): Promise<DailyPriority | null> {
-  const [item] = await db
-    .update(dailyPriorities)
-    .set({ ...data, updatedAt: new Date() })
-    .where(and(eq(dailyPriorities.id, id), eq(dailyPriorities.userId, userId)))
-    .returning();
-  return item ?? null;
+  await connectToDatabase();
+  const doc = await DailyPriorityModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...data, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return mapDoc(doc);
 }
 
 export async function deleteDailyPriority(id: string, userId: string): Promise<void> {
-  await db
-    .delete(dailyPriorities)
-    .where(and(eq(dailyPriorities.id, id), eq(dailyPriorities.userId, userId)));
+  await connectToDatabase();
+  await DailyPriorityModel.findOneAndDelete({ _id: id, userId });
 }
 
 // Daily Planner Snapshot
 export async function getDailyPlannerSnapshot(userId: string, date: string): Promise<DailyPlannerSnapshot | null> {
-  const [snapshot] = await db
-    .select()
-    .from(dailyPlannerSnapshots)
-    .where(and(eq(dailyPlannerSnapshots.userId, userId), eq(dailyPlannerSnapshots.date, date)))
-    .limit(1);
-  return snapshot ?? null;
+  await connectToDatabase();
+  const doc = await DailyPlannerSnapshotModel.findOne({ userId, date }).lean();
+  return mapDoc(doc);
 }
 
 export async function upsertDailyPlannerSnapshot(input: CreateDailyPlannerSnapshotInput): Promise<DailyPlannerSnapshot> {
-  const [snapshot] = await db
-    .insert(dailyPlannerSnapshots)
-    .values(input)
-    .returning();
-  return snapshot;
+  await connectToDatabase();
+  const doc = await DailyPlannerSnapshotModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function getDailyPlannerSnapshotRange(userId: string, dateFrom: string, dateTo: string): Promise<DailyPlannerSnapshot[]> {
-  return db
-    .select()
-    .from(dailyPlannerSnapshots)
-    .where(and(eq(dailyPlannerSnapshots.userId, userId), gte(dailyPlannerSnapshots.date, dateFrom), lte(dailyPlannerSnapshots.date, dateTo)))
-    .orderBy(asc(dailyPlannerSnapshots.date));
+  await connectToDatabase();
+  const docs = await DailyPlannerSnapshotModel.find({
+    userId,
+    date: { $gte: dateFrom, $lte: dateTo },
+  })
+    .sort({ date: 1 })
+    .lean();
+  return mapDocs(docs);
 }
 
 // Daily Notes
 export async function getDailyNote(userId: string, date: string): Promise<DailyNote | null> {
-  const [note] = await db
-    .select()
-    .from(dailyNotes)
-    .where(and(eq(dailyNotes.userId, userId), eq(dailyNotes.date, date)))
-    .limit(1);
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await DailyNoteModel.findOne({ userId, date }).lean();
+  return mapDoc(doc);
 }
 
 export async function upsertDailyNote(input: CreateDailyNoteInput): Promise<DailyNote> {
-  const [note] = await db
-    .insert(dailyNotes)
-    .values(input)
-    .returning();
-  return note;
+  await connectToDatabase();
+  const doc = await DailyNoteModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function updateDailyNote(id: string, userId: string, data: Partial<CreateDailyNoteInput>): Promise<DailyNote | null> {
-  const [note] = await db
-    .update(dailyNotes)
-    .set({ ...data, updatedAt: new Date() })
-    .where(and(eq(dailyNotes.id, id), eq(dailyNotes.userId, userId)))
-    .returning();
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await DailyNoteModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...data, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return mapDoc(doc);
 }
 
 // Planner Preferences
 export async function getPlannerPreferences(userId: string): Promise<PlannerPreferences | null> {
-  const [prefs] = await db
-    .select()
-    .from(plannerPreferences)
-    .where(eq(plannerPreferences.userId, userId))
-    .limit(1);
-  return prefs ?? null;
+  await connectToDatabase();
+  const doc = await PlannerPreferenceModel.findOne({ userId }).lean();
+  return mapDoc(doc);
 }
 
 export async function upsertPlannerPreferences(input: CreatePlannerPreferencesInput): Promise<PlannerPreferences> {
-  const [prefs] = await db
-    .insert(plannerPreferences)
-    .values(input)
-    .returning();
-  return prefs;
+  await connectToDatabase();
+  const doc = await PlannerPreferenceModel.create(input);
+  return mapDoc(doc);
 }
 
 export async function deletePlannerPreferences(userId: string): Promise<void> {
-  await db
-    .delete(plannerPreferences)
-    .where(eq(plannerPreferences.userId, userId));
+  await connectToDatabase();
+  await PlannerPreferenceModel.findOneAndDelete({ userId });
 }

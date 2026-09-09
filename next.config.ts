@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pino", "postgres"],
+  serverExternalPackages: ["pino", "mongoose"],
   poweredByHeader: false,
   reactStrictMode: true,
   compress: true,
@@ -11,10 +11,6 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 768, 1024, 1280, 1536],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "**.supabase.co",
-      },
       {
         protocol: "https",
         hostname: "**.placeholder.com",

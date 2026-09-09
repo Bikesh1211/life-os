@@ -49,7 +49,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const memory = await getMemoryById(id, userId);
     if (!memory) return NextResponse.json({ error: "Memory not found" }, { status: 404 });
     const songs = await getMemorySongs(id);
-    const hydratedSongs = await Promise.all(songs.map((s) => hydrateTrack(s.trackId)));
+    const hydratedSongs = await Promise.all(songs.map((s: any) => hydrateTrack(s.trackId)));
     return NextResponse.json({ ...memory, songs: hydratedSongs });
   } catch {
     return NextResponse.json({ error: "Failed to fetch memory" }, { status: 500 });

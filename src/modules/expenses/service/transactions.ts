@@ -24,6 +24,7 @@ export async function createExpenseTransaction(userId: string, params: CreateTra
   const transaction = await createTransaction({
     ...data,
     userId,
+    amount: Number(validated.amount),
     transactionDate: new Date(validated.transactionDate),
     recurrenceEndDate: validated.recurrenceEndDate ? new Date(validated.recurrenceEndDate) : undefined,
   });

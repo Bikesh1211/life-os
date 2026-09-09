@@ -1,161 +1,259 @@
-import { db } from "@/core/database";
-import { transactions } from "../schema/transactions";
-import { expenseCategories } from "../schema/categories";
-import { eq, and, isNull, sql, gte, lte } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { Transaction as TransactionModel, ExpenseCategory as ExpenseCategoryModel } from "@/lib/models/expenses";
 
 function monthRange(year: number, month: number) {
   return { start: new Date(year, month - 1, 1), end: new Date(year, month, 1) };
 }
 
-export async function getMonthlySpending(userId: string, year: number, month: number) {
+export async function getMonthlySpending(
+  userId: string,
+  year: number,
+  month: number,
+): Promise<{ total: number; count: number }> {
+  await connectToDatabase();
   const { start: startDate, end: endDate } = monthRange(year, month);
 
-  const rows = await db
-    .select({
-      total: sql<string>`COALESCE(SUM(${transactions.amount}), '0')`,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.type, "expense"),
-        isNull(transactions.deletedAt),
-        gte(transactions.transactionDate, startDate),
-        lte(transactions.transactionDate, endDate),
-      ),
-    );
+  const [result] = await TransactionModel.aggregate([
+    {
+      $match: {
+        userId,
+        type: "expense",
+        deletedAt: null,
+        transactionDate: { $gte: startDate, $lt: endDate },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: "$amount" },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
 
   return {
-    total: Number(rows[0]?.total ?? 0),
-    count: rows[0]?.count ?? 0,
+    total: result?.total ?? 0,
+    count: result?.count ?? 0,
   };
 }
 
-export async function getMonthlyIncome(userId: string, year: number, month: number) {
+export async function getMonthlyIncome(
+  userId: string,
+  year: number,
+  month: number,
+): Promise<number> {
+  await connectToDatabase();
   const { start: startDate, end: endDate } = monthRange(year, month);
 
-  const rows = await db
-    .select({
-      total: sql<string>`COALESCE(SUM(${transactions.amount}), '0')`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.type, "income"),
-        isNull(transactions.deletedAt),
-        gte(transactions.transactionDate, startDate),
-        lte(transactions.transactionDate, endDate),
-      ),
-    );
+  const [result] = await TransactionModel.aggregate([
+    {
+      $match: {
+        userId,
+        type: "income",
+        deletedAt: null,
+        transactionDate: { $gte: startDate, $lt: endDate },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: "$amount" },
+      },
+    },
+  ]);
 
-  return Number(rows[0]?.total ?? 0);
+  return result?.total ?? 0;
 }
 
-export async function getSpendingByCategory(userId: string, year: number, month: number) {
+export async function getSpendingByCategory(
+  userId: string,
+  year: number,
+  month: number,
+): Promise<
+  {
+    categoryId: string | null;
+    categoryName: string | null;
+    categoryColor: string | null;
+    categoryIcon: string | null;
+    total: number;
+    count: number;
+  }[]
+> {
+  await connectToDatabase();
   const { start: startDate, end: endDate } = monthRange(year, month);
 
-  return db
-    .select({
-      categoryId: transactions.categoryId,
-      categoryName: expenseCategories.name,
-      categoryColor: expenseCategories.color,
-      categoryIcon: expenseCategories.icon,
-      total: sql<string>`COALESCE(SUM(${transactions.amount}), '0')`,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(transactions)
-    .leftJoin(expenseCategories, eq(transactions.categoryId, expenseCategories.id))
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.type, "expense"),
-        isNull(transactions.deletedAt),
-        gte(transactions.transactionDate, startDate),
-        lte(transactions.transactionDate, endDate),
-      ),
-    )
-    .groupBy(transactions.categoryId, expenseCategories.name, expenseCategories.color, expenseCategories.icon)
-    .orderBy(sql`SUM(${transactions.amount}) DESC`);
+  const results = await TransactionModel.aggregate([
+    {
+      $match: {
+        userId,
+        type: "expense",
+        deletedAt: null,
+        transactionDate: { $gte: startDate, $lt: endDate },
+      },
+    },
+    {
+      $lookup: {
+        from: "expensecategories",
+        localField: "categoryId",
+        foreignField: "_id",
+        as: "category",
+      },
+    },
+    {
+      $unwind: {
+        path: "$category",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+    {
+      $group: {
+        _id: "$categoryId",
+        categoryName: { $first: "$category.name" },
+        categoryColor: { $first: "$category.color" },
+        categoryIcon: { $first: "$category.icon" },
+        total: { $sum: "$amount" },
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { total: -1 },
+    },
+  ]);
+
+  return results.map((r: any) => ({
+    categoryId: r._id?.toString?.() ?? null,
+    categoryName: r.categoryName ?? null,
+    categoryColor: r.categoryColor ?? null,
+    categoryIcon: r.categoryIcon ?? null,
+    total: r.total,
+    count: r.count,
+  }));
 }
 
 export async function getDailySpending(
   userId: string,
   startDate: Date,
   endDate: Date,
-) {
-  return db
-    .select({
-      date: sql<string>`DATE(${transactions.transactionDate})`,
-      total: sql<string>`COALESCE(SUM(${transactions.amount}), '0')`,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.type, "expense"),
-        isNull(transactions.deletedAt),
-        gte(transactions.transactionDate, startDate),
-        lte(transactions.transactionDate, endDate),
-      ),
-    )
-    .groupBy(sql`DATE(${transactions.transactionDate})`)
-    .orderBy(sql`DATE(${transactions.transactionDate})`);
+): Promise<{ date: string; total: number; count: number }[]> {
+  await connectToDatabase();
+
+  const results = await TransactionModel.aggregate([
+    {
+      $match: {
+        userId,
+        type: "expense",
+        deletedAt: null,
+        transactionDate: { $gte: startDate, $lte: endDate },
+      },
+    },
+    {
+      $addFields: {
+        dateStr: {
+          $dateToString: { format: "%Y-%m-%d", date: "$transactionDate" },
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$dateStr",
+        total: { $sum: "$amount" },
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { _id: 1 },
+    },
+  ]);
+
+  return results.map((r: any) => ({
+    date: r._id,
+    total: r.total,
+    count: r.count,
+  }));
 }
 
-export async function getTopMerchants(userId: string, year: number, month: number, limit = 10) {
+export async function getTopMerchants(
+  userId: string,
+  year: number,
+  month: number,
+  limit = 10,
+): Promise<{ merchant: string | null; total: number; count: number }[]> {
+  await connectToDatabase();
   const { start: startDate, end: endDate } = monthRange(year, month);
 
-  return db
-    .select({
-      merchant: transactions.merchant,
-      total: sql<string>`COALESCE(SUM(${transactions.amount}), '0')`,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.type, "expense"),
-        isNull(transactions.deletedAt),
-        sql`${transactions.merchant} IS NOT NULL`,
-        gte(transactions.transactionDate, startDate),
-        lte(transactions.transactionDate, endDate),
-      ),
-    )
-    .groupBy(transactions.merchant)
-    .orderBy(sql`SUM(${transactions.amount}) DESC`)
-    .limit(limit);
+  const results = await TransactionModel.aggregate([
+    {
+      $match: {
+        userId,
+        type: "expense",
+        deletedAt: null,
+        merchant: { $exists: true, $ne: null },
+        transactionDate: { $gte: startDate, $lt: endDate },
+      },
+    },
+    {
+      $group: {
+        _id: "$merchant",
+        total: { $sum: "$amount" },
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { total: -1 },
+    },
+    { $limit: limit },
+  ]);
+
+  return results.map((r: any) => ({
+    merchant: r._id,
+    total: r.total,
+    count: r.count,
+  }));
 }
 
-export async function getSpendingByPaymentMethod(userId: string, year: number, month: number) {
+export async function getSpendingByPaymentMethod(
+  userId: string,
+  year: number,
+  month: number,
+): Promise<{ paymentMethod: string | null; total: number; count: number }[]> {
+  await connectToDatabase();
   const { start: startDate, end: endDate } = monthRange(year, month);
 
-  return db
-    .select({
-      paymentMethod: transactions.paymentMethod,
-      total: sql<string>`COALESCE(SUM(${transactions.amount}), '0')`,
-      count: sql<number>`COUNT(*)`,
-    })
-    .from(transactions)
-    .where(
-      and(
-        eq(transactions.userId, userId),
-        eq(transactions.type, "expense"),
-        isNull(transactions.deletedAt),
-        sql`${transactions.paymentMethod} IS NOT NULL`,
-        gte(transactions.transactionDate, startDate),
-        lte(transactions.transactionDate, endDate),
-      ),
-    )
-    .groupBy(transactions.paymentMethod)
-    .orderBy(sql`SUM(${transactions.amount}) DESC`);
+  const results = await TransactionModel.aggregate([
+    {
+      $match: {
+        userId,
+        type: "expense",
+        deletedAt: null,
+        paymentMethod: { $exists: true, $ne: null },
+        transactionDate: { $gte: startDate, $lt: endDate },
+      },
+    },
+    {
+      $group: {
+        _id: "$paymentMethod",
+        total: { $sum: "$amount" },
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { total: -1 },
+    },
+  ]);
+
+  return results.map((r: any) => ({
+    paymentMethod: r._id,
+    total: r.total,
+    count: r.count,
+  }));
 }
 
-export async function getAverageDailySpend(userId: string, year: number, month: number) {
-  const { total, count } = await getMonthlySpending(userId, year, month);
+export async function getAverageDailySpend(
+  userId: string,
+  year: number,
+  month: number,
+): Promise<{ average: number; total: number; daysInMonth: number }> {
+  const { total } = await getMonthlySpending(userId, year, month);
   const daysInMonth = new Date(year, month, 0).getDate();
   return {
     average: daysInMonth > 0 ? total / daysInMonth : 0,

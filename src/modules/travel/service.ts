@@ -1,10 +1,14 @@
 import { z } from "zod";
-import { db } from "@/core/database";
-import { eq, and, isNull, desc, asc } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  travelTrips, travelTripDays, travelWishlist, travelVisitedPlaces,
-  travelJournals, travelPhotos, travelExpenses, travelRestaurants,
-} from "./schema";
+  TravelTripModel,
+  TravelWishlistModel,
+  TravelVisitedPlaceModel,
+  TravelJournalModel,
+  TravelPhotoModel,
+  TravelExpenseModel,
+  TravelRestaurantModel,
+} from "@/lib/models/travel";
 import { createTimelineEvent } from "@/modules/timeline";
 
 const isoDate = z.string().datetime().optional().nullable();
@@ -154,25 +158,48 @@ export const createRestaurantSchema = z.object({
   favoriteDrink: z.string().max(200).optional().nullable(),
 });
 
-function whereUser(table: any, userId: string) {
-  return and(eq(table.userId, userId), isNull(table.deletedAt));
+function mapDoc(doc: any) {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  const { _id, __v, ...rest } = obj;
+  return { ...rest, id: _id.toString() };
 }
 
-function delCol(table: any) {
-  return "deletedAt" in table ? { deletedAt: new Date() } : {};
+function mapDocs(docs: any[]) {
+  return docs.map(mapDoc);
+}
+
+function toIdFilter(id: string, userId: string) {
+  return { _id: id, userId };
+}
+
+function softDeleteFields() {
+  return { deletedAt: new Date(), updatedAt: new Date() };
 }
 
 export const travelService = {
   async getTrips(userId: string) {
-    return db.select().from(travelTrips).where(whereUser(travelTrips, userId)).orderBy(desc(travelTrips.createdAt));
+    await connectToDatabase();
+    const docs = await TravelTripModel.find({ userId, deletedAt: null })
+      .sort({ createdAt: -1 })
+      .lean();
+    return mapDocs(docs);
   },
   async getTripById(userId: string, tripId: string) {
-    const [r] = await db.select().from(travelTrips).where(and(eq(travelTrips.id, tripId), eq(travelTrips.userId, userId))).limit(1);
-    return r ?? null;
+    await connectToDatabase();
+    const doc = await TravelTripModel.findOne({ _id: tripId, userId, deletedAt: null }).lean();
+    return mapDoc(doc);
   },
   async createTrip(userId: string, data: any) {
     const p = createTripSchema.parse(data);
-    const [r] = await db.insert(travelTrips).values({ ...p, userId, startDate: p.startDate ? new Date(p.startDate) : null, endDate: p.endDate ? new Date(p.endDate) : null }).returning();
+    await connectToDatabase();
+    const doc = await TravelTripModel.create({
+      ...p,
+      userId,
+      startDate: p.startDate ? new Date(p.startDate) : null,
+      endDate: p.endDate ? new Date(p.endDate) : null,
+    });
+    const r = mapDoc(doc);
 
     try {
       const eventDate = r.startDate ?? r.endDate ?? r.createdAt;
@@ -192,148 +219,260 @@ export const travelService = {
   },
   async updateTrip(userId: string, id: string, data: any) {
     const p = updateTripSchema.parse(data);
+    await connectToDatabase();
     const upd: any = { ...p, updatedAt: new Date() };
     if (p.startDate !== undefined) upd.startDate = p.startDate ? new Date(p.startDate) : null;
     if (p.endDate !== undefined) upd.endDate = p.endDate ? new Date(p.endDate) : null;
-    const [r] = await db.update(travelTrips).set(upd).where(and(eq(travelTrips.id, id), eq(travelTrips.userId, userId))).returning();
-    return r;
+    const doc = await TravelTripModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      upd,
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
   async deleteTrip(userId: string, id: string) {
-    const [r] = await db.update(travelTrips).set({ deletedAt: new Date() }).where(and(eq(travelTrips.id, id), eq(travelTrips.userId, userId))).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelTripModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      softDeleteFields(),
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
 
   async getWishlist(userId: string) {
-    return db.select().from(travelWishlist).where(whereUser(travelWishlist, userId)).orderBy(desc(travelWishlist.createdAt));
+    await connectToDatabase();
+    const docs = await TravelWishlistModel.find({ userId, deletedAt: null })
+      .sort({ createdAt: -1 })
+      .lean();
+    return mapDocs(docs);
   },
   async getWishlistItem(userId: string, id: string) {
-    const [r] = await db.select().from(travelWishlist).where(and(eq(travelWishlist.id, id), eq(travelWishlist.userId, userId))).limit(1);
-    return r ?? null;
+    await connectToDatabase();
+    const doc = await TravelWishlistModel.findOne({ _id: id, userId, deletedAt: null }).lean();
+    return mapDoc(doc);
   },
   async createWishlist(userId: string, data: any) {
     const p = createWishlistSchema.parse(data);
-    const [r] = await db.insert(travelWishlist).values({
+    await connectToDatabase();
+    const doc = await TravelWishlistModel.create({
       ...p,
       userId,
       visitedAt: p.visitedAt ? new Date(p.visitedAt) : null,
-    }).returning();
-    return r;
+    });
+    return mapDoc(doc);
   },
   async updateWishlist(userId: string, id: string, data: any) {
     const p = updateWishlistSchema.parse(data);
+    await connectToDatabase();
     const upd: any = { ...p, updatedAt: new Date() };
     if (p.visitedAt !== undefined) upd.visitedAt = p.visitedAt ? new Date(p.visitedAt) : null;
     /* Ticking a destination off without naming a day stamps today. A visited
        row with no date drops to the foot of the timeline as undated, which is
        the wrong answer when the caller has just said it happened. */
     if (p.isVisited === true && p.visitedAt === undefined) {
-      const [current] = await db.select({ visitedAt: travelWishlist.visitedAt })
-        .from(travelWishlist)
-        .where(and(eq(travelWishlist.id, id), eq(travelWishlist.userId, userId)))
-        .limit(1);
+      const current = await TravelWishlistModel.findOne({ _id: id, userId })
+        .select({ visitedAt: 1 })
+        .lean();
       if (!current?.visitedAt) upd.visitedAt = new Date();
     }
-    const [r] = await db.update(travelWishlist).set(upd).where(and(eq(travelWishlist.id, id), eq(travelWishlist.userId, userId))).returning();
-    return r;
+    const doc = await TravelWishlistModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      upd,
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
   async deleteWishlist(userId: string, id: string) {
-    const [r] = await db.update(travelWishlist).set({ deletedAt: new Date() }).where(and(eq(travelWishlist.id, id), eq(travelWishlist.userId, userId))).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelWishlistModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      softDeleteFields(),
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
   async markWishlistVisited(userId: string, id: string) {
-    const [r] = await db.update(travelWishlist).set({ isVisited: true, visitedAt: new Date() }).where(and(eq(travelWishlist.id, id), eq(travelWishlist.userId, userId))).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelWishlistModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      { isVisited: true, visitedAt: new Date() },
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
 
   async getVisited(userId: string) {
-    return db.select().from(travelVisitedPlaces).where(whereUser(travelVisitedPlaces, userId)).orderBy(desc(travelVisitedPlaces.visitStart));
+    await connectToDatabase();
+    const docs = await TravelVisitedPlaceModel.find({ userId, deletedAt: null })
+      .sort({ visitStart: -1 })
+      .lean();
+    return mapDocs(docs);
   },
   async createVisited(userId: string, data: any) {
     const p = createVisitedSchema.parse(data);
-    const [r] = await db.insert(travelVisitedPlaces).values({ ...p, userId, visitStart: p.visitStart ? new Date(p.visitStart) : null, visitEnd: p.visitEnd ? new Date(p.visitEnd) : null }).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelVisitedPlaceModel.create({
+      ...p,
+      userId,
+      visitStart: p.visitStart ? new Date(p.visitStart) : null,
+      visitEnd: p.visitEnd ? new Date(p.visitEnd) : null,
+    });
+    return mapDoc(doc);
   },
   async updateVisited(userId: string, id: string, data: any) {
     const p = createVisitedSchema.partial().parse(data);
+    await connectToDatabase();
     const upd: any = { ...p, updatedAt: new Date() };
     if (p.visitStart !== undefined) upd.visitStart = p.visitStart ? new Date(p.visitStart) : null;
     if (p.visitEnd !== undefined) upd.visitEnd = p.visitEnd ? new Date(p.visitEnd) : null;
-    const [r] = await db.update(travelVisitedPlaces).set(upd).where(and(eq(travelVisitedPlaces.id, id), eq(travelVisitedPlaces.userId, userId))).returning();
-    return r;
+    const doc = await TravelVisitedPlaceModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      upd,
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
   async deleteVisited(userId: string, id: string) {
-    const [r] = await db.update(travelVisitedPlaces).set({ deletedAt: new Date() }).where(and(eq(travelVisitedPlaces.id, id), eq(travelVisitedPlaces.userId, userId))).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelVisitedPlaceModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      softDeleteFields(),
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
 
   async getJournals(userId: string) {
-    return db.select().from(travelJournals).where(whereUser(travelJournals, userId)).orderBy(desc(travelJournals.date));
+    await connectToDatabase();
+    const docs = await TravelJournalModel.find({ userId, deletedAt: null })
+      .sort({ date: -1 })
+      .lean();
+    return mapDocs(docs);
   },
   async getJournalById(userId: string, id: string) {
-    const [r] = await db.select().from(travelJournals).where(and(eq(travelJournals.id, id), eq(travelJournals.userId, userId))).limit(1);
-    return r ?? null;
+    await connectToDatabase();
+    const doc = await TravelJournalModel.findOne({ _id: id, userId, deletedAt: null }).lean();
+    return mapDoc(doc);
   },
   async createJournal(userId: string, data: any) {
     const p = createJournalSchema.parse(data);
-    const [r] = await db.insert(travelJournals).values({ ...p, userId, date: p.date ? new Date(p.date) : null }).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelJournalModel.create({
+      ...p,
+      userId,
+      date: p.date ? new Date(p.date) : null,
+    });
+    return mapDoc(doc);
   },
   async updateJournal(userId: string, id: string, data: any) {
     const p = createJournalSchema.partial().parse(data);
+    await connectToDatabase();
     const upd: any = { ...p, updatedAt: new Date() };
     if (p.date !== undefined) upd.date = p.date ? new Date(p.date) : null;
-    const [r] = await db.update(travelJournals).set(upd).where(and(eq(travelJournals.id, id), eq(travelJournals.userId, userId))).returning();
-    return r;
+    const doc = await TravelJournalModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      upd,
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
   async deleteJournal(userId: string, id: string) {
-    const [r] = await db.update(travelJournals).set({ deletedAt: new Date() }).where(and(eq(travelJournals.id, id), eq(travelJournals.userId, userId))).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelJournalModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      softDeleteFields(),
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
 
   async getPhotos(userId: string) {
-    return db.select().from(travelPhotos).where(whereUser(travelPhotos, userId)).orderBy(desc(travelPhotos.dateTaken));
+    await connectToDatabase();
+    const docs = await TravelPhotoModel.find({ userId, deletedAt: null })
+      .sort({ dateTaken: -1 })
+      .lean();
+    return mapDocs(docs);
   },
   async createPhoto(userId: string, data: any) {
     const p = createPhotoSchema.parse(data);
-    const [r] = await db.insert(travelPhotos).values({ ...p, userId, dateTaken: p.dateTaken ? new Date(p.dateTaken) : null }).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelPhotoModel.create({
+      ...p,
+      userId,
+      dateTaken: p.dateTaken ? new Date(p.dateTaken) : null,
+    });
+    return mapDoc(doc);
   },
   async deletePhoto(userId: string, id: string) {
-    const [r] = await db.update(travelPhotos).set({ deletedAt: new Date() }).where(and(eq(travelPhotos.id, id), eq(travelPhotos.userId, userId))).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelPhotoModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      softDeleteFields(),
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
 
   async getExpenses(userId: string, tripId?: string) {
-    const conditions = [eq(travelExpenses.userId, userId)];
-    if (tripId) conditions.push(eq(travelExpenses.tripId, tripId));
-    return db.select().from(travelExpenses).where(and(...conditions)).orderBy(desc(travelExpenses.date));
+    await connectToDatabase();
+    const filter: any = { userId, deletedAt: null };
+    if (tripId) filter.tripId = tripId;
+    const docs = await TravelExpenseModel.find(filter)
+      .sort({ date: -1 })
+      .lean();
+    return mapDocs(docs);
   },
   async createExpense(userId: string, data: any) {
     const p = createExpenseSchema.parse(data);
-    const [r] = await db.insert(travelExpenses).values({ ...p, userId, date: p.date ? new Date(p.date) : undefined }).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelExpenseModel.create({
+      ...p,
+      userId,
+      date: p.date ? new Date(p.date) : undefined,
+    });
+    return mapDoc(doc);
   },
   async deleteExpense(userId: string, id: string) {
-    const [r] = await db.delete(travelExpenses).where(and(eq(travelExpenses.id, id), eq(travelExpenses.userId, userId))).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelExpenseModel.findOneAndDelete({
+      _id: id,
+      userId,
+    });
+    return mapDoc(doc);
   },
 
   async getRestaurants(userId: string) {
-    return db.select().from(travelRestaurants).where(whereUser(travelRestaurants, userId)).orderBy(desc(travelRestaurants.createdAt));
+    await connectToDatabase();
+    const docs = await TravelRestaurantModel.find({ userId, deletedAt: null })
+      .sort({ createdAt: -1 })
+      .lean();
+    return mapDocs(docs);
   },
   async createRestaurant(userId: string, data: any) {
     const p = createRestaurantSchema.parse(data);
-    const [r] = await db.insert(travelRestaurants).values({ ...p, userId }).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelRestaurantModel.create({ ...p, userId });
+    return mapDoc(doc);
   },
   async updateRestaurant(userId: string, id: string, data: any) {
     const p = createRestaurantSchema.partial().parse(data);
-    const [r] = await db.update(travelRestaurants).set({ ...p, updatedAt: new Date() }).where(and(eq(travelRestaurants.id, id), eq(travelRestaurants.userId, userId))).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelRestaurantModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      { ...p, updatedAt: new Date() },
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
   async deleteRestaurant(userId: string, id: string) {
-    const [r] = await db.update(travelRestaurants).set({ deletedAt: new Date() }).where(and(eq(travelRestaurants.id, id), eq(travelRestaurants.userId, userId))).returning();
-    return r;
+    await connectToDatabase();
+    const doc = await TravelRestaurantModel.findOneAndUpdate(
+      toIdFilter(id, userId),
+      softDeleteFields(),
+      { new: true },
+    ).lean();
+    return mapDoc(doc);
   },
 
   async getDashboard(userId: string) {

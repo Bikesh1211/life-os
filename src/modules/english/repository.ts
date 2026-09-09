@@ -1,112 +1,187 @@
-import { db } from "@/core/database/client";
-import { englishWords, englishUserVocabulary, englishQuizAttempts, englishDailyWords } from "./schema";
-import { and, eq, isNull, asc, desc, inArray, sql, gte, lte } from "drizzle-orm";
-import type { InferSelectModel } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import {
+  EnglishVocabularyModel,
+  EnglishQuizModel,
+  EnglishQuizQuestionModel,
+  EnglishStudySessionModel,
+} from "@/lib/models/english";
 
-export type EnglishWord = InferSelectModel<typeof englishWords>;
-export type UserVocabulary = InferSelectModel<typeof englishUserVocabulary>;
-export type QuizAttempt = InferSelectModel<typeof englishQuizAttempts>;
-export type DailyWord = InferSelectModel<typeof englishDailyWords>;
+export type EnglishWord = {
+  id: string;
+  word: string;
+  definition: string;
+  partOfSpeech: string;
+  example?: string | null;
+  pronunciation?: string | null;
+  topic?: string | null;
+  difficulty?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type UserVocabulary = {
+  id: string;
+  userId: string;
+  wordId: string;
+  mastery: string;
+  isFavorite: boolean;
+  nextReviewAt?: Date | null;
+  addedAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date | null;
+};
+
+export type QuizAttempt = {
+  id: string;
+  userId: string;
+  wordId: string;
+  quizType: string;
+  correct: boolean;
+  responseTimeMs?: number | null;
+  createdAt: Date;
+};
+
+export type DailyWord = {
+  id: string;
+  scheduledDate: string;
+  wordId: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+function toPlain(doc: any) {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  const { _id, __v, ...rest } = obj;
+  return { ...rest, id: _id.toString() };
+}
+
+function toPlainArray(docs: any[]) {
+  return docs.map(toPlain);
+}
 
 export async function searchWords(query: string, limit = 20): Promise<EnglishWord[]> {
-  return db
-    .select()
-    .from(englishWords)
-    .where(sql`LOWER(${englishWords.word}) LIKE ${`%${query.toLowerCase()}%`}`)
+  await connectToDatabase();
+  const docs = await EnglishVocabularyModel.find({
+    word: { $regex: query, $options: "i" },
+  })
+    .sort({ word: 1 })
     .limit(limit)
-    .orderBy(asc(englishWords.word));
+    .lean();
+  return toPlainArray(docs) as EnglishWord[];
 }
 
 export async function getWordById(id: string): Promise<EnglishWord | null> {
-  const [word] = await db.select().from(englishWords).where(eq(englishWords.id, id));
-  return word ?? null;
+  await connectToDatabase();
+  const doc = await EnglishVocabularyModel.findOne({ _id: id }).lean();
+  return toPlain(doc) as EnglishWord | null;
 }
 
 export async function getWordsByTopic(topic: string): Promise<EnglishWord[]> {
-  return db
-    .select()
-    .from(englishWords)
-    .where(eq(englishWords.topic, topic))
-    .orderBy(asc(englishWords.word));
+  await connectToDatabase();
+  const docs = await EnglishVocabularyModel.find({ topic })
+    .sort({ word: 1 })
+    .lean();
+  return toPlainArray(docs) as EnglishWord[];
 }
 
 export async function getWordsForQuiz(excludeIds: string[], limit = 4): Promise<EnglishWord[]> {
-  if (excludeIds.length === 0) {
-    return db.select().from(englishWords).orderBy(sql`RANDOM()`).limit(limit);
+  await connectToDatabase();
+  const filter: any = {};
+  if (excludeIds.length > 0) {
+    filter._id = { $nin: excludeIds };
   }
-  return db
-    .select()
-    .from(englishWords)
-    .where(sql`${englishWords.id} NOT IN (${sql.join(excludeIds.map((id) => sql`${id}::uuid`), sql`, `)})`)
-    .orderBy(sql`RANDOM()`)
-    .limit(limit);
+  const docs = await EnglishVocabularyModel.aggregate([
+    { $match: filter },
+    { $sample: { size: limit } },
+  ]);
+  return toPlainArray(docs) as EnglishWord[];
 }
 
 export async function createWord(input: Partial<EnglishWord>): Promise<EnglishWord> {
-  const [word] = await db.insert(englishWords).values(input as any).returning();
-  return word;
+  await connectToDatabase();
+  const doc = await EnglishVocabularyModel.create(input);
+  return toPlain(doc) as EnglishWord;
 }
 
 export async function addWordToVocabulary(userId: string, wordId: string): Promise<UserVocabulary> {
-  const [entry] = await db
-    .insert(englishUserVocabulary)
-    .values({ userId, wordId })
-    .onConflictDoNothing()
-    .returning();
-  return entry;
+  await connectToDatabase();
+  const existing = await EnglishQuizModel.findOne({ userId, wordId }).lean();
+  if (existing) return toPlain(existing) as UserVocabulary;
+
+  const doc = await EnglishQuizModel.create({ userId, wordId });
+  return toPlain(doc) as UserVocabulary;
 }
 
 export async function getUserVocabulary(userId: string) {
-  return db
-    .select()
-    .from(englishUserVocabulary)
-    .where(and(eq(englishUserVocabulary.userId, userId), isNull(englishUserVocabulary.deletedAt)))
-    .innerJoin(englishWords, eq(englishUserVocabulary.wordId, englishWords.id))
-    .orderBy(desc(englishUserVocabulary.addedAt));
+  await connectToDatabase();
+  const docs = await EnglishQuizModel.find({ userId, deletedAt: null })
+    .sort({ addedAt: -1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function updateVocabularyEntry(id: string, userId: string, updates: Partial<UserVocabulary>) {
-  const [entry] = await db
-    .update(englishUserVocabulary)
-    .set({ ...updates, updatedAt: new Date() })
-    .where(and(eq(englishUserVocabulary.id, id), eq(englishUserVocabulary.userId, userId)))
-    .returning();
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await EnglishQuizModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...updates, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function getVocabularyStats(userId: string) {
-  const [result] = await db
-    .select({
-      total: sql<number>`COUNT(*)`,
-      learning: sql<number>`COUNT(*) FILTER (WHERE mastery = 'learning')`,
-      known: sql<number>`COUNT(*) FILTER (WHERE mastery = 'known')`,
-      mastered: sql<number>`COUNT(*) FILTER (WHERE mastery = 'mastered')`,
-      favorites: sql<number>`COUNT(*) FILTER (WHERE is_favorite = true)`,
-    })
-    .from(englishUserVocabulary)
-    .where(and(eq(englishUserVocabulary.userId, userId), isNull(englishUserVocabulary.deletedAt)));
-  return result;
+  await connectToDatabase();
+  const results = await EnglishQuizModel.aggregate([
+    { $match: { userId, deletedAt: null } },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: 1 },
+        learning: { $sum: { $cond: [{ $eq: ["$mastery", "learning"] }, 1, 0] } },
+        known: { $sum: { $cond: [{ $eq: ["$mastery", "known"] }, 1, 0] } },
+        mastered: { $sum: { $cond: [{ $eq: ["$mastery", "mastered"] }, 1, 0] } },
+        favorites: { $sum: { $cond: [{ $eq: ["$isFavorite", true] }, 1, 0] } },
+      },
+    },
+  ]);
+  const result = results[0];
+  return result
+    ? {
+        total: result.total,
+        learning: result.learning,
+        known: result.known,
+        mastered: result.mastered,
+        favorites: result.favorites,
+      }
+    : { total: 0, learning: 0, known: 0, mastered: 0, favorites: 0 };
 }
 
 export async function getDailyStreak(userId: string): Promise<number> {
-  const days = await db
-    .select({
-      date: sql<string>`DISTINCT DATE(created_at)`,
-    })
-    .from(englishQuizAttempts)
-    .where(eq(englishQuizAttempts.userId, userId))
-    .orderBy(sql`DATE(created_at) DESC`)
-    .limit(365);
+  await connectToDatabase();
+  const results = await EnglishQuizModel.aggregate([
+    { $match: { userId } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+      },
+    },
+    { $sort: { _id: -1 } },
+    { $limit: 365 },
+  ]);
 
-  if (days.length === 0) return 0;
+  if (results.length === 0) return 0;
 
+  const days = results.map((r: any) => r._id);
   let streak = 1;
   const today = new Date().toISOString().split("T")[0];
-  if (days[0].date !== today && days[0].date !== getYesterday()) return 0;
+  if (days[0] !== today && days[0] !== getYesterday()) return 0;
 
   for (let i = 1; i < days.length; i++) {
-    const prev = new Date(days[i - 1].date);
-    const curr = new Date(days[i].date);
+    const prev = new Date(days[i - 1]);
+    const curr = new Date(days[i]);
     const diff = (prev.getTime() - curr.getTime()) / 86400000;
     if (diff === 1) streak++;
     else break;
@@ -127,72 +202,75 @@ export async function recordQuizAttempt(attempt: {
   correct: boolean;
   responseTimeMs?: number;
 }): Promise<QuizAttempt> {
-  const [record] = await db.insert(englishQuizAttempts).values(attempt).returning();
-  return record;
+  await connectToDatabase();
+  const doc = await EnglishQuizModel.create(attempt);
+  return toPlain(doc) as QuizAttempt;
 }
 
 export async function getQuizAccuracy(userId: string, days = 7) {
+  await connectToDatabase();
   const since = new Date(Date.now() - days * 86400000);
-  const [result] = await db
-    .select({
-      total: sql<number>`COUNT(*)`,
-      correct: sql<number>`COUNT(*) FILTER (WHERE correct = true)`,
-    })
-    .from(englishQuizAttempts)
-    .where(and(eq(englishQuizAttempts.userId, userId), gte(englishQuizAttempts.createdAt, since)));
-  return { total: result.total, correct: result.correct, accuracy: result.total > 0 ? Math.round((result.correct / result.total) * 100) : 0 };
+  const results = await EnglishQuizModel.aggregate([
+    { $match: { userId, createdAt: { $gte: since } } },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: 1 },
+        correct: { $sum: { $cond: ["$correct", 1, 0] } },
+      },
+    },
+  ]);
+  const result = results[0];
+  const total = result?.total ?? 0;
+  const correct = result?.correct ?? 0;
+  return { total, correct, accuracy: total > 0 ? Math.round((correct / total) * 100) : 0 };
 }
 
 export async function getQuizAttemptsThisWeek(userId: string) {
+  await connectToDatabase();
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   weekStart.setHours(0, 0, 0, 0);
-  return db
-    .select()
-    .from(englishQuizAttempts)
-    .where(and(eq(englishQuizAttempts.userId, userId), gte(englishQuizAttempts.createdAt, weekStart)))
-    .orderBy(desc(englishQuizAttempts.createdAt));
+
+  const docs = await EnglishQuizModel.find({ userId, createdAt: { $gte: weekStart } })
+    .sort({ createdAt: -1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getDailyWordForDate(date: string): Promise<EnglishWord | null> {
-  const [daily] = await db
-    .select()
-    .from(englishDailyWords)
-    .where(and(eq(englishDailyWords.scheduledDate, date), eq(englishDailyWords.isActive, true)))
-    .limit(1);
+  await connectToDatabase();
+  const daily = await EnglishStudySessionModel.findOne({ scheduledDate: date, isActive: true }).lean();
   if (!daily) return null;
   return getWordById(daily.wordId);
 }
 
 export async function getUserDailyWords(userId: string) {
-  return db
-    .select()
-    .from(englishDailyWords)
-    .where(eq(englishDailyWords.isActive, true))
-    .innerJoin(englishWords, eq(englishDailyWords.wordId, englishWords.id));
+  await connectToDatabase();
+  const docs = await EnglishStudySessionModel.find({ isActive: true }).lean();
+  return toPlainArray(docs);
 }
 
 export async function getWordsNeedingReview(userId: string, limit = 20) {
-  return db
-    .select()
-    .from(englishUserVocabulary)
-    .where(
-      and(
-        eq(englishUserVocabulary.userId, userId),
-        isNull(englishUserVocabulary.deletedAt),
-        sql`${englishUserVocabulary.nextReviewAt} IS NOT NULL AND ${englishUserVocabulary.nextReviewAt} <= NOW()`,
-      ),
-    )
-    .innerJoin(englishWords, eq(englishUserVocabulary.wordId, englishWords.id))
+  await connectToDatabase();
+  const now = new Date();
+  const docs = await EnglishQuizModel.find({
+    userId,
+    deletedAt: null,
+    nextReviewAt: { $ne: null, $lte: now },
+  })
+    .sort({ nextReviewAt: 1 })
     .limit(limit)
-    .orderBy(asc(englishUserVocabulary.nextReviewAt));
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function removeFromVocabulary(id: string, userId: string) {
-  const [entry] = await db
-    .update(englishUserVocabulary)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(englishUserVocabulary.id, id), eq(englishUserVocabulary.userId, userId)))
-    .returning();
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await EnglishQuizModel.findOneAndUpdate(
+    { _id: id, userId },
+    { deletedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }

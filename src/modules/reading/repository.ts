@@ -1,30 +1,104 @@
-import { db } from "@/core/database";
-import { eq, and, isNull, desc, asc, gte, lte, sql } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  readingItems,
-  readingAnnotations,
-  readingNotes,
-  readingSessions,
-} from "./schema";
+  ReadingItemModel,
+  ReadingAnnotationModel,
+  ReadingNoteModel,
+  ReadingSessionModel,
+} from "@/lib/models/reading";
 
 // ─── Types ────────────────────────────────────────────────────────
 
-export type ReadingItem = typeof readingItems.$inferSelect;
-export type ReadingAnnotation = typeof readingAnnotations.$inferSelect;
-export type ReadingNote = typeof readingNotes.$inferSelect;
-export type ReadingSession = typeof readingSessions.$inferSelect;
+export type ReadingItem = {
+  id: string;
+  userId: string;
+  title: string;
+  author?: string;
+  type: string;
+  status: string;
+  currentPage?: number;
+  totalPages?: number;
+  startDate?: Date;
+  endDate?: Date;
+  rating?: number;
+  review?: string;
+  coverUrl?: string;
+  url?: string;
+  isbn?: string;
+  tags: string[];
+  notes?: string;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-export type CreateItemInput = typeof readingItems.$inferInsert;
-export type CreateAnnotationInput = typeof readingAnnotations.$inferInsert;
-export type CreateNoteInput = typeof readingNotes.$inferInsert;
-export type CreateSessionInput = typeof readingSessions.$inferInsert;
+export type ReadingAnnotation = {
+  id: string;
+  userId: string;
+  itemId: string;
+  content: string;
+  page?: number;
+  chapter?: string;
+  highlightColor?: string;
+  isFavorite: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ReadingNote = {
+  id: string;
+  userId: string;
+  itemId: string;
+  title: string;
+  content: string;
+  chapter?: string;
+  page?: number;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ReadingSession = {
+  id: string;
+  userId: string;
+  itemId: string;
+  startTime: Date;
+  endTime?: Date;
+  durationMinutes?: number;
+  pagesRead?: number;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateItemInput = Partial<Omit<ReadingItem, "id" | "createdAt" | "updatedAt">> & { userId: string; title: string; type: string };
+export type CreateAnnotationInput = Partial<Omit<ReadingAnnotation, "id" | "createdAt" | "updatedAt">> & { userId: string; itemId: string; content: string };
+export type CreateNoteInput = Partial<Omit<ReadingNote, "id" | "createdAt" | "updatedAt">> & { userId: string; itemId: string; title: string; content: string };
+export type CreateSessionInput = Partial<Omit<ReadingSession, "id" | "createdAt" | "updatedAt">> & { userId: string; itemId: string; startTime: Date };
+
+// ─── Helpers ──────────────────────────────────────────────────────
+
+function mapItem(doc: any): ReadingItem {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapAnnotation(doc: any): ReadingAnnotation {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapNote(doc: any): ReadingNote {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapSession(doc: any): ReadingSession {
+  return { ...doc, id: doc._id.toString() };
+}
 
 // ─── Items ────────────────────────────────────────────────────────
 
-export async function createItem(input: CreateItemInput) {
-  const [item] = await db.insert(readingItems).values(input).returning();
-  return item;
+export async function createItem(input: CreateItemInput): Promise<ReadingItem> {
+  await connectToDatabase();
+  const doc = await ReadingItemModel.create(input);
+  return mapItem(doc.toObject());
 }
 
 export async function getItemsForUser(
@@ -42,235 +116,258 @@ export async function getItemsForUser(
     limit?: number;
     offset?: number;
   } = {},
-) {
-  const conditions: SQL[] = [
-    eq(readingItems.userId, userId),
-    isNull(readingItems.deletedAt),
-  ];
+): Promise<ReadingItem[]> {
+  await connectToDatabase();
 
-  if (opts.type) conditions.push(eq(readingItems.type, opts.type as never));
-  if (opts.status) conditions.push(eq(readingItems.status, opts.status as never));
-  if (opts.favorites) conditions.push(eq(readingItems.isFavorited, true));
+  const filter: Record<string, any> = { userId, deletedAt: null };
+  if (opts.type) filter.type = opts.type;
+  if (opts.status) filter.status = opts.status;
+  if (opts.favorites) filter.isFavorited = true;
   if (opts.tags && opts.tags.length > 0) {
-    conditions.push(sql`${readingItems.tags} && ${sql`ARRAY[${sql.join(opts.tags.map((t) => sql`${t}`), sql`, `)}]::text[]`}`);
+    filter.tags = { $in: opts.tags };
   }
   if (opts.search) {
-    conditions.push(
-      sql`to_tsvector('english', ${readingItems.title}) @@ plainto_tsquery('english', ${opts.search})`,
-    );
+    filter.title = { $regex: opts.search, $options: "i" };
   }
-  if (opts.dateFrom) conditions.push(gte(readingItems.createdAt, new Date(opts.dateFrom)));
-  if (opts.dateTo) conditions.push(lte(readingItems.createdAt, new Date(opts.dateTo)));
+  if (opts.dateFrom || opts.dateTo) {
+    filter.createdAt = {};
+    if (opts.dateFrom) filter.createdAt.$gte = new Date(opts.dateFrom);
+    if (opts.dateTo) filter.createdAt.$lte = new Date(opts.dateTo);
+  }
 
-  const orderCol = opts.sortBy
-    ? readingItems[opts.sortBy]
-    : readingItems.createdAt;
-  const orderFn = opts.sortOrder === "asc" ? asc : desc;
+  const sortField = opts.sortBy ?? "createdAt";
+  const sortOrder = opts.sortOrder === "asc" ? 1 : -1;
 
-  return db
-    .select()
-    .from(readingItems)
-    .where(and(...conditions))
-    .orderBy(desc(readingItems.isFavorited), orderFn(orderCol))
+  const docs = await ReadingItemModel.find(filter)
+    .sort({ isFavorited: -1, [sortField]: sortOrder })
+    .skip(opts.offset ?? 0)
     .limit(opts.limit ?? 100)
-    .offset(opts.offset ?? 0);
+    .lean();
+
+  return docs.map(mapItem);
 }
 
-export async function getItemById(id: string, userId: string) {
-  const [item] = await db
-    .select()
-    .from(readingItems)
-    .where(
-      and(eq(readingItems.id, id), eq(readingItems.userId, userId), isNull(readingItems.deletedAt)),
-    );
-  return item ?? null;
+export async function getItemById(id: string, userId: string): Promise<ReadingItem | null> {
+  await connectToDatabase();
+  const doc = await ReadingItemModel.findOne({ _id: id, userId, deletedAt: null }).lean();
+  return doc ? mapItem(doc) : null;
 }
 
-export async function updateItem(id: string, userId: string, input: Partial<CreateItemInput>) {
-  const [item] = await db
-    .update(readingItems)
-    .set({ ...input, updatedAt: new Date() })
-    .where(
-      and(eq(readingItems.id, id), eq(readingItems.userId, userId), isNull(readingItems.deletedAt)),
-    )
-    .returning();
-  return item ?? null;
+export async function updateItem(id: string, userId: string, input: Partial<CreateItemInput>): Promise<ReadingItem | null> {
+  await connectToDatabase();
+  const { userId: _, ...updateData } = input;
+  const doc = await ReadingItemModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { $set: { ...updateData, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapItem(doc) : null;
 }
 
-export async function deleteItem(id: string, userId: string) {
-  const [item] = await db
-    .update(readingItems)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(readingItems.id, id), eq(readingItems.userId, userId), isNull(readingItems.deletedAt)))
-    .returning();
-  return item ?? null;
+export async function deleteItem(id: string, userId: string): Promise<ReadingItem | null> {
+  await connectToDatabase();
+  const doc = await ReadingItemModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { $set: { deletedAt: new Date(), updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapItem(doc) : null;
 }
 
 export async function getDashboardStats(userId: string) {
-  const items = await db
-    .select({
-      type: readingItems.type,
-      status: readingItems.status,
-      count: sql<number>`count(*)`,
-      pages: sql<number>`sum(${readingItems.pageCount})`,
-      rating: sql<number>`avg(${readingItems.rating})`,
-    })
-    .from(readingItems)
-    .where(and(eq(readingItems.userId, userId), isNull(readingItems.deletedAt)))
-    .groupBy(readingItems.type, readingItems.status);
+  await connectToDatabase();
 
-  const annotations = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(readingAnnotations)
-    .where(eq(readingAnnotations.userId, userId))
-    .then((r) => Number(r[0]?.count ?? 0));
+  const items = await ReadingItemModel.aggregate([
+    { $match: { userId, deletedAt: null } },
+    {
+      $group: {
+        _id: { type: "$type", status: "$status" },
+        count: { $sum: 1 },
+        pages: { $sum: { $ifNull: ["$totalPages", 0] } },
+        rating: { $avg: { $ifNull: ["$rating", null] } },
+      },
+    },
+  ]);
 
-  const sessions = await db
-    .select({
-      totalMinutes: sql<number>`coalesce(sum(extract(epoch from (${readingSessions.endTime} - ${readingSessions.startTime})) / 60), 0)`,
-      pagesRead: sql<number>`coalesce(sum(${readingSessions.pagesRead}), 0)`,
-    })
-    .from(readingSessions)
-    .where(eq(readingSessions.userId, userId))
-    .then((r) => r[0] ?? { totalMinutes: 0, pagesRead: 0 });
+  const annotations = await ReadingAnnotationModel.countDocuments({ userId });
 
-  const currentlyReading = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(readingItems)
-    .where(
-      and(
-        eq(readingItems.userId, userId),
-        eq(readingItems.status, "reading"),
-        isNull(readingItems.deletedAt),
-      ),
-    )
-    .then((r) => Number(r[0]?.count ?? 0));
+  const sessionsResult = await ReadingSessionModel.aggregate([
+    { $match: { userId } },
+    {
+      $group: {
+        _id: null,
+        totalMinutes: {
+          $sum: {
+            $cond: [
+              { $and: ["$startTime", "$endTime"] },
+              {
+                $divide: [
+                  { $subtract: ["$endTime", "$startTime"] },
+                  60000,
+                ],
+              },
+              0,
+            ],
+          },
+        },
+        pagesRead: { $sum: { $ifNull: ["$pagesRead", 0] } },
+      },
+    },
+  ]);
 
-  return { items, annotations, sessions, currentlyReading };
+  const currentlyReading = await ReadingItemModel.countDocuments({
+    userId,
+    status: "reading",
+    deletedAt: null,
+  });
+
+  return {
+    items: items.map((r: any) => ({
+      type: r._id.type,
+      status: r._id.status,
+      count: r.count,
+      pages: r.pages,
+      rating: r.rating,
+    })),
+    annotations,
+    sessions: sessionsResult[0] ?? { totalMinutes: 0, pagesRead: 0 },
+    currentlyReading,
+  };
 }
 
 // ─── Annotations ──────────────────────────────────────────────────
 
-export async function createAnnotation(input: CreateAnnotationInput) {
-  const [a] = await db.insert(readingAnnotations).values(input).returning();
-  return a;
+export async function createAnnotation(input: CreateAnnotationInput): Promise<ReadingAnnotation> {
+  await connectToDatabase();
+  const doc = await ReadingAnnotationModel.create(input);
+  return mapAnnotation(doc.toObject());
 }
 
 export async function getAnnotationsForUser(
   userId: string,
   opts: { readingItemId?: string; type?: string; isFavorited?: boolean; search?: string } = {},
-) {
-  const conditions: SQL[] = [eq(readingAnnotations.userId, userId)];
-  if (opts.readingItemId) conditions.push(eq(readingAnnotations.readingItemId, opts.readingItemId));
-  if (opts.type) conditions.push(eq(readingAnnotations.type, opts.type as never));
-  if (opts.isFavorited) conditions.push(eq(readingAnnotations.isFavorited, true));
+): Promise<ReadingAnnotation[]> {
+  await connectToDatabase();
+
+  const filter: Record<string, any> = { userId };
+  if (opts.readingItemId) filter.itemId = opts.readingItemId;
+  if (opts.type) filter.type = opts.type;
+  if (opts.isFavorited) filter.isFavorite = true;
   if (opts.search) {
-    conditions.push(
-      sql`to_tsvector('english', ${readingAnnotations.text}) @@ plainto_tsquery('english', ${opts.search})`,
-    );
+    filter.content = { $regex: opts.search, $options: "i" };
   }
-  return db
-    .select()
-    .from(readingAnnotations)
-    .where(and(...conditions))
-    .orderBy(desc(readingAnnotations.createdAt));
+
+  const docs = await ReadingAnnotationModel.find(filter)
+    .sort({ createdAt: -1 })
+    .lean();
+  return docs.map(mapAnnotation);
 }
 
-export async function updateAnnotation(id: string, userId: string, input: Partial<CreateAnnotationInput>) {
-  const [a] = await db
-    .update(readingAnnotations)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(readingAnnotations.id, id), eq(readingAnnotations.userId, userId)))
-    .returning();
-  return a ?? null;
+export async function updateAnnotation(id: string, userId: string, input: Partial<CreateAnnotationInput>): Promise<ReadingAnnotation | null> {
+  await connectToDatabase();
+  const { userId: _, ...updateData } = input;
+  const doc = await ReadingAnnotationModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: { ...updateData, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapAnnotation(doc) : null;
 }
 
-export async function deleteAnnotation(id: string, userId: string) {
-  const [a] = await db
-    .delete(readingAnnotations)
-    .where(and(eq(readingAnnotations.id, id), eq(readingAnnotations.userId, userId)))
-    .returning();
-  return a ?? null;
+export async function deleteAnnotation(id: string, userId: string): Promise<ReadingAnnotation | null> {
+  await connectToDatabase();
+  const doc = await ReadingAnnotationModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapAnnotation(doc) : null;
 }
 
 // ─── Notes ────────────────────────────────────────────────────────
 
-export async function createNote(input: CreateNoteInput) {
-  const [n] = await db.insert(readingNotes).values(input).returning();
-  return n;
+export async function createNote(input: CreateNoteInput): Promise<ReadingNote> {
+  await connectToDatabase();
+  const doc = await ReadingNoteModel.create(input);
+  return mapNote(doc.toObject());
 }
 
 export async function getNotesForUser(
   userId: string,
   opts: { readingItemId?: string; search?: string } = {},
-) {
-  const conditions: SQL[] = [eq(readingNotes.userId, userId), isNull(readingNotes.deletedAt)];
-  if (opts.readingItemId) conditions.push(eq(readingNotes.readingItemId, opts.readingItemId));
+): Promise<ReadingNote[]> {
+  await connectToDatabase();
+
+  const filter: Record<string, any> = { userId, deletedAt: null };
+  if (opts.readingItemId) filter.itemId = opts.readingItemId;
   if (opts.search) {
-    conditions.push(
-      sql`to_tsvector('english', ${readingNotes.title}) @@ plainto_tsquery('english', ${opts.search})`,
-    );
+    filter.title = { $regex: opts.search, $options: "i" };
   }
-  return db
-    .select()
-    .from(readingNotes)
-    .where(and(...conditions))
-    .orderBy(desc(readingNotes.createdAt));
+
+  const docs = await ReadingNoteModel.find(filter)
+    .sort({ createdAt: -1 })
+    .lean();
+  return docs.map(mapNote);
 }
 
-export async function updateNote(id: string, userId: string, input: Partial<CreateNoteInput>) {
-  const [n] = await db
-    .update(readingNotes)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(readingNotes.id, id), eq(readingNotes.userId, userId), isNull(readingNotes.deletedAt)))
-    .returning();
-  return n ?? null;
+export async function updateNote(id: string, userId: string, input: Partial<CreateNoteInput>): Promise<ReadingNote | null> {
+  await connectToDatabase();
+  const { userId: _, ...updateData } = input;
+  const doc = await ReadingNoteModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { $set: { ...updateData, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapNote(doc) : null;
 }
 
-export async function deleteNote(id: string, userId: string) {
-  const [n] = await db
-    .update(readingNotes)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(readingNotes.id, id), eq(readingNotes.userId, userId), isNull(readingNotes.deletedAt)))
-    .returning();
-  return n ?? null;
+export async function deleteNote(id: string, userId: string): Promise<ReadingNote | null> {
+  await connectToDatabase();
+  const doc = await ReadingNoteModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { $set: { deletedAt: new Date(), updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapNote(doc) : null;
 }
 
 // ─── Sessions ─────────────────────────────────────────────────────
 
-export async function createSession(input: CreateSessionInput) {
-  const [s] = await db.insert(readingSessions).values(input).returning();
-  return s;
+export async function createSession(input: CreateSessionInput): Promise<ReadingSession> {
+  await connectToDatabase();
+  const doc = await ReadingSessionModel.create(input);
+  return mapSession(doc.toObject());
 }
 
 export async function getSessionsForUser(
   userId: string,
   opts: { readingItemId?: string; dateFrom?: string; dateTo?: string } = {},
-) {
-  const conditions: SQL[] = [eq(readingSessions.userId, userId)];
-  if (opts.readingItemId) conditions.push(eq(readingSessions.readingItemId, opts.readingItemId));
-  if (opts.dateFrom) conditions.push(gte(readingSessions.startTime, new Date(opts.dateFrom)));
-  if (opts.dateTo) conditions.push(lte(readingSessions.startTime, new Date(opts.dateTo)));
-  return db
-    .select()
-    .from(readingSessions)
-    .where(and(...conditions))
-    .orderBy(desc(readingSessions.startTime));
+): Promise<ReadingSession[]> {
+  await connectToDatabase();
+
+  const filter: Record<string, any> = { userId };
+  if (opts.readingItemId) filter.itemId = opts.readingItemId;
+  if (opts.dateFrom || opts.dateTo) {
+    filter.startTime = {};
+    if (opts.dateFrom) filter.startTime.$gte = new Date(opts.dateFrom);
+    if (opts.dateTo) filter.startTime.$lte = new Date(opts.dateTo);
+  }
+
+  const docs = await ReadingSessionModel.find(filter)
+    .sort({ startTime: -1 })
+    .lean();
+  return docs.map(mapSession);
 }
 
-export async function updateSession(id: string, userId: string, input: Partial<CreateSessionInput>) {
-  const [s] = await db
-    .update(readingSessions)
-    .set(input)
-    .where(and(eq(readingSessions.id, id), eq(readingSessions.userId, userId)))
-    .returning();
-  return s ?? null;
+export async function updateSession(id: string, userId: string, input: Partial<CreateSessionInput>): Promise<ReadingSession | null> {
+  await connectToDatabase();
+  const { userId: _, ...updateData } = input;
+  const doc = await ReadingSessionModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: updateData },
+    { new: true },
+  ).lean();
+  return doc ? mapSession(doc) : null;
 }
 
-export async function deleteSession(id: string, userId: string) {
-  const [s] = await db
-    .delete(readingSessions)
-    .where(and(eq(readingSessions.id, id), eq(readingSessions.userId, userId)))
-    .returning();
-  return s ?? null;
+export async function deleteSession(id: string, userId: string): Promise<ReadingSession | null> {
+  await connectToDatabase();
+  const doc = await ReadingSessionModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapSession(doc) : null;
 }

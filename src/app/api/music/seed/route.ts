@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/core/auth";
-import { eq } from "drizzle-orm";
-import { db } from "@/core/database";
-import { musicListeningHistory, musicJournal } from "@/modules/music/schema";
+import { connectToDatabase } from "@/lib/mongodb";
+import { MusicListeningHistoryModel, MusicJournalModel } from "@/lib/models";
 
 const DEMO_TRACKS = [
   { artistName: "Taylor Swift", trackName: "Cruel Summer", duration: 178 },
@@ -32,14 +31,24 @@ export async function POST() {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    await connectToDatabase();
+
     // Clear existing data for this user
-    await db.delete(musicListeningHistory).where(eq(musicListeningHistory.userId, userId));
-    await db.delete(musicJournal).where(eq(musicJournal.userId, userId));
+    await Promise.all([
+      MusicListeningHistoryModel.deleteMany({ userId }),
+      MusicJournalModel.deleteMany({ userId }),
+    ]);
 
     const now = new Date();
 
     // Insert listening history spread over the past 14 days
-    const listeningEntries = [];
+    const listeningEntries: Array<{
+      userId: string;
+      artistName: string;
+      trackName: string;
+      duration: number;
+      listenedAt: Date;
+    }> = [];
     for (let day = 14; day >= 0; day--) {
       const playsPerDay = Math.floor(Math.random() * 5) + 3;
       for (let p = 0; p < playsPerDay; p++) {
@@ -59,7 +68,7 @@ export async function POST() {
         });
       }
     }
-    await db.insert(musicListeningHistory).values(listeningEntries);
+    await MusicListeningHistoryModel.insertMany(listeningEntries);
 
     // Insert some journal entries
     const journalEntries = [
@@ -70,13 +79,13 @@ export async function POST() {
       { mood: "reflective", journalEntry: "Discovered some hidden gems in my recommendations today. There's something special about finding a new artist that speaks to you." },
     ];
 
-    for (const entry of journalEntries) {
-      await db.insert(musicJournal).values({
+    await MusicJournalModel.insertMany(
+      journalEntries.map((entry) => ({
         userId,
         mood: entry.mood,
         journalEntry: entry.journalEntry,
-      });
-    }
+      })),
+    );
 
     return NextResponse.json({
       success: true,

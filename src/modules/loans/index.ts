@@ -1,15 +1,4 @@
 export {
-  loans,
-  loanDirectionEnum,
-  loanStatusEnum,
-  interestTypeEnum,
-  installmentFrequencyEnum,
-  loanEvents,
-  loanEventTypeEnum,
-  loanRepayments,
-} from "./schema";
-
-export {
   createLoan,
   getLoans,
   getLoan,

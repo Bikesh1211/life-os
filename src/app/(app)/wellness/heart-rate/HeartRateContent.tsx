@@ -35,7 +35,7 @@ export function HeartRateContent({ entries }: { entries: WellnessHeartRateEntry[
   }, [resting, average, max]);
 
   const sorted = [...entries].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const avgResting = entries.length > 0 ? Math.round(entries.reduce((s, e) => s + (e.resting ?? 0), 0) / entries.filter((e) => e.resting).length) : 0;
+  const avgResting = entries.length > 0 ? Math.round(entries.reduce((s, e) => s + (e.bpm ?? 0), 0) / entries.length) : 0;
 
   return (
     <Stack gap="md" p="lg">
@@ -57,7 +57,7 @@ export function HeartRateContent({ entries }: { entries: WellnessHeartRateEntry[
           <Text size="xs" c="dimmed">Recordings</Text>
         </Paper>
         <Paper withBorder p="md" className="text-center">
-          <Text size="2rem" fw={700}>{sorted[0]?.average ?? "—"}</Text>
+          <Text size="2rem" fw={700}>{sorted[0]?.bpm ?? "—"}</Text>
           <Text size="xs" c="dimmed">Latest Avg</Text>
         </Paper>
       </SimpleGrid>
@@ -89,9 +89,9 @@ export function HeartRateContent({ entries }: { entries: WellnessHeartRateEntry[
               {sorted.map((e) => (
                 <Table.Tr key={e.id}>
                   <Table.Td>{new Date(e.date).toLocaleDateString()}</Table.Td>
-                  <Table.Td>{e.resting ?? "—"}</Table.Td>
-                  <Table.Td><Text fw={500}>{e.average ?? "—"}</Text></Table.Td>
-                  <Table.Td>{e.max ?? "—"}</Table.Td>
+                  <Table.Td>{e.bpm ?? "—"}</Table.Td>
+                  <Table.Td><Text fw={500}>{e.bpm ?? "—"}</Text></Table.Td>
+                  <Table.Td>{e.bpm ?? "—"}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

@@ -205,7 +205,7 @@ export async function getProfile(userId: string) {
 
 export async function upsertProfile(userId: string, input: z.infer<typeof profileSchema>) {
   const data = profileSchema.parse(input);
-  return repo.upsertProfile(userId, data);
+  return repo.upsertProfile(userId, data as any);
 }
 
 export async function getResumes(userId: string) {
@@ -218,12 +218,12 @@ export async function getResumeById(userId: string, resumeId: string) {
 
 export async function createResume(userId: string, input: CreateResumeInput) {
   const data = createResumeSchema.parse(input);
-  return repo.createResume({ ...data, userId });
+  return repo.createResume({ ...data, title: data.name, userId } as any);
 }
 
 export async function updateResume(userId: string, resumeId: string, input: UpdateResumeInput) {
   const data = updateResumeSchema.parse(input);
-  return repo.updateResume(userId, resumeId, data);
+  return repo.updateResume(userId, resumeId, { ...data, ...(data.name ? { title: data.name } : {}) } as any);
 }
 
 export async function deleteResume(userId: string, resumeId: string) {
@@ -236,8 +236,8 @@ export async function saveResumeVersion(userId: string, resumeId: string, note?:
   return repo.createResumeVersion({
     resumeId,
     content: resume.content,
-    wordCount: resume.wordCount,
-    note: note ?? null,
+    wordCount: 0,
+    note: note ?? undefined,
   });
 }
 
@@ -258,10 +258,10 @@ export async function createApplication(userId: string, input: CreateApplication
   return repo.createApplication({
     ...data,
     userId,
-    applicationDate: data.applicationDate ? new Date(data.applicationDate) : null,
-    recruiterEmail: data.recruiterEmail || null,
-    jobDescriptionUrl: data.jobDescriptionUrl || null,
-  });
+    applicationDate: data.applicationDate ? new Date(data.applicationDate) : undefined,
+    recruiterEmail: data.recruiterEmail || undefined,
+    jobDescriptionUrl: data.jobDescriptionUrl || undefined,
+  } as any);
 }
 
 export async function updateApplication(userId: string, applicationId: string, input: UpdateApplicationInput) {
@@ -308,12 +308,21 @@ export async function getInterviewPrepById(userId: string, itemId: string) {
 
 export async function createInterviewPrep(userId: string, input: CreateInterviewPrepInput) {
   const data = createInterviewPrepSchema.parse(input);
-  return repo.createInterviewPrep({ ...data, userId });
+  return repo.createInterviewPrep({
+    ...data,
+    userId,
+    type: data.questionType,
+    completionStatus: data.isCompleted ? "completed" : "in_progress",
+  } as any);
 }
 
 export async function updateInterviewPrep(userId: string, itemId: string, input: UpdateInterviewPrepInput) {
   const data = updateInterviewPrepSchema.parse(input);
-  return repo.updateInterviewPrep(userId, itemId, data);
+  return repo.updateInterviewPrep(userId, itemId, {
+    ...data,
+    ...(data.questionType ? { type: data.questionType } : {}),
+    ...(data.isCompleted !== undefined ? { completionStatus: data.isCompleted ? "completed" : "in_progress" } : {}),
+  } as any);
 }
 
 export async function deleteInterviewPrep(userId: string, itemId: string) {
@@ -334,10 +343,11 @@ export async function createCertification(userId: string, input: CreateCertifica
     ...data,
     userId,
     issueDate: new Date(data.issueDate),
-    expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
-    verificationUrl: data.verificationUrl || null,
-    certificateUrl: data.certificateUrl || null,
-  });
+    expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
+    verificationUrl: data.verificationUrl || undefined,
+    certificateUrl: data.certificateUrl || undefined,
+    credentialId: data.credentialId ?? undefined,
+  } as any);
 }
 
 export async function updateCertification(userId: string, certId: string, input: UpdateCertificationInput) {
@@ -379,9 +389,7 @@ export async function createProject(userId: string, input: CreateProjectInput) {
   return repo.createProject({
     ...data,
     userId,
-    startDate: data.startDate ? new Date(data.startDate) : null,
-    endDate: data.endDate ? new Date(data.endDate) : null,
-  });
+  } as any);
 }
 
 export async function updateProject(userId: string, projectId: string, input: UpdateProjectInput) {
@@ -413,8 +421,10 @@ export async function createAchievement(userId: string, input: CreateAchievement
   return repo.createAchievement({
     ...data,
     userId,
-    date: data.date ? new Date(data.date) : null,
-  });
+    date: data.date ? new Date(data.date) : undefined,
+    description: data.description ?? undefined,
+    linkUrl: data.linkUrl || undefined,
+  } as any);
 }
 
 export async function updateAchievement(userId: string, achievementId: string, input: UpdateAchievementInput) {
@@ -478,9 +488,9 @@ export async function getDashboardStats(userId: string) {
   );
   const activeCerts = certs.filter((c) => c.status === "active");
   const totalCompensation = salaryRecords.length > 0
-    ? salaryRecords[0].baseSalary + salaryRecords[0].bonus + salaryRecords[0].stocks + salaryRecords[0].incentives
+    ? (salaryRecords[0].baseSalary ?? 0) + (salaryRecords[0].bonus ?? 0) + (salaryRecords[0].stocks ?? 0) + (salaryRecords[0].incentives ?? 0)
     : 0;
-  const completedPrep = interviewItems.filter((i) => i.isCompleted);
+  const completedPrep = interviewItems.filter((i) => i.completionStatus === "completed" || i.completionStatus === "mastered");
   const completedAchievements = achievements.length;
 
   const interviewSuccessRate = (() => {
@@ -498,7 +508,7 @@ export async function getDashboardStats(userId: string) {
 
   const skillScore = (() => {
     if (interviewItems.length === 0) return 0;
-    const avgConfidence = interviewItems.reduce((s, i) => s + i.confidenceLevel, 0) / interviewItems.length;
+    const avgConfidence = interviewItems.reduce((s, i) => s + (i.confidenceLevel ?? 0), 0) / interviewItems.length;
     return Math.round((avgConfidence / 5) * 100);
   })();
 

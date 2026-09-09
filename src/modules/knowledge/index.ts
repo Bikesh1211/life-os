@@ -1,4 +1,3 @@
-export { knowledgeEntries, knowledgeEntryLinks } from "./schema";
 export {
   createKnowledgeEntry,
   getKnowledgeEntries,

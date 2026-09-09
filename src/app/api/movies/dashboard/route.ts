@@ -23,10 +23,10 @@ export async function GET() {
       repo.getMoviesWatchedPerMonth(userId),
     ]);
 
-    const tmdbIds = [...new Set(recentMemories.map((m) => m.mediaId ? parseCompositeId(m.mediaId) : null).filter(Boolean))] as string[];
+    const tmdbIds = [...new Set(recentMemories.map((m: any) => m.mediaId ? parseCompositeId(m.mediaId) : null).filter(Boolean))] as string[];
     const mediaRows = await repo.getMediaByTmdbIds(tmdbIds);
-    const mediaByTmdbId = new Map(mediaRows.map((m) => [m.tmdbId, m]));
-    const hydratedMemories = recentMemories.map((m) => {
+    const mediaByTmdbId = new Map<string, any>(mediaRows.map((m: any) => [m.tmdbId, m]));
+    const hydratedMemories = recentMemories.map((m: any) => {
       if (!m.mediaId) return { ...m, mediaTitle: null, mediaPosterUrl: null };
       const tmdbId = parseCompositeId(m.mediaId);
       if (!tmdbId) return { ...m, mediaTitle: null, mediaPosterUrl: null };

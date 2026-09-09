@@ -10,7 +10,11 @@ import { createAccountSchema, updateAccountSchema, type CreateAccountParams, typ
 
 export async function createFinancialAccount(userId: string, params: CreateAccountParams) {
   const validated = createAccountSchema.parse(params);
-  return createAccount({ ...validated, userId });
+  return createAccount({
+    ...validated,
+    userId,
+    balance: validated.balance != null ? Number(validated.balance) : undefined,
+  });
 }
 
 export async function getFinancialAccounts(userId: string) {
@@ -23,7 +27,10 @@ export async function getFinancialAccount(id: string, userId: string) {
 
 export async function updateFinancialAccount(id: string, userId: string, params: UpdateAccountParams) {
   const validated = updateAccountSchema.parse(params);
-  return updateAccount(id, userId, validated);
+  return updateAccount(id, userId, {
+    ...validated,
+    balance: validated.balance != null ? Number(validated.balance) : undefined,
+  });
 }
 
 export async function deleteFinancialAccount(id: string, userId: string) {
@@ -31,5 +38,5 @@ export async function deleteFinancialAccount(id: string, userId: string) {
 }
 
 export async function adjustAccountBalance(id: string, userId: string, newBalance: string) {
-  return updateAccountBalance(id, userId, newBalance);
+  return updateAccountBalance(id, userId, Number(newBalance));
 }

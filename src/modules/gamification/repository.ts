@@ -1,176 +1,284 @@
-import { db } from "@/core/database";
-import { and, eq, asc, desc, gte, lte, sql, count } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  gamificationUserMetrics,
-  gamificationXpTransactions,
-  gamificationAchievements,
-  gamificationUserAchievements,
-  gamificationBadges,
-  gamificationUserBadges,
-  gamificationChallenges,
-  gamificationUserChallenges,
-} from "./schema";
+  GamificationUserMetric,
+  GamificationXpTransaction,
+  GamificationAchievement,
+  GamificationUserAchievement,
+  GamificationBadge,
+  GamificationUserBadge,
+  GamificationChallenge,
+  GamificationUserChallenge,
+} from "@/lib/models/gamification";
 
-export type GamificationUserMetrics = typeof gamificationUserMetrics.$inferSelect;
-export type CreateUserMetricsInput = typeof gamificationUserMetrics.$inferInsert;
+// ── Helpers ──
 
-export type GamificationXpTransaction = typeof gamificationXpTransactions.$inferSelect;
-export type CreateXpTransactionInput = typeof gamificationXpTransactions.$inferInsert;
+function toDoc(doc: any) {
+  if (!doc) return null;
+  const { _id, ...rest } = doc;
+  return { id: _id.toString(), ...rest };
+}
 
-export type GamificationAchievement = typeof gamificationAchievements.$inferSelect;
-export type GamificationBadge = typeof gamificationBadges.$inferSelect;
-export type GamificationChallenge = typeof gamificationChallenges.$inferSelect;
+function toDocs(docs: any[]) {
+  return docs.map(toDoc);
+}
 
-export type GamificationUserAchievement = typeof gamificationUserAchievements.$inferSelect;
-export type GamificationUserBadge = typeof gamificationUserBadges.$inferSelect;
-export type GamificationUserChallenge = typeof gamificationUserChallenges.$inferSelect;
+// ── Types ──
+
+export type GamificationUserMetrics = {
+  id: string;
+  userId: string;
+  totalXp: number;
+  level: number;
+  consistencyScore: number;
+  currentStreak: number;
+  longestStreak: number;
+  lastActivityDate?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateUserMetricsInput = {
+  userId: string;
+  totalXp?: number;
+  level?: number;
+  consistencyScore?: number;
+  currentStreak?: number;
+  longestStreak?: number;
+  lastActivityDate?: Date;
+};
+
+export type GamificationXpTransaction = {
+  id: string;
+  userId: string;
+  amount: number;
+  eventType: string;
+  entityId?: string;
+  entityTypeName?: string;
+  description?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateXpTransactionInput = {
+  userId: string;
+  amount: number;
+  eventType: string;
+  entityId?: string;
+  entityTypeName?: string;
+  description?: string;
+};
+
+export type GamificationAchievement = {
+  id: string;
+  name: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  criteriaType: string;
+  criteriaValue: number;
+  xpReward: number;
+  category?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type GamificationBadge = {
+  id: string;
+  name: string;
+  title: string;
+  description?: string;
+  icon?: string;
+  category: string;
+  tier: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type GamificationChallenge = {
+  id: string;
+  title: string;
+  description?: string;
+  type: string;
+  xpReward: number;
+  targetValue: number;
+  startDate?: Date;
+  endDate?: Date;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type GamificationUserAchievement = {
+  id: string;
+  userId: string;
+  achievementId: string;
+  unlockedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type GamificationUserBadge = {
+  id: string;
+  userId: string;
+  badgeId: string;
+  earnedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type GamificationUserChallenge = {
+  id: string;
+  userId: string;
+  challengeId: string;
+  progress: number;
+  completed: boolean;
+  completedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// ── User Metrics ──
 
 export async function getUserMetrics(userId: string) {
-  return db
-    .select()
-    .from(gamificationUserMetrics)
-    .where(eq(gamificationUserMetrics.userId, userId))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await GamificationUserMetric.findOne({ userId }).lean();
+  return toDoc(doc);
 }
 
 export async function upsertUserMetrics(userId: string, data: Partial<CreateUserMetricsInput>) {
-  const existing = await getUserMetrics(userId);
+  await connectToDatabase();
+  const existing = await GamificationUserMetric.findOne({ userId }).lean();
   if (existing) {
-    return db
-      .update(gamificationUserMetrics)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(gamificationUserMetrics.userId, userId))
-      .returning()
-      .then((r) => r[0]);
+    const doc = await GamificationUserMetric.findOneAndUpdate(
+      { userId },
+      { ...data, updatedAt: new Date() },
+      { new: true },
+    ).lean();
+    return toDoc(doc);
   }
-  return db
-    .insert(gamificationUserMetrics)
-    .values({ userId, ...data } as CreateUserMetricsInput)
-    .returning()
-    .then((r) => r[0]);
+  const doc = await GamificationUserMetric.create({ userId, ...data });
+  return toDoc(doc);
 }
 
+// ── XP Transactions ──
+
 export async function getXpTransactions(userId: string, limit = 50) {
-  return db
-    .select()
-    .from(gamificationXpTransactions)
-    .where(eq(gamificationXpTransactions.userId, userId))
-    .orderBy(desc(gamificationXpTransactions.createdAt))
-    .limit(limit);
+  await connectToDatabase();
+  const docs = await GamificationXpTransaction.find({ userId })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+  return toDocs(docs);
 }
 
 export async function createXpTransaction(input: CreateXpTransactionInput) {
-  return db
-    .insert(gamificationXpTransactions)
-    .values(input)
-    .returning()
-    .then((r) => r[0]);
+  await connectToDatabase();
+  const doc = await GamificationXpTransaction.create(input);
+  return toDoc(doc);
 }
 
 export async function countXpTransactionsByEventType(userId: string, eventType: string) {
-  return db
-    .select({ value: count() })
-    .from(gamificationXpTransactions)
-    .where(
-      and(
-        eq(gamificationXpTransactions.userId, userId),
-        eq(gamificationXpTransactions.eventType, eventType as any),
-      ),
-    )
-    .then((r) => Number(r[0]?.value ?? 0));
+  await connectToDatabase();
+  return GamificationXpTransaction.countDocuments({ userId, eventType });
 }
 
+// ── Achievements ──
+
 export async function getAchievements() {
-  return db
-    .select()
-    .from(gamificationAchievements)
-    .orderBy(asc(gamificationAchievements.criteriaValue));
+  await connectToDatabase();
+  const docs = await GamificationAchievement.find()
+    .sort({ criteriaValue: 1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function createAchievement(
   input: Omit<GamificationAchievement, "id" | "createdAt">,
 ) {
-  return db
-    .insert(gamificationAchievements)
-    .values(input as any)
-    .returning()
-    .then((r) => r[0]);
+  await connectToDatabase();
+  const doc = await GamificationAchievement.create(input);
+  return toDoc(doc);
 }
 
 export async function getUserAchievements(userId: string) {
-  return db
-    .select()
-    .from(gamificationUserAchievements)
-    .where(eq(gamificationUserAchievements.userId, userId));
+  await connectToDatabase();
+  const docs = await GamificationUserAchievement.find({ userId }).lean();
+  return toDocs(docs);
 }
 
 export async function awardAchievement(userId: string, achievementId: string) {
-  return db
-    .insert(gamificationUserAchievements)
-    .values({ userId, achievementId })
-    .onConflictDoNothing()
-    .returning()
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const existing = await GamificationUserAchievement.findOne({
+    userId,
+    achievementId,
+  }).lean();
+  if (existing) return null;
+
+  const doc = await GamificationUserAchievement.create({ userId, achievementId });
+  return toDoc(doc);
 }
 
+// ── Badges ──
+
 export async function getBadges() {
-  return db.select().from(gamificationBadges).orderBy(asc(gamificationBadges.criteriaValue));
+  await connectToDatabase();
+  const docs = await GamificationBadge.find()
+    .sort({ criteriaValue: 1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function createBadge(input: Omit<GamificationBadge, "id" | "createdAt">) {
-  return db
-    .insert(gamificationBadges)
-    .values(input as any)
-    .returning()
-    .then((r) => r[0]);
+  await connectToDatabase();
+  const doc = await GamificationBadge.create(input);
+  return toDoc(doc);
 }
 
 export async function getUserBadges(userId: string) {
-  return db
-    .select()
-    .from(gamificationUserBadges)
-    .where(eq(gamificationUserBadges.userId, userId));
+  await connectToDatabase();
+  const docs = await GamificationUserBadge.find({ userId }).lean();
+  return toDocs(docs);
 }
 
 export async function awardBadge(userId: string, badgeId: string) {
-  return db
-    .insert(gamificationUserBadges)
-    .values({ userId, badgeId })
-    .onConflictDoNothing()
-    .returning()
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const existing = await GamificationUserBadge.findOne({
+    userId,
+    badgeId,
+  }).lean();
+  if (existing) return null;
+
+  const doc = await GamificationUserBadge.create({ userId, badgeId });
+  return toDoc(doc);
 }
 
+// ── Challenges ──
+
 export async function getActiveChallenges() {
+  await connectToDatabase();
   const now = new Date();
-  return db
-    .select()
-    .from(gamificationChallenges)
-    .where(
-      and(
-        eq(gamificationChallenges.isActive, true),
-        lte(gamificationChallenges.startsAt, now),
-        gte(gamificationChallenges.endsAt, now),
-      ),
-    )
-    .orderBy(asc(gamificationChallenges.challengeType));
+  const docs = await GamificationChallenge.find({
+    isActive: true,
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+  })
+    .sort({ type: 1 })
+    .lean();
+  return toDocs(docs);
 }
 
 export async function createChallenge(
   input: Omit<GamificationChallenge, "id" | "createdAt">,
 ) {
-  return db
-    .insert(gamificationChallenges)
-    .values(input as any)
-    .returning()
-    .then((r) => r[0]);
+  await connectToDatabase();
+  const doc = await GamificationChallenge.create(input);
+  return toDoc(doc);
 }
 
 export async function getUserChallenges(userId: string) {
-  return db
-    .select()
-    .from(gamificationUserChallenges)
-    .where(eq(gamificationUserChallenges.userId, userId));
+  await connectToDatabase();
+  const docs = await GamificationUserChallenge.find({ userId }).lean();
+  return toDocs(docs);
 }
 
 export async function upsertUserChallenge(
@@ -178,34 +286,26 @@ export async function upsertUserChallenge(
   challengeId: string,
   data: Partial<Omit<GamificationUserChallenge, "id" | "userId" | "challengeId">>,
 ) {
-  const existing = await db
-    .select()
-    .from(gamificationUserChallenges)
-    .where(
-      and(
-        eq(gamificationUserChallenges.userId, userId),
-        eq(gamificationUserChallenges.challengeId, challengeId),
-      ),
-    )
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const existing = await GamificationUserChallenge.findOne({
+    userId,
+    challengeId,
+  }).lean();
 
   if (existing) {
-    return db
-      .update(gamificationUserChallenges)
-      .set(data)
-      .where(eq(gamificationUserChallenges.id, existing.id))
-      .returning()
-      .then((r) => r[0]);
+    const doc = await GamificationUserChallenge.findOneAndUpdate(
+      { userId, challengeId },
+      data,
+      { new: true },
+    ).lean();
+    return toDoc(doc);
   }
-  return db
-    .insert(gamificationUserChallenges)
-    .values({ userId, challengeId, ...data } as any)
-    .returning()
-    .then((r) => r[0]);
+
+  const doc = await GamificationUserChallenge.create({ userId, challengeId, ...data });
+  return toDoc(doc);
 }
 
 export async function clearUserChallenges(userId: string) {
-  return db
-    .delete(gamificationUserChallenges)
-    .where(eq(gamificationUserChallenges.userId, userId));
+  await connectToDatabase();
+  await GamificationUserChallenge.deleteMany({ userId });
 }

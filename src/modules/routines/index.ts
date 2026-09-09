@@ -1,16 +1,3 @@
-export {
-  routines,
-  routineItems,
-  routineExecutions,
-  routineExecutionItems,
-  routineTemplates,
-  routineTemplateItems,
-  dailyGoals,
-  dailyPriorities,
-  dailyPlannerSnapshots,
-  dailyNotes,
-  plannerPreferences,
-} from "./schema";
 export type {
   Routine,
   RoutineItem,

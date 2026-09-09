@@ -1,22 +1,3 @@
-export {
-  wellnessMoodLogs,
-  wellnessSleepRecords,
-  wellnessUserPreferences,
-  wellnessHydrationEntries,
-  wellnessConfidenceCheckins,
-  wellnessHabitEnrichment,
-  wellnessWeightEntries,
-  wellnessWorkoutEntries,
-  wellnessStepEntries,
-  wellnessCalorieEntries,
-  wellnessBloodPressureEntries,
-  wellnessHeartRateEntries,
-  wellnessMedicineReminders,
-  wellnessMedicineLogs,
-  wellnessUserGoals,
-  wellnessAchievements,
-} from "./schema";
-
 export type {
   WellnessMoodLog,
   WellnessSleepRecord,

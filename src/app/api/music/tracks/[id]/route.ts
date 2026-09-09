@@ -93,12 +93,12 @@ export async function GET(
         repo.getCollectionItemsForEntity(userId, "track", track.id).catch(() => []),
       ]);
 
-    const isFavorited = favorite.some((f) => f.entityId === track.id);
+    const isFavorited = favorite.some((f: any) => f.entityId === track.id);
 
     // Find collections containing this track
-    const collectionIds = collections.map((ci) => ci.collectionId);
+    const collectionIds = collections.map((ci: any) => ci.collectionId);
     const collectionDetails = collectionIds.length > 0
-      ? await Promise.all(collectionIds.map((cid) => repo.getCollectionById(cid, userId)))
+      ? await Promise.all(collectionIds.map((cid: string) => repo.getCollectionById(cid, userId)))
       : [];
     const validCollections = collectionDetails.filter(Boolean);
 
@@ -124,7 +124,7 @@ export async function GET(
       isFavorited,
       isInLibrary: inLibrary,
       rating: rating?.score ?? null,
-      journalEntries: journalEntries.map((e) => ({
+      journalEntries: journalEntries.map((e: any) => ({
         id: e.id,
         mood: e.mood,
         journalEntry: e.journalEntry,
@@ -144,7 +144,7 @@ export async function GET(
         title: c.title,
         description: c.description,
       })),
-      notes: notes.map((n) => ({
+      notes: notes.map((n: any) => ({
         id: n.id,
         content: n.content,
         createdAt: n.createdAt.toISOString(),

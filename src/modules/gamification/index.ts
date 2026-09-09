@@ -1,14 +1,3 @@
-export {
-  gamificationUserMetrics,
-  gamificationXpTransactions,
-  gamificationAchievements,
-  gamificationUserAchievements,
-  gamificationBadges,
-  gamificationUserBadges,
-  gamificationChallenges,
-  gamificationUserChallenges,
-} from "./schema";
-
 export type {
   GamificationUserMetrics,
   GamificationXpTransaction,

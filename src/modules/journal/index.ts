@@ -1,13 +1,4 @@
 export {
-  journalEntries,
-  journalInsights,
-  journalVersions,
-  journalBookmarks,
-  journalHighlights,
-  journalWritingSessions,
-  moodEnum,
-} from "./schema";
-export {
   createJournalEntry,
   getJournalEntry,
   getJournalEntries,

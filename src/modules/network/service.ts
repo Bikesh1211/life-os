@@ -108,7 +108,17 @@ function iconFor(title: string): string | undefined {
 
 export async function createConnection(userId: string, params: CreateConnectionParams) {
   const validated = createConnectionSchema.parse(params);
-  const conn = await repo.createConnection({ userId, ...validated });
+  const conn = await repo.createConnection({
+    ...validated,
+    userId,
+    fullName: validated.name,
+    birthday: validated.birthday ? new Date(validated.birthday) : undefined,
+    firstMetDate: validated.firstMetDate ? new Date(validated.firstMetDate) : undefined,
+    friendshipAnniversary: validated.friendshipAnniversary ? new Date(validated.friendshipAnniversary) : undefined,
+    lastMetDate: validated.lastMetDate ? new Date(validated.lastMetDate) : undefined,
+    lastCallDate: validated.lastCallDate ? new Date(validated.lastCallDate) : undefined,
+    lastMessageDate: validated.lastMessageDate ? new Date(validated.lastMessageDate) : undefined,
+  } as any);
 
   try { await awardXp(userId, "connection_added", conn.id, `Added ${conn.name}`, 5); } catch {}
 
@@ -135,7 +145,15 @@ export const getConnection = cache(async (id: string, userId: string) => repo.ge
 
 export async function updateConnection(id: string, userId: string, params: UpdateConnectionParams) {
   const validated = updateConnectionSchema.parse(params);
-  return repo.updateConnection(id, userId, validated);
+  const updateData: Record<string, unknown> = { ...validated };
+  if (validated.name !== undefined) updateData.fullName = validated.name;
+  if (validated.birthday !== undefined) updateData.birthday = validated.birthday ? new Date(validated.birthday) : undefined;
+  if (validated.firstMetDate !== undefined) updateData.firstMetDate = validated.firstMetDate ? new Date(validated.firstMetDate) : undefined;
+  if (validated.friendshipAnniversary !== undefined) updateData.friendshipAnniversary = validated.friendshipAnniversary ? new Date(validated.friendshipAnniversary) : undefined;
+  if (validated.lastMetDate !== undefined) updateData.lastMetDate = validated.lastMetDate ? new Date(validated.lastMetDate) : undefined;
+  if (validated.lastCallDate !== undefined) updateData.lastCallDate = validated.lastCallDate ? new Date(validated.lastCallDate) : undefined;
+  if (validated.lastMessageDate !== undefined) updateData.lastMessageDate = validated.lastMessageDate ? new Date(validated.lastMessageDate) : undefined;
+  return repo.updateConnection(id, userId, updateData as any);
 }
 
 export async function deleteConnection(id: string, userId: string) {
@@ -151,7 +169,11 @@ export const getUpcomingBirthdays = cache(async (userId: string) => repo.getUpco
 export async function createMeetup(userId: string, params: CreateMeetupParams) {
   const validated = createMeetupSchema.parse(params);
   const { connectionIds, ...data } = validated;
-  const meetup = await repo.createMeetup({ userId, ...data });
+  const meetup = await repo.createMeetup({
+    userId,
+    ...data,
+    date: new Date(data.date),
+  } as any);
 
   if (connectionIds?.length) {
     await repo.setMeetupConnections(meetup.id, connectionIds);
@@ -187,7 +209,9 @@ export const getMeetup = cache(async (id: string, userId: string) => {
 export async function updateMeetup(id: string, userId: string, params: UpdateConnectionParams) {
   const validated = updateMeetupSchema.parse(params);
   const { connectionIds, ...data } = validated;
-  const meetup = await repo.updateMeetup(id, userId, data);
+  const updateData: Record<string, unknown> = { ...data };
+  if (data.date !== undefined) updateData.date = data.date ? new Date(data.date) : undefined;
+  const meetup = await repo.updateMeetup(id, userId, updateData as any);
   if (connectionIds) {
     await repo.setMeetupConnections(id, connectionIds);
   }
@@ -203,7 +227,11 @@ export async function deleteMeetup(id: string, userId: string) {
 export async function createEvent(userId: string, params: CreateEventParams) {
   const validated = createEventSchema.parse(params);
   const { connectionIds, ...data } = validated;
-  const event = await repo.createEvent({ userId, ...data });
+  const event = await repo.createEvent({
+    userId,
+    ...data,
+    date: new Date(data.date),
+  } as any);
 
   if (connectionIds?.length) {
     await repo.setEventConnections(event.id, connectionIds);
@@ -239,7 +267,9 @@ export const getEvent = cache(async (id: string, userId: string) => {
 export async function updateEvent(id: string, userId: string, params: UpdateConnectionParams) {
   const validated = updateEventSchema.parse(params);
   const { connectionIds, ...data } = validated;
-  const event = await repo.updateEvent(id, userId, data);
+  const updateData: Record<string, unknown> = { ...data };
+  if (data.date !== undefined) updateData.date = data.date ? new Date(data.date) : undefined;
+  const event = await repo.updateEvent(id, userId, updateData as any);
   if (connectionIds) {
     await repo.setEventConnections(id, connectionIds);
   }
@@ -255,7 +285,11 @@ export async function deleteEvent(id: string, userId: string) {
 export async function createMemory(userId: string, params: CreateMemoryParams) {
   const validated = createMemorySchema.parse(params);
   const { connectionIds, ...data } = validated;
-  const memory = await repo.createMemory({ userId, ...data });
+  const memory = await repo.createMemory({
+    userId,
+    ...data,
+    memoryDate: data.memoryDate ? new Date(data.memoryDate) : undefined,
+  } as any);
 
   if (connectionIds?.length) {
     await repo.setMemoryConnections(memory.id, connectionIds);
@@ -279,7 +313,9 @@ export const getMemory = cache(async (id: string, userId: string) => {
 export async function updateMemory(id: string, userId: string, params: UpdateConnectionParams) {
   const validated = updateMemorySchema.parse(params);
   const { connectionIds, ...data } = validated;
-  const memory = await repo.updateMemory(id, userId, data);
+  const updateData: Record<string, unknown> = { ...data };
+  if (data.memoryDate !== undefined) updateData.memoryDate = data.memoryDate ? new Date(data.memoryDate) : undefined;
+  const memory = await repo.updateMemory(id, userId, updateData as any);
   if (connectionIds) {
     await repo.setMemoryConnections(id, connectionIds);
   }
@@ -296,7 +332,11 @@ export const getFavoriteMemories = cache(async (userId: string) => repo.getFavor
 
 export async function createGift(userId: string, params: CreateGiftParams) {
   const validated = createGiftSchema.parse(params);
-  return repo.createGift({ userId, ...validated });
+  return repo.createGift({
+    userId,
+    ...validated,
+    date: validated.date ? new Date(validated.date) : undefined,
+  } as any);
 }
 
 export const getGifts = cache(async (userId: string) => repo.getGifts(userId));
@@ -309,7 +349,9 @@ export const getGiftsByConnection = cache(async (connectionId: string, userId: s
 
 export async function updateGift(id: string, userId: string, params: UpdateConnectionParams) {
   const validated = updateGiftSchema.parse(params);
-  return repo.updateGift(id, userId, validated);
+  const updateData: Record<string, unknown> = { ...validated };
+  if (validated.date !== undefined) updateData.date = validated.date ? new Date(validated.date) : undefined;
+  return repo.updateGift(id, userId, updateData as any);
 }
 
 export async function deleteGift(id: string, userId: string) {

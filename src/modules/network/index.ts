@@ -1,15 +1,3 @@
-export {
-  networkConnections,
-  networkMeetups,
-  networkMeetupConnections,
-  networkEvents,
-  networkEventConnections,
-  networkMemories,
-  networkMemoryConnections,
-  networkGifts,
-  networkTripParticipants,
-} from "./schema";
-
 export type {
   NetworkConnection,
   NetworkMeetup,

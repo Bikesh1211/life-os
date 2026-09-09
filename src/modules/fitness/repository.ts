@@ -1,31 +1,157 @@
-import { db } from "@/core/database";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  fitnessProfiles,
-  fitnessBodyMeasurements,
-  fitnessExerciseLibrary,
-  fitnessWorkoutPrograms,
-  fitnessProgramDays,
-  fitnessProgramExercises,
-  fitnessWorkoutSessions,
-  fitnessExerciseSets,
-  fitnessPersonalRecords,
-} from "./schema";
-import { eq, and, desc, asc, sql, lte, gte } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
+  FitnessProfileModel,
+  FitnessBodyMeasurementModel,
+  FitnessExerciseLibraryModel,
+  FitnessWorkoutProgramModel,
+  FitnessProgramDayModel,
+  FitnessProgramExerciseModel,
+  FitnessWorkoutSessionModel,
+  FitnessExerciseSetModel,
+  FitnessPersonalRecordModel,
+} from "@/lib/models/fitness";
 
-// === TYPE INFERENCE ===
-export type FitnessProfile = typeof fitnessProfiles.$inferSelect;
-export type BodyMeasurement = typeof fitnessBodyMeasurements.$inferSelect;
-export type Exercise = typeof fitnessExerciseLibrary.$inferSelect;
-export type WorkoutProgram = typeof fitnessWorkoutPrograms.$inferSelect;
-export type ProgramDay = typeof fitnessProgramDays.$inferSelect;
-export type ProgramExercise = typeof fitnessProgramExercises.$inferSelect;
+// ─── Types ────────────────────────────────────────────────────────
+
+export type FitnessProfile = {
+  id: string;
+  userId: string;
+  heightCm?: number;
+  dateOfBirth?: Date;
+  gender?: string;
+  activityLevel: string;
+  fitnessGoal: string;
+  targetWeightKg?: number;
+  weeklyWorkoutGoal: number;
+  dailyCalorieGoal?: number;
+  dailyProteinGoal?: number;
+  dailyWaterGoalMl?: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type BodyMeasurement = {
+  id: string;
+  userId: string;
+  date: Date;
+  weightKg?: number;
+  bodyFatPercentage?: number;
+  muscleMassKg?: number;
+  waistCm?: number;
+  hipsCm?: number;
+  chestCm?: number;
+  armsCm?: number;
+  thighsCm?: number;
+  neckCm?: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Exercise = {
+  id: string;
+  name: string;
+  muscleGroup: string;
+  equipment: string;
+  forceType?: string;
+  difficulty: string;
+  instructions?: string;
+  videoUrl?: string;
+  isCardio: boolean;
+  isBodyweight: boolean;
+  userId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type WorkoutProgram = {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  goal?: string;
+  daysPerWeek?: number;
+  durationWeeks?: number;
+  difficulty: string;
+  isActive: boolean;
+  isTemplate: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ProgramDay = {
+  id: string;
+  programId: string;
+  dayNumber: number;
+  name: string;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ProgramExercise = {
+  id: string;
+  programDayId: string;
+  exerciseId: string;
+  targetSets?: number;
+  targetReps?: string;
+  targetWeightKg?: number;
+  restSeconds: number;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type ProgramExerciseWithName = ProgramExercise & { exerciseName: string };
-export type WorkoutSession = typeof fitnessWorkoutSessions.$inferSelect;
-export type ExerciseSet = typeof fitnessExerciseSets.$inferSelect;
-export type PersonalRecord = typeof fitnessPersonalRecords.$inferSelect;
 
-// === INPUT TYPES ===
+export type WorkoutSession = {
+  id: string;
+  userId: string;
+  programDayId?: string;
+  name?: string;
+  date: Date;
+  startTime?: Date;
+  endTime?: Date;
+  durationMinutes?: number;
+  mood?: number;
+  energy?: number;
+  notes?: string;
+  isCompleted: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type ExerciseSet = {
+  id: string;
+  sessionId: string;
+  exerciseId: string;
+  exerciseName: string;
+  setNumber: number;
+  reps?: number;
+  weightKg?: number;
+  rpe?: number;
+  durationSeconds?: number;
+  distanceMeters?: number;
+  isWarmup: boolean;
+  isDropSet: boolean;
+  isFailure: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type PersonalRecord = {
+  id: string;
+  userId: string;
+  exerciseId: string;
+  type: string;
+  value: number;
+  reps?: number;
+  sessionId?: string;
+  achievedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+// ─── Input Types ──────────────────────────────────────────────────
 
 type EnumActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active";
 type EnumFitnessGoal = "lose_fat" | "build_muscle" | "maintain" | "improve_endurance" | "general_health";
@@ -34,12 +160,12 @@ type EnumWorkoutGoal = "lose_fat" | "build_muscle" | "maintain" | "endurance" | 
 
 export type CreateFitnessProfileInput = {
   userId: string;
-  heightCm?: string | null;
-  dateOfBirth?: string | null;
+  heightCm?: number | null;
+  dateOfBirth?: Date | null;
   gender?: "male" | "female" | "other" | null;
   activityLevel?: EnumActivityLevel;
   fitnessGoal?: EnumFitnessGoal;
-  targetWeightKg?: string | null;
+  targetWeightKg?: number | null;
   weeklyWorkoutGoal?: number;
   dailyCalorieGoal?: number | null;
   dailyProteinGoal?: number | null;
@@ -51,16 +177,15 @@ export type UpdateFitnessProfileInput = Partial<Omit<CreateFitnessProfileInput, 
 export type CreateBodyMeasurementInput = {
   userId: string;
   date: string;
-  weightKg?: string | null;
-  bodyFatPercentage?: string | null;
-  muscleMassKg?: string | null;
-  waistCm?: string | null;
-  hipsCm?: string | null;
-  chestCm?: string | null;
-  armsCm?: string | null;
-  thighsCm?: string | null;
-  neckCm?: string | null;
-  notes?: string | null;
+  weightKg?: number | null;
+  bodyFatPercentage?: number | null;
+  muscleMassKg?: number | null;
+  waistCm?: number | null;
+  hipsCm?: number | null;
+  chestCm?: number | null;
+  armsCm?: number | null;
+  thighsCm?: number | null;
+  neckCm?: number | null;
 };
 
 export type CreateWorkoutProgramInput = {
@@ -88,7 +213,7 @@ export type CreateProgramExerciseInput = {
   sortOrder?: number;
   targetSets?: number | null;
   targetReps?: string | null;
-  targetWeightKg?: string | null;
+  targetWeightKg?: number | null;
   restSeconds?: number;
   notes?: string | null;
 };
@@ -113,10 +238,10 @@ export type CreateExerciseSetInput = {
   exerciseName: string;
   setNumber: number;
   reps?: number | null;
-  weightKg?: string | null;
+  weightKg?: number | null;
   rpe?: number | null;
   durationSeconds?: number | null;
-  distanceMeters?: string | null;
+  distanceMeters?: number | null;
   isWarmup?: boolean;
   isDropSet?: boolean;
   isFailure?: boolean;
@@ -126,71 +251,89 @@ export type CreateExerciseSetInput = {
 export type SetRecordCheck = {
   exerciseId: string;
   reps: number | null;
-  weightKg: string | null;
+  weightKg: number | null;
   isFailure: boolean;
   sessionId: string | null;
 };
 
-// === PROFILES ===
+// ─── Helpers ──────────────────────────────────────────────────────
+
+function mapProfile(doc: any): FitnessProfile {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapMeasurement(doc: any): BodyMeasurement {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapExercise(doc: any): Exercise {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapProgram(doc: any): WorkoutProgram {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapProgramDay(doc: any): ProgramDay {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapProgramExercise(doc: any): ProgramExercise {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapSession(doc: any): WorkoutSession {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapSet(doc: any): ExerciseSet {
+  return { ...doc, id: doc._id.toString() };
+}
+
+function mapRecord(doc: any): PersonalRecord {
+  return { ...doc, id: doc._id.toString() };
+}
+
+// ─── Profiles ─────────────────────────────────────────────────────
 
 export async function getProfile(userId: string): Promise<FitnessProfile | null> {
-  const [profile] = await db
-    .select()
-    .from(fitnessProfiles)
-    .where(eq(fitnessProfiles.userId, userId))
-    .limit(1);
-  return profile ?? null;
+  await connectToDatabase();
+  const doc = await FitnessProfileModel.findOne({ userId }).lean();
+  return doc ? mapProfile(doc) : null;
 }
 
 export async function upsertProfile(userId: string, input: UpdateFitnessProfileInput): Promise<FitnessProfile> {
-  const values: Record<string, unknown> = { userId, updatedAt: new Date() };
-  if (input.heightCm !== undefined) values.heightCm = input.heightCm;
-  if (input.dateOfBirth !== undefined) values.dateOfBirth = input.dateOfBirth;
-  if (input.gender !== undefined) values.gender = input.gender;
-  if (input.activityLevel !== undefined) values.activityLevel = input.activityLevel;
-  if (input.fitnessGoal !== undefined) values.fitnessGoal = input.fitnessGoal;
-  if (input.targetWeightKg !== undefined) values.targetWeightKg = input.targetWeightKg;
-  if (input.weeklyWorkoutGoal !== undefined) values.weeklyWorkoutGoal = input.weeklyWorkoutGoal;
-  if (input.dailyCalorieGoal !== undefined) values.dailyCalorieGoal = input.dailyCalorieGoal;
-  if (input.dailyProteinGoal !== undefined) values.dailyProteinGoal = input.dailyProteinGoal;
-  if (input.dailyWaterGoalMl !== undefined) values.dailyWaterGoalMl = input.dailyWaterGoalMl;
-
-  const [profile] = await db
-    .insert(fitnessProfiles)
-    .values(values as any)
-    .onConflictDoUpdate({
-      target: fitnessProfiles.userId,
-      set: values as any,
-    })
-    .returning();
-  return profile;
+  await connectToDatabase();
+  const doc = await FitnessProfileModel.findOneAndUpdate(
+    { userId },
+    { $set: { ...input, updatedAt: new Date() } },
+    { new: true, upsert: true },
+  ).lean();
+  return mapProfile(doc);
 }
 
-// === BODY MEASUREMENTS ===
+// ─── Body Measurements ────────────────────────────────────────────
 
-export const bodyMeasurementColumns = {
-  id: fitnessBodyMeasurements.id,
-  userId: fitnessBodyMeasurements.userId,
-  date: fitnessBodyMeasurements.date,
-  weightKg: fitnessBodyMeasurements.weightKg,
-  bodyFatPercentage: fitnessBodyMeasurements.bodyFatPercentage,
-  muscleMassKg: fitnessBodyMeasurements.muscleMassKg,
-  waistCm: fitnessBodyMeasurements.waistCm,
-  hipsCm: fitnessBodyMeasurements.hipsCm,
-  chestCm: fitnessBodyMeasurements.chestCm,
-  armsCm: fitnessBodyMeasurements.armsCm,
-  thighsCm: fitnessBodyMeasurements.thighsCm,
-  neckCm: fitnessBodyMeasurements.neckCm,
-  notes: fitnessBodyMeasurements.notes,
-  createdAt: fitnessBodyMeasurements.createdAt,
-};
+export const bodyMeasurementColumns = [
+  "id",
+  "userId",
+  "date",
+  "weightKg",
+  "bodyFatPercentage",
+  "muscleMassKg",
+  "waistCm",
+  "hipsCm",
+  "chestCm",
+  "armsCm",
+  "thighsCm",
+  "neckCm",
+  "createdAt",
+] as const;
 
 export async function createBodyMeasurement(input: CreateBodyMeasurementInput): Promise<BodyMeasurement> {
-  const [measurement] = await db
-    .insert(fitnessBodyMeasurements)
-    .values(input)
-    .returning(bodyMeasurementColumns);
-  return measurement;
+  await connectToDatabase();
+  const doc = await FitnessBodyMeasurementModel.create(input);
+  return mapMeasurement(doc.toObject());
 }
 
 export async function getBodyMeasurements(
@@ -199,113 +342,108 @@ export async function getBodyMeasurements(
   dateTo?: string,
   limit = 50,
 ): Promise<BodyMeasurement[]> {
-  const conditions: SQL[] = [eq(fitnessBodyMeasurements.userId, userId)];
-  if (dateFrom) conditions.push(gte(fitnessBodyMeasurements.date, dateFrom));
-  if (dateTo) conditions.push(lte(fitnessBodyMeasurements.date, dateTo));
+  await connectToDatabase();
 
-  return db
-    .select(bodyMeasurementColumns)
-    .from(fitnessBodyMeasurements)
-    .where(and(...conditions))
-    .orderBy(desc(fitnessBodyMeasurements.date))
-    .limit(limit);
+  const filter: Record<string, any> = { userId };
+  if (dateFrom || dateTo) {
+    filter.date = {};
+    if (dateFrom) filter.date.$gte = new Date(dateFrom);
+    if (dateTo) filter.date.$lte = new Date(dateTo);
+  }
+
+  const docs = await FitnessBodyMeasurementModel.find(filter)
+    .sort({ date: -1 })
+    .limit(limit)
+    .lean();
+  return docs.map(mapMeasurement);
 }
 
 export async function getLatestBodyMeasurement(userId: string): Promise<BodyMeasurement | null> {
-  const [measurement] = await db
-    .select(bodyMeasurementColumns)
-    .from(fitnessBodyMeasurements)
-    .where(eq(fitnessBodyMeasurements.userId, userId))
-    .orderBy(desc(fitnessBodyMeasurements.date))
-    .limit(1);
-  return measurement ?? null;
+  await connectToDatabase();
+  const doc = await FitnessBodyMeasurementModel.findOne({ userId })
+    .sort({ date: -1 })
+    .lean();
+  return doc ? mapMeasurement(doc) : null;
 }
 
-// === EXERCISE LIBRARY ===
+// ─── Exercise Library ─────────────────────────────────────────────
 
-export const exerciseColumns = {
-  id: fitnessExerciseLibrary.id,
-  userId: fitnessExerciseLibrary.userId,
-  name: fitnessExerciseLibrary.name,
-  muscleGroup: fitnessExerciseLibrary.muscleGroup,
-  equipment: fitnessExerciseLibrary.equipment,
-  forceType: fitnessExerciseLibrary.forceType,
-  difficulty: fitnessExerciseLibrary.difficulty,
-  instructions: fitnessExerciseLibrary.instructions,
-  videoUrl: fitnessExerciseLibrary.videoUrl,
-  isCardio: fitnessExerciseLibrary.isCardio,
-  isBodyweight: fitnessExerciseLibrary.isBodyweight,
-  createdAt: fitnessExerciseLibrary.createdAt,
-};
+export const exerciseColumns = [
+  "id",
+  "userId",
+  "name",
+  "muscleGroup",
+  "equipment",
+  "forceType",
+  "difficulty",
+  "instructions",
+  "videoUrl",
+  "isCardio",
+  "isBodyweight",
+  "createdAt",
+] as const;
 
 export async function getExercises(filters?: {
   muscleGroup?: string;
   equipment?: string;
   search?: string;
 }): Promise<Exercise[]> {
-  const conditions: SQL[] = [];
-  if (filters?.muscleGroup) conditions.push(eq(fitnessExerciseLibrary.muscleGroup, filters.muscleGroup as any));
-  if (filters?.equipment) conditions.push(eq(fitnessExerciseLibrary.equipment, filters.equipment as any));
+  await connectToDatabase();
+
+  const filter: Record<string, any> = {};
+  if (filters?.muscleGroup) filter.muscleGroup = filters.muscleGroup;
+  if (filters?.equipment) filter.equipment = filters.equipment;
   if (filters?.search) {
-    conditions.push(sql`${fitnessExerciseLibrary.name} ILIKE ${`%${filters.search}%`}`);
+    filter.name = { $regex: filters.search, $options: "i" };
   }
 
-  return db
-    .select(exerciseColumns)
-    .from(fitnessExerciseLibrary)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(asc(fitnessExerciseLibrary.name));
+  const docs = await FitnessExerciseLibraryModel.find(filter)
+    .sort({ name: 1 })
+    .lean();
+  return docs.map(mapExercise);
 }
 
 export async function getExerciseById(id: string): Promise<Exercise | null> {
-  const [exercise] = await db
-    .select(exerciseColumns)
-    .from(fitnessExerciseLibrary)
-    .where(eq(fitnessExerciseLibrary.id, id))
-    .limit(1);
-  return exercise ?? null;
+  await connectToDatabase();
+  const doc = await FitnessExerciseLibraryModel.findById(id).lean();
+  return doc ? mapExercise(doc) : null;
 }
 
-// === WORKOUT PROGRAMS ===
+// ─── Workout Programs ─────────────────────────────────────────────
 
-export const programColumns = {
-  id: fitnessWorkoutPrograms.id,
-  userId: fitnessWorkoutPrograms.userId,
-  name: fitnessWorkoutPrograms.name,
-  description: fitnessWorkoutPrograms.description,
-  goal: fitnessWorkoutPrograms.goal,
-  daysPerWeek: fitnessWorkoutPrograms.daysPerWeek,
-  durationWeeks: fitnessWorkoutPrograms.durationWeeks,
-  difficulty: fitnessWorkoutPrograms.difficulty,
-  isActive: fitnessWorkoutPrograms.isActive,
-  isTemplate: fitnessWorkoutPrograms.isTemplate,
-  createdAt: fitnessWorkoutPrograms.createdAt,
-  updatedAt: fitnessWorkoutPrograms.updatedAt,
-};
+export const programColumns = [
+  "id",
+  "userId",
+  "name",
+  "description",
+  "goal",
+  "daysPerWeek",
+  "durationWeeks",
+  "difficulty",
+  "isActive",
+  "isTemplate",
+  "createdAt",
+  "updatedAt",
+] as const;
 
 export async function createWorkoutProgram(input: CreateWorkoutProgramInput): Promise<WorkoutProgram> {
-  const [program] = await db
-    .insert(fitnessWorkoutPrograms)
-    .values(input)
-    .returning(programColumns);
-  return program;
+  await connectToDatabase();
+  const doc = await FitnessWorkoutProgramModel.create(input);
+  return mapProgram(doc.toObject());
 }
 
 export async function getWorkoutPrograms(userId: string): Promise<WorkoutProgram[]> {
-  return db
-    .select(programColumns)
-    .from(fitnessWorkoutPrograms)
-    .where(eq(fitnessWorkoutPrograms.userId, userId))
-    .orderBy(desc(fitnessWorkoutPrograms.isActive), desc(fitnessWorkoutPrograms.createdAt));
+  await connectToDatabase();
+  const docs = await FitnessWorkoutProgramModel.find({ userId })
+    .sort({ isActive: -1, createdAt: -1 })
+    .lean();
+  return docs.map(mapProgram);
 }
 
 export async function getWorkoutProgramById(id: string, userId: string): Promise<WorkoutProgram | null> {
-  const [program] = await db
-    .select(programColumns)
-    .from(fitnessWorkoutPrograms)
-    .where(and(eq(fitnessWorkoutPrograms.id, id), eq(fitnessWorkoutPrograms.userId, userId)))
-    .limit(1);
-  return program ?? null;
+  await connectToDatabase();
+  const doc = await FitnessWorkoutProgramModel.findOne({ _id: id, userId }).lean();
+  return doc ? mapProgram(doc) : null;
 }
 
 export async function updateWorkoutProgram(
@@ -313,144 +451,151 @@ export async function updateWorkoutProgram(
   userId: string,
   input: Partial<CreateWorkoutProgramInput>,
 ): Promise<WorkoutProgram | null> {
-  const [program] = await db
-    .update(fitnessWorkoutPrograms)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(fitnessWorkoutPrograms.id, id), eq(fitnessWorkoutPrograms.userId, userId)))
-    .returning(programColumns);
-  return program ?? null;
+  await connectToDatabase();
+  const { userId: _, ...updateData } = input;
+  const doc = await FitnessWorkoutProgramModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: { ...updateData, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapProgram(doc) : null;
 }
 
 export async function deleteWorkoutProgram(id: string, userId: string): Promise<WorkoutProgram | null> {
-  const [program] = await db
-    .delete(fitnessWorkoutPrograms)
-    .where(and(eq(fitnessWorkoutPrograms.id, id), eq(fitnessWorkoutPrograms.userId, userId)))
-    .returning(programColumns);
-  return program ?? null;
+  await connectToDatabase();
+  const doc = await FitnessWorkoutProgramModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapProgram(doc) : null;
 }
 
-// === PROGRAM DAYS ===
+// ─── Program Days ─────────────────────────────────────────────────
 
-export const programDayColumns = {
-  id: fitnessProgramDays.id,
-  programId: fitnessProgramDays.programId,
-  dayNumber: fitnessProgramDays.dayNumber,
-  name: fitnessProgramDays.name,
-  sortOrder: fitnessProgramDays.sortOrder,
-  createdAt: fitnessProgramDays.createdAt,
-};
+export const programDayColumns = [
+  "id",
+  "programId",
+  "dayNumber",
+  "name",
+  "sortOrder",
+  "createdAt",
+] as const;
 
 export async function createProgramDay(input: CreateProgramDayInput): Promise<ProgramDay> {
-  const [day] = await db
-    .insert(fitnessProgramDays)
-    .values(input)
-    .returning(programDayColumns);
-  return day;
+  await connectToDatabase();
+  const doc = await FitnessProgramDayModel.create(input);
+  return mapProgramDay(doc.toObject());
 }
 
 export async function getProgramDays(programId: string): Promise<ProgramDay[]> {
-  return db
-    .select(programDayColumns)
-    .from(fitnessProgramDays)
-    .where(eq(fitnessProgramDays.programId, programId))
-    .orderBy(asc(fitnessProgramDays.sortOrder), asc(fitnessProgramDays.dayNumber));
+  await connectToDatabase();
+  const docs = await FitnessProgramDayModel.find({ programId })
+    .sort({ sortOrder: 1, dayNumber: 1 })
+    .lean();
+  return docs.map(mapProgramDay);
 }
 
 export async function deleteProgramDay(id: string): Promise<ProgramDay | null> {
-  const [day] = await db
-    .delete(fitnessProgramDays)
-    .where(eq(fitnessProgramDays.id, id))
-    .returning(programDayColumns);
-  return day ?? null;
+  await connectToDatabase();
+  const doc = await FitnessProgramDayModel.findOneAndDelete({ _id: id }).lean();
+  return doc ? mapProgramDay(doc) : null;
 }
 
-// === PROGRAM EXERCISES ===
+// ─── Program Exercises ────────────────────────────────────────────
 
-export const programExerciseColumns = {
-  id: fitnessProgramExercises.id,
-  programDayId: fitnessProgramExercises.programDayId,
-  exerciseId: fitnessProgramExercises.exerciseId,
-  sortOrder: fitnessProgramExercises.sortOrder,
-  targetSets: fitnessProgramExercises.targetSets,
-  targetReps: fitnessProgramExercises.targetReps,
-  targetWeightKg: fitnessProgramExercises.targetWeightKg,
-  restSeconds: fitnessProgramExercises.restSeconds,
-  notes: fitnessProgramExercises.notes,
-  createdAt: fitnessProgramExercises.createdAt,
-};
+export const programExerciseColumns = [
+  "id",
+  "programDayId",
+  "exerciseId",
+  "sortOrder",
+  "targetSets",
+  "targetReps",
+  "targetWeightKg",
+  "restSeconds",
+  "notes",
+  "createdAt",
+] as const;
 
 export async function createProgramExercise(input: CreateProgramExerciseInput): Promise<ProgramExercise> {
-  const [exercise] = await db
-    .insert(fitnessProgramExercises)
-    .values(input)
-    .returning(programExerciseColumns);
-  return exercise;
+  await connectToDatabase();
+  const doc = await FitnessProgramExerciseModel.create(input);
+  return mapProgramExercise(doc.toObject());
 }
 
 export async function getProgramExercises(programDayId: string): Promise<ProgramExercise[]> {
-  return db
-    .select(programExerciseColumns)
-    .from(fitnessProgramExercises)
-    .where(eq(fitnessProgramExercises.programDayId, programDayId))
-    .orderBy(asc(fitnessProgramExercises.sortOrder));
+  await connectToDatabase();
+  const docs = await FitnessProgramExerciseModel.find({ programDayId })
+    .sort({ sortOrder: 1 })
+    .lean();
+  return docs.map(mapProgramExercise);
 }
 
-export const programExerciseWithNameColumns = {
-  ...programExerciseColumns,
-  exerciseName: fitnessExerciseLibrary.name,
-};
+export const programExerciseWithNameColumns = [...programExerciseColumns, "exerciseName"] as const;
 
-export async function getProgramExercisesWithLibrary(programDayId: string) {
-  return db
-    .select(programExerciseWithNameColumns)
-    .from(fitnessProgramExercises)
-    .leftJoin(fitnessExerciseLibrary, eq(fitnessProgramExercises.exerciseId, fitnessExerciseLibrary.id))
-    .where(eq(fitnessProgramExercises.programDayId, programDayId))
-    .orderBy(asc(fitnessProgramExercises.sortOrder));
+export async function getProgramExercisesWithLibrary(programDayId: string): Promise<ProgramExerciseWithName[]> {
+  await connectToDatabase();
+  const docs = await FitnessProgramExerciseModel.aggregate([
+    { $match: { programDayId: programDayId } },
+    { $sort: { sortOrder: 1 } },
+    {
+      $lookup: {
+        from: "fitnessexerciselibraries",
+        localField: "exerciseId",
+        foreignField: "_id",
+        as: "exerciseInfo",
+      },
+    },
+    { $unwind: { path: "$exerciseInfo", preserveNullAndEmptyArrays: true } },
+    {
+      $addFields: {
+        exerciseName: "$exerciseInfo.name",
+      },
+    },
+    { $project: { exerciseInfo: 0 } },
+  ]);
+  return docs.map((doc: any) => ({
+    ...mapProgramExercise(doc),
+    exerciseName: doc.exerciseName ?? "",
+  }));
 }
 
 export async function deleteProgramExercise(id: string): Promise<ProgramExercise | null> {
-  const [exercise] = await db
-    .delete(fitnessProgramExercises)
-    .where(eq(fitnessProgramExercises.id, id))
-    .returning(programExerciseColumns);
-  return exercise ?? null;
+  await connectToDatabase();
+  const doc = await FitnessProgramExerciseModel.findOneAndDelete({ _id: id }).lean();
+  return doc ? mapProgramExercise(doc) : null;
 }
 
-// === WORKOUT SESSIONS ===
+// ─── Workout Sessions ─────────────────────────────────────────────
 
-export const sessionColumns = {
-  id: fitnessWorkoutSessions.id,
-  userId: fitnessWorkoutSessions.userId,
-  programDayId: fitnessWorkoutSessions.programDayId,
-  name: fitnessWorkoutSessions.name,
-  date: fitnessWorkoutSessions.date,
-  startTime: fitnessWorkoutSessions.startTime,
-  endTime: fitnessWorkoutSessions.endTime,
-  durationMinutes: fitnessWorkoutSessions.durationMinutes,
-  mood: fitnessWorkoutSessions.mood,
-  energy: fitnessWorkoutSessions.energy,
-  notes: fitnessWorkoutSessions.notes,
-  isCompleted: fitnessWorkoutSessions.isCompleted,
-  createdAt: fitnessWorkoutSessions.createdAt,
-  updatedAt: fitnessWorkoutSessions.updatedAt,
-};
+export const sessionColumns = [
+  "id",
+  "userId",
+  "programDayId",
+  "name",
+  "date",
+  "startTime",
+  "endTime",
+  "durationMinutes",
+  "mood",
+  "energy",
+  "notes",
+  "isCompleted",
+  "createdAt",
+  "updatedAt",
+] as const;
 
 export async function createWorkoutSession(input: CreateWorkoutSessionInput): Promise<WorkoutSession> {
-  const [session] = await db
-    .insert(fitnessWorkoutSessions)
-    .values(input)
-    .returning(sessionColumns);
-  return session;
+  await connectToDatabase();
+  const doc = await FitnessWorkoutSessionModel.create({
+    ...input,
+    date: new Date(input.date),
+    startTime: input.startTime ? new Date(input.startTime) : undefined,
+    endTime: input.endTime ? new Date(input.endTime) : undefined,
+  });
+  return mapSession(doc.toObject());
 }
 
 export async function getWorkoutSessionById(id: string, userId: string): Promise<WorkoutSession | null> {
-  const [session] = await db
-    .select(sessionColumns)
-    .from(fitnessWorkoutSessions)
-    .where(and(eq(fitnessWorkoutSessions.id, id), eq(fitnessWorkoutSessions.userId, userId)))
-    .limit(1);
-  return session ?? null;
+  await connectToDatabase();
+  const doc = await FitnessWorkoutSessionModel.findOne({ _id: id, userId }).lean();
+  return doc ? mapSession(doc) : null;
 }
 
 export async function getWorkoutSessions(
@@ -462,17 +607,21 @@ export async function getWorkoutSessions(
     offset?: number;
   },
 ): Promise<WorkoutSession[]> {
-  const conditions: SQL[] = [eq(fitnessWorkoutSessions.userId, userId)];
-  if (options?.dateFrom) conditions.push(gte(fitnessWorkoutSessions.date, options.dateFrom));
-  if (options?.dateTo) conditions.push(lte(fitnessWorkoutSessions.date, options.dateTo));
+  await connectToDatabase();
 
-  return db
-    .select(sessionColumns)
-    .from(fitnessWorkoutSessions)
-    .where(and(...conditions))
-    .orderBy(desc(fitnessWorkoutSessions.date))
+  const filter: Record<string, any> = { userId };
+  if (options?.dateFrom || options?.dateTo) {
+    filter.date = {};
+    if (options.dateFrom) filter.date.$gte = new Date(options.dateFrom);
+    if (options.dateTo) filter.date.$lte = new Date(options.dateTo);
+  }
+
+  const docs = await FitnessWorkoutSessionModel.find(filter)
+    .sort({ date: -1 })
+    .skip(options?.offset ?? 0)
     .limit(options?.limit ?? 50)
-    .offset(options?.offset ?? 0);
+    .lean();
+  return docs.map(mapSession);
 }
 
 export async function updateWorkoutSession(
@@ -480,87 +629,89 @@ export async function updateWorkoutSession(
   userId: string,
   input: Partial<CreateWorkoutSessionInput>,
 ): Promise<WorkoutSession | null> {
-  const [session] = await db
-    .update(fitnessWorkoutSessions)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(fitnessWorkoutSessions.id, id), eq(fitnessWorkoutSessions.userId, userId)))
-    .returning(sessionColumns);
-  return session ?? null;
+  await connectToDatabase();
+  const { userId: _, ...updateData } = input;
+  if (updateData.date) updateData.date = new Date(updateData.date as any) as any;
+  if (updateData.startTime) updateData.startTime = new Date(updateData.startTime as any) as any;
+  if (updateData.endTime) updateData.endTime = new Date(updateData.endTime as any) as any;
+  const doc = await FitnessWorkoutSessionModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: { ...updateData, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapSession(doc) : null;
 }
 
 export async function deleteWorkoutSession(id: string, userId: string): Promise<WorkoutSession | null> {
-  const [session] = await db
-    .delete(fitnessWorkoutSessions)
-    .where(and(eq(fitnessWorkoutSessions.id, id), eq(fitnessWorkoutSessions.userId, userId)))
-    .returning(sessionColumns);
-  return session ?? null;
+  await connectToDatabase();
+  const doc = await FitnessWorkoutSessionModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapSession(doc) : null;
 }
 
-// === EXERCISE SETS ===
+// ─── Exercise Sets ────────────────────────────────────────────────
 
-export const setColumns = {
-  id: fitnessExerciseSets.id,
-  sessionId: fitnessExerciseSets.sessionId,
-  exerciseId: fitnessExerciseSets.exerciseId,
-  exerciseName: fitnessExerciseSets.exerciseName,
-  setNumber: fitnessExerciseSets.setNumber,
-  reps: fitnessExerciseSets.reps,
-  weightKg: fitnessExerciseSets.weightKg,
-  rpe: fitnessExerciseSets.rpe,
-  durationSeconds: fitnessExerciseSets.durationSeconds,
-  distanceMeters: fitnessExerciseSets.distanceMeters,
-  isWarmup: fitnessExerciseSets.isWarmup,
-  isDropSet: fitnessExerciseSets.isDropSet,
-  isFailure: fitnessExerciseSets.isFailure,
-  sortOrder: fitnessExerciseSets.sortOrder,
-  createdAt: fitnessExerciseSets.createdAt,
-};
+export const setColumns = [
+  "id",
+  "sessionId",
+  "exerciseId",
+  "exerciseName",
+  "setNumber",
+  "reps",
+  "weightKg",
+  "rpe",
+  "durationSeconds",
+  "distanceMeters",
+  "isWarmup",
+  "isDropSet",
+  "isFailure",
+  "createdAt",
+] as const;
 
 export async function createExerciseSet(input: CreateExerciseSetInput): Promise<ExerciseSet> {
-  const [set] = await db
-    .insert(fitnessExerciseSets)
-    .values(input)
-    .returning(setColumns);
-  return set;
+  await connectToDatabase();
+  const doc = await FitnessExerciseSetModel.create(input);
+  return mapSet(doc.toObject());
 }
 
 export async function createExerciseSets(inputs: CreateExerciseSetInput[]): Promise<ExerciseSet[]> {
-  return db.insert(fitnessExerciseSets).values(inputs).returning(setColumns);
+  await connectToDatabase();
+  const docs = await FitnessExerciseSetModel.insertMany(inputs);
+  return docs.map((doc) => mapSet(doc.toObject()));
 }
 
 export async function getExerciseSets(sessionId: string): Promise<ExerciseSet[]> {
-  return db
-    .select(setColumns)
-    .from(fitnessExerciseSets)
-    .where(eq(fitnessExerciseSets.sessionId, sessionId))
-    .orderBy(asc(fitnessExerciseSets.sortOrder));
+  await connectToDatabase();
+  const docs = await FitnessExerciseSetModel.find({ sessionId })
+    .sort({ sortOrder: 1 })
+    .lean();
+  return docs.map(mapSet);
 }
 
 export async function deleteExerciseSetsBySession(sessionId: string): Promise<void> {
-  await db.delete(fitnessExerciseSets).where(eq(fitnessExerciseSets.sessionId, sessionId));
+  await connectToDatabase();
+  await FitnessExerciseSetModel.deleteMany({ sessionId });
 }
 
-// === PERSONAL RECORDS ===
+// ─── Personal Records ─────────────────────────────────────────────
 
-export const recordColumns = {
-  id: fitnessPersonalRecords.id,
-  userId: fitnessPersonalRecords.userId,
-  exerciseId: fitnessPersonalRecords.exerciseId,
-  recordType: fitnessPersonalRecords.recordType,
-  value: fitnessPersonalRecords.value,
-  reps: fitnessPersonalRecords.reps,
-  sessionId: fitnessPersonalRecords.sessionId,
-  achievedAt: fitnessPersonalRecords.achievedAt,
-  notes: fitnessPersonalRecords.notes,
-  createdAt: fitnessPersonalRecords.createdAt,
-};
+export const recordColumns = [
+  "id",
+  "userId",
+  "exerciseId",
+  "type",
+  "value",
+  "reps",
+  "sessionId",
+  "achievedAt",
+  "createdAt",
+] as const;
 
 export async function getPersonalRecords(userId: string): Promise<PersonalRecord[]> {
-  return db
-    .select(recordColumns)
-    .from(fitnessPersonalRecords)
-    .where(eq(fitnessPersonalRecords.userId, userId))
-    .orderBy(desc(fitnessPersonalRecords.achievedAt));
+  await connectToDatabase();
+  const docs = await FitnessPersonalRecordModel.find({ userId })
+    .sort({ achievedAt: -1 })
+    .lean();
+  return docs.map(mapRecord);
 }
 
 export async function getPersonalRecordForExercise(
@@ -568,66 +719,67 @@ export async function getPersonalRecordForExercise(
   exerciseId: string,
   recordType: string,
 ): Promise<PersonalRecord | null> {
-  const [record] = await db
-    .select(recordColumns)
-    .from(fitnessPersonalRecords)
-    .where(and(
-      eq(fitnessPersonalRecords.userId, userId),
-      eq(fitnessPersonalRecords.exerciseId, exerciseId),
-      eq(fitnessPersonalRecords.recordType, recordType as any),
-    ))
-    .limit(1);
-  return record ?? null;
+  await connectToDatabase();
+  const doc = await FitnessPersonalRecordModel.findOne({ userId, exerciseId, type: recordType }).lean();
+  return doc ? mapRecord(doc) : null;
 }
 
 export async function upsertPersonalRecord(
   userId: string,
   exerciseId: string,
   recordType: string,
-  value: string,
+  value: number,
   reps: number | null,
   sessionId: string | null,
 ): Promise<PersonalRecord> {
-  const [record] = await db
-    .insert(fitnessPersonalRecords)
-    .values({ userId, exerciseId, recordType: recordType as any, value, reps, sessionId })
-    .onConflictDoUpdate({
-      target: [fitnessPersonalRecords.userId, fitnessPersonalRecords.exerciseId, fitnessPersonalRecords.recordType],
-      set: { value, reps, sessionId, achievedAt: new Date() },
-    })
-    .returning(recordColumns);
-  return record;
+  await connectToDatabase();
+  const doc = await FitnessPersonalRecordModel.findOneAndUpdate(
+    { userId, exerciseId, type: recordType },
+    {
+      $set: {
+        value,
+        reps,
+        sessionId,
+        achievedAt: new Date(),
+      },
+    },
+    { new: true, upsert: true },
+  ).lean();
+  return mapRecord(doc);
 }
 
-// === AGGREGATIONS ===
+// ─── Aggregations ─────────────────────────────────────────────────
 
 export async function getWeeklyWorkoutMinutes(userId: string): Promise<number> {
+  await connectToDatabase();
   const startOfWeek = new Date();
   startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-  const startStr = startOfWeek.toISOString().slice(0, 10);
+  startOfWeek.setHours(0, 0, 0, 0);
 
-  const [result] = await db
-    .select({
-      total: sql<number>`COALESCE(SUM(${fitnessWorkoutSessions.durationMinutes}), 0)`,
-    })
-    .from(fitnessWorkoutSessions)
-    .where(and(
-      eq(fitnessWorkoutSessions.userId, userId),
-      gte(fitnessWorkoutSessions.date, startStr),
-      eq(fitnessWorkoutSessions.isCompleted, true),
-    ));
-  return result?.total ?? 0;
+  const result = await FitnessWorkoutSessionModel.aggregate([
+    {
+      $match: {
+        userId,
+        date: { $gte: startOfWeek },
+        isCompleted: true,
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: { $ifNull: ["$durationMinutes", 0] } },
+      },
+    },
+  ]);
+  return result[0]?.total ?? 0;
 }
 
 export async function getWorkoutStreak(userId: string): Promise<number> {
-  const sessions = await db
-    .select({ date: fitnessWorkoutSessions.date })
-    .from(fitnessWorkoutSessions)
-    .where(and(
-      eq(fitnessWorkoutSessions.userId, userId),
-      eq(fitnessWorkoutSessions.isCompleted, true),
-    ))
-    .orderBy(desc(fitnessWorkoutSessions.date));
+  await connectToDatabase();
+  const sessions = await FitnessWorkoutSessionModel.find({ userId, isCompleted: true })
+    .select({ date: 1 })
+    .sort({ date: -1 })
+    .lean();
 
   if (sessions.length === 0) return 0;
 
@@ -636,10 +788,11 @@ export async function getWorkoutStreak(userId: string): Promise<number> {
   let expectedDate = today;
 
   for (const session of sessions) {
-    if (session.date === expectedDate || session.date === getPreviousDate(expectedDate)) {
+    const sessionDate = new Date(session.date).toISOString().slice(0, 10);
+    if (sessionDate === expectedDate || sessionDate === getPreviousDate(expectedDate)) {
       streak++;
-      expectedDate = session.date;
-    } else if (session.date < expectedDate) {
+      expectedDate = sessionDate;
+    } else if (sessionDate < expectedDate) {
       break;
     }
   }
@@ -654,18 +807,25 @@ function getPreviousDate(dateStr: string): string {
 }
 
 export async function getSessionVolume(sessionId: string): Promise<number> {
-  const [result] = await db
-    .select({
-      total: sql<number>`COALESCE(SUM(
-        CASE WHEN ${fitnessExerciseSets.isWarmup} = false
-          THEN ${fitnessExerciseSets.weightKg}::numeric * ${fitnessExerciseSets.reps}
-          ELSE 0 END
-      ), 0)`,
-    })
-    .from(fitnessExerciseSets)
-    .where(eq(fitnessExerciseSets.sessionId, sessionId));
-
-  return Math.round(result?.total ?? 0);
+  await connectToDatabase();
+  const result = await FitnessExerciseSetModel.aggregate([
+    { $match: { sessionId } },
+    {
+      $group: {
+        _id: null,
+        total: {
+          $sum: {
+            $cond: [
+              { $eq: ["$isWarmup", false] },
+              { $multiply: [{ $ifNull: ["$weightKg", 0] }, { $ifNull: ["$reps", 0] }] },
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+  return Math.round(result[0]?.total ?? 0);
 }
 
 export type DashboardStats = {

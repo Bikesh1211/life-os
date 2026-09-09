@@ -221,10 +221,10 @@ export async function getDashboardStats(userId: string) {
   const entries = await getEntriesForUser(userId);
   const now = dayjs();
   const total = entries.length;
-  const today = entries.filter((e) => dayjs(e.dateLearned).isAfter(now.startOf("day")));
-  const thisWeek = entries.filter((e) => dayjs(e.dateLearned).isAfter(now.subtract(7, "day")));
-  const thisMonth = entries.filter((e) => dayjs(e.dateLearned).isAfter(now.subtract(30, "day")));
-  const totalHours = entries.reduce((sum, e) => sum + (e.timeSpent ?? 0), 0) / 60;
+  const today = entries.filter((e: any) => dayjs(e.dateLearned).isAfter(now.startOf("day")));
+  const thisWeek = entries.filter((e: any) => dayjs(e.dateLearned).isAfter(now.subtract(7, "day")));
+  const thisMonth = entries.filter((e: any) => dayjs(e.dateLearned).isAfter(now.subtract(30, "day")));
+  const totalHours = entries.reduce((sum: number, e: any) => sum + (e.timeSpent ?? 0), 0) / 60;
 
   const subjectCounts: Record<string, number> = {};
   for (const e of entries) {

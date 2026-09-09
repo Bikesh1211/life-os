@@ -1,70 +1,122 @@
-import { db } from "@/core/database";
-import { tags, transactionTags } from "../schema/tags";
-import { eq, and, isNull } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { ExpenseTag as ExpenseTagModel, TransactionTag as TransactionTagModel } from "@/lib/models/expenses";
 
-export type Tag = typeof tags.$inferSelect;
-export type CreateTagInput = typeof tags.$inferInsert;
-export type UpdateTagInput = Partial<Omit<CreateTagInput, "id" | "userId">>;
+export type Tag = {
+  id: string;
+  userId: string;
+  name: string;
+  color?: string;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-export async function createTag(input: CreateTagInput) {
-  const [tag] = await db.insert(tags).values(input).returning();
-  return tag;
+export type CreateTagInput = {
+  userId: string;
+  name: string;
+  color?: string;
+};
+
+export type UpdateTagInput = Partial<Omit<CreateTagInput, "userId">>;
+
+function mapTag(doc: any): Tag {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    name: doc.name,
+    color: doc.color,
+    deletedAt: doc.deletedAt,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
 }
 
-export async function getTagsForUser(userId: string) {
-  return db
-    .select()
-    .from(tags)
-    .where(and(eq(tags.userId, userId), isNull(tags.deletedAt)))
-    .orderBy(tags.name);
+export async function createTag(input: CreateTagInput): Promise<Tag> {
+  await connectToDatabase();
+  const doc = await ExpenseTagModel.create({
+    userId: input.userId,
+    name: input.name,
+    color: input.color,
+  });
+  return mapTag(doc);
 }
 
-export async function getTagById(id: string, userId: string) {
-  const [tag] = await db
-    .select()
-    .from(tags)
-    .where(and(eq(tags.id, id), eq(tags.userId, userId), isNull(tags.deletedAt)));
-  return tag ?? null;
+export async function getTagsForUser(userId: string): Promise<Tag[]> {
+  await connectToDatabase();
+  const docs = await ExpenseTagModel.find({ userId, deletedAt: null })
+    .sort({ name: 1 })
+    .lean();
+  return docs.map(mapTag);
 }
 
-export async function updateTag(id: string, userId: string, input: UpdateTagInput) {
-  const [tag] = await db
-    .update(tags)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(tags.id, id), eq(tags.userId, userId), isNull(tags.deletedAt)))
-    .returning();
-  return tag ?? null;
+export async function getTagById(id: string, userId: string): Promise<Tag | null> {
+  await connectToDatabase();
+  const doc = await ExpenseTagModel.findOne({
+    _id: id,
+    userId,
+    deletedAt: null,
+  }).lean();
+  return doc ? mapTag(doc) : null;
 }
 
-export async function deleteTag(id: string, userId: string) {
-  const [tag] = await db
-    .update(tags)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(tags.id, id), eq(tags.userId, userId), isNull(tags.deletedAt)))
-    .returning();
-  return tag ?? null;
+export async function updateTag(
+  id: string,
+  userId: string,
+  input: UpdateTagInput,
+): Promise<Tag | null> {
+  await connectToDatabase();
+  const doc = await ExpenseTagModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapTag(doc) : null;
 }
 
-export async function addTagToTransaction(transactionId: string, tagId: string) {
-  const [relation] = await db
-    .insert(transactionTags)
-    .values({ transactionId, tagId })
-    .returning();
-  return relation;
+export async function deleteTag(id: string, userId: string): Promise<Tag | null> {
+  await connectToDatabase();
+  const doc = await ExpenseTagModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { deletedAt: new Date(), updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapTag(doc) : null;
 }
 
-export async function removeTagFromTransaction(transactionId: string, tagId: string) {
-  await db
-    .delete(transactionTags)
-    .where(
-      and(eq(transactionTags.transactionId, transactionId), eq(transactionTags.tagId, tagId)),
-    );
+export async function addTagToTransaction(
+  transactionId: string,
+  tagId: string,
+): Promise<{ id: string; transactionId: string; tagId: string }> {
+  await connectToDatabase();
+  const doc = await TransactionTagModel.findOneAndUpdate(
+    { transactionId, tagId },
+    { $setOnInsert: { transactionId, tagId } },
+    { upsert: true, new: true },
+  ).lean();
+  return {
+    id: doc._id.toString(),
+    transactionId: doc.transactionId.toString(),
+    tagId: doc.tagId.toString(),
+  };
 }
 
-export async function getTagsForTransaction(transactionId: string) {
-  return db
-    .select({ tag: tags })
-    .from(transactionTags)
-    .innerJoin(tags, eq(transactionTags.tagId, tags.id))
-    .where(eq(transactionTags.transactionId, transactionId));
+export async function removeTagFromTransaction(
+  transactionId: string,
+  tagId: string,
+): Promise<void> {
+  await connectToDatabase();
+  await TransactionTagModel.deleteOne({ transactionId, tagId });
+}
+
+export async function getTagsForTransaction(
+  transactionId: string,
+): Promise<Tag[]> {
+  await connectToDatabase();
+
+  const results = await TransactionTagModel.find({ transactionId }).lean();
+  if (results.length === 0) return [];
+
+  const tagIds = results.map((r: any) => r.tagId);
+  const tagDocs = await ExpenseTagModel.find({ _id: { $in: tagIds } }).lean();
+  return tagDocs.map(mapTag);
 }

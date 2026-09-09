@@ -1,6 +1,17 @@
 import { z } from "zod";
 import * as repo from "./repository";
-import type { BlueprintPhase, BlueprintSkill } from "./schema";
+
+type BlueprintPhase = {
+  name: string;
+  description: string;
+  milestones: { title: string; description: string }[];
+};
+
+type BlueprintSkill = {
+  name: string;
+  description?: string;
+  aliases?: string[];
+};
 
 /* ── Zod schemas ── */
 
@@ -279,7 +290,7 @@ export async function pickField(userId: string, slug: string) {
 
   if (phases.length > 0) {
     const createdPhases = await repo.createPhases(
-      phases.map((p, i) => ({
+      phases.map((p: any, i: number) => ({
         roadmapId: roadmap.id,
         name: p.name,
         description: p.description,
@@ -287,8 +298,8 @@ export async function pickField(userId: string, slug: string) {
       })),
     );
 
-    const milestoneInputs = phases.flatMap((p, pi) =>
-      (p.milestones ?? []).map((m, mi) => ({
+    const milestoneInputs = phases.flatMap((p: any, pi: number) =>
+      (p.milestones ?? []).map((m: any, mi: number) => ({
         roadmapId: roadmap.id,
         phaseId: createdPhases[pi].id,
         title: m.title,
@@ -450,17 +461,17 @@ async function buildEvidenceSources(userId: string, evidenceBySkill: Record<stri
   const all = Object.values(evidenceBySkill).flat();
   if (all.length === 0) return {};
 
-  const knowledgeIds = all.filter((e) => e.entityType === "knowledge_entry").map((e) => e.entityId);
-  const prepIds = all.filter((e) => e.entityType === "interview_prep").map((e) => e.entityId);
-  const projectIds = all.filter((e) => e.entityType === "portfolio_project").map((e) => e.entityId);
+  const knowledgeIds = all.filter((e: any) => e.entityType === "knowledge_entry").map((e: any) => e.entityId);
+  const prepIds = all.filter((e: any) => e.entityType === "interview_prep").map((e: any) => e.entityId);
+  const projectIds = all.filter((e: any) => e.entityType === "portfolio_project").map((e: any) => e.entityId);
 
   const sources: Record<string, number> = {};
 
   if (knowledgeIds.length > 0) {
     const { getKnowledgeEntries } = await import("@/modules/knowledge");
     const entries = await getKnowledgeEntries(userId);
-    for (const ev of all.filter((e) => e.entityType === "knowledge_entry")) {
-      const entry = entries.find((x) => x.id === ev.entityId);
+    for (const ev of all.filter((e: any) => e.entityType === "knowledge_entry")) {
+      const entry = entries.find((x: any) => x.id === ev.entityId);
       sources[ev.id] = entry?.masteryLevel ?? 0;
     }
   }
@@ -468,22 +479,23 @@ async function buildEvidenceSources(userId: string, evidenceBySkill: Record<stri
   if (prepIds.length > 0) {
     const { getInterviewPrepItems } = await import("@/modules/career");
     const items = await getInterviewPrepItems(userId);
-    for (const ev of all.filter((e) => e.entityType === "interview_prep")) {
-      const item = items.find((x) => x.id === ev.entityId);
+    for (const ev of all.filter((e: any) => e.entityType === "interview_prep")) {
+      const item = items.find((x: any) => x.id === ev.entityId);
       if (!item) continue;
-      sources[ev.id] = item.isCompleted ? item.confidenceLevel : Math.round(item.confidenceLevel / 2);
+      const isCompleted = item.completionStatus === "completed" || item.completionStatus === "mastered";
+      sources[ev.id] = isCompleted ? (item.confidenceLevel ?? 5) : Math.round((item.confidenceLevel ?? 5) / 2);
     }
   }
 
   if (projectIds.length > 0) {
     const { getProjects } = await import("@/modules/career");
     const projects = await getProjects(userId);
-    for (const ev of all.filter((e) => e.entityType === "portfolio_project")) {
-      if (projects.some((x) => x.id === ev.entityId)) sources[ev.id] = 8;
+    for (const ev of all.filter((e: any) => e.entityType === "portfolio_project")) {
+      if (projects.some((x: any) => x.id === ev.entityId)) sources[ev.id] = 8;
     }
   }
 
-  for (const ev of all.filter((e) => e.entityType === "milestone")) {
+  for (const ev of all.filter((e: any) => e.entityType === "milestone")) {
     // milestone evidence strength is resolved by the caller from completed state;
     // default to 10 when present (already confirmed by the user).
     sources[ev.id] = 10;
@@ -539,7 +551,7 @@ export async function findEvidenceSuggestions(userId: string, skillId: string, r
         entityId: item.id,
         label: item.question,
         match: `Matches "${matched}" in interview prep`,
-        strength: item.isCompleted ? item.confidenceLevel : Math.round(item.confidenceLevel / 2),
+        strength: (item.completionStatus === "completed" || item.completionStatus === "mastered") ? (item.confidenceLevel ?? 5) : Math.round((item.confidenceLevel ?? 5) / 2),
       });
     }
   }
@@ -572,7 +584,7 @@ export async function addSkillEvidence(userId: string, input: z.infer<typeof add
   if (!skill) throw new Error("Unknown skill");
   return repo.addEvidence({
     skillId: input.skillId,
-    entityType: input.entityType,
+    entityType: input.entityType as any,
     entityId: input.entityId,
   });
 }

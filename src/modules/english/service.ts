@@ -99,7 +99,7 @@ export async function submitQuizAnswer(params: {
         reviewCount,
         lastReviewedAt: new Date(),
         nextReviewAt: new Date(Date.now() + nextReviewMs),
-      });
+      } as any);
     }
   }
 

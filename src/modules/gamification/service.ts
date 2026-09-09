@@ -1,12 +1,6 @@
 import * as repo from "./repository";
 import { SEED_ACHIEVEMENTS, SEED_BADGES, generateChallenges } from "./seed";
-import { db } from "@/core/database";
-import { habitCompletions } from "@/modules/habits/schema";
-import { tasks } from "@/modules/tasks/schema";
-import { routineExecutions } from "@/modules/routines/schema";
-import { integrityCommitments } from "@/modules/integrity/schema";
-import { wellnessHabitEnrichment } from "@/modules/wellness/schema";
-import { and, eq, count, gte, lte, isNull } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
 
 export type LevelInfo = {
   level: number;
@@ -92,41 +86,26 @@ type UserCounts = {
 };
 
 async function getUserCompletionCounts(userId: string): Promise<UserCounts> {
-  const [habitResult] = await db
-    .select({ value: count() })
-    .from(habitCompletions)
-    .where(eq(habitCompletions.userId, userId));
+  await connectToDatabase();
+  const { HabitCompletion } = await import("@/lib/models/habits");
+  const { Task } = await import("@/lib/models/tasks");
+  const { RoutineExecutionModel } = await import("@/lib/models/routines");
+  const { IntegrityCommitment } = await import("@/lib/models/integrity");
+  const { WellnessHabitEnrichment } = await import("@/lib/models/wellness");
 
-  const [taskResult] = await db
-    .select({ value: count() })
-    .from(tasks)
-    .where(and(eq(tasks.userId, userId), eq(tasks.status, "done" as any)));
+  const [habitCount, taskCount, routineCount, commitmentCount] = await Promise.all([
+    HabitCompletion.countDocuments({ userId }),
+    Task.countDocuments({ userId, status: "done" }),
+    RoutineExecutionModel.countDocuments({ userId, status: "completed" }),
+    IntegrityCommitment.countDocuments({ userId, deletedAt: null, status: "completed_verified" }),
+  ]);
 
-  const [routineResult] = await db
-    .select({ value: count() })
-    .from(routineExecutions)
-    .where(
-      and(
-        eq(routineExecutions.userId, userId),
-        eq(routineExecutions.status, "completed" as any),
-      ),
-    );
-
-  const [commitmentResult] = await db
-    .select({ value: count() })
-    .from(integrityCommitments)
-    .where(
-      and(
-        eq(integrityCommitments.userId, userId),
-        isNull(integrityCommitments.deletedAt),
-        eq(integrityCommitments.status, "completed_verified" as any),
-      ),
-    );
-
-  const activeCommitments = await db
-    .select({ status: integrityCommitments.status, difficulty: integrityCommitments.difficulty })
-    .from(integrityCommitments)
-    .where(and(eq(integrityCommitments.userId, userId), isNull(integrityCommitments.deletedAt)));
+  const activeCommitments = await IntegrityCommitment.find({
+    userId,
+    deletedAt: null,
+  })
+    .select({ status: 1, difficulty: 1 })
+    .lean();
 
   let integrityScore = 100;
   if (activeCommitments.length > 0) {
@@ -140,35 +119,43 @@ async function getUserCompletionCounts(userId: string): Promise<UserCounts> {
     integrityScore = Math.max(0, Math.min(100, Math.round(100 - penalty)));
   }
 
-  const [groomingResult] = await db
-    .select({ value: count() })
-    .from(habitCompletions)
-    .innerJoin(
-      wellnessHabitEnrichment,
-      and(
-        eq(habitCompletions.habitId, wellnessHabitEnrichment.habitId),
-        eq(wellnessHabitEnrichment.wellnessType, "grooming"),
-      ),
-    )
-    .where(eq(habitCompletions.userId, userId));
+  // Grooming completions: count completions for habits that have grooming enrichment
+  const groomingEnrichments = await WellnessHabitEnrichment.find({
+    userId,
+    wellnessType: "grooming",
+  })
+    .select({ habitId: 1 })
+    .lean();
+
+  let groomingCompletions = 0;
+  if (groomingEnrichments.length > 0) {
+    const groomingHabitIds = groomingEnrichments.map((e) => e.habitId);
+    groomingCompletions = await HabitCompletion.countDocuments({
+      userId,
+      habitId: { $in: groomingHabitIds },
+    });
+  }
 
   return {
-    habitCompletions: Number(habitResult?.value ?? 0),
-    taskCompletions: Number(taskResult?.value ?? 0),
-    routineCompletions: Number(routineResult?.value ?? 0),
-    commitmentCompletions: Number(commitmentResult?.value ?? 0),
+    habitCompletions: habitCount,
+    taskCompletions: taskCount,
+    routineCompletions: routineCount,
+    commitmentCompletions: commitmentCount,
     integrityScore,
-    groomingCompletions: Number(groomingResult?.value ?? 0),
+    groomingCompletions,
   };
 }
 
 async function getStreakInfo(userId: string) {
-  const completions = await db
-    .select({ completedDate: habitCompletions.completedDate })
-    .from(habitCompletions)
-    .where(eq(habitCompletions.userId, userId))
-    .orderBy(habitCompletions.completedDate)
-    .then((rows) => rows.map((r) => r.completedDate));
+  await connectToDatabase();
+  const { HabitCompletion } = await import("@/lib/models/habits");
+
+  const rows = await HabitCompletion.find({ userId })
+    .select({ completedDate: 1, _id: 0 })
+    .sort({ completedDate: 1 })
+    .lean();
+
+  const completions = rows.map((r: any) => r.completedDate);
 
   if (completions.length === 0) {
     return { currentStreak: 0, longestStreak: 0 };
@@ -215,42 +202,29 @@ async function computeConsistencyScore(
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-  const [recentHabits] = await db
-    .select({ value: count() })
-    .from(habitCompletions)
-    .where(
-      and(
-        eq(habitCompletions.userId, userId),
-        gte(habitCompletions.createdAt!, thirtyDaysAgo),
-      ),
-    );
+  await connectToDatabase();
+  const { HabitCompletion } = await import("@/lib/models/habits");
+  const { Task } = await import("@/lib/models/tasks");
+  const { RoutineExecutionModel } = await import("@/lib/models/routines");
 
-  const [recentTasks] = await db
-    .select({ value: count() })
-    .from(tasks)
-    .where(
-      and(
-        eq(tasks.userId, userId),
-        eq(tasks.status, "done" as any),
-        gte(tasks.updatedAt!, thirtyDaysAgo),
-      ),
-    );
+  const [recentHabits, recentTasks, recentRoutines] = await Promise.all([
+    HabitCompletion.countDocuments({
+      userId,
+      createdAt: { $gte: thirtyDaysAgo },
+    }),
+    Task.countDocuments({
+      userId,
+      status: "done",
+      updatedAt: { $gte: thirtyDaysAgo },
+    }),
+    RoutineExecutionModel.countDocuments({
+      userId,
+      status: "completed",
+      createdAt: { $gte: thirtyDaysAgo },
+    }),
+  ]);
 
-  const [recentRoutines] = await db
-    .select({ value: count() })
-    .from(routineExecutions)
-    .where(
-      and(
-        eq(routineExecutions.userId, userId),
-        eq(routineExecutions.status, "completed" as any),
-        gte(routineExecutions.createdAt!, thirtyDaysAgo),
-      ),
-    );
-
-  const recentTotal =
-    Number(recentHabits?.value ?? 0) +
-    Number(recentTasks?.value ?? 0) +
-    Number(recentRoutines?.value ?? 0);
+  const recentTotal = recentHabits + recentTasks + recentRoutines;
 
   return Math.min(100, Math.round((recentTotal / Math.max(1, totalActions * 0.3)) * 100));
 }
@@ -311,8 +285,8 @@ export async function syncUser(userId: string) {
     await repo.createXpTransaction({
       userId,
       eventType: "habit_completed",
-      eventSource: "sync",
-      xpAmount: newHabitXp,
+      entityId: "sync",
+      amount: newHabitXp,
       description: `XP for ${counts.habitCompletions} habit completions`,
     });
     totalXp += newHabitXp;
@@ -322,8 +296,8 @@ export async function syncUser(userId: string) {
     await repo.createXpTransaction({
       userId,
       eventType: "task_completed",
-      eventSource: "sync",
-      xpAmount: newTaskXp,
+      entityId: "sync",
+      amount: newTaskXp,
       description: `XP for ${counts.taskCompletions} task completions`,
     });
     totalXp += newTaskXp;
@@ -333,8 +307,8 @@ export async function syncUser(userId: string) {
     await repo.createXpTransaction({
       userId,
       eventType: "routine_completed",
-      eventSource: "sync",
-      xpAmount: newRoutineXp,
+      entityId: "sync",
+      amount: newRoutineXp,
       description: `XP for ${counts.routineCompletions} routine completions`,
     });
     totalXp += newRoutineXp;
@@ -344,11 +318,10 @@ export async function syncUser(userId: string) {
 
   await repo.upsertUserMetrics(userId, {
     totalXp,
-    currentLevel: levelInfo.level,
+    level: levelInfo.level,
     currentStreak: streakInfo.currentStreak,
     longestStreak: streakInfo.longestStreak,
     consistencyScore,
-    lastSyncedAt: new Date(),
   });
 
   const allAchievements = await repo.getAchievements();
@@ -380,7 +353,7 @@ export async function syncUser(userId: string) {
       case "challenge_completed": {
         const completedChallenges = await repo
           .getUserChallenges(userId)
-          .then((c) => c.filter((ch) => ch.isCompleted));
+          .then((c) => c.filter((ch) => ch.completed));
         met = completedChallenges.length >= achievement.criteriaValue;
         break;
       }
@@ -401,8 +374,8 @@ export async function syncUser(userId: string) {
         await repo.createXpTransaction({
           userId,
           eventType: "achievement_bonus",
-          eventSource: achievement.id,
-          xpAmount: achievement.xpReward,
+          entityId: achievement.id,
+          amount: achievement.xpReward,
           description: `Achievement unlocked: ${achievement.name}`,
         });
         totalXp += achievement.xpReward;
@@ -449,16 +422,13 @@ export async function syncUser(userId: string) {
 
     if (met) {
       await repo.awardBadge(userId, badge.id);
-      if (badge.xpReward > 0) {
-        await repo.createXpTransaction({
-          userId,
-          eventType: "badge_bonus",
-          eventSource: badge.id,
-          xpAmount: badge.xpReward,
-          description: `Badge earned: ${badge.name}`,
-        });
-        totalXp += badge.xpReward;
-      }
+      await repo.createXpTransaction({
+        userId,
+        eventType: "badge_bonus",
+        entityId: badge.id,
+        amount: 10,
+        description: `Badge earned: ${badge.name}`,
+      });
       unlockedBadges.push(badge);
     }
   }
@@ -467,7 +437,7 @@ export async function syncUser(userId: string) {
     const finalLevelInfo = getLevelInfo(totalXp);
     await repo.upsertUserMetrics(userId, {
       totalXp,
-      currentLevel: finalLevelInfo.level,
+      level: finalLevelInfo.level,
     });
   }
 
@@ -483,30 +453,30 @@ export async function syncUser(userId: string) {
 
   for (const challenge of activeChallenges) {
     let progress = 0;
-    switch (challenge.criteriaType) {
+    switch (challenge.type) {
       case "habit_count":
-        progress = Math.min(challenge.criteriaValue, counts.habitCompletions);
+        progress = Math.min(challenge.targetValue, counts.habitCompletions);
         break;
       case "task_count":
-        progress = Math.min(challenge.criteriaValue, counts.taskCompletions);
+        progress = Math.min(challenge.targetValue, counts.taskCompletions);
         break;
       case "routine_count":
-        progress = Math.min(challenge.criteriaValue, counts.routineCompletions);
+        progress = Math.min(challenge.targetValue, counts.routineCompletions);
         break;
       case "grooming_completions":
-        progress = Math.min(challenge.criteriaValue, counts.groomingCompletions);
+        progress = Math.min(challenge.targetValue, counts.groomingCompletions);
         break;
       default:
         break;
     }
 
-    const isCompleted = progress >= challenge.criteriaValue;
+    const isCompleted = progress >= challenge.targetValue;
     const existing = userChallengeMap.get(challenge.id);
-    const wasJustCompleted = isCompleted && (!existing || !existing.isCompleted);
+    const wasJustCompleted = isCompleted && (!existing || !existing.completed);
 
     await repo.upsertUserChallenge(userId, challenge.id, {
       progress,
-      isCompleted,
+      completed: isCompleted,
       completedAt: wasJustCompleted ? new Date() : existing?.completedAt ?? null,
     });
 
@@ -514,9 +484,9 @@ export async function syncUser(userId: string) {
       await repo.createXpTransaction({
         userId,
         eventType: "challenge_completed",
-        eventSource: challenge.id,
-        xpAmount: challenge.xpReward,
-        description: `Challenge completed: ${challenge.name}`,
+        entityId: challenge.id,
+        amount: challenge.xpReward,
+        description: `Challenge completed: ${challenge.title}`,
       });
       totalXp += challenge.xpReward;
     }
@@ -528,7 +498,7 @@ export async function syncUser(userId: string) {
     const finalLevelInfo = getLevelInfo(totalXp);
     await repo.upsertUserMetrics(userId, {
       totalXp,
-      currentLevel: finalLevelInfo.level,
+      level: finalLevelInfo.level,
     });
   }
 
@@ -579,12 +549,12 @@ export async function getProfile(userId: string) {
     },
     challenges: activeChallenges.map((challenge) => {
       const userChallenge = userChallengeMap.get(challenge.id);
-      return {
-        ...challenge,
-        progress: userChallenge?.progress ?? 0,
-        isCompleted: userChallenge?.isCompleted ?? false,
-        completedAt: userChallenge?.completedAt ?? null,
-      };
+    return {
+      ...challenge,
+      progress: userChallenge?.progress ?? 0,
+      completed: userChallenge?.completed ?? false,
+      completedAt: userChallenge?.completedAt ?? null,
+    };
     }),
   };
 }
@@ -630,7 +600,7 @@ export async function getChallenges(userId: string) {
   return active.map((challenge) => ({
     ...challenge,
     progress: userMap.get(challenge.id)?.progress ?? 0,
-    isCompleted: userMap.get(challenge.id)?.isCompleted ?? false,
+    completed: userMap.get(challenge.id)?.completed ?? false,
     completedAt: userMap.get(challenge.id)?.completedAt ?? null,
   }));
 }
@@ -652,8 +622,8 @@ export async function awardXp(
   await repo.createXpTransaction({
     userId,
     eventType,
-    eventSource,
-    xpAmount: amount,
+    entityId: eventSource,
+    amount,
     description,
   });
 
@@ -663,7 +633,7 @@ export async function awardXp(
 
   await repo.upsertUserMetrics(userId, {
     totalXp: newTotalXp,
-    currentLevel: levelInfo.level,
+    level: levelInfo.level,
   });
 
   return { xpAmount: amount, totalXp: newTotalXp, levelInfo };

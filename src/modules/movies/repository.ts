@@ -1,280 +1,550 @@
-import { db } from "@/core/database";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  moviesMedia, moviesPeople,
-  movieFavorites, movieRatings, movieWatchlist,
-  movieMemories, movieQuotes,
-  movieCollections, movieCollectionItems,
-} from "./schema";
+  MovieMediaModel,
+  MoviePersonModel,
+  MovieFavoriteModel,
+  MovieRatingModel,
+  MovieWatchlistModel,
+  MovieQuoteModel,
+  MovieCollectionModel,
+  MovieCollectionItemModel,
+  MovieMemoryModel,
+} from "@/lib/models/movies";
 
-// === REFERENCE DATA ===
-export async function upsertMedia(input: typeof moviesMedia.$inferInsert) {
-  const existing = await db.select().from(moviesMedia).where(eq(moviesMedia.tmdbId, input.tmdbId)).limit(1);
-  if (existing.length > 0) {
-    const [updated] = await db.update(moviesMedia).set({ ...input, updatedAt: new Date() }).where(eq(moviesMedia.tmdbId, input.tmdbId)).returning();
-    return updated;
-  }
-  const [created] = await db.insert(moviesMedia).values(input).returning();
-  return created;
+// ─── Helpers ──────────────────────────────────────────────────────
+
+function mapId(doc: any): any {
+  if (!doc) return doc;
+  if (Array.isArray(doc)) return doc.map(mapId);
+  const { _id, ...rest } = doc;
+  return { id: _id?.toString() ?? rest.id, ...rest };
 }
 
-export async function upsertPerson(input: typeof moviesPeople.$inferInsert) {
-  const existing = await db.select().from(moviesPeople).where(eq(moviesPeople.tmdbId, input.tmdbId)).limit(1);
-  if (existing.length > 0) {
-    const [updated] = await db.update(moviesPeople).set({ ...input, updatedAt: new Date() }).where(eq(moviesPeople.tmdbId, input.tmdbId)).returning();
-    return updated;
+// === REFERENCE DATA ===
+
+export async function upsertMedia(input: {
+  tmdbId: string;
+  mediaType: string;
+  title: string;
+  overview?: string;
+  posterPath?: string;
+  backdropPath?: string;
+  releaseDate?: Date;
+  genres?: string[];
+  voteAverage?: number;
+  runtime?: number;
+  episodeRuntime?: number;
+  seasons?: number;
+  episodes?: number;
+}) {
+  await connectToDatabase();
+  const existing = await MovieMediaModel.findOne({ tmdbId: input.tmdbId }).lean();
+  if (existing) {
+    const doc = await MovieMediaModel.findOneAndUpdate(
+      { tmdbId: input.tmdbId },
+      { ...input, updatedAt: new Date() },
+      { new: true },
+    ).lean();
+    return mapId(doc);
   }
-  const [created] = await db.insert(moviesPeople).values(input).returning();
-  return created;
+  const doc = await MovieMediaModel.create(input);
+  return mapId(doc.toObject());
+}
+
+export async function upsertPerson(input: {
+  tmdbId: string;
+  name: string;
+  profilePath?: string;
+  knownForDepartment?: string;
+}) {
+  await connectToDatabase();
+  const existing = await MoviePersonModel.findOne({ tmdbId: input.tmdbId }).lean();
+  if (existing) {
+    const doc = await MoviePersonModel.findOneAndUpdate(
+      { tmdbId: input.tmdbId },
+      { ...input, updatedAt: new Date() },
+      { new: true },
+    ).lean();
+    return mapId(doc);
+  }
+  const doc = await MoviePersonModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getMediaByTmdbId(tmdbId: string) {
-  const [media] = await db.select().from(moviesMedia).where(eq(moviesMedia.tmdbId, tmdbId)).limit(1);
-  return media ?? null;
+  await connectToDatabase();
+  const doc = await MovieMediaModel.findOne({ tmdbId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getMediaByTmdbIds(tmdbIds: string[]) {
   if (tmdbIds.length === 0) return [];
-  return db.select().from(moviesMedia).where(inArray(moviesMedia.tmdbId, tmdbIds));
+  await connectToDatabase();
+  const docs = await MovieMediaModel.find({ tmdbId: { $in: tmdbIds } }).lean();
+  return mapId(docs);
 }
 
 export async function getPersonByTmdbId(tmdbId: string) {
-  const [person] = await db.select().from(moviesPeople).where(eq(moviesPeople.tmdbId, tmdbId)).limit(1);
-  return person ?? null;
+  await connectToDatabase();
+  const doc = await MoviePersonModel.findOne({ tmdbId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function searchLocalMedia(query: string, limit = 10) {
-  return db.select().from(moviesMedia).where(sql`LOWER(${moviesMedia.title}) LIKE ${`%${query.toLowerCase()}%`}`).limit(limit);
+  await connectToDatabase();
+  const docs = await MovieMediaModel.find({
+    title: { $regex: query, $options: "i" },
+  })
+    .limit(limit)
+    .lean();
+  return mapId(docs);
 }
 
 export async function searchLocalPeople(query: string, limit = 10) {
-  return db.select().from(moviesPeople).where(sql`LOWER(${moviesPeople.name}) LIKE ${`%${query.toLowerCase()}%`}`).limit(limit);
+  await connectToDatabase();
+  const docs = await MoviePersonModel.find({
+    name: { $regex: query, $options: "i" },
+  })
+    .limit(limit)
+    .lean();
+  return mapId(docs);
 }
 
 // === FAVORITES ===
+
 export async function addFavorite(userId: string, mediaId: string) {
-  const [fav] = await db.insert(movieFavorites).values({ userId, mediaId }).returning();
-  return fav;
+  await connectToDatabase();
+  const doc = await MovieFavoriteModel.create({ userId, mediaId });
+  return mapId(doc.toObject());
 }
 
 export async function removeFavorite(userId: string, mediaId: string) {
-  const [fav] = await db.delete(movieFavorites).where(and(eq(movieFavorites.userId, userId), eq(movieFavorites.mediaId, mediaId))).returning();
-  return fav ?? null;
+  await connectToDatabase();
+  const doc = await MovieFavoriteModel.findOneAndDelete({ userId, mediaId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getFavorites(userId: string) {
-  return db.select().from(movieFavorites).where(eq(movieFavorites.userId, userId)).orderBy(desc(movieFavorites.addedAt));
+  await connectToDatabase();
+  const docs = await MovieFavoriteModel.find({ userId })
+    .sort({ addedAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getFavoriteByMediaId(userId: string, mediaId: string) {
-  const [fav] = await db.select().from(movieFavorites).where(and(eq(movieFavorites.userId, userId), eq(movieFavorites.mediaId, mediaId))).limit(1);
-  return fav ?? null;
+  await connectToDatabase();
+  const doc = await MovieFavoriteModel.findOne({ userId, mediaId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
-export async function updateFavorite(id: string, userId: string, input: Partial<typeof movieFavorites.$inferInsert>) {
-  const [fav] = await db.update(movieFavorites).set(input).where(and(eq(movieFavorites.id, id), eq(movieFavorites.userId, userId))).returning();
-  return fav;
+export async function updateFavorite(id: string, userId: string, input: Partial<{ rewatchCount: number; personalNotes: string }>) {
+  await connectToDatabase();
+  const doc = await MovieFavoriteModel.findOneAndUpdate(
+    { _id: id, userId },
+    input,
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // === RATINGS ===
+
 export async function addRating(userId: string, mediaId: string, score: number, review?: string) {
-  const [rating] = await db.insert(movieRatings).values({ userId, mediaId, score, review: review ?? null }).returning();
-  return rating;
+  await connectToDatabase();
+  const doc = await MovieRatingModel.create({ userId, mediaId, score, review: review ?? null });
+  return mapId(doc.toObject());
 }
 
 export async function getRatings(userId: string) {
-  return db.select().from(movieRatings).where(eq(movieRatings.userId, userId)).orderBy(desc(movieRatings.createdAt));
+  await connectToDatabase();
+  const docs = await MovieRatingModel.find({ userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getRatingForMedia(userId: string, mediaId: string) {
-  const [rating] = await db.select().from(movieRatings).where(and(eq(movieRatings.userId, userId), eq(movieRatings.mediaId, mediaId))).limit(1);
-  return rating ?? null;
+  await connectToDatabase();
+  const doc = await MovieRatingModel.findOne({ userId, mediaId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // === WATCHLIST ===
-export async function addToWatchlist(input: typeof movieWatchlist.$inferInsert) {
-  const [item] = await db.insert(movieWatchlist).values(input).returning();
-  return item;
+
+export async function addToWatchlist(input: {
+  userId: string;
+  mediaId: string;
+  status?: string;
+  priority?: string;
+  tags?: string[];
+  notes?: string;
+  reminder?: Date;
+  currentSeason?: number;
+  currentEpisode?: number;
+  totalSeasons?: number;
+  totalEpisodes?: number;
+  startedAt?: Date;
+  completedAt?: Date;
+}) {
+  await connectToDatabase();
+  const doc = await MovieWatchlistModel.create(input);
+  return mapId(doc.toObject());
 }
 
-export async function updateWatchlistItem(id: string, userId: string, input: Partial<typeof movieWatchlist.$inferInsert>) {
-  const [item] = await db.update(movieWatchlist).set({ ...input, updatedAt: new Date() }).where(and(eq(movieWatchlist.id, id), eq(movieWatchlist.userId, userId))).returning();
-  return item;
+export async function updateWatchlistItem(
+  id: string,
+  userId: string,
+  input: Partial<{
+    status: string;
+    priority: string;
+    tags: string[];
+    notes: string;
+    reminder: Date;
+    currentSeason: number;
+    currentEpisode: number;
+    totalSeasons: number;
+    totalEpisodes: number;
+    startedAt: Date;
+    completedAt: Date;
+  }>,
+) {
+  await connectToDatabase();
+  const doc = await MovieWatchlistModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function removeFromWatchlist(id: string, userId: string) {
-  const [item] = await db.delete(movieWatchlist).where(and(eq(movieWatchlist.id, id), eq(movieWatchlist.userId, userId))).returning();
-  return item ?? null;
+  await connectToDatabase();
+  const doc = await MovieWatchlistModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getWatchlist(userId: string) {
-  return db.select().from(movieWatchlist).where(eq(movieWatchlist.userId, userId)).orderBy(desc(movieWatchlist.createdAt));
+  await connectToDatabase();
+  const docs = await MovieWatchlistModel.find({ userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getWatchlistByMediaId(userId: string, mediaId: string) {
-  const [item] = await db.select().from(movieWatchlist).where(and(eq(movieWatchlist.userId, userId), eq(movieWatchlist.mediaId, mediaId))).limit(1);
-  return item ?? null;
+  await connectToDatabase();
+  const doc = await MovieWatchlistModel.findOne({ userId, mediaId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getWatchlistByStatus(userId: string, status: "plan_to_watch" | "watching" | "completed" | "dropped" | "rewatching") {
-  return db.select().from(movieWatchlist).where(and(eq(movieWatchlist.userId, userId), eq(movieWatchlist.status, status))).orderBy(desc(movieWatchlist.updatedAt));
+  await connectToDatabase();
+  const docs = await MovieWatchlistModel.find({ userId, status })
+    .sort({ updatedAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 // === MEMORIES ===
-export async function createMemory(input: typeof movieMemories.$inferInsert) {
-  const [memory] = await db.insert(movieMemories).values(input).returning();
-  return memory;
+
+export async function createMemory(input: {
+  userId: string;
+  mediaId?: string;
+  title?: string;
+  watchedWith?: string;
+  location?: string;
+  mood?: string;
+  contextText: string;
+  photoUrls?: string[];
+  ticketUrls?: string[];
+  screenshotUrls?: string[];
+  tags?: string[];
+  watchDate?: Date;
+  linkedEventId?: string;
+}) {
+  await connectToDatabase();
+  const doc = await MovieMemoryModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getMemories(userId: string, limit = 50, offset = 0) {
-  return db.select().from(movieMemories).where(eq(movieMemories.userId, userId)).orderBy(desc(movieMemories.watchDate)).limit(limit).offset(offset);
+  await connectToDatabase();
+  const docs = await MovieMemoryModel.find({ userId })
+    .sort({ watchDate: -1 })
+    .skip(offset)
+    .limit(limit)
+    .lean();
+  return mapId(docs);
 }
 
 export async function getMemoryById(id: string, userId: string) {
-  const [memory] = await db.select().from(movieMemories).where(and(eq(movieMemories.id, id), eq(movieMemories.userId, userId))).limit(1);
-  return memory ?? null;
+  await connectToDatabase();
+  const doc = await MovieMemoryModel.findOne({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
-export async function updateMemory(id: string, userId: string, input: Partial<typeof movieMemories.$inferInsert>) {
-  const [memory] = await db.update(movieMemories).set({ ...input, updatedAt: new Date() }).where(and(eq(movieMemories.id, id), eq(movieMemories.userId, userId))).returning();
-  return memory;
+export async function updateMemory(
+  id: string,
+  userId: string,
+  input: Partial<{
+    mediaId: string;
+    title: string;
+    watchedWith: string;
+    location: string;
+    mood: string;
+    contextText: string;
+    photoUrls: string[];
+    ticketUrls: string[];
+    screenshotUrls: string[];
+    tags: string[];
+    watchDate: Date;
+    linkedEventId: string;
+  }>,
+) {
+  await connectToDatabase();
+  const doc = await MovieMemoryModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function deleteMemory(id: string, userId: string) {
-  const [memory] = await db.delete(movieMemories).where(and(eq(movieMemories.id, id), eq(movieMemories.userId, userId))).returning();
-  return memory ?? null;
+  await connectToDatabase();
+  const doc = await MovieMemoryModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getMemoriesByDateRange(userId: string, dateFrom: Date, dateTo: Date) {
-  return db.select().from(movieMemories).where(and(eq(movieMemories.userId, userId), sql`${movieMemories.watchDate} >= ${dateFrom}`, sql`${movieMemories.watchDate} <= ${dateTo}`)).orderBy(desc(movieMemories.watchDate));
+  await connectToDatabase();
+  const docs = await MovieMemoryModel.find({
+    userId,
+    watchDate: { $gte: dateFrom, $lte: dateTo },
+  })
+    .sort({ watchDate: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getMemoriesOnThisDay(userId: string, month: number, day: number) {
-  return db.select().from(movieMemories).where(and(eq(movieMemories.userId, userId), sql`EXTRACT(MONTH FROM ${movieMemories.watchDate}) = ${month}`, sql`EXTRACT(DAY FROM ${movieMemories.watchDate}) = ${day}`)).orderBy(desc(movieMemories.createdAt));
+  await connectToDatabase();
+  const docs = await MovieMemoryModel.find({ userId }).lean();
+  const filtered = docs.filter((d: any) => {
+    if (!d.watchDate) return false;
+    const dt = new Date(d.watchDate);
+    return dt.getMonth() + 1 === month && dt.getDate() === day;
+  });
+  return mapId(filtered).sort((a: any, b: any) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 }
 
 export async function getMemoriesByMediaId(userId: string, mediaId: string, limit = 20) {
-  return db.select().from(movieMemories).where(and(eq(movieMemories.userId, userId), eq(movieMemories.mediaId, mediaId))).orderBy(desc(movieMemories.watchDate)).limit(limit);
+  await connectToDatabase();
+  const docs = await MovieMemoryModel.find({ userId, mediaId })
+    .sort({ watchDate: -1 })
+    .limit(limit)
+    .lean();
+  return mapId(docs);
 }
 
 // === QUOTES ===
-export async function createQuote(input: typeof movieQuotes.$inferInsert) {
-  const [quote] = await db.insert(movieQuotes).values(input).returning();
-  return quote;
+
+export async function createQuote(input: {
+  userId: string;
+  mediaId?: string;
+  quote: string;
+  character?: string;
+  timestamp?: string;
+  personalMeaning?: string;
+  isFavorite?: boolean;
+}) {
+  await connectToDatabase();
+  const doc = await MovieQuoteModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getQuotes(userId: string) {
-  return db.select().from(movieQuotes).where(eq(movieQuotes.userId, userId)).orderBy(desc(movieQuotes.createdAt));
+  await connectToDatabase();
+  const docs = await MovieQuoteModel.find({ userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getQuoteById(id: string, userId: string) {
-  const [quote] = await db.select().from(movieQuotes).where(and(eq(movieQuotes.id, id), eq(movieQuotes.userId, userId))).limit(1);
-  return quote ?? null;
+  await connectToDatabase();
+  const doc = await MovieQuoteModel.findOne({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function deleteQuote(id: string, userId: string) {
-  const [quote] = await db.delete(movieQuotes).where(and(eq(movieQuotes.id, id), eq(movieQuotes.userId, userId))).returning();
-  return quote ?? null;
+  await connectToDatabase();
+  const doc = await MovieQuoteModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // === COLLECTIONS ===
-export async function createCollection(input: typeof movieCollections.$inferInsert) {
-  const [c] = await db.insert(movieCollections).values(input).returning();
-  return c;
+
+export async function createCollection(input: {
+  userId: string;
+  name: string;
+  description?: string;
+  coverUrl?: string;
+  tags?: string[];
+}) {
+  await connectToDatabase();
+  const doc = await MovieCollectionModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getCollections(userId: string) {
-  return db.select().from(movieCollections).where(eq(movieCollections.userId, userId)).orderBy(desc(movieCollections.createdAt));
+  await connectToDatabase();
+  const docs = await MovieCollectionModel.find({ userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getCollectionById(id: string, userId: string) {
-  const [c] = await db.select().from(movieCollections).where(and(eq(movieCollections.id, id), eq(movieCollections.userId, userId))).limit(1);
-  return c ?? null;
+  await connectToDatabase();
+  const doc = await MovieCollectionModel.findOne({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
-export async function updateCollection(id: string, userId: string, input: Partial<typeof movieCollections.$inferInsert>) {
-  const [c] = await db.update(movieCollections).set({ ...input, updatedAt: new Date() }).where(and(eq(movieCollections.id, id), eq(movieCollections.userId, userId))).returning();
-  return c;
+export async function updateCollection(
+  id: string,
+  userId: string,
+  input: Partial<{ name: string; description: string; coverUrl: string; tags: string[] }>,
+) {
+  await connectToDatabase();
+  const doc = await MovieCollectionModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function deleteCollection(id: string, userId: string) {
-  const [c] = await db.delete(movieCollections).where(and(eq(movieCollections.id, id), eq(movieCollections.userId, userId))).returning();
-  return c ?? null;
+  await connectToDatabase();
+  const doc = await MovieCollectionModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function addCollectionItem(collectionId: string, mediaId: string, position = 0) {
-  const [item] = await db.insert(movieCollectionItems).values({ collectionId, mediaId, position }).returning();
-  return item;
+  await connectToDatabase();
+  const doc = await MovieCollectionItemModel.create({ collectionId, mediaId, position });
+  return mapId(doc.toObject());
 }
 
 export async function getCollectionItems(collectionId: string) {
-  return db.select().from(movieCollectionItems).where(eq(movieCollectionItems.collectionId, collectionId)).orderBy(movieCollectionItems.position);
+  await connectToDatabase();
+  const docs = await MovieCollectionItemModel.find({ collectionId })
+    .sort({ position: 1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function removeCollectionItem(id: string) {
-  const [item] = await db.delete(movieCollectionItems).where(eq(movieCollectionItems.id, id)).returning();
-  return item ?? null;
+  await connectToDatabase();
+  const doc = await MovieCollectionItemModel.findOneAndDelete({ _id: id }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // === DASHBOARD / STATS ===
+
 export async function getDashboardStats(userId: string) {
-  const [favCount] = await db.select({ count: sql<number>`count(*)` }).from(movieFavorites).where(eq(movieFavorites.userId, userId));
-  const [memCount] = await db.select({ count: sql<number>`count(*)` }).from(movieMemories).where(eq(movieMemories.userId, userId));
-  const [watchCount] = await db.select({ count: sql<number>`count(*)` }).from(movieWatchlist).where(and(eq(movieWatchlist.userId, userId), eq(movieWatchlist.status, "completed")));
-  const [quoteCount] = await db.select({ count: sql<number>`count(*)` }).from(movieQuotes).where(eq(movieQuotes.userId, userId));
-  const [colCount] = await db.select({ count: sql<number>`count(*)` }).from(movieCollections).where(eq(movieCollections.userId, userId));
+  await connectToDatabase();
+  const [favCount, memCount, watchCount, quoteCount, colCount] = await Promise.all([
+    MovieFavoriteModel.countDocuments({ userId }),
+    MovieMemoryModel.countDocuments({ userId }),
+    MovieWatchlistModel.countDocuments({ userId, status: "completed" }),
+    MovieQuoteModel.countDocuments({ userId }),
+    MovieCollectionModel.countDocuments({ userId }),
+  ]);
 
   return {
-    totalFavorites: Number(favCount.count),
-    totalMemories: Number(memCount.count),
-    totalCompleted: Number(watchCount.count),
-    totalQuotes: Number(quoteCount.count),
-    totalCollections: Number(colCount.count),
+    totalFavorites: favCount,
+    totalMemories: memCount,
+    totalCompleted: watchCount,
+    totalQuotes: quoteCount,
+    totalCollections: colCount,
   };
 }
 
 export async function getRatingsStats(userId: string) {
-  const [result] = await db
-    .select({
-      count: sql<number>`count(*)`,
-      average: sql<number>`coalesce(round(avg(${movieRatings.score})::numeric, 1), 0)::numeric`,
-    })
-    .from(movieRatings)
-    .where(eq(movieRatings.userId, userId));
-  return result ?? { count: 0, average: 0 };
+  await connectToDatabase();
+  const rows = await MovieRatingModel.aggregate([
+    { $match: { userId } },
+    {
+      $group: {
+        _id: null,
+        count: { $sum: 1 },
+        average: { $avg: "$score" },
+      },
+    },
+  ]);
+  if (rows.length === 0) return { count: 0, average: 0 };
+  return {
+    count: rows[0].count,
+    average: Math.round(rows[0].average * 10) / 10,
+  };
 }
 
 export async function getWatchlistStats(userId: string) {
-  const [result] = await db
-    .select({
-      total: sql<number>`count(*)`,
-      completed: sql<number>`count(*) filter (where ${movieWatchlist.status} = 'completed')`,
-      watching: sql<number>`count(*) filter (where ${movieWatchlist.status} = 'watching')`,
-    })
-    .from(movieWatchlist)
-    .where(eq(movieWatchlist.userId, userId));
-  return result ?? { total: 0, completed: 0, watching: 0 };
+  await connectToDatabase();
+  const rows = await MovieWatchlistModel.aggregate([
+    { $match: { userId } },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: 1 },
+        completed: {
+          $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] },
+        },
+        watching: {
+          $sum: { $cond: [{ $eq: ["$status", "watching"] }, 1, 0] },
+        },
+      },
+    },
+  ]);
+  if (rows.length === 0) return { total: 0, completed: 0, watching: 0 };
+  return {
+    total: rows[0].total,
+    completed: rows[0].completed,
+    watching: rows[0].watching,
+  };
 }
 
 export async function countMemories(userId: string) {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(movieMemories)
-    .where(eq(movieMemories.userId, userId));
-  return Number(row?.count ?? 0);
+  await connectToDatabase();
+  return MovieMemoryModel.countDocuments({ userId });
 }
 
 export async function countFavorites(userId: string) {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(movieFavorites)
-    .where(eq(movieFavorites.userId, userId));
-  return Number(row?.count ?? 0);
+  await connectToDatabase();
+  return MovieFavoriteModel.countDocuments({ userId });
 }
 
 export async function getMoviesWatchedPerMonth(userId: string) {
-  return db.select({
-    month: sql<string>`to_char(${movieMemories.watchDate}, 'YYYY-MM')`,
-    count: sql<number>`count(*)`,
-  }).from(movieMemories).where(and(eq(movieMemories.userId, userId), sql`${movieMemories.watchDate} IS NOT NULL`)).groupBy(sql`to_char(${movieMemories.watchDate}, 'YYYY-MM')`).orderBy(sql`to_char(${movieMemories.watchDate}, 'YYYY-MM')`);
+  await connectToDatabase();
+  const rows = await MovieMemoryModel.aggregate([
+    { $match: { userId, watchDate: { $ne: null } } },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: "%Y-%m", date: "$watchDate" },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+  return rows.map((r: any) => ({
+    month: r._id,
+    count: r.count,
+  }));
 }

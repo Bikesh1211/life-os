@@ -1,118 +1,167 @@
-import { and, asc, count, desc, eq, gte, ilike, inArray, isNull, lte, or, sql, type SQL } from "drizzle-orm";
-import { db } from "@/core/database";
-import { travelHelperRoutes } from "./schema";
+import { connectToDatabase } from "@/lib/mongodb";
+import { TravelHelperRouteModel } from "@/lib/models/travel-helper";
 import type { RouteFilterParams } from "./types";
 
-export type TravelHelperRoute = typeof travelHelperRoutes.$inferSelect;
-export type CreateRouteInput = typeof travelHelperRoutes.$inferInsert;
+export type TravelHelperRoute = {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string | null;
+  origin: any;
+  destination: any;
+  waypoints: any[];
+  polyline?: string | null;
+  totalDistanceKm?: number | null;
+  totalDurationMinutes?: number | null;
+  transportMode: string;
+  routeDate?: string | null;
+  isArchived: boolean;
+  isFavorite: boolean;
+  tags: string[];
+  notes?: string | null;
+  elevationMin?: number | null;
+  elevationMax?: number | null;
+  elevationGain?: number | null;
+  elevationLoss?: number | null;
+  geometries?: any;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date | null;
+};
+
+export type CreateRouteInput = {
+  userId: string;
+  name: string;
+  description?: string | null;
+  origin: any;
+  destination: any;
+  waypoints?: any[];
+  polyline?: string | null;
+  totalDistanceKm?: number | null;
+  totalDurationMinutes?: number | null;
+  transportMode?: string;
+  routeDate?: string | null;
+  isFavorite?: boolean;
+  tags?: string[];
+  notes?: string | null;
+  elevationMin?: number | null;
+  elevationMax?: number | null;
+  elevationGain?: number | null;
+  elevationLoss?: number | null;
+  geometries?: any;
+};
+
+function toPlain(doc: any) {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  const { _id, __v, ...rest } = obj;
+  return { ...rest, id: _id.toString() };
+}
+
+function toPlainArray(docs: any[]) {
+  return docs.map(toPlain);
+}
 
 export async function getRoutes(userId: string, filters?: RouteFilterParams) {
-  const conditions: SQL[] = [eq(travelHelperRoutes.userId, userId), isNull(travelHelperRoutes.deletedAt)];
+  await connectToDatabase();
+  const filter: any = { userId, deletedAt: null };
 
   if (filters) {
     if (filters.search) {
-      const searchCondition = or(
-        ilike(travelHelperRoutes.name, `%${filters.search}%`),
-        ilike(travelHelperRoutes.description, `%${filters.search}%`),
-      );
-      if (searchCondition) conditions.push(searchCondition);
+      filter.$or = [
+        { name: { $regex: filters.search, $options: "i" } },
+        { description: { $regex: filters.search, $options: "i" } },
+      ];
     }
-    if (filters.transportMode) {
-      conditions.push(eq(travelHelperRoutes.transportMode, filters.transportMode));
-    }
-    if (filters.isFavorite !== undefined) {
-      conditions.push(eq(travelHelperRoutes.isFavorite, filters.isFavorite));
-    }
-    if (filters.isArchived !== undefined) {
-      conditions.push(eq(travelHelperRoutes.isArchived, filters.isArchived));
-    }
-    if (filters.tag) {
-      conditions.push(sql`${filters.tag} = ANY(${travelHelperRoutes.tags})`);
-    }
-    if (filters.dateFrom) {
-      conditions.push(gte(travelHelperRoutes.routeDate, filters.dateFrom));
-    }
-    if (filters.dateTo) {
-      conditions.push(lte(travelHelperRoutes.routeDate, filters.dateTo));
+    if (filters.transportMode) filter.transportMode = filters.transportMode;
+    if (filters.isFavorite !== undefined) filter.isFavorite = filters.isFavorite;
+    if (filters.isArchived !== undefined) filter.isArchived = filters.isArchived;
+    if (filters.tag) filter.tags = filters.tag;
+    if (filters.dateFrom || filters.dateTo) {
+      filter.routeDate = {};
+      if (filters.dateFrom) filter.routeDate.$gte = filters.dateFrom;
+      if (filters.dateTo) filter.routeDate.$lte = filters.dateTo;
     }
   }
 
-  return db
-    .select()
-    .from(travelHelperRoutes)
-    .where(and(...conditions))
-    .orderBy(desc(travelHelperRoutes.isFavorite), desc(travelHelperRoutes.createdAt));
+  const docs = await TravelHelperRouteModel.find(filter)
+    .sort({ isFavorite: -1, createdAt: -1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getRouteById(id: string, userId: string) {
-  return db
-    .select()
-    .from(travelHelperRoutes)
-    .where(and(eq(travelHelperRoutes.id, id), eq(travelHelperRoutes.userId, userId), isNull(travelHelperRoutes.deletedAt)))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await TravelHelperRouteModel.findOne({ _id: id, userId, deletedAt: null }).lean();
+  return toPlain(doc);
 }
 
 export async function createRoute(input: CreateRouteInput) {
-  const [route] = await db.insert(travelHelperRoutes).values(input).returning();
-  return route;
+  await connectToDatabase();
+  const doc = await TravelHelperRouteModel.create({
+    ...input,
+    waypoints: input.waypoints ?? [],
+    tags: input.tags ?? [],
+    isFavorite: input.isFavorite ?? false,
+    isArchived: false,
+  });
+  return toPlain(doc);
 }
 
 export async function updateRoute(id: string, userId: string, input: Partial<CreateRouteInput>) {
-  const [route] = await db
-    .update(travelHelperRoutes)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(travelHelperRoutes.id, id), eq(travelHelperRoutes.userId, userId)))
-    .returning();
-  return route ?? null;
+  await connectToDatabase();
+  const doc = await TravelHelperRouteModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function softDeleteRoute(id: string, userId: string) {
-  const [route] = await db
-    .update(travelHelperRoutes)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(travelHelperRoutes.id, id), eq(travelHelperRoutes.userId, userId)))
-    .returning();
-  return route ?? null;
+  await connectToDatabase();
+  const doc = await TravelHelperRouteModel.findOneAndUpdate(
+    { _id: id, userId },
+    { deletedAt: new Date(), updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function getRoutesByDate(userId: string, date: string) {
-  return db
-    .select()
-    .from(travelHelperRoutes)
-    .where(
-      and(
-        eq(travelHelperRoutes.userId, userId),
-        eq(travelHelperRoutes.routeDate, date),
-        isNull(travelHelperRoutes.deletedAt),
-        eq(travelHelperRoutes.isArchived, false),
-      ),
-    )
-    .orderBy(asc(travelHelperRoutes.name));
+  await connectToDatabase();
+  const docs = await TravelHelperRouteModel.find({
+    userId,
+    routeDate: date,
+    deletedAt: null,
+    isArchived: false,
+  })
+    .sort({ name: 1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getUpcomingRoutes(userId: string, limit = 5) {
+  await connectToDatabase();
   const today = new Date().toISOString().slice(0, 10);
-  return db
-    .select()
-    .from(travelHelperRoutes)
-    .where(
-      and(
-        eq(travelHelperRoutes.userId, userId),
-        gte(travelHelperRoutes.routeDate, today),
-        isNull(travelHelperRoutes.deletedAt),
-        eq(travelHelperRoutes.isArchived, false),
-      ),
-    )
-    .orderBy(asc(travelHelperRoutes.routeDate))
-    .limit(limit);
+  const docs = await TravelHelperRouteModel.find({
+    userId,
+    routeDate: { $gte: today },
+    deletedAt: null,
+    isArchived: false,
+  })
+    .sort({ routeDate: 1 })
+    .limit(limit)
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getRouteCount(userId: string) {
-  const [result] = await db
-    .select({ count: count() })
-    .from(travelHelperRoutes)
-    .where(
-      and(eq(travelHelperRoutes.userId, userId), isNull(travelHelperRoutes.deletedAt), eq(travelHelperRoutes.isArchived, false)),
-    );
-  return Number(result?.count ?? 0);
+  await connectToDatabase();
+  const count = await TravelHelperRouteModel.countDocuments({
+    userId,
+    deletedAt: null,
+    isArchived: false,
+  });
+  return count;
 }

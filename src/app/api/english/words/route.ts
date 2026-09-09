@@ -16,7 +16,7 @@ export async function GET(request: Request) {
         id: w.id,
         word: w.word,
         pronunciation: w.pronunciation ?? "",
-        definition: (w.definitions as string[])?.[0] ?? "",
+        definition: w.definition ?? "",
         partOfSpeech: w.partOfSpeech ?? "",
       }));
       return NextResponse.json(mapped);

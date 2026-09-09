@@ -1,4 +1,3 @@
-export { strategySections, strategyVersions } from "./schema";
 export {
   getStrategy,
   getSections,

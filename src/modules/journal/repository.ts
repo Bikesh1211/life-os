@@ -1,21 +1,33 @@
-import { db } from "@/core/database";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  journalEntries,
-  journalVersions,
-  journalBookmarks,
-  journalHighlights,
-  journalWritingSessions,
-  type moodEnum,
-} from "./schema";
-import { eq, and, isNull, desc, asc, sql, gte, lte } from "drizzle-orm";
+  JournalEntryModel,
+  JournalVersionModel,
+  JournalBookmarkModel,
+  JournalHighlightModel,
+  JournalWritingSessionModel,
+} from "@/lib/models/journal";
 
-export type JournalEntry = typeof journalEntries.$inferSelect;
+export type JournalEntry = {
+  id: string;
+  userId: string;
+  title: string;
+  content?: string;
+  mood?: string;
+  tags: string[];
+  reflectionScore?: number;
+  isPinned: boolean;
+  isPrivate: boolean;
+  eventDate?: Date;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
 export type CreateJournalEntryInput = {
   userId: string;
   title: string;
   content?: string;
-  mood?: typeof moodEnum.enumValues[number];
+  mood?: string;
   tags?: string[];
   reflectionScore?: number;
   isPinned?: boolean;
@@ -27,7 +39,7 @@ export type UpdateJournalEntryInput = Partial<Omit<CreateJournalEntryInput, "use
 
 export type JournalFilters = {
   search?: string;
-  mood?: typeof moodEnum.enumValues[number];
+  mood?: string;
   tags?: string[];
   dateFrom?: Date;
   dateTo?: Date;
@@ -39,192 +51,264 @@ export type JournalFilters = {
   offset?: number;
 };
 
+function mapEntry(doc: any): JournalEntry {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    title: doc.title,
+    content: doc.content,
+    mood: doc.mood,
+    tags: doc.tags,
+    reflectionScore: doc.reflectionScore,
+    isPinned: doc.isPinned,
+    isPrivate: doc.isPrivate,
+    eventDate: doc.eventDate,
+    deletedAt: doc.deletedAt,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
+
 export const entryColumns = {
-  id: journalEntries.id,
-  userId: journalEntries.userId,
-  title: journalEntries.title,
-  content: journalEntries.content,
-  mood: journalEntries.mood,
-  tags: journalEntries.tags,
-  reflectionScore: journalEntries.reflectionScore,
-  isPinned: journalEntries.isPinned,
-  isPrivate: journalEntries.isPrivate,
-  eventDate: journalEntries.eventDate,
-  deletedAt: journalEntries.deletedAt,
-  createdAt: journalEntries.createdAt,
-  updatedAt: journalEntries.updatedAt,
+  id: "_id",
+  userId: "userId",
+  title: "title",
+  content: "content",
+  mood: "mood",
+  tags: "tags",
+  reflectionScore: "reflectionScore",
+  isPinned: "isPinned",
+  isPrivate: "isPrivate",
+  eventDate: "eventDate",
+  deletedAt: "deletedAt",
+  createdAt: "createdAt",
+  updatedAt: "updatedAt",
 };
 
-export async function createEntry(input: CreateJournalEntryInput) {
-  const [entry] = await db
-    .insert(journalEntries)
-    .values({
-      userId: input.userId,
-      title: input.title,
-      content: input.content,
-      mood: input.mood,
-      tags: input.tags ?? [],
-      reflectionScore: input.reflectionScore,
-      isPinned: input.isPinned ?? false,
-      isPrivate: input.isPrivate ?? true,
-      eventDate: input.eventDate,
-    })
-    .returning(entryColumns);
-  return entry;
+export async function createEntry(input: CreateJournalEntryInput): Promise<JournalEntry> {
+  await connectToDatabase();
+  const doc = await JournalEntryModel.create({
+    userId: input.userId,
+    title: input.title,
+    content: input.content,
+    mood: input.mood,
+    tags: input.tags ?? [],
+    reflectionScore: input.reflectionScore,
+    isPinned: input.isPinned ?? false,
+    isPrivate: input.isPrivate ?? true,
+    eventDate: input.eventDate,
+  });
+  return mapEntry(doc);
 }
 
-export async function getEntryById(id: string, userId: string) {
-  const [entry] = await db
-    .select(entryColumns)
-    .from(journalEntries)
-    .where(and(eq(journalEntries.id, id), eq(journalEntries.userId, userId), isNull(journalEntries.deletedAt)))
-    .limit(1);
-  return entry ?? null;
+export async function getEntryById(id: string, userId: string): Promise<JournalEntry | null> {
+  await connectToDatabase();
+  const doc = await JournalEntryModel.findOne({
+    _id: id,
+    userId,
+    deletedAt: null,
+  }).lean();
+  return doc ? mapEntry(doc) : null;
 }
 
-export async function getEntriesForUser(userId: string, filters: JournalFilters = {}) {
-  const conditions: ReturnType<typeof eq>[] = [
-    eq(journalEntries.userId, userId),
-    isNull(journalEntries.deletedAt),
-  ];
-
-  if (filters.search) {
-    conditions.push(
-      sql`(to_tsvector('english', ${journalEntries.title}) || to_tsvector('english', ${journalEntries.content}) @@ plainto_tsquery('english', ${filters.search}))`,
-    );
-  }
-  if (filters.mood) {
-    conditions.push(eq(journalEntries.mood, filters.mood));
-  }
-  if (filters.tags && filters.tags.length > 0) {
-    conditions.push(sql`${journalEntries.tags} @> ${filters.tags}::text[]`);
-  }
-  if (filters.dateFrom) {
-    conditions.push(gte(journalEntries.createdAt, filters.dateFrom));
-  }
-  if (filters.dateTo) {
-    conditions.push(lte(journalEntries.createdAt, filters.dateTo));
-  }
-  if (filters.minScore !== undefined) {
-    conditions.push(gte(journalEntries.reflectionScore, filters.minScore));
-  }
-  if (filters.maxScore !== undefined) {
-    conditions.push(lte(journalEntries.reflectionScore, filters.maxScore));
-  }
-
-  const orderByMap = {
-    createdAt: journalEntries.createdAt,
-    updatedAt: journalEntries.updatedAt,
-    title: journalEntries.title,
+export async function getEntriesForUser(userId: string, filters: JournalFilters = {}): Promise<JournalEntry[]> {
+  await connectToDatabase();
+  const conditions: Record<string, any> = {
+    userId,
+    deletedAt: null,
   };
 
-  const orderColumn = orderByMap[filters.sortBy ?? "createdAt"];
-  const orderDirection = filters.sortOrder === "asc" ? asc : desc;
+  if (filters.mood) {
+    conditions.mood = filters.mood;
+  }
+  if (filters.tags && filters.tags.length > 0) {
+    conditions.tags = { $all: filters.tags };
+  }
+  if (filters.dateFrom || filters.dateTo) {
+    conditions.createdAt = {};
+    if (filters.dateFrom) conditions.createdAt.$gte = filters.dateFrom;
+    if (filters.dateTo) conditions.createdAt.$lte = filters.dateTo;
+  }
+  if (filters.minScore !== undefined) {
+    conditions.reflectionScore = conditions.reflectionScore || {};
+    conditions.reflectionScore.$gte = filters.minScore;
+  }
+  if (filters.maxScore !== undefined) {
+    conditions.reflectionScore = conditions.reflectionScore || {};
+    conditions.reflectionScore.$lte = filters.maxScore;
+  }
+  if (filters.search) {
+    conditions.$or = [
+      { title: { $regex: filters.search, $options: "i" } },
+      { content: { $regex: filters.search, $options: "i" } },
+    ];
+  }
 
-  const entries = await db
-    .select(entryColumns)
-    .from(journalEntries)
-    .where(and(...conditions))
-    .orderBy(orderDirection(orderColumn))
+  const sortField = filters.sortBy ?? "createdAt";
+  const sortOrder = filters.sortOrder === "asc" ? 1 : -1;
+
+  const docs = await JournalEntryModel.find(conditions)
+    .sort({ [sortField]: sortOrder })
+    .skip(filters.offset ?? 0)
     .limit(filters.limit ?? 50)
-    .offset(filters.offset ?? 0);
+    .lean();
 
-  return entries;
+  return docs.map(mapEntry);
 }
 
-export async function updateEntry(id: string, userId: string, input: UpdateJournalEntryInput) {
-  const [entry] = await db
-    .update(journalEntries)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(journalEntries.id, id), eq(journalEntries.userId, userId), isNull(journalEntries.deletedAt)))
-    .returning(entryColumns);
-  return entry ?? null;
+export async function updateEntry(
+  id: string,
+  userId: string,
+  input: UpdateJournalEntryInput,
+): Promise<JournalEntry | null> {
+  await connectToDatabase();
+  const doc = await JournalEntryModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapEntry(doc) : null;
 }
 
-export async function softDeleteEntry(id: string, userId: string) {
-  const [entry] = await db
-    .update(journalEntries)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(journalEntries.id, id), eq(journalEntries.userId, userId), isNull(journalEntries.deletedAt)))
-    .returning(entryColumns);
-  return entry ?? null;
+export async function softDeleteEntry(id: string, userId: string): Promise<JournalEntry | null> {
+  await connectToDatabase();
+  const doc = await JournalEntryModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { deletedAt: new Date(), updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapEntry(doc) : null;
 }
 
-export async function getEntryCountForUser(userId: string) {
-  const [result] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(journalEntries)
-    .where(and(eq(journalEntries.userId, userId), isNull(journalEntries.deletedAt)));
-  return result?.count ?? 0;
+export async function getEntryCountForUser(userId: string): Promise<number> {
+  await connectToDatabase();
+  return JournalEntryModel.countDocuments({ userId, deletedAt: null });
 }
 
-export async function getRecentEntriesForUser(userId: string, days: number, limit = 10) {
+export async function getRecentEntriesForUser(userId: string, days: number, limit = 10): Promise<JournalEntry[]> {
+  await connectToDatabase();
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  return db
-    .select(entryColumns)
-    .from(journalEntries)
-    .where(and(eq(journalEntries.userId, userId), isNull(journalEntries.deletedAt), gte(journalEntries.createdAt, since)))
-    .orderBy(desc(journalEntries.createdAt))
-    .limit(limit);
+  const docs = await JournalEntryModel.find({
+    userId,
+    deletedAt: null,
+    createdAt: { $gte: since },
+  })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+
+  return docs.map(mapEntry);
 }
 
-export async function getMoodDistribution(userId: string, days: number) {
+export async function getMoodDistribution(
+  userId: string,
+  days: number,
+): Promise<{ mood: string | null; count: number }[]> {
+  await connectToDatabase();
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  const results = await db
-    .select({
-      mood: journalEntries.mood,
-      count: sql<number>`count(*)`,
-    })
-    .from(journalEntries)
-    .where(and(eq(journalEntries.userId, userId), isNull(journalEntries.deletedAt), gte(journalEntries.createdAt, since)))
-    .groupBy(journalEntries.mood)
-    .orderBy(desc(sql`count(*)`));
+  const results = await JournalEntryModel.aggregate([
+    {
+      $match: {
+        userId,
+        deletedAt: null,
+        createdAt: { $gte: since },
+      },
+    },
+    {
+      $group: {
+        _id: "$mood",
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { count: -1 },
+    },
+  ]);
 
-  return results;
+  return results.map((r: any) => ({ mood: r._id, count: r.count }));
 }
 
-export async function getJournalCoverage(userId: string) {
-  const dateCol = sql`COALESCE(${journalEntries.eventDate}, ${journalEntries.createdAt})`;
-  const results = await db
-    .select({
-      year: sql<number>`EXTRACT(YEAR FROM ${dateCol})`,
-      month: sql<number>`EXTRACT(MONTH FROM ${dateCol})`,
-    })
-    .from(journalEntries)
-    .where(and(eq(journalEntries.userId, userId), isNull(journalEntries.deletedAt)))
-    .groupBy(
-      sql`EXTRACT(YEAR FROM ${dateCol})`,
-      sql`EXTRACT(MONTH FROM ${dateCol})`,
-    )
-    .orderBy(
-      asc(sql`EXTRACT(YEAR FROM ${dateCol})`),
-      asc(sql`EXTRACT(MONTH FROM ${dateCol})`),
-    );
-  return results.map((r) => ({ year: r.year, month: r.month }));
+export async function getJournalCoverage(userId: string): Promise<{ year: number; month: number }[]> {
+  await connectToDatabase();
+
+  const results = await JournalEntryModel.aggregate([
+    {
+      $match: { userId, deletedAt: null },
+    },
+    {
+      $addFields: {
+        effectiveDate: { $ifNull: ["$eventDate", "$createdAt"] },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: "$effectiveDate" },
+          month: { $month: "$effectiveDate" },
+        },
+      },
+    },
+    {
+      $sort: { "_id.year": 1, "_id.month": 1 },
+    },
+  ]);
+
+  return results.map((r: any) => ({ year: r._id.year, month: r._id.month }));
 }
 
-export async function getCommonTags(userId: string, limit = 10) {
-  const results = await db
-    .select({
-      tag: sql<string>`unnest(${journalEntries.tags})`,
-      count: sql<number>`count(*)`,
-    })
-    .from(journalEntries)
-    .where(and(eq(journalEntries.userId, userId), isNull(journalEntries.deletedAt)))
-    .groupBy(sql`unnest(${journalEntries.tags})`)
-    .orderBy(desc(sql`count(*)`))
-    .limit(limit);
+export async function getCommonTags(
+  userId: string,
+  limit = 10,
+): Promise<{ tag: string; count: number }[]> {
+  await connectToDatabase();
 
-  return results;
+  const results = await JournalEntryModel.aggregate([
+    {
+      $match: { userId, deletedAt: null, tags: { $exists: true, $ne: [] } },
+    },
+    { $unwind: "$tags" },
+    {
+      $group: {
+        _id: "$tags",
+        count: { $sum: 1 },
+      },
+    },
+    {
+      $sort: { count: -1 },
+    },
+    { $limit: limit },
+  ]);
+
+  return results.map((r: any) => ({ tag: r._id, count: r.count }));
 }
 
 // ── Journal Versions ──
 
-export type JournalVersion = typeof journalVersions.$inferSelect;
+export type JournalVersion = {
+  id: string;
+  entryId: string;
+  content: string;
+  title: string;
+  wordCount: number;
+  note?: string;
+  createdAt: Date;
+};
+
+function mapVersion(doc: any): JournalVersion {
+  return {
+    id: doc._id.toString(),
+    entryId: doc.entryId.toString(),
+    content: doc.content,
+    title: doc.title,
+    wordCount: doc.wordCount,
+    note: doc.note,
+    createdAt: doc.createdAt,
+  };
+}
 
 export async function createVersion(input: {
   entryId: string;
@@ -232,34 +316,51 @@ export async function createVersion(input: {
   title: string;
   wordCount: number;
   note?: string;
-}) {
-  const [version] = await db
-    .insert(journalVersions)
-    .values(input)
-    .returning();
-  return version;
+}): Promise<JournalVersion> {
+  await connectToDatabase();
+  const doc = await JournalVersionModel.create(input);
+  return mapVersion(doc);
 }
 
-export async function getEntryVersions(entryId: string) {
-  return db
-    .select()
-    .from(journalVersions)
-    .where(eq(journalVersions.entryId, entryId))
-    .orderBy(desc(journalVersions.createdAt));
+export async function getEntryVersions(entryId: string): Promise<JournalVersion[]> {
+  await connectToDatabase();
+  const docs = await JournalVersionModel.find({ entryId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return docs.map(mapVersion);
 }
 
-export async function getVersionById(id: string) {
-  const [version] = await db
-    .select()
-    .from(journalVersions)
-    .where(eq(journalVersions.id, id))
-    .limit(1);
-  return version ?? null;
+export async function getVersionById(id: string): Promise<JournalVersion | null> {
+  await connectToDatabase();
+  const doc = await JournalVersionModel.findById(id).lean();
+  return doc ? mapVersion(doc) : null;
 }
 
 // ── Journal Bookmarks ──
 
-export type JournalBookmark = typeof journalBookmarks.$inferSelect;
+export type JournalBookmark = {
+  id: string;
+  userId: string;
+  entryId: string;
+  position: any;
+  excerpt?: string;
+  label?: string;
+  color: string;
+  createdAt: Date;
+};
+
+function mapBookmark(doc: any): JournalBookmark {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    entryId: doc.entryId.toString(),
+    position: doc.position,
+    excerpt: doc.excerpt,
+    label: doc.label,
+    color: doc.color,
+    createdAt: doc.createdAt,
+  };
+}
 
 export async function createBookmark(input: {
   userId: string;
@@ -268,40 +369,58 @@ export async function createBookmark(input: {
   excerpt?: string;
   label?: string;
   color?: string;
-}) {
-  const [bookmark] = await db
-    .insert(journalBookmarks)
-    .values({
-      userId: input.userId,
-      entryId: input.entryId,
-      position: input.position as Record<string, unknown>,
-      excerpt: input.excerpt,
-      label: input.label,
-      color: input.color ?? "yellow",
-    })
-    .returning();
-  return bookmark;
+}): Promise<JournalBookmark> {
+  await connectToDatabase();
+  const doc = await JournalBookmarkModel.create({
+    userId: input.userId,
+    entryId: input.entryId,
+    position: input.position,
+    excerpt: input.excerpt,
+    label: input.label,
+    color: input.color ?? "yellow",
+  });
+  return mapBookmark(doc);
 }
 
-export async function getEntryBookmarks(userId: string, entryId: string) {
-  return db
-    .select()
-    .from(journalBookmarks)
-    .where(and(eq(journalBookmarks.userId, userId), eq(journalBookmarks.entryId, entryId)))
-    .orderBy(desc(journalBookmarks.createdAt));
+export async function getEntryBookmarks(userId: string, entryId: string): Promise<JournalBookmark[]> {
+  await connectToDatabase();
+  const docs = await JournalBookmarkModel.find({ userId, entryId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return docs.map(mapBookmark);
 }
 
-export async function deleteBookmark(id: string, userId: string) {
-  const [bookmark] = await db
-    .delete(journalBookmarks)
-    .where(and(eq(journalBookmarks.id, id), eq(journalBookmarks.userId, userId)))
-    .returning();
-  return bookmark ?? null;
+export async function deleteBookmark(id: string, userId: string): Promise<JournalBookmark | null> {
+  await connectToDatabase();
+  const doc = await JournalBookmarkModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapBookmark(doc) : null;
 }
 
 // ── Journal Highlights ──
 
-export type JournalHighlight = typeof journalHighlights.$inferSelect;
+export type JournalHighlight = {
+  id: string;
+  userId: string;
+  entryId: string;
+  position: any;
+  text: string;
+  color: string;
+  note?: string;
+  createdAt: Date;
+};
+
+function mapHighlight(doc: any): JournalHighlight {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    entryId: doc.entryId.toString(),
+    position: doc.position,
+    text: doc.text,
+    color: doc.color,
+    note: doc.note,
+    createdAt: doc.createdAt,
+  };
+}
 
 export async function createHighlight(input: {
   userId: string;
@@ -310,110 +429,164 @@ export async function createHighlight(input: {
   text: string;
   color?: string;
   note?: string;
-}) {
-  const [highlight] = await db
-    .insert(journalHighlights)
-    .values({
-      userId: input.userId,
-      entryId: input.entryId,
-      position: input.position as Record<string, unknown>,
-      text: input.text,
-      color: input.color ?? "yellow",
-      note: input.note,
-    })
-    .returning();
-  return highlight;
+}): Promise<JournalHighlight> {
+  await connectToDatabase();
+  const doc = await JournalHighlightModel.create({
+    userId: input.userId,
+    entryId: input.entryId,
+    position: input.position,
+    text: input.text,
+    color: input.color ?? "yellow",
+    note: input.note,
+  });
+  return mapHighlight(doc);
 }
 
-export async function getEntryHighlights(userId: string, entryId: string) {
-  return db
-    .select()
-    .from(journalHighlights)
-    .where(and(eq(journalHighlights.userId, userId), eq(journalHighlights.entryId, entryId)))
-    .orderBy(desc(journalHighlights.createdAt));
+export async function getEntryHighlights(userId: string, entryId: string): Promise<JournalHighlight[]> {
+  await connectToDatabase();
+  const docs = await JournalHighlightModel.find({ userId, entryId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return docs.map(mapHighlight);
 }
 
-export async function updateHighlight(id: string, userId: string, input: { color?: string; note?: string }) {
-  const [highlight] = await db
-    .update(journalHighlights)
-    .set(input)
-    .where(and(eq(journalHighlights.id, id), eq(journalHighlights.userId, userId)))
-    .returning();
-  return highlight ?? null;
+export async function updateHighlight(
+  id: string,
+  userId: string,
+  input: { color?: string; note?: string },
+): Promise<JournalHighlight | null> {
+  await connectToDatabase();
+  const doc = await JournalHighlightModel.findOneAndUpdate(
+    { _id: id, userId },
+    input,
+    { new: true },
+  ).lean();
+  return doc ? mapHighlight(doc) : null;
 }
 
-export async function deleteHighlight(id: string, userId: string) {
-  const [highlight] = await db
-    .delete(journalHighlights)
-    .where(and(eq(journalHighlights.id, id), eq(journalHighlights.userId, userId)))
-    .returning();
-  return highlight ?? null;
+export async function deleteHighlight(id: string, userId: string): Promise<JournalHighlight | null> {
+  await connectToDatabase();
+  const doc = await JournalHighlightModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapHighlight(doc) : null;
 }
 
 // ── Journal Writing Sessions ──
 
-export type JournalWritingSession = typeof journalWritingSessions.$inferSelect;
+export type JournalWritingSession = {
+  id: string;
+  userId: string;
+  entryId: string;
+  startedAt: Date;
+  endedAt?: Date;
+  durationSeconds?: number;
+  wordsAdded: number;
+  createdAt: Date;
+};
+
+function mapSession(doc: any): JournalWritingSession {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    entryId: doc.entryId.toString(),
+    startedAt: doc.startedAt,
+    endedAt: doc.endedAt,
+    durationSeconds: doc.durationSeconds,
+    wordsAdded: doc.wordsAdded,
+    createdAt: doc.createdAt,
+  };
+}
 
 export async function createWritingSession(input: {
   userId: string;
   entryId: string;
   startedAt: Date;
-}) {
-  const [session] = await db
-    .insert(journalWritingSessions)
-    .values(input)
-    .returning();
-  return session;
+}): Promise<JournalWritingSession> {
+  await connectToDatabase();
+  const doc = await JournalWritingSessionModel.create(input);
+  return mapSession(doc);
 }
 
-export async function endWritingSession(id: string, userId: string, endedAt: Date, wordsAdded: number) {
-  const existing = await db
-    .select({ startedAt: journalWritingSessions.startedAt })
-    .from(journalWritingSessions)
-    .where(and(eq(journalWritingSessions.id, id), eq(journalWritingSessions.userId, userId)))
-    .limit(1);
-  if (!existing.length) return null;
+export async function endWritingSession(
+  id: string,
+  userId: string,
+  endedAt: Date,
+  wordsAdded: number,
+): Promise<JournalWritingSession | null> {
+  await connectToDatabase();
+  const existing = await JournalWritingSessionModel.findOne({
+    _id: id,
+    userId,
+  }).lean();
+  if (!existing) return null;
 
-  const durationSeconds = Math.round((endedAt.getTime() - existing[0].startedAt.getTime()) / 1000);
-  const [session] = await db
-    .update(journalWritingSessions)
-    .set({ endedAt, durationSeconds, wordsAdded })
-    .where(and(eq(journalWritingSessions.id, id), eq(journalWritingSessions.userId, userId)))
-    .returning();
-  return session ?? null;
+  const durationSeconds = Math.round(
+    (endedAt.getTime() - new Date(existing.startedAt).getTime()) / 1000,
+  );
+  const doc = await JournalWritingSessionModel.findOneAndUpdate(
+    { _id: id, userId },
+    { endedAt, durationSeconds, wordsAdded },
+    { new: true },
+  ).lean();
+  return doc ? mapSession(doc) : null;
 }
 
-export async function getEntrySessions(entryId: string, userId: string) {
-  return db
-    .select()
-    .from(journalWritingSessions)
-    .where(and(eq(journalWritingSessions.entryId, entryId), eq(journalWritingSessions.userId, userId)))
-    .orderBy(desc(journalWritingSessions.startedAt));
+export async function getEntrySessions(
+  entryId: string,
+  userId: string,
+): Promise<JournalWritingSession[]> {
+  await connectToDatabase();
+  const docs = await JournalWritingSessionModel.find({ entryId, userId })
+    .sort({ startedAt: -1 })
+    .lean();
+  return docs.map(mapSession);
 }
 
-export async function getSessionStats(userId: string) {
+export async function getSessionStats(userId: string): Promise<{
+  today: { totalSessions: number; totalDuration: number; totalWords: number };
+  week: { totalSessions: number; totalDuration: number; totalWords: number };
+}> {
+  await connectToDatabase();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const weekStart = new Date(today);
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
-  const [todayStats] = await db
-    .select({
-      totalSessions: sql<number>`count(*)`,
-      totalDuration: sql<number>`coalesce(sum(${journalWritingSessions.durationSeconds}), 0)`,
-      totalWords: sql<number>`coalesce(sum(${journalWritingSessions.wordsAdded}), 0)`,
-    })
-    .from(journalWritingSessions)
-    .where(and(eq(journalWritingSessions.userId, userId), gte(journalWritingSessions.startedAt, today)));
+  const [todayStats] = await JournalWritingSessionModel.aggregate([
+    {
+      $match: {
+        userId,
+        startedAt: { $gte: today },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalSessions: { $sum: 1 },
+        totalDuration: { $sum: { $ifNull: ["$durationSeconds", 0] } },
+        totalWords: { $sum: { $ifNull: ["$wordsAdded", 0] } },
+      },
+    },
+  ]);
 
-  const [weekStats] = await db
-    .select({
-      totalSessions: sql<number>`count(*)`,
-      totalDuration: sql<number>`coalesce(sum(${journalWritingSessions.durationSeconds}), 0)`,
-      totalWords: sql<number>`coalesce(sum(${journalWritingSessions.wordsAdded}), 0)`,
-    })
-    .from(journalWritingSessions)
-    .where(and(eq(journalWritingSessions.userId, userId), gte(journalWritingSessions.startedAt, weekStart)));
+  const [weekStats] = await JournalWritingSessionModel.aggregate([
+    {
+      $match: {
+        userId,
+        startedAt: { $gte: weekStart },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalSessions: { $sum: 1 },
+        totalDuration: { $sum: { $ifNull: ["$durationSeconds", 0] } },
+        totalWords: { $sum: { $ifNull: ["$wordsAdded", 0] } },
+      },
+    },
+  ]);
 
-  return { today: todayStats, week: weekStats };
+  return {
+    today: todayStats ?? { totalSessions: 0, totalDuration: 0, totalWords: 0 },
+    week: weekStats ?? { totalSessions: 0, totalDuration: 0, totalWords: 0 },
+  };
 }

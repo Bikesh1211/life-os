@@ -11,7 +11,7 @@ import {
   AppShellHeader,
   Tooltip,
 } from "@mantine/core";
-import { useSupabase } from "@/infrastructure/providers/supabase-provider";
+import { useAuth } from "@/infrastructure/providers/auth-provider";
 import {
   IconSun,
   IconMoon,
@@ -56,7 +56,7 @@ export function Header() {
 
   const { colorScheme, setColorScheme, clearColorScheme } = useMantineColorScheme();
   const computedColorScheme = useComputedColorScheme();
-  const { user, supabase } = useSupabase();
+  const { user, signOut } = useAuth();
   const router = useRouter();
   const breadcrumb = useBreadcrumb();
   const { toggle } = useAppShell();
@@ -186,12 +186,12 @@ export function Header() {
             <Menu.Target>
               <ActionIcon variant="subtle" size="md" className="ml-1">
                 <Avatar
-                  src={user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? ""}
-                  alt={user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "User"}
+                  src={user?.avatarUrl ?? ""}
+                  alt={user?.fullName ?? "User"}
                   size="sm"
                   className="ring-1 ring-white/50 dark:ring-white/10 cursor-pointer"
                 >
-                  {(user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "U").charAt(0).toUpperCase()}
+                  {(user?.fullName ?? "U").charAt(0).toUpperCase()}
                 </Avatar>
               </ActionIcon>
             </Menu.Target>
@@ -199,7 +199,7 @@ export function Header() {
             <Menu.Dropdown>
               <div className="px-3 py-2.5">
                 <Text size="sm" fw={600} truncate className="text-gray-900 dark:text-white">
-                  {user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "User"}
+                  {user?.fullName ?? "User"}
                 </Text>
                 <Text size="xs" c="dimmed" truncate>
                   {user?.email}
@@ -222,8 +222,7 @@ export function Header() {
               <Menu.Item
                 leftSection={<IconLogout size={16} />}
                 onClick={async () => {
-                  await supabase.auth.signOut();
-                  router.push("/sign-in");
+                  await signOut();
                 }}
                 color="red"
               >

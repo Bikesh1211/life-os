@@ -1,15 +1,13 @@
 import { z } from "zod";
 import dayjs from "dayjs";
-import { db } from "@/core/database";
-import { eq, and, isNull, count, sql } from "drizzle-orm";
-import { habits, habitCompletions } from "./schema";
+import { connectToDatabase } from "@/lib/mongodb";
 import * as repo from "./repository";
 import { createTimelineEvent } from "@/modules/timeline";
 
 export const analyticsFilterSchema = z.object({
   dateFrom: z.string().nullish(),
   dateTo: z.string().nullish(),
-  category: z.enum(repo.habitCategories).nullish(),
+  category: z.enum(repo.habitCategories as any).nullish(),
   period: z.enum(["week", "month", "quarter", "year"]).nullish(),
 });
 
@@ -152,7 +150,7 @@ export async function getDashboard(userId: string, params: AnalyticsFilterParams
 export async function getStreaks(userId: string) {
   const habits = await repo.getHabits(userId);
   const results = await Promise.all(
-    habits.map(async (habit) => {
+    habits.map(async (habit: any) => {
       const dates = await repo.getCompletionDates(userId, habit.id);
       const streak = calculateStreak(dates);
       const allCompletions = await repo.getCompletions(userId, {
@@ -161,11 +159,11 @@ export async function getStreaks(userId: string) {
       const brokenStreaks: Array<{ from: string; to: string; length: number }> = [];
       const sorted = [...new Set(dates)].sort();
       for (let i = 1; i < sorted.length; i++) {
-        const diff = dayjs(sorted[i]).diff(dayjs(sorted[i - 1]), "day");
+        const diff = dayjs(sorted[i] as string).diff(dayjs(sorted[i - 1] as string), "day");
         if (diff > 1) {
           brokenStreaks.push({
-            from: sorted[i - 1],
-            to: sorted[i],
+            from: sorted[i - 1] as string,
+            to: sorted[i] as string,
             length: diff - 1,
           });
         }
@@ -202,8 +200,8 @@ export async function getRankings(userId: string, params: AnalyticsFilterParams)
   const rates = await repo.getCompletionRatesByHabit(userId, dateFrom, dateTo);
 
   const consistency = await repo.getHabitsWithCompletions(userId, dateFrom, dateTo);
-  const withConsistency = rates.map((r) => {
-    const habit = consistency.find((h) => h.id === r.habitId);
+  const withConsistency = rates.map((r: any) => {
+    const habit = consistency.find((h: any) => h.id === r.habitId);
     const score = habit ? computeConsistency(habit.completionDates, dateFrom, dateTo) : 0;
     return { ...r, consistencyScore: score };
   });
@@ -305,12 +303,12 @@ export async function logCompletion(
     userId,
     habitId,
     completedDate,
-    note,
+    notes: note,
   });
 
   try {
     const habits = await repo.getHabits(userId);
-    const habit = habits.find((h) => h.id === habitId);
+    const habit = habits.find((h: any) => h.id === habitId);
     await createTimelineEvent(userId, {
       title: `Habit: ${habit?.title ?? "Completed"}`,
       description: note,
@@ -341,33 +339,41 @@ export async function logCompletion(
  */
 export async function getSummary(userId: string) {
   const today = dayjs().format("YYYY-MM-DD");
+  await connectToDatabase();
 
-  const [habitRows, todayResult, allDates] = await Promise.all([
-    db
-      .select({
-        total: count(),
-        daily: sql<number>`count(*) filter (where ${habits.frequency} = 'daily')`,
-        weekly: sql<number>`count(*) filter (where ${habits.frequency} = 'weekly')`,
-        monthly: sql<number>`count(*) filter (where ${habits.frequency} = 'monthly')`,
-      })
-      .from(habits)
-      .where(and(eq(habits.userId, userId), isNull(habits.deletedAt))),
-    db
-      .select({ count: count() })
-      .from(habitCompletions)
-      .where(and(eq(habitCompletions.userId, userId), eq(habitCompletions.completedDate, today))),
+  const { Habit: HabitModel, HabitCompletion: HabitCompletionModel } = await import("@/lib/models/habits");
+
+  const [habitCounts, todayCount, allDates] = await Promise.all([
+    HabitModel.aggregate([
+      { $match: { userId, deletedAt: null } },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          daily: {
+            $sum: { $cond: [{ $eq: ["$frequency", "daily"] }, 1, 0] },
+          },
+          weekly: {
+            $sum: { $cond: [{ $eq: ["$frequency", "weekly"] }, 1, 0] },
+          },
+          monthly: {
+            $sum: { $cond: [{ $eq: ["$frequency", "monthly"] }, 1, 0] },
+          },
+        },
+      },
+    ]),
+    HabitCompletionModel.countDocuments({ userId, completedDate: today }),
     repo.getCompletionDates(userId),
   ]);
 
-  const { total = 0, daily = 0, weekly = 0, monthly = 0 } = habitRows[0] ?? {};
-  const completedToday = Number(todayResult[0]?.count ?? 0);
+  const counts = habitCounts[0] ?? { total: 0, daily: 0, weekly: 0, monthly: 0 };
   const overallStreak = calculateStreak(allDates);
-  const totalExpected = Number(daily) + Number(weekly) / 7 + Number(monthly) / 30;
+  const totalExpected = Number(counts.daily) + Number(counts.weekly) / 7 + Number(counts.monthly) / 30;
 
   return {
-    totalHabits: Number(total),
-    completedToday,
-    pendingToday: Math.max(0, Math.ceil(totalExpected - completedToday)),
+    totalHabits: Number(counts.total),
+    completedToday: todayCount,
+    pendingToday: Math.max(0, Math.ceil(totalExpected - todayCount)),
     currentStreak: overallStreak.current,
     longestStreak: overallStreak.longest,
   };

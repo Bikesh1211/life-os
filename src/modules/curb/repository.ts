@@ -1,152 +1,224 @@
-import { db } from "@/core/database";
-import { and, eq, gte, lte, sql, count, desc, asc, isNull } from "drizzle-orm";
-import { curbCategories, curbHabits, curbLogs } from "./schema";
+import { connectToDatabase } from "@/lib/mongodb";
+import {
+  CurbCategoryModel,
+  CurbHabitModel,
+  CurbLogModel,
+} from "@/lib/models/curb";
 
-export type CurbCategory = typeof curbCategories.$inferSelect;
-export type CreateCategoryInput = typeof curbCategories.$inferInsert;
+export type CurbCategory = {
+  id: string;
+  userId: string;
+  name: string;
+  icon: string;
+  color: string;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-export type CurbHabit = typeof curbHabits.$inferSelect;
-export type CreateHabitInput = typeof curbHabits.$inferInsert;
+export type CreateCategoryInput = {
+  userId: string;
+  name: string;
+  icon: string;
+  color: string;
+  sortOrder?: number;
+};
 
-export type CurbLog = typeof curbLogs.$inferSelect;
-export type CreateLogInput = typeof curbLogs.$inferInsert;
+export type CurbHabit = {
+  id: string;
+  userId: string;
+  name: string;
+  icon: string;
+  categoryId?: string | null;
+  limitType: string;
+  limitValue: number;
+  color: string;
+  sortOrder: number;
+  isArchived: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date | null;
+};
+
+export type CreateHabitInput = {
+  userId: string;
+  name: string;
+  icon: string;
+  categoryId?: string | null;
+  limitType?: string;
+  limitValue?: number;
+  color: string;
+  sortOrder?: number;
+  isArchived?: boolean;
+};
+
+export type CurbLog = {
+  id: string;
+  userId: string;
+  habitId: string;
+  loggedAt: Date;
+  trigger?: string | null;
+  mood?: string | null;
+  note?: string | null;
+  createdAt: Date;
+};
+
+export type CreateLogInput = {
+  userId: string;
+  habitId: string;
+  loggedAt: Date;
+  trigger?: string | null;
+  mood?: string | null;
+  note?: string | null;
+};
+
+function toPlain(doc: any) {
+  if (!doc) return null;
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  const { _id, __v, ...rest } = obj;
+  return { ...rest, id: _id.toString() };
+}
+
+function toPlainArray(docs: any[]) {
+  return docs.map(toPlain);
+}
 
 /* ── Categories ── */
 
 export async function getCategories(userId: string) {
-  return db
-    .select()
-    .from(curbCategories)
-    .where(eq(curbCategories.userId, userId))
-    .orderBy(asc(curbCategories.sortOrder));
+  await connectToDatabase();
+  const docs = await CurbCategoryModel.find({ userId }).sort({ sortOrder: 1 }).lean();
+  return toPlainArray(docs);
 }
 
 export async function getCategoryById(id: string, userId: string) {
-  return db
-    .select()
-    .from(curbCategories)
-    .where(and(eq(curbCategories.id, id), eq(curbCategories.userId, userId)))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await CurbCategoryModel.findOne({ _id: id, userId }).lean();
+  return toPlain(doc);
 }
 
 export async function createCategory(input: CreateCategoryInput) {
-  const [category] = await db.insert(curbCategories).values(input).returning();
-  return category;
+  await connectToDatabase();
+  const doc = await CurbCategoryModel.create({
+    ...input,
+    sortOrder: input.sortOrder ?? 0,
+  });
+  return toPlain(doc);
 }
 
 export async function updateCategory(id: string, userId: string, input: Partial<CreateCategoryInput>) {
-  const [category] = await db
-    .update(curbCategories)
-    .set(input)
-    .where(and(eq(curbCategories.id, id), eq(curbCategories.userId, userId)))
-    .returning();
-  return category ?? null;
+  await connectToDatabase();
+  const doc = await CurbCategoryModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function deleteCategory(id: string, userId: string) {
-  const [category] = await db
-    .delete(curbCategories)
-    .where(and(eq(curbCategories.id, id), eq(curbCategories.userId, userId)))
-    .returning();
-  return category ?? null;
+  await connectToDatabase();
+  const doc = await CurbCategoryModel.findOneAndDelete({ _id: id, userId }).lean();
+  return toPlain(doc);
 }
 
 /* ── Habits ── */
 
 export async function getHabits(userId: string, opts: { categoryId?: string; includeArchived?: boolean } = {}) {
-  const conditions = [eq(curbHabits.userId, userId), isNull(curbHabits.deletedAt)];
-  if (opts.categoryId) conditions.push(eq(curbHabits.categoryId, opts.categoryId));
-  if (!opts.includeArchived) conditions.push(eq(curbHabits.isArchived, false));
-  return db
-    .select()
-    .from(curbHabits)
-    .where(and(...conditions))
-    .orderBy(asc(curbHabits.sortOrder));
+  await connectToDatabase();
+  const filter: any = { userId, deletedAt: null };
+  if (opts.categoryId) filter.categoryId = opts.categoryId;
+  if (!opts.includeArchived) filter.isArchived = false;
+
+  const docs = await CurbHabitModel.find(filter).sort({ sortOrder: 1 }).lean();
+  return toPlainArray(docs);
 }
 
 export async function getHabitById(id: string, userId: string) {
-  return db
-    .select()
-    .from(curbHabits)
-    .where(and(eq(curbHabits.id, id), eq(curbHabits.userId, userId)))
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await CurbHabitModel.findOne({ _id: id, userId }).lean();
+  return toPlain(doc);
 }
 
 export async function createHabit(input: CreateHabitInput) {
-  const [habit] = await db.insert(curbHabits).values(input).returning();
-  return habit;
+  await connectToDatabase();
+  const doc = await CurbHabitModel.create({
+    ...input,
+    limitType: input.limitType ?? "daily",
+    limitValue: input.limitValue ?? 0,
+    sortOrder: input.sortOrder ?? 0,
+    isArchived: input.isArchived ?? false,
+  });
+  return toPlain(doc);
 }
 
 export async function updateHabit(id: string, userId: string, input: Partial<CreateHabitInput>) {
-  const [habit] = await db
-    .update(curbHabits)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(curbHabits.id, id), eq(curbHabits.userId, userId)))
-    .returning();
-  return habit ?? null;
+  await connectToDatabase();
+  const doc = await CurbHabitModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function softDeleteHabit(id: string, userId: string) {
-  const [habit] = await db
-    .update(curbHabits)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(curbHabits.id, id), eq(curbHabits.userId, userId)))
-    .returning();
-  return habit ?? null;
+  await connectToDatabase();
+  const doc = await CurbHabitModel.findOneAndUpdate(
+    { _id: id, userId },
+    { deletedAt: new Date() },
+    { new: true },
+  ).lean();
+  return toPlain(doc);
 }
 
 export async function getHabitCount(userId: string) {
-  const [result] = await db
-    .select({ count: count() })
-    .from(curbHabits)
-    .where(and(eq(curbHabits.userId, userId), isNull(curbHabits.deletedAt), eq(curbHabits.isArchived, false)));
-  return Number(result?.count ?? 0);
+  await connectToDatabase();
+  const count = await CurbHabitModel.countDocuments({ userId, deletedAt: null, isArchived: false });
+  return count;
 }
 
 /* ── Logs ── */
 
 export async function createLog(input: CreateLogInput) {
-  const [log] = await db.insert(curbLogs).values(input).returning();
-  return log;
+  await connectToDatabase();
+  const doc = await CurbLogModel.create(input);
+  return toPlain(doc);
 }
 
 export async function getLastLog(habitId: string, userId: string) {
-  return db
-    .select()
-    .from(curbLogs)
-    .where(and(eq(curbLogs.habitId, habitId), eq(curbLogs.userId, userId)))
-    .orderBy(desc(curbLogs.loggedAt))
-    .limit(1)
-    .then((r) => r[0] ?? null);
+  await connectToDatabase();
+  const doc = await CurbLogModel.findOne({ habitId, userId }).sort({ loggedAt: -1 }).lean();
+  return toPlain(doc);
 }
 
 export async function deleteLog(id: string, userId: string) {
-  const [log] = await db
-    .delete(curbLogs)
-    .where(and(eq(curbLogs.id, id), eq(curbLogs.userId, userId)))
-    .returning();
-  return log ?? null;
+  await connectToDatabase();
+  const doc = await CurbLogModel.findOneAndDelete({ _id: id, userId }).lean();
+  return toPlain(doc);
 }
 
 export async function getLogsForHabit(habitId: string, userId: string, dateFrom?: string, dateTo?: string) {
-  const conditions = [eq(curbLogs.habitId, habitId), eq(curbLogs.userId, userId)];
-  if (dateFrom) conditions.push(gte(curbLogs.loggedAt, new Date(dateFrom)));
-  if (dateTo) conditions.push(lte(curbLogs.loggedAt, new Date(dateTo + "T23:59:59.999Z")));
-  return db.select().from(curbLogs).where(and(...conditions)).orderBy(desc(curbLogs.loggedAt));
+  await connectToDatabase();
+  const filter: any = { habitId, userId };
+  if (dateFrom || dateTo) {
+    filter.loggedAt = {};
+    if (dateFrom) filter.loggedAt.$gte = new Date(dateFrom);
+    if (dateTo) filter.loggedAt.$lte = new Date(dateTo + "T23:59:59.999Z");
+  }
+  const docs = await CurbLogModel.find(filter).sort({ loggedAt: -1 }).lean();
+  return toPlainArray(docs);
 }
 
 export async function getLogsForDateRange(userId: string, dateFrom: string, dateTo: string) {
-  return db
-    .select()
-    .from(curbLogs)
-    .where(
-      and(
-        eq(curbLogs.userId, userId),
-        gte(curbLogs.loggedAt, new Date(dateFrom)),
-        lte(curbLogs.loggedAt, new Date(dateTo + "T23:59:59.999Z")),
-      ),
-    )
-    .orderBy(desc(curbLogs.loggedAt));
+  await connectToDatabase();
+  const docs = await CurbLogModel.find({
+    userId,
+    loggedAt: { $gte: new Date(dateFrom), $lte: new Date(dateTo + "T23:59:59.999Z") },
+  })
+    .sort({ loggedAt: -1 })
+    .lean();
+  return toPlainArray(docs);
 }
 
 export async function getTodayLogs(userId: string) {
@@ -155,137 +227,140 @@ export async function getTodayLogs(userId: string) {
 }
 
 export async function getTodayCount(habitId: string, userId: string) {
+  await connectToDatabase();
   const today = new Date().toISOString().slice(0, 10);
-  const [result] = await db
-    .select({ count: count() })
-    .from(curbLogs)
-    .where(
-      and(
-        eq(curbLogs.habitId, habitId),
-        eq(curbLogs.userId, userId),
-        gte(curbLogs.loggedAt, new Date(today)),
-        lte(curbLogs.loggedAt, new Date(today + "T23:59:59.999Z")),
-      ),
-    );
-  return Number(result?.count ?? 0);
+  const count = await CurbLogModel.countDocuments({
+    habitId,
+    userId,
+    loggedAt: { $gte: new Date(today), $lte: new Date(today + "T23:59:59.999Z") },
+  });
+  return count;
 }
 
 export async function getPeriodCount(habitId: string, userId: string, dateFrom: string, dateTo: string) {
-  const [result] = await db
-    .select({ count: count() })
-    .from(curbLogs)
-    .where(
-      and(
-        eq(curbLogs.habitId, habitId),
-        eq(curbLogs.userId, userId),
-        gte(curbLogs.loggedAt, new Date(dateFrom)),
-        lte(curbLogs.loggedAt, new Date(dateTo + "T23:59:59.999Z")),
-      ),
-    );
-  return Number(result?.count ?? 0);
+  await connectToDatabase();
+  const count = await CurbLogModel.countDocuments({
+    habitId,
+    userId,
+    loggedAt: { $gte: new Date(dateFrom), $lte: new Date(dateTo + "T23:59:59.999Z") },
+  });
+  return count;
 }
 
 export async function getHabitLogsWithCounts(userId: string, dateFrom: string, dateTo: string) {
-  return db
-    .select({
-      habitId: curbLogs.habitId,
-      count: count(),
-    })
-    .from(curbLogs)
-    .where(
-      and(
-        eq(curbLogs.userId, userId),
-        gte(curbLogs.loggedAt, new Date(dateFrom)),
-        lte(curbLogs.loggedAt, new Date(dateTo + "T23:59:59.999Z")),
-      ),
-    )
-    .groupBy(curbLogs.habitId);
+  await connectToDatabase();
+  const results = await CurbLogModel.aggregate([
+    {
+      $match: {
+        userId,
+        loggedAt: { $gte: new Date(dateFrom), $lte: new Date(dateTo + "T23:59:59.999Z") },
+      },
+    },
+    {
+      $group: {
+        _id: "$habitId",
+        count: { $sum: 1 },
+      },
+    },
+  ]);
+  return results.map((r: any) => ({ habitId: r._id, count: r.count }));
 }
 
 /* ── Analytics ── */
 
 export async function getDailyCounts(userId: string, dateFrom: string, dateTo: string) {
-  return db
-    .select({
-      date: sql<string>`DATE(${curbLogs.loggedAt})`,
-      count: count(),
-    })
-    .from(curbLogs)
-    .where(
-      and(
-        eq(curbLogs.userId, userId),
-        gte(curbLogs.loggedAt, new Date(dateFrom)),
-        lte(curbLogs.loggedAt, new Date(dateTo + "T23:59:59.999Z")),
-      ),
-    )
-    .groupBy(sql`DATE(${curbLogs.loggedAt})`)
-    .orderBy(asc(sql`DATE(${curbLogs.loggedAt})`));
+  await connectToDatabase();
+  const results = await CurbLogModel.aggregate([
+    {
+      $match: {
+        userId,
+        loggedAt: { $gte: new Date(dateFrom), $lte: new Date(dateTo + "T23:59:59.999Z") },
+      },
+    },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$loggedAt" } },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+  return results.map((r: any) => ({ date: r._id, count: r.count }));
 }
 
 export async function getTriggerDistribution(userId: string, dateFrom: string, dateTo: string) {
-  return db
-    .select({
-      trigger: curbLogs.trigger,
-      count: count(),
-    })
-    .from(curbLogs)
-    .where(
-      and(
-        eq(curbLogs.userId, userId),
-        gte(curbLogs.loggedAt, new Date(dateFrom)),
-        lte(curbLogs.loggedAt, new Date(dateTo + "T23:59:59.999Z")),
-        sql`${curbLogs.trigger} IS NOT NULL`,
-      ),
-    )
-    .groupBy(curbLogs.trigger)
-    .orderBy(desc(count()));
+  await connectToDatabase();
+  const results = await CurbLogModel.aggregate([
+    {
+      $match: {
+        userId,
+        loggedAt: { $gte: new Date(dateFrom), $lte: new Date(dateTo + "T23:59:59.999Z") },
+        trigger: { $ne: null },
+      },
+    },
+    {
+      $group: {
+        _id: "$trigger",
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { count: -1 } },
+  ]);
+  return results.map((r: any) => ({ trigger: r._id, count: r.count }));
 }
 
 export async function getMoodDistribution(userId: string, dateFrom: string, dateTo: string) {
-  return db
-    .select({
-      mood: curbLogs.mood,
-      count: count(),
-    })
-    .from(curbLogs)
-    .where(
-      and(
-        eq(curbLogs.userId, userId),
-        gte(curbLogs.loggedAt, new Date(dateFrom)),
-        lte(curbLogs.loggedAt, new Date(dateTo + "T23:59:59.999Z")),
-        sql`${curbLogs.mood} IS NOT NULL`,
-      ),
-    )
-    .groupBy(curbLogs.mood)
-    .orderBy(desc(count()));
+  await connectToDatabase();
+  const results = await CurbLogModel.aggregate([
+    {
+      $match: {
+        userId,
+        loggedAt: { $gte: new Date(dateFrom), $lte: new Date(dateTo + "T23:59:59.999Z") },
+        mood: { $ne: null },
+      },
+    },
+    {
+      $group: {
+        _id: "$mood",
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { count: -1 } },
+  ]);
+  return results.map((r: any) => ({ mood: r._id, count: r.count }));
 }
 
 export async function getHourlyDistribution(habitId: string, userId: string, dateFrom: string, dateTo: string) {
-  return db
-    .select({
-      hour: sql<number>`EXTRACT(HOUR FROM ${curbLogs.loggedAt})`,
-      count: count(),
-    })
-    .from(curbLogs)
-    .where(
-      and(
-        eq(curbLogs.habitId, habitId),
-        eq(curbLogs.userId, userId),
-        gte(curbLogs.loggedAt, new Date(dateFrom)),
-        lte(curbLogs.loggedAt, new Date(dateTo + "T23:59:59.999Z")),
-      ),
-    )
-    .groupBy(sql`EXTRACT(HOUR FROM ${curbLogs.loggedAt})`)
-    .orderBy(asc(sql`EXTRACT(HOUR FROM ${curbLogs.loggedAt})`));
+  await connectToDatabase();
+  const results = await CurbLogModel.aggregate([
+    {
+      $match: {
+        habitId,
+        userId,
+        loggedAt: { $gte: new Date(dateFrom), $lte: new Date(dateTo + "T23:59:59.999Z") },
+      },
+    },
+    {
+      $group: {
+        _id: { $hour: "$loggedAt" },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+  return results.map((r: any) => ({ hour: r._id, count: r.count }));
 }
 
 export async function getHabitStreakDates(userId: string, habitId: string) {
-  const rows = await db
-    .select({
-      date: sql<string>`DISTINCT DATE(${curbLogs.loggedAt})`,
-    })
-    .from(curbLogs)
-    .where(and(eq(curbLogs.habitId, habitId), eq(curbLogs.userId, userId)))
-    .orderBy(desc(sql`DATE(${curbLogs.loggedAt})`));
-  return rows.map((r) => r.date);
+  await connectToDatabase();
+  const results = await CurbLogModel.aggregate([
+    { $match: { habitId, userId } },
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m-%d", date: "$loggedAt" } },
+      },
+    },
+    { $sort: { _id: -1 } },
+  ]);
+  return results.map((r: any) => r._id);
 }

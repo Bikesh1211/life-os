@@ -250,7 +250,7 @@ export const getNoteFolders = cache(async (userId: string) => {
     folderStats.set(f.id, 0);
   }
 
-  return folders.map((f) => ({
+  return folders.map((f: any) => ({
     ...f,
     noteCount: folderStats.get(f.id) ?? 0,
   }));

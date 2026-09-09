@@ -1,27 +1,52 @@
-import { db } from "@/core/database";
-import { tasks, taskProjects, taskLabels, taskTasksLabels, taskStatusEnum, taskRecurrenceEnum } from "./schema";
-import {
-  eq,
-  and,
-  isNull,
-  desc,
-  asc,
-  sql,
-  or,
-  gte,
-  lte,
-  inArray,
-} from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { Task as TaskModel, TaskProject as TaskProjectModel, TaskLabel as TaskLabelModel, TaskTasksLabel as TaskTasksLabelModel } from "@/lib/models/tasks";
 
 // ── Types ──
 
-type TaskStatus = typeof taskStatusEnum.enumValues[number];
-type TaskRecurrence = typeof taskRecurrenceEnum.enumValues[number];
+export type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
+export type TaskRecurrence = "none" | "daily" | "weekly" | "monthly";
 
-export type Task = typeof tasks.$inferSelect;
-export type TaskProject = typeof taskProjects.$inferSelect;
-export type TaskLabel = typeof taskLabels.$inferSelect;
+export type Task = {
+  id: string;
+  userId: string;
+  projectId: string | null;
+  parentId: string | null;
+  title: string;
+  description: string | null;
+  descriptionJson: unknown;
+  status: TaskStatus;
+  priority: string;
+  dueDate: Date | null;
+  startDate: Date | null;
+  estimatedMinutes: number | null;
+  actualMinutes: number | null;
+  recurrence: TaskRecurrence;
+  recurrenceEndDate: Date | null;
+  order: number;
+  completedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+};
+
+export type TaskProject = {
+  id: string;
+  userId: string;
+  title: string;
+  color: string;
+  description: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+};
+
+export type TaskLabel = {
+  id: string;
+  userId: string;
+  name: string;
+  color: string;
+  createdAt: Date;
+};
 
 export type CreateTaskInput = {
   userId: string;
@@ -76,142 +101,174 @@ export type TaskFilters = {
 
 // ── Column helpers ──
 
-export const taskColumns = {
-  id: tasks.id,
-  userId: tasks.userId,
-  projectId: tasks.projectId,
-  parentId: tasks.parentId,
-  title: tasks.title,
-  description: tasks.description,
-  descriptionJson: tasks.descriptionJson,
-  status: tasks.status,
-  priority: tasks.priority,
-  dueDate: tasks.dueDate,
-  startDate: tasks.startDate,
-  estimatedMinutes: tasks.estimatedMinutes,
-  actualMinutes: tasks.actualMinutes,
-  recurrence: tasks.recurrence,
-  recurrenceEndDate: tasks.recurrenceEndDate,
-  order: tasks.order,
-  completedAt: tasks.completedAt,
-  createdAt: tasks.createdAt,
-  updatedAt: tasks.updatedAt,
-  deletedAt: tasks.deletedAt,
-};
+export const taskColumns = [
+  "id", "userId", "projectId", "parentId", "title", "description",
+  "descriptionJson", "status", "priority", "dueDate", "startDate",
+  "estimatedMinutes", "actualMinutes", "recurrence", "recurrenceEndDate",
+  "order", "completedAt", "createdAt", "updatedAt", "deletedAt",
+];
+
+function mapTask(doc: any): Task {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    projectId: doc.projectId ?? null,
+    parentId: doc.parentId ?? null,
+    title: doc.title,
+    description: doc.description ?? null,
+    descriptionJson: doc.descriptionJson ?? null,
+    status: doc.status,
+    priority: doc.priority,
+    dueDate: doc.dueDate ?? null,
+    startDate: doc.startDate ?? null,
+    estimatedMinutes: doc.estimatedMinutes ?? null,
+    actualMinutes: doc.actualMinutes ?? null,
+    recurrence: doc.recurrence,
+    recurrenceEndDate: doc.recurrenceEndDate ?? null,
+    order: doc.order,
+    completedAt: doc.completedAt ?? null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+    deletedAt: doc.deletedAt ?? null,
+  };
+}
+
+function mapProject(doc: any): TaskProject {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    title: doc.title,
+    color: doc.color,
+    description: doc.description ?? null,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+    deletedAt: doc.deletedAt ?? null,
+  };
+}
+
+function mapLabel(doc: any): TaskLabel {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    name: doc.name,
+    color: doc.color,
+    createdAt: doc.createdAt,
+  };
+}
 
 // ── Tasks ──
 
 export async function createTask(input: CreateTaskInput) {
-  const [task] = await db
-    .insert(tasks)
-    .values({
-      userId: input.userId,
-      projectId: input.projectId ?? null,
-      parentId: input.parentId ?? null,
-      title: input.title,
-      description: input.description ?? null,
-      descriptionJson: input.descriptionJson ?? null,
-      status: input.status ?? "todo",
-      priority: input.priority ?? "p3",
-      dueDate: input.dueDate ?? null,
-      startDate: input.startDate ?? null,
-      estimatedMinutes: input.estimatedMinutes ?? null,
-      actualMinutes: input.actualMinutes ?? null,
-      recurrence: input.recurrence ?? "none",
-      recurrenceEndDate: input.recurrenceEndDate ?? null,
-      order: input.order ?? 0,
-    })
-    .returning(taskColumns);
-  return task;
+  await connectToDatabase();
+  const doc = await TaskModel.create({
+    userId: input.userId,
+    projectId: input.projectId ?? null,
+    parentId: input.parentId ?? null,
+    title: input.title,
+    description: input.description ?? null,
+    descriptionJson: input.descriptionJson ?? null,
+    status: input.status ?? "todo",
+    priority: input.priority ?? "p3",
+    dueDate: input.dueDate ?? null,
+    startDate: input.startDate ?? null,
+    estimatedMinutes: input.estimatedMinutes ?? null,
+    actualMinutes: input.actualMinutes ?? null,
+    recurrence: input.recurrence ?? "none",
+    recurrenceEndDate: input.recurrenceEndDate ?? null,
+    order: input.order ?? 0,
+  } as any);
+  return mapTask(doc.toObject());
 }
 
 export async function getTaskById(id: string, userId: string) {
-  const [task] = await db
-    .select(taskColumns)
-    .from(tasks)
-    .where(and(eq(tasks.id, id), eq(tasks.userId, userId), isNull(tasks.deletedAt)))
-    .limit(1);
-  return task ?? null;
+  await connectToDatabase();
+  const doc = await TaskModel.findOne({
+    _id: id,
+    userId,
+    deletedAt: null,
+  }).lean();
+  return doc ? mapTask(doc) : null;
 }
 
 export async function getTasksForUser(userId: string, filters: TaskFilters = {}) {
-  const conditions: (SQL | undefined)[] = [
-    eq(tasks.userId, userId),
-    isNull(tasks.deletedAt),
-  ];
+  await connectToDatabase();
+
+  const filter: any = {
+    userId,
+    deletedAt: null,
+  };
 
   if (filters.parentId === null) {
-    conditions.push(isNull(tasks.parentId));
+    filter.parentId = null;
   } else if (filters.parentId) {
-    conditions.push(eq(tasks.parentId, filters.parentId));
+    filter.parentId = filters.parentId;
   }
 
   if (filters.status) {
     if (filters.status === "active") {
-      conditions.push(inArray(tasks.status, ["todo", "in_progress"]));
+      filter.status = { $in: ["todo", "in_progress"] };
     } else {
-      conditions.push(eq(tasks.status, filters.status as any));
+      filter.status = filters.status;
     }
   }
 
   if (filters.priority) {
-    conditions.push(eq(tasks.priority, filters.priority));
+    filter.priority = filters.priority;
   }
 
   if (filters.projectId) {
-    conditions.push(eq(tasks.projectId, filters.projectId));
+    filter.projectId = filters.projectId;
   }
 
   if (filters.noProject) {
-    conditions.push(isNull(tasks.projectId));
+    filter.projectId = null;
   }
 
-  if (filters.dueDateFrom) {
-    conditions.push(gte(tasks.dueDate, filters.dueDateFrom));
-  }
-
-  if (filters.dueDateTo) {
-    conditions.push(lte(tasks.dueDate, filters.dueDateTo));
+  if (filters.dueDateFrom || filters.dueDateTo) {
+    filter.dueDate = {};
+    if (filters.dueDateFrom) filter.dueDate.$gte = filters.dueDateFrom;
+    if (filters.dueDateTo) filter.dueDate.$lte = filters.dueDateTo;
   }
 
   if (filters.search) {
-    conditions.push(
-      sql`(to_tsvector('english', ${tasks.title}) @@ plainto_tsquery('english', ${filters.search}))`,
-    );
+    filter.title = { $regex: filters.search, $options: "i" };
   }
 
   if (filters.labelIds && filters.labelIds.length > 0) {
-    const taskIds = await db
-      .select({ taskId: taskTasksLabels.taskId })
-      .from(taskTasksLabels)
-      .where(inArray(taskTasksLabels.labelId, filters.labelIds));
-    const ids = [...new Set(taskIds.map((r) => r.taskId))];
-    conditions.push(inArray(tasks.id, ids));
+    const taskIds = await TaskTasksLabelModel.find({
+      labelId: { $in: filters.labelIds },
+    })
+      .select({ taskId: 1, _id: 0 })
+      .lean();
+    const ids = [...new Set(taskIds.map((r: any) => r.taskId))];
+    filter._id = { $in: ids };
   }
 
-  const orderByMap = {
-    createdAt: tasks.createdAt,
-    dueDate: tasks.dueDate,
-    priority: sql`CASE ${tasks.priority}
-      WHEN 'p1' THEN 1 WHEN 'p2' THEN 2 WHEN 'p3' THEN 3
-      WHEN 'p4' THEN 4 WHEN 'p5' THEN 5 ELSE 6 END`,
-    title: tasks.title,
-    order: tasks.order,
+  const sortMap: Record<string, any> = {
+    createdAt: { createdAt: 1 },
+    dueDate: { dueDate: 1 },
+    title: { title: 1 },
+    order: { order: 1 },
+    priority: { priority: 1 },
   };
 
-  const orderColumn = orderByMap[filters.sortBy ?? "createdAt"];
-  const orderDirection = filters.sortOrder === "asc" ? asc : desc;
+  const sortBy = filters.sortBy ?? "createdAt";
+  const sortOrder = filters.sortOrder === "asc" ? 1 : -1;
+  const sort = sortBy === "priority"
+    ? { priority: sortOrder }
+    : { [sortBy]: sortOrder } as Record<string, any>;
 
-  return db
-    .select(taskColumns)
-    .from(tasks)
-    .where(and(...conditions))
-    .orderBy(orderDirection(orderColumn))
+  const docs = await TaskModel.find(filter)
+    .sort(sort)
+    .skip(filters.offset ?? 0)
     .limit(filters.limit ?? 100)
-    .offset(filters.offset ?? 0);
+    .lean();
+
+  return docs.map(mapTask);
 }
 
 export async function updateTask(id: string, userId: string, input: UpdateTaskInput) {
+  await connectToDatabase();
   const updateData: Record<string, unknown> = { ...input, updatedAt: new Date() };
   if (input.status === "done" && !input.completedAt) {
     updateData.completedAt = new Date();
@@ -220,95 +277,96 @@ export async function updateTask(id: string, userId: string, input: UpdateTaskIn
     updateData.completedAt = null;
   }
 
-  const [task] = await db
-    .update(tasks)
-    .set(updateData)
-    .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
-    .returning(taskColumns);
-  return task ?? null;
+  const doc = await TaskModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: updateData },
+    { new: true },
+  ).lean();
+  return doc ? mapTask(doc) : null;
 }
 
 export async function softDeleteTask(id: string, userId: string) {
-  const [task] = await db
-    .update(tasks)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(tasks.id, id), eq(tasks.userId, userId), isNull(tasks.deletedAt)))
-    .returning(taskColumns);
-  return task ?? null;
+  await connectToDatabase();
+  const doc = await TaskModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { $set: { deletedAt: new Date(), updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapTask(doc) : null;
 }
 
 export async function restoreTask(id: string, userId: string) {
-  const [task] = await db
-    .update(tasks)
-    .set({ deletedAt: null, updatedAt: new Date() })
-    .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
-    .returning(taskColumns);
-  return task ?? null;
+  await connectToDatabase();
+  const doc = await TaskModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: { deletedAt: null, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapTask(doc) : null;
 }
 
 export async function getTaskCounts(userId: string) {
-  const base = and(eq(tasks.userId, userId), isNull(tasks.deletedAt));
-  const [result] = await db
-    .select({
-      total: sql<number>`count(*)`,
-      todo: sql<number>`count(*) filter (where ${tasks.status} = 'todo')`,
-      inProgress: sql<number>`count(*) filter (where ${tasks.status} = 'in_progress')`,
-      done: sql<number>`count(*) filter (where ${tasks.status} = 'done')`,
-      cancelled: sql<number>`count(*) filter (where ${tasks.status} = 'cancelled')`,
-      overdue: sql<number>`count(*) filter (where ${tasks.status} != 'done' and ${tasks.status} != 'cancelled' and ${tasks.dueDate} < now())`,
-      noProject: sql<number>`count(*) filter (where ${tasks.projectId} is null)`,
-    })
-    .from(tasks)
-    .where(base);
-  return result!;
+  await connectToDatabase();
+  const baseFilter = { userId, deletedAt: null };
+
+  const [total, todo, inProgress, done, cancelled, overdue, noProject] = await Promise.all([
+    TaskModel.countDocuments(baseFilter),
+    TaskModel.countDocuments({ ...baseFilter, status: "todo" }),
+    TaskModel.countDocuments({ ...baseFilter, status: "in_progress" }),
+    TaskModel.countDocuments({ ...baseFilter, status: "done" }),
+    TaskModel.countDocuments({ ...baseFilter, status: "cancelled" }),
+    TaskModel.countDocuments({
+      ...baseFilter,
+      status: { $nin: ["done", "cancelled"] },
+      dueDate: { $lt: new Date() },
+    }),
+    TaskModel.countDocuments({ ...baseFilter, projectId: null }),
+  ]);
+
+  return { total, todo, inProgress, done, cancelled, overdue, noProject };
 }
 
 export async function getSubtasks(parentId: string, userId: string) {
-  return db
-    .select(taskColumns)
-    .from(tasks)
-    .where(
-      and(
-        eq(tasks.parentId, parentId),
-        eq(tasks.userId, userId),
-        isNull(tasks.deletedAt),
-      ),
-    )
-    .orderBy(asc(tasks.order), asc(tasks.createdAt));
+  await connectToDatabase();
+  const docs = await TaskModel.find({
+    parentId,
+    userId,
+    deletedAt: null,
+  })
+    .sort({ order: 1, createdAt: 1 })
+    .lean();
+  return docs.map(mapTask);
 }
 
 // ── Projects ──
 
 export async function createProject(input: CreateProjectInput) {
-  const [project] = await db
-    .insert(taskProjects)
-    .values({
-      userId: input.userId,
-      title: input.title,
-      color: input.color ?? "blue",
-      description: input.description ?? null,
-    })
-    .returning();
-  return project;
+  await connectToDatabase();
+  const doc = await TaskProjectModel.create({
+    userId: input.userId,
+    title: input.title,
+    color: input.color ?? "blue",
+    description: input.description ?? null,
+  } as any);
+  return mapProject(doc.toObject());
 }
 
 export async function getProjectsForUser(userId: string) {
-  return db
-    .select()
-    .from(taskProjects)
-    .where(and(eq(taskProjects.userId, userId), isNull(taskProjects.deletedAt)))
-    .orderBy(asc(taskProjects.title));
+  await connectToDatabase();
+  const docs = await TaskProjectModel.find({ userId, deletedAt: null })
+    .sort({ title: 1 })
+    .lean();
+  return docs.map(mapProject);
 }
 
 export async function getProjectById(id: string, userId: string) {
-  const [project] = await db
-    .select()
-    .from(taskProjects)
-    .where(
-      and(eq(taskProjects.id, id), eq(taskProjects.userId, userId), isNull(taskProjects.deletedAt)),
-    )
-    .limit(1);
-  return project ?? null;
+  await connectToDatabase();
+  const doc = await TaskProjectModel.findOne({
+    _id: id,
+    userId,
+    deletedAt: null,
+  }).lean();
+  return doc ? mapProject(doc) : null;
 }
 
 export async function updateProject(
@@ -316,26 +374,28 @@ export async function updateProject(
   userId: string,
   input: Partial<CreateProjectInput>,
 ) {
-  const [project] = await db
-    .update(taskProjects)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(taskProjects.id, id), eq(taskProjects.userId, userId)))
-    .returning();
-  return project ?? null;
+  await connectToDatabase();
+  const doc = await TaskProjectModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: { ...input, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapProject(doc) : null;
 }
 
 export async function deleteProject(id: string, userId: string) {
-  await db
-    .update(tasks)
-    .set({ projectId: null })
-    .where(and(eq(tasks.projectId, id), eq(tasks.userId, userId)));
+  await connectToDatabase();
+  await TaskModel.updateMany(
+    { projectId: id, userId },
+    { $set: { projectId: null } },
+  );
 
-  const [project] = await db
-    .update(taskProjects)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(taskProjects.id, id), eq(taskProjects.userId, userId)))
-    .returning();
-  return project ?? null;
+  const doc = await TaskProjectModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: { deletedAt: new Date(), updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapProject(doc) : null;
 }
 
 export async function getProjectStats(userId: string) {
@@ -343,26 +403,30 @@ export async function getProjectStats(userId: string) {
   const projectIds = projects.map((p) => p.id);
   if (projectIds.length === 0) return [];
 
-  const stats = await db
-    .select({
-      projectId: tasks.projectId,
-      total: sql<number>`count(*)`,
-      doneCount: sql<number>`count(*) filter (where ${tasks.status} = 'done')`,
-    })
-    .from(tasks)
-    .where(
-      and(
-        eq(tasks.userId, userId),
-        isNull(tasks.deletedAt),
-        isNull(tasks.parentId),
-        inArray(tasks.projectId, projectIds),
-      ),
-    )
-    .groupBy(tasks.projectId);
+  await connectToDatabase();
+  const stats = await TaskModel.aggregate([
+    {
+      $match: {
+        userId,
+        deletedAt: null,
+        parentId: null,
+        projectId: { $in: projectIds },
+      },
+    },
+    {
+      $group: {
+        _id: "$projectId",
+        total: { $sum: 1 },
+        doneCount: {
+          $sum: { $cond: [{ $eq: ["$status", "done"] }, 1, 0] },
+        },
+      },
+    },
+  ]);
 
-  const statsMap = new Map(stats.map((s) => [s.projectId, s]));
+  const statsMap = new Map(stats.map((s: any) => [s._id, s]));
 
-  return projects.map((p) => ({
+  return projects.map((p: any) => ({
     ...p,
     taskCount: statsMap.get(p.id)?.total ?? 0,
     doneCount: statsMap.get(p.id)?.doneCount ?? 0,
@@ -372,99 +436,107 @@ export async function getProjectStats(userId: string) {
 // ── Labels ──
 
 export async function createLabel(input: CreateLabelInput) {
-  const [label] = await db
-    .insert(taskLabels)
-    .values({
+  await connectToDatabase();
+  try {
+    const doc = await TaskLabelModel.create({
       userId: input.userId,
       name: input.name,
       color: input.color ?? "blue",
-    })
-    .onConflictDoNothing()
-    .returning();
-  return label ?? null;
+    });
+    return mapLabel(doc.toObject());
+  } catch {
+    return null;
+  }
 }
 
 export async function getLabelsForUser(userId: string) {
-  return db
-    .select()
-    .from(taskLabels)
-    .where(eq(taskLabels.userId, userId))
-    .orderBy(asc(taskLabels.name));
+  await connectToDatabase();
+  const docs = await TaskLabelModel.find({ userId })
+    .sort({ name: 1 })
+    .lean();
+  return docs.map(mapLabel);
 }
 
 export async function updateLabel(id: string, userId: string, input: { name?: string; color?: string }) {
-  const [label] = await db
-    .update(taskLabels)
-    .set(input)
-    .where(and(eq(taskLabels.id, id), eq(taskLabels.userId, userId)))
-    .returning();
-  return label ?? null;
+  await connectToDatabase();
+  const doc = await TaskLabelModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: input },
+    { new: true },
+  ).lean();
+  return doc ? mapLabel(doc) : null;
 }
 
 export async function deleteLabel(id: string, userId: string) {
-  // Delete the label first: it is the ownership-scoped statement, so a label
-  // belonging to someone else leaves their task links untouched.
-  const [label] = await db
-    .delete(taskLabels)
-    .where(and(eq(taskLabels.id, id), eq(taskLabels.userId, userId)))
-    .returning();
-  if (!label) return null;
+  await connectToDatabase();
+  const doc = await TaskLabelModel.findOneAndDelete({ _id: id, userId });
+  if (!doc) return null;
 
-  await db.delete(taskTasksLabels).where(eq(taskTasksLabels.labelId, id));
-  return label;
+  await TaskTasksLabelModel.deleteMany({ labelId: id });
+  return mapLabel(doc.toObject());
 }
 
 /**
  * Replaces a task's labels. Both sides are ownership-checked: the task must be
- * the caller's, and only labels the caller owns are linked — otherwise a task
- * id alone would let anyone rewrite another user's labels, and an arbitrary
- * label id would pull a stranger's label name into the response.
+ * the caller's, and only labels the caller owns are linked.
  */
 export async function setTaskLabels(taskId: string, userId: string, labelIds: string[]) {
-  const [task] = await db
-    .select({ id: tasks.id })
-    .from(tasks)
-    .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
-    .limit(1);
+  await connectToDatabase();
+  const task = await TaskModel.findOne({ _id: taskId, userId }).lean();
   if (!task) return;
 
-  await db.delete(taskTasksLabels).where(eq(taskTasksLabels.taskId, taskId));
+  await TaskTasksLabelModel.deleteMany({ taskId });
   if (labelIds.length === 0) return;
 
-  const owned = await db
-    .select({ id: taskLabels.id })
-    .from(taskLabels)
-    .where(and(inArray(taskLabels.id, labelIds), eq(taskLabels.userId, userId)));
+  const owned = await TaskLabelModel.find({
+    _id: { $in: labelIds },
+    userId,
+  })
+    .select({ _id: 1 })
+    .lean();
   if (owned.length === 0) return;
 
-  await db.insert(taskTasksLabels).values(
-    owned.map((label) => ({ taskId, labelId: label.id })),
+  await TaskTasksLabelModel.insertMany(
+    owned.map((label: any) => ({ taskId, labelId: label._id.toString() })),
   );
 }
 
 export async function getTaskLabels(taskId: string, userId: string) {
-  return db
-    .select({
-      id: taskLabels.id,
-      name: taskLabels.name,
-      color: taskLabels.color,
+  await connectToDatabase();
+  const rows = await TaskTasksLabelModel.find({ taskId })
+    .populate({
+      path: "labelId",
+      match: { userId },
+      select: "name color",
     })
-    .from(taskTasksLabels)
-    .innerJoin(taskLabels, eq(taskTasksLabels.labelId, taskLabels.id))
-    .where(and(eq(taskTasksLabels.taskId, taskId), eq(taskLabels.userId, userId)));
+    .lean();
+
+  return rows
+    .filter((r: any) => r.labelId)
+    .map((r: any) => ({
+      id: r.labelId._id.toString(),
+      name: r.labelId.name,
+      color: r.labelId.color,
+    }));
 }
 
 export async function getTaskLabelsBatch(taskIds: string[], userId: string) {
   if (taskIds.length === 0) return [];
-  const rows = await db
-    .select({
-      taskId: taskTasksLabels.taskId,
-      id: taskLabels.id,
-      name: taskLabels.name,
-      color: taskLabels.color,
+  await connectToDatabase();
+  const rows = await TaskTasksLabelModel.find({ taskId: { $in: taskIds } })
+    .populate({
+      path: "labelId",
+      match: { userId },
+      select: "name color",
     })
-    .from(taskTasksLabels)
-    .innerJoin(taskLabels, eq(taskTasksLabels.labelId, taskLabels.id))
-    .where(and(inArray(taskTasksLabels.taskId, taskIds), eq(taskLabels.userId, userId)));
-  return rows;
+    .lean();
+
+  return rows
+    .filter((r: any) => r.labelId)
+    .map((r: any) => ({
+      taskId: r.taskId,
+      id: r.labelId._id.toString(),
+      name: r.labelId.name,
+      color: r.labelId.color,
+    }));
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Stack, Title, Text, Paper, Group, Avatar, Checkbox, Box } from "@mantine/core";
-import { useSupabase } from "@/infrastructure/providers/supabase-provider";
+import { useAuth } from "@/infrastructure/providers/auth-provider";
 import { navigation, findNavItemByFeatureId, type NavItem } from "@/core/navigation";
 import { useSidebarVisibility } from "@/core/sidebar-visibility";
 import { useSidebarFavorites } from "@/core/sidebar-favorites";
@@ -139,7 +139,7 @@ function SidebarVisibilitySection() {
 }
 
 export default function SettingsPage() {
-  const { user } = useSupabase();
+  const { user } = useAuth();
 
   return (
     <Stack gap="lg">
@@ -147,10 +147,10 @@ export default function SettingsPage() {
 
       <Paper withBorder p="lg" radius="md">
         <Group>
-          <Avatar src={user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? ""} size="xl" radius="xl" />
+          <Avatar src={user?.avatarUrl ?? ""} size="xl" radius="xl" />
           <div>
             <Text fw={600} size="lg">
-              {user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "User"}
+              {user?.fullName ?? "User"}
             </Text>
             <Text size="sm" c="dimmed">
               {user?.email}

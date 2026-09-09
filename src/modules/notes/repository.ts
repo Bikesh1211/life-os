@@ -1,12 +1,52 @@
-import { db } from "@/core/database";
-import { notes, noteTags, noteFolders, noteLinks } from "./schema";
-import { eq, and, isNull, desc, asc, sql, or } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { Note as NoteModel, NoteTag as NoteTagModel, NoteFolder as NoteFolderModel, NoteLink as NoteLinkModel } from "@/lib/models/notes";
 
-export type Note = typeof notes.$inferSelect;
-export type NoteTag = typeof noteTags.$inferSelect;
-export type NoteFolder = typeof noteFolders.$inferSelect;
-export type NoteLink = typeof noteLinks.$inferSelect;
+export type Note = {
+  id: string;
+  userId: string;
+  title: string;
+  content: string | null;
+  contentJson: unknown;
+  excerpt: string | null;
+  coverImage: string | null;
+  category: string;
+  tags: string[];
+  isPinned: boolean;
+  status: string;
+  folderId: string | null;
+  reminderDate: Date | null;
+  color: string | null;
+  priority: string;
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt: Date | null;
+};
+
+export type NoteTag = {
+  id: string;
+  userId: string;
+  name: string;
+  color: string;
+};
+
+export type NoteFolder = {
+  id: string;
+  userId: string;
+  name: string;
+  parentId: string | null;
+  color: string;
+  icon: string | null;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type NoteLink = {
+  id: string;
+  noteId: string;
+  linkedNoteId: string;
+  createdAt: Date;
+};
 
 export type CreateNoteInput = {
   userId: string;
@@ -58,374 +98,423 @@ export type NoteFilters = {
   offset?: number;
 };
 
-export const noteColumns = {
-  id: notes.id,
-  userId: notes.userId,
-  title: notes.title,
-  content: notes.content,
-  contentJson: notes.contentJson,
-  excerpt: notes.excerpt,
-  coverImage: notes.coverImage,
-  category: notes.category,
-  tags: notes.tags,
-  isPinned: notes.isPinned,
-  status: notes.status,
-  folderId: notes.folderId,
-  reminderDate: notes.reminderDate,
-  color: notes.color,
-  priority: notes.priority,
-  createdAt: notes.createdAt,
-  updatedAt: notes.updatedAt,
-  deletedAt: notes.deletedAt,
-};
+export const noteColumns = [
+  "id", "userId", "title", "content", "contentJson", "excerpt", "coverImage",
+  "category", "tags", "isPinned", "status", "folderId", "reminderDate",
+  "color", "priority", "createdAt", "updatedAt", "deletedAt",
+];
 
-const noteColumnsDashboard = {
-  id: notes.id,
-  title: notes.title,
-  category: notes.category,
-  tags: notes.tags,
-  isPinned: notes.isPinned,
-  color: notes.color,
-  priority: notes.priority,
-  createdAt: notes.createdAt,
-  updatedAt: notes.updatedAt,
-};
+const noteColumnsDashboard = [
+  "id", "title", "category", "tags", "isPinned", "color", "priority",
+  "createdAt", "updatedAt",
+];
+
+function mapNote(doc: any): Note {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    title: doc.title,
+    content: doc.content ?? null,
+    contentJson: doc.contentJson ?? null,
+    excerpt: doc.excerpt ?? null,
+    coverImage: doc.coverImage ?? null,
+    category: doc.category,
+    tags: doc.tags ?? [],
+    isPinned: doc.isPinned,
+    status: doc.status,
+    folderId: doc.folderId ?? null,
+    reminderDate: doc.reminderDate ?? null,
+    color: doc.color ?? null,
+    priority: doc.priority,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+    deletedAt: doc.deletedAt ?? null,
+  };
+}
+
+function mapNoteDashboard(doc: any) {
+  return {
+    id: doc._id.toString(),
+    title: doc.title,
+    category: doc.category,
+    tags: doc.tags ?? [],
+    isPinned: doc.isPinned,
+    color: doc.color ?? null,
+    priority: doc.priority,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
+
+function mapTag(doc: any): NoteTag {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    name: doc.name,
+    color: doc.color,
+  };
+}
+
+function mapFolder(doc: any): NoteFolder {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    name: doc.name,
+    parentId: doc.parentId ?? null,
+    color: doc.color,
+    icon: doc.icon ?? null,
+    order: doc.order,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}
 
 // ── Notes ──
 
 export async function createNote(input: CreateNoteInput) {
-  const [note] = await db
-    .insert(notes)
-    .values({
-      userId: input.userId,
-      title: input.title,
-      content: input.content ?? null,
-      contentJson: input.contentJson ?? null,
-      excerpt: input.excerpt ?? null,
-      coverImage: input.coverImage ?? null,
-      category: input.category ?? "personal",
-      tags: input.tags ?? [],
-      isPinned: input.isPinned ?? false,
-      status: input.status ?? "published",
-      folderId: input.folderId ?? null,
-      reminderDate: input.reminderDate,
-      color: input.color ?? null,
-      priority: input.priority ?? "medium",
-    })
-    .returning(noteColumns);
-  return note;
+  await connectToDatabase();
+  const doc = await NoteModel.create({
+    userId: input.userId,
+    title: input.title,
+    content: input.content ?? undefined,
+    contentJson: input.contentJson ?? undefined,
+    excerpt: input.excerpt ?? undefined,
+    coverImage: input.coverImage ?? undefined,
+    category: input.category ?? "personal",
+    tags: input.tags ?? [],
+    isPinned: input.isPinned ?? false,
+    status: input.status ?? "published",
+    folderId: input.folderId ?? undefined,
+    reminderDate: input.reminderDate ?? undefined,
+    color: input.color ?? undefined,
+    priority: input.priority ?? "medium",
+  } as any);
+  return mapNote(doc.toObject());
 }
 
 export async function getNoteById(id: string, userId: string) {
-  const [note] = await db
-    .select(noteColumns)
-    .from(notes)
-    .where(and(eq(notes.id, id), eq(notes.userId, userId), isNull(notes.deletedAt)))
-    .limit(1);
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await NoteModel.findOne({
+    _id: id,
+    userId,
+    deletedAt: null,
+  }).lean();
+  return doc ? mapNote(doc) : null;
 }
 
 export async function getNotesForUser(userId: string, filters: NoteFilters = {}) {
-  const conditions: (SQL | undefined)[] = [
-    eq(notes.userId, userId),
-  ];
+  await connectToDatabase();
+
+  const filter: any = { userId };
 
   if (filters.includeDeleted) {
-    conditions.push(sql`${notes.deletedAt} IS NOT NULL`);
+    filter.deletedAt = { $ne: null };
   } else {
-    conditions.push(isNull(notes.deletedAt));
+    filter.deletedAt = null;
 
     if (filters.includeArchived) {
       // show all statuses including archived
     } else if (filters.status) {
-      conditions.push(eq(notes.status, filters.status));
+      filter.status = filters.status;
     } else {
-      conditions.push(or(eq(notes.status, "published"), eq(notes.status, "draft")));
+      filter.status = { $in: ["published", "draft"] };
     }
   }
 
   if (filters.search) {
-    conditions.push(
-      sql`(to_tsvector('english', ${notes.title}) || to_tsvector('english', ${notes.content}) @@ plainto_tsquery('english', ${filters.search}))`,
-    );
+    filter.$or = [
+      { title: { $regex: filters.search, $options: "i" } },
+      { content: { $regex: filters.search, $options: "i" } },
+    ];
   }
   if (filters.category) {
-    conditions.push(eq(notes.category, filters.category));
+    filter.category = filters.category;
   }
   if (filters.tags && filters.tags.length > 0) {
-    conditions.push(sql`${notes.tags} @> ${filters.tags}::text[]`);
+    filter.tags = { $all: filters.tags };
   }
   if (filters.isPinned !== undefined) {
-    conditions.push(eq(notes.isPinned, filters.isPinned));
+    filter.isPinned = filters.isPinned;
   }
   if (filters.priority) {
-    conditions.push(eq(notes.priority, filters.priority));
+    filter.priority = filters.priority;
   }
   if (filters.folderId) {
-    conditions.push(eq(notes.folderId, filters.folderId));
+    filter.folderId = filters.folderId;
   }
 
-  const orderByMap = {
-    createdAt: notes.createdAt,
-    updatedAt: notes.updatedAt,
-    title: notes.title,
-  };
+  const sortBy = filters.sortBy ?? "updatedAt";
+  const sortOrder = filters.sortOrder === "asc" ? 1 : -1;
 
-  const orderColumn = orderByMap[filters.sortBy ?? "updatedAt"];
-  const orderDirection = filters.sortOrder === "asc" ? asc : desc;
-
-  const entries = await db
-    .select(noteColumns)
-    .from(notes)
-    .where(and(...conditions))
-    .orderBy(desc(notes.isPinned), orderDirection(orderColumn))
+  const docs = await NoteModel.find(filter)
+    .sort({ isPinned: -1, [sortBy]: sortOrder })
+    .skip(filters.offset ?? 0)
     .limit(filters.limit ?? 50)
-    .offset(filters.offset ?? 0);
+    .lean();
 
-  return entries;
+  return docs.map(mapNote);
 }
 
 export async function updateNote(id: string, userId: string, input: UpdateNoteInput) {
-  const [note] = await db
-    .update(notes)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(notes.id, id), eq(notes.userId, userId), isNull(notes.deletedAt)))
-    .returning(noteColumns);
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await NoteModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { $set: { ...input, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapNote(doc) : null;
 }
 
 export async function softDeleteNote(id: string, userId: string) {
-  const [note] = await db
-    .update(notes)
-    .set({ deletedAt: new Date(), status: "archived" })
-    .where(and(eq(notes.id, id), eq(notes.userId, userId), isNull(notes.deletedAt)))
-    .returning(noteColumns);
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await NoteModel.findOneAndUpdate(
+    { _id: id, userId, deletedAt: null },
+    { $set: { deletedAt: new Date(), status: "archived" } },
+    { new: true },
+  ).lean();
+  return doc ? mapNote(doc) : null;
 }
 
 export async function restoreNote(id: string, userId: string) {
-  const [note] = await db
-    .update(notes)
-    .set({ deletedAt: null, status: "published" })
-    .where(and(eq(notes.id, id), eq(notes.userId, userId)))
-    .returning(noteColumns);
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await NoteModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: { deletedAt: null, status: "published" } },
+    { new: true },
+  ).lean();
+  return doc ? mapNote(doc) : null;
 }
 
 export async function duplicateNote(id: string, userId: string) {
   const original = await getNoteById(id, userId);
   if (!original) return null;
 
-  const [note] = await db
-    .insert(notes)
-    .values({
-      userId,
-      title: `${original.title} (Copy)`,
-      content: original.content,
-      contentJson: original.contentJson,
-      excerpt: original.excerpt,
-      category: original.category ?? "personal",
-      tags: original.tags ?? [],
-      isPinned: false,
-      status: "draft",
-      folderId: original.folderId,
-      color: original.color,
-      priority: original.priority ?? "medium",
-    })
-    .returning(noteColumns);
-  return note;
+  await connectToDatabase();
+  const doc = await NoteModel.create({
+    userId,
+    title: `${original.title} (Copy)`,
+    content: original.content,
+    contentJson: original.contentJson,
+    excerpt: original.excerpt,
+    category: original.category ?? "personal",
+    tags: original.tags ?? [],
+    isPinned: false,
+    status: "draft",
+    folderId: original.folderId,
+    color: original.color,
+    priority: original.priority ?? "medium",
+  } as any);
+  return mapNote(doc.toObject());
 }
 
 export async function hardDeleteExpiredNotes(daysRetained = 30) {
+  await connectToDatabase();
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - daysRetained);
-  await db
-    .delete(notes)
-    .where(and(sql`${notes.deletedAt} < ${cutoff}`, sql`${notes.deletedAt} IS NOT NULL`));
+  await NoteModel.deleteMany({
+    deletedAt: { $ne: null, $lt: cutoff },
+  });
 }
 
 export async function getNoteCountForUser(userId: string, status?: string) {
-  const conditions: (SQL | undefined)[] = [
-    eq(notes.userId, userId),
-    isNull(notes.deletedAt),
-  ];
-  if (status) conditions.push(eq(notes.status, status));
-  else conditions.push(or(eq(notes.status, "published"), eq(notes.status, "draft")));
-
-  const [result] = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(notes)
-    .where(and(...conditions));
-  return result?.count ?? 0;
+  await connectToDatabase();
+  const filter: any = { userId, deletedAt: null };
+  if (status) {
+    filter.status = status;
+  } else {
+    filter.status = { $in: ["published", "draft"] };
+  }
+  return NoteModel.countDocuments(filter);
 }
 
 export async function getRecentNotesForUser(userId: string, limit = 10) {
-  return db
-    .select(noteColumns)
-    .from(notes)
-    .where(and(eq(notes.userId, userId), isNull(notes.deletedAt), or(eq(notes.status, "published"), eq(notes.status, "draft"))))
-    .orderBy(desc(notes.updatedAt))
-    .limit(limit);
+  await connectToDatabase();
+  const docs = await NoteModel.find({
+    userId,
+    deletedAt: null,
+    status: { $in: ["published", "draft"] },
+  })
+    .sort({ updatedAt: -1 })
+    .limit(limit)
+    .lean();
+  return docs.map(mapNote);
 }
 
 export async function getRecentNotesForUserDashboard(userId: string, limit = 5) {
-  return db
-    .select(noteColumnsDashboard)
-    .from(notes)
-    .where(and(eq(notes.userId, userId), isNull(notes.deletedAt), or(eq(notes.status, "published"), eq(notes.status, "draft"))))
-    .orderBy(desc(notes.updatedAt))
-    .limit(limit);
+  await connectToDatabase();
+  const docs = await NoteModel.find({
+    userId,
+    deletedAt: null,
+    status: { $in: ["published", "draft"] },
+  })
+    .sort({ updatedAt: -1 })
+    .limit(limit)
+    .lean();
+  return docs.map(mapNoteDashboard);
 }
 
 // ── Tags ──
 
 export async function createTag(input: CreateNoteTagInput) {
-  const [tag] = await db
-    .insert(noteTags)
-    .values({
+  await connectToDatabase();
+  try {
+    const doc = await NoteTagModel.create({
       userId: input.userId,
       name: input.name,
       color: input.color ?? "blue",
-    })
-    .onConflictDoNothing()
-    .returning();
-  return tag ?? null;
+    });
+    return mapTag(doc.toObject());
+  } catch {
+    return null;
+  }
 }
 
 export async function getTagsForUser(userId: string) {
-  return db
-    .select()
-    .from(noteTags)
-    .where(eq(noteTags.userId, userId))
-    .orderBy(asc(noteTags.name));
+  await connectToDatabase();
+  const docs = await NoteTagModel.find({ userId })
+    .sort({ name: 1 })
+    .lean();
+  return docs.map(mapTag);
 }
 
 export async function updateTag(id: string, userId: string, input: { name?: string; color?: string }) {
-  const [tag] = await db
-    .update(noteTags)
-    .set(input)
-    .where(and(eq(noteTags.id, id), eq(noteTags.userId, userId)))
-    .returning();
-  return tag ?? null;
+  await connectToDatabase();
+  const doc = await NoteTagModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: input },
+    { new: true },
+  ).lean();
+  return doc ? mapTag(doc) : null;
 }
 
 export async function deleteTag(id: string, userId: string) {
-  const [tag] = await db
-    .delete(noteTags)
-    .where(and(eq(noteTags.id, id), eq(noteTags.userId, userId)))
-    .returning();
-  return tag ?? null;
+  await connectToDatabase();
+  const doc = await NoteTagModel.findOneAndDelete({ _id: id, userId });
+  return doc ? mapTag(doc.toObject()) : null;
 }
 
 // ── Folders ──
 
 export async function createFolder(input: CreateNoteFolderInput) {
-  const [folder] = await db
-    .insert(noteFolders)
-    .values({
-      userId: input.userId,
-      name: input.name,
-      parentId: input.parentId ?? null,
-      color: input.color ?? "blue",
-      icon: input.icon ?? null,
-      order: input.order ?? 0,
-    })
-    .returning();
-  return folder;
+  await connectToDatabase();
+  const doc = await NoteFolderModel.create({
+    userId: input.userId,
+    name: input.name,
+    parentId: input.parentId ?? undefined,
+    color: input.color ?? "blue",
+    icon: input.icon ?? undefined,
+    order: input.order ?? 0,
+  } as any);
+  return mapFolder(doc.toObject());
 }
 
 export async function getFoldersForUser(userId: string) {
-  return db
-    .select()
-    .from(noteFolders)
-    .where(eq(noteFolders.userId, userId))
-    .orderBy(asc(noteFolders.order), asc(noteFolders.name));
+  await connectToDatabase();
+  const docs = await NoteFolderModel.find({ userId })
+    .sort({ order: 1, name: 1 })
+    .lean();
+  return docs.map(mapFolder);
 }
 
 export async function getFolderById(id: string, userId: string) {
-  const [folder] = await db
-    .select()
-    .from(noteFolders)
-    .where(and(eq(noteFolders.id, id), eq(noteFolders.userId, userId)))
-    .limit(1);
-  return folder ?? null;
+  await connectToDatabase();
+  const doc = await NoteFolderModel.findOne({ _id: id, userId }).lean();
+  return doc ? mapFolder(doc) : null;
 }
 
 export async function updateFolder(id: string, userId: string, input: Partial<CreateNoteFolderInput>) {
-  const [folder] = await db
-    .update(noteFolders)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(noteFolders.id, id), eq(noteFolders.userId, userId)))
-    .returning();
-  return folder ?? null;
+  await connectToDatabase();
+  const doc = await NoteFolderModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $set: { ...input, updatedAt: new Date() } },
+    { new: true },
+  ).lean();
+  return doc ? mapFolder(doc) : null;
 }
 
 export async function deleteFolder(id: string, userId: string) {
-  await db
-    .update(notes)
-    .set({ folderId: null })
-    .where(and(eq(notes.folderId, id), eq(notes.userId, userId)));
+  await connectToDatabase();
+  await NoteModel.updateMany(
+    { folderId: id, userId },
+    { $set: { folderId: null } },
+  );
 
-  await db
-    .update(noteFolders)
-    .set({ parentId: null })
-    .where(and(eq(noteFolders.parentId, id), eq(noteFolders.userId, userId)));
+  await NoteFolderModel.updateMany(
+    { parentId: id, userId },
+    { $set: { parentId: null } },
+  );
 
-  const [folder] = await db
-    .delete(noteFolders)
-    .where(and(eq(noteFolders.id, id), eq(noteFolders.userId, userId)))
-    .returning();
-  return folder ?? null;
+  const doc = await NoteFolderModel.findOneAndDelete({ _id: id, userId });
+  return doc ? mapFolder(doc.toObject()) : null;
 }
 
 // ── Note Links ──
 
 export async function createNoteLink(noteId: string, linkedNoteId: string) {
-  const [link] = await db
-    .insert(noteLinks)
-    .values({ noteId, linkedNoteId })
-    .returning();
-  return link;
+  await connectToDatabase();
+  const doc = await NoteLinkModel.create({ noteId, linkedNoteId });
+  return {
+    id: doc._id.toString(),
+    noteId: doc.noteId,
+    linkedNoteId: doc.linkedNoteId,
+    createdAt: doc.createdAt,
+  };
 }
 
 export async function getNoteLinks(noteId: string) {
-  const rows = await db
-    .select({
-      link: noteLinks,
-      linkedNote: {
-        id: notes.id,
-        title: notes.title,
-        excerpt: notes.excerpt,
-      },
+  await connectToDatabase();
+  const rows = await NoteLinkModel.find({ noteId })
+    .populate({
+      path: "linkedNoteId",
+      model: "Note",
+      select: "title excerpt",
     })
-    .from(noteLinks)
-    .innerJoin(notes, eq(noteLinks.linkedNoteId, notes.id))
-    .where(eq(noteLinks.noteId, noteId));
+    .lean();
 
-  return rows.map((r) => ({ ...r.link, linkedNote: r.linkedNote }));
+  return rows.map((r: any) => ({
+    id: r._id.toString(),
+    noteId: r.noteId,
+    linkedNoteId: r.linkedNoteId._id.toString(),
+    createdAt: r.createdAt,
+    linkedNote: {
+      id: r.linkedNoteId._id.toString(),
+      title: r.linkedNoteId.title,
+      excerpt: r.linkedNoteId.excerpt ?? null,
+    },
+  }));
 }
 
 export async function getBacklinks(noteId: string) {
-  const rows = await db
-    .select({
-      link: noteLinks,
-      sourceNote: {
-        id: notes.id,
-        title: notes.title,
-        excerpt: notes.excerpt,
-      },
+  await connectToDatabase();
+  const rows = await NoteLinkModel.find({ linkedNoteId: noteId })
+    .populate({
+      path: "noteId",
+      model: "Note",
+      select: "title excerpt",
     })
-    .from(noteLinks)
-    .innerJoin(notes, eq(noteLinks.noteId, notes.id))
-    .where(eq(noteLinks.linkedNoteId, noteId));
+    .lean();
 
-  return rows.map((r) => ({ ...r.link, sourceNote: r.sourceNote }));
+  return rows.map((r: any) => ({
+    id: r._id.toString(),
+    noteId: r.noteId._id.toString(),
+    linkedNoteId: r.linkedNoteId,
+    createdAt: r.createdAt,
+    sourceNote: {
+      id: r.noteId._id.toString(),
+      title: r.noteId.title,
+      excerpt: r.noteId.excerpt ?? null,
+    },
+  }));
 }
 
 export async function deleteNoteLink(linkId: string) {
-  const [link] = await db
-    .delete(noteLinks)
-    .where(eq(noteLinks.id, linkId))
-    .returning();
-  return link ?? null;
+  await connectToDatabase();
+  const doc = await NoteLinkModel.findOneAndDelete({ _id: linkId });
+  if (!doc) return null;
+  return {
+    id: doc._id.toString(),
+    noteId: doc.noteId,
+    linkedNoteId: doc.linkedNoteId,
+    createdAt: doc.createdAt,
+  };
 }

@@ -1,70 +1,114 @@
-import { db } from "@/core/database";
-import { expenseCategories } from "../schema/categories";
-import { eq, and, isNull, or, asc } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
+import { ExpenseCategory as ExpenseCategoryModel } from "@/lib/models/expenses";
 
-export type ExpenseCategory = typeof expenseCategories.$inferSelect;
-export type CreateCategoryInput = typeof expenseCategories.$inferInsert;
+export type ExpenseCategory = {
+  id: string;
+  userId?: string;
+  name: string;
+  icon?: string;
+  color?: string;
+  sortOrder: number;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateCategoryInput = {
+  userId?: string;
+  name: string;
+  icon?: string;
+  color?: string;
+  sortOrder?: number;
+};
+
 export type UpdateCategoryInput = Partial<Omit<CreateCategoryInput, "id">>;
 
-export async function createCategory(input: CreateCategoryInput) {
-  const [category] = await db.insert(expenseCategories).values(input).returning();
-  return category;
+function mapCategory(doc: any): ExpenseCategory {
+  return {
+    id: doc._id.toString(),
+    userId: doc.userId,
+    name: doc.name,
+    icon: doc.icon,
+    color: doc.color,
+    sortOrder: doc.sortOrder,
+    deletedAt: doc.deletedAt,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
 }
 
-export async function getCategoriesForUser(userId: string) {
-  return db
-    .select()
-    .from(expenseCategories)
-    .where(
-      and(
-        or(eq(expenseCategories.userId, userId), isNull(expenseCategories.userId)),
-        isNull(expenseCategories.deletedAt),
-      ),
-    )
-    .orderBy(asc(expenseCategories.sortOrder));
+export async function createCategory(input: CreateCategoryInput): Promise<ExpenseCategory> {
+  await connectToDatabase();
+  const doc = await ExpenseCategoryModel.create({
+    userId: input.userId,
+    name: input.name,
+    icon: input.icon,
+    color: input.color,
+    sortOrder: input.sortOrder ?? 0,
+  });
+  return mapCategory(doc);
 }
 
-export async function getCategoryById(id: string) {
-  const [category] = await db
-    .select()
-    .from(expenseCategories)
-    .where(and(eq(expenseCategories.id, id), isNull(expenseCategories.deletedAt)));
-  return category ?? null;
+export async function getCategoriesForUser(userId: string): Promise<ExpenseCategory[]> {
+  await connectToDatabase();
+  const docs = await ExpenseCategoryModel.find({
+    $or: [{ userId }, { userId: { $exists: false } }, { userId: null }],
+    deletedAt: null,
+  })
+    .sort({ sortOrder: 1 })
+    .lean();
+  return docs.map(mapCategory);
 }
 
-export async function updateCategory(id: string, input: UpdateCategoryInput) {
-  const [category] = await db
-    .update(expenseCategories)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(expenseCategories.id, id), isNull(expenseCategories.deletedAt)))
-    .returning();
-  return category ?? null;
+export async function getCategoryById(id: string): Promise<ExpenseCategory | null> {
+  await connectToDatabase();
+  const doc = await ExpenseCategoryModel.findOne({
+    _id: id,
+    deletedAt: null,
+  }).lean();
+  return doc ? mapCategory(doc) : null;
 }
 
-export async function deleteCategory(id: string) {
-  const [category] = await db
-    .update(expenseCategories)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(expenseCategories.id, id), isNull(expenseCategories.deletedAt)))
-    .returning();
-  return category ?? null;
+export async function updateCategory(
+  id: string,
+  input: UpdateCategoryInput,
+): Promise<ExpenseCategory | null> {
+  await connectToDatabase();
+  const doc = await ExpenseCategoryModel.findOneAndUpdate(
+    { _id: id, deletedAt: null },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapCategory(doc) : null;
 }
 
-export async function seedDefaultCategories() {
+export async function deleteCategory(id: string): Promise<ExpenseCategory | null> {
+  await connectToDatabase();
+  const doc = await ExpenseCategoryModel.findOneAndUpdate(
+    { _id: id, deletedAt: null },
+    { deletedAt: new Date(), updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapCategory(doc) : null;
+}
+
+export async function seedDefaultCategories(): Promise<void> {
+  await connectToDatabase();
   const { DEFAULT_CATEGORIES } = await import("../constants");
-  
-  // Use ON CONFLICT DO NOTHING to prevent race conditions
-  // when multiple concurrent requests try to seed categories
-  await db
-    .insert(expenseCategories)
-    .values(
-      DEFAULT_CATEGORIES.map((c) => ({
-        name: c.name,
-        icon: c.icon,
-        color: c.color,
-        sortOrder: c.sortOrder,
-        userId: null,
-      })),
-    )
-    .onConflictDoNothing();
+
+  for (const c of DEFAULT_CATEGORIES) {
+    await ExpenseCategoryModel.findOneAndUpdate(
+      { name: c.name, userId: null },
+      {
+        $setOnInsert: {
+          name: c.name,
+          icon: c.icon,
+          color: c.color,
+          sortOrder: c.sortOrder,
+          userId: null,
+        },
+      },
+      { upsert: true },
+    );
+  }
 }

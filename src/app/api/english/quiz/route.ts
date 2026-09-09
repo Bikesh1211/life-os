@@ -6,9 +6,8 @@ function shuffle<T>(array: T[]): T[] {
   return [...array].sort(() => Math.random() - 0.5);
 }
 
-function getExampleSentence(word: { exampleSentences: unknown }): string {
-  const sentences = word.exampleSentences as string[] | undefined;
-  return sentences?.[0] ?? "";
+function getExampleSentence(word: { example?: string | null }): string {
+  return word.example ?? "";
 }
 
 export async function GET(request: Request) {
@@ -38,17 +37,17 @@ export async function GET(request: Request) {
         wordId: word.id,
         word: word.word,
         sentence: result.sentence,
-        hint: (word.definitions as string[])?.[0] ?? null,
+        hint: word.definition ?? null,
       });
     }
 
     const correct = words[0];
-    const distractors = words.slice(1).map((w) => ((w.definitions as string[])?.[0] ?? w.word));
+    const distractors = words.slice(1).map((w) => (w.definition || w.word));
     const question = {
       wordId: correct.id,
       word: correct.word,
-      definition: (correct.definitions as string[])?.[0] ?? "",
-      options: shuffle([(correct.definitions as string[])?.[0] ?? "", ...distractors]),
+      definition: correct.definition ?? "",
+      options: shuffle([correct.definition ?? "", ...distractors]),
     };
     return NextResponse.json(question);
   } catch (error) {

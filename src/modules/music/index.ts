@@ -1,24 +1,4 @@
 export {
-  musicArtists,
-  musicAlbums,
-  musicTracks,
-  musicListeningHistory,
-  musicJournal,
-  musicMemories,
-  musicRatings,
-  musicFavorites,
-  musicCollections,
-  musicCollectionItems,
-  musicGoalConfig,
-  musicSpotifyTokens,
-  musicNotes,
-  musicJournalSongs,
-  musicMoodEntries,
-  musicLibrary,
-  musicMemorySongs,
-} from "./schema";
-
-export {
   searchArtists,
   searchAlbums,
   searchTracks,

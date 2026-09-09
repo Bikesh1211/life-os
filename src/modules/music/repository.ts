@@ -1,919 +1,1211 @@
-import { db } from "@/core/database";
-import { eq, and, isNull, isNotNull, desc, asc, sql, gte, lte, inArray, ne } from "drizzle-orm";
+import { connectToDatabase } from "@/lib/mongodb";
 import {
-  musicArtists,
-  musicAlbums,
-  musicTracks,
-  musicListeningHistory,
-  musicJournal,
-  musicMemories,
-  musicRatings,
-  musicFavorites,
-  musicCollections,
-  musicCollectionItems,
-  musicGoalConfig,
-  musicNotes,
-  musicJournalSongs,
-  musicMoodEntries,
-  musicLibrary,
-  musicMemorySongs,
-} from "./schema";
+  MusicArtistModel,
+  MusicAlbumModel,
+  MusicTrackModel,
+  MusicListeningHistoryModel,
+  MusicJournalModel,
+  MusicMemoryModel,
+  MusicMemorySongModel,
+  MusicLibraryModel,
+  MusicRatingModel,
+  MusicFavoriteModel,
+  MusicCollectionModel,
+  MusicCollectionItemModel,
+  MusicGoalConfigModel,
+  MusicNoteModel,
+  MusicMoodEntryModel,
+  MusicJournalSongModel,
+} from "@/lib/models/music";
 
 // ─── Types ────────────────────────────────────────────────────────
 
-export type Artist = typeof musicArtists.$inferSelect;
-export type Album = typeof musicAlbums.$inferSelect;
-export type Track = typeof musicTracks.$inferSelect;
-export type ListeningEntry = typeof musicListeningHistory.$inferSelect;
-export type MusicJournalEntry = typeof musicJournal.$inferSelect;
-export type Memory = typeof musicMemories.$inferSelect;
-export type Rating = typeof musicRatings.$inferSelect;
-export type Favorite = typeof musicFavorites.$inferSelect;
-export type Collection = typeof musicCollections.$inferSelect;
-export type CollectionItem = typeof musicCollectionItems.$inferSelect;
-export type GoalConfig = typeof musicGoalConfig.$inferSelect;
+export type Artist = {
+  id: string;
+  musicBrainzId?: string;
+  name: string;
+  country?: string;
+  type?: string;
+  genres: string[];
+  imageUrl?: string;
+  spotifyId?: string;
+  spotifyPopularity?: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-export type CreateArtistInput = typeof musicArtists.$inferInsert;
-export type CreateAlbumInput = typeof musicAlbums.$inferInsert;
-export type CreateTrackInput = typeof musicTracks.$inferInsert;
-export type CreateListeningInput = typeof musicListeningHistory.$inferInsert;
-export type CreateJournalInput = typeof musicJournal.$inferInsert;
-export type CreateMemoryInput = typeof musicMemories.$inferInsert;
-export type CreateRatingInput = typeof musicRatings.$inferInsert;
-export type CreateFavoriteInput = typeof musicFavorites.$inferInsert;
-export type CreateCollectionInput = typeof musicCollections.$inferInsert;
-export type CreateCollectionItemInput = typeof musicCollectionItems.$inferInsert;
-export type CreateGoalConfigInput = typeof musicGoalConfig.$inferInsert;
+export type Album = {
+  id: string;
+  musicBrainzId?: string;
+  artistId: string;
+  title: string;
+  releaseDate?: Date;
+  coverArtUrl?: string;
+  totalTracks?: number;
+  spotifyId?: string;
+  spotifyPopularity?: number;
+  label?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-export type LibraryEntry = typeof musicLibrary.$inferSelect;
-export type CreateLibraryInput = typeof musicLibrary.$inferInsert;
+export type Track = {
+  id: string;
+  musicBrainzId?: string;
+  albumId?: string;
+  artistId: string;
+  title: string;
+  duration?: number;
+  trackNumber?: number;
+  isrc?: string;
+  spotifyUri?: string;
+  spotifyId?: string;
+  spotifyPopularity?: number;
+  explicit: boolean;
+  previewUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 
-export type MemorySong = typeof musicMemorySongs.$inferSelect;
-export type CreateMemorySongInput = typeof musicMemorySongs.$inferInsert;
+export type ListeningEntry = {
+  id: string;
+  userId: string;
+  trackId?: string;
+  artistName?: string;
+  trackName?: string;
+  listenedAt: Date;
+  duration?: number;
+  msPlayed?: number;
+  spotifyPlayId?: string;
+  sessionId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type MusicJournalEntry = {
+  id: string;
+  userId: string;
+  trackId?: string;
+  albumId?: string;
+  artistId?: string;
+  mood?: string;
+  journalEntry: string;
+  photoUrls: string[];
+  location?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Memory = {
+  id: string;
+  userId: string;
+  trackId?: string;
+  albumId?: string;
+  artistId?: string;
+  title?: string;
+  contextText: string;
+  mood?: string;
+  photoUrls: string[];
+  memoryDate?: Date;
+  linkedEventId?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Rating = {
+  id: string;
+  userId: string;
+  entityType: string;
+  entityId: string;
+  score: number;
+  review?: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Favorite = {
+  id: string;
+  userId: string;
+  entityType: string;
+  entityId: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type Collection = {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  coverArtUrl?: string;
+  isSmart: boolean;
+  smartFilter?: string;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CollectionItem = {
+  id: string;
+  collectionId: string;
+  entityType: string;
+  entityId: string;
+  position: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type GoalConfig = {
+  id: string;
+  userId: string;
+  goalId: string;
+  targetType: string;
+  targetValue?: string;
+  targetCount?: number;
+  currentCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type LibraryEntry = {
+  id: string;
+  userId: string;
+  trackId: string;
+  addedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateArtistInput = {
+  musicBrainzId?: string;
+  name: string;
+  country?: string;
+  type?: string;
+  genres?: string[];
+  imageUrl?: string;
+  spotifyId?: string;
+  spotifyPopularity?: number;
+};
+
+export type CreateAlbumInput = {
+  musicBrainzId?: string;
+  artistId: string;
+  title: string;
+  releaseDate?: Date;
+  coverArtUrl?: string;
+  totalTracks?: number;
+  spotifyId?: string;
+  spotifyPopularity?: number;
+  label?: string;
+};
+
+export type CreateTrackInput = {
+  musicBrainzId?: string;
+  albumId?: string;
+  artistId: string;
+  title: string;
+  duration?: number;
+  trackNumber?: number;
+  isrc?: string;
+  spotifyUri?: string;
+  spotifyId?: string;
+  spotifyPopularity?: number;
+  explicit?: boolean;
+  previewUrl?: string;
+};
+
+export type CreateListeningInput = {
+  userId: string;
+  trackId?: string;
+  artistName?: string;
+  trackName?: string;
+  listenedAt: Date;
+  duration?: number;
+  msPlayed?: number;
+  spotifyPlayId?: string;
+  sessionId?: string;
+};
+
+export type CreateJournalInput = {
+  userId: string;
+  trackId?: string;
+  albumId?: string;
+  artistId?: string;
+  mood?: string;
+  journalEntry: string;
+  photoUrls?: string[];
+  location?: string;
+};
+
+export type CreateMemoryInput = {
+  userId: string;
+  trackId?: string;
+  albumId?: string;
+  artistId?: string;
+  title?: string;
+  contextText: string;
+  mood?: string;
+  photoUrls?: string[];
+  memoryDate?: Date;
+  linkedEventId?: string;
+};
+
+export type CreateRatingInput = {
+  userId: string;
+  entityType: string;
+  entityId: string;
+  score: number;
+  review?: string;
+};
+
+export type CreateFavoriteInput = {
+  userId: string;
+  entityType: string;
+  entityId: string;
+};
+
+export type CreateCollectionInput = {
+  userId: string;
+  title: string;
+  description?: string;
+  coverArtUrl?: string;
+  isSmart?: boolean;
+  smartFilter?: string;
+};
+
+export type CreateCollectionItemInput = {
+  collectionId: string;
+  entityType: string;
+  entityId: string;
+  position?: number;
+};
+
+export type CreateGoalConfigInput = {
+  userId: string;
+  goalId: string;
+  targetType: string;
+  targetValue?: string;
+  targetCount?: number;
+  currentCount?: number;
+};
+
+export type CreateLibraryInput = {
+  userId: string;
+  trackId: string;
+  addedAt?: Date;
+};
+
+export type MemorySong = {
+  id: string;
+  memoryId: string;
+  trackId: string;
+  position: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateMemorySongInput = {
+  memoryId: string;
+  trackId: string;
+  position?: number;
+};
+
+export type MusicNote = {
+  id: string;
+  userId: string;
+  entityType: string;
+  entityId: string;
+  content: string;
+  deletedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateNoteInput = {
+  userId: string;
+  entityType: string;
+  entityId: string;
+  content: string;
+};
+
+export type JournalSong = {
+  id: string;
+  journalId: string;
+  trackId?: string;
+  albumId?: string;
+  artistId?: string;
+  position: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateJournalSongInput = {
+  journalId: string;
+  trackId?: string;
+  albumId?: string;
+  artistId?: string;
+  position?: number;
+};
+
+export type MoodEntry = {
+  id: string;
+  userId: string;
+  mood: string;
+  note?: string;
+  date: Date;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type CreateMoodEntryInput = {
+  userId: string;
+  mood: string;
+  note?: string;
+  date: Date;
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────
+
+function toId(doc: any): string {
+  return doc._id?.toString() ?? doc.id;
+}
+
+function mapId(doc: any): any {
+  if (!doc) return doc;
+  if (Array.isArray(doc)) return doc.map(mapId);
+  const { _id, ...rest } = doc;
+  return { id: _id?.toString() ?? rest.id, ...rest };
+}
 
 // ─── Batch entity fetching ─────────────────────────────────────────
 
 export async function getArtistsByIds(ids: string[]) {
   if (ids.length === 0) return [];
-  return db.select().from(musicArtists).where(inArray(musicArtists.id, ids));
+  await connectToDatabase();
+  const docs = await MusicArtistModel.find({ _id: { $in: ids } }).lean();
+  return mapId(docs);
 }
 
 export async function getAlbumsByIds(ids: string[]) {
   if (ids.length === 0) return [];
-  return db.select().from(musicAlbums).where(inArray(musicAlbums.id, ids));
+  await connectToDatabase();
+  const docs = await MusicAlbumModel.find({ _id: { $in: ids } }).lean();
+  return mapId(docs);
 }
 
 export async function getTracksByIds(ids: string[]) {
   if (ids.length === 0) return [];
-  return db
-    .select({
-      id: musicTracks.id,
-      title: musicTracks.title,
-      albumId: musicTracks.albumId,
-      artistId: musicTracks.artistId,
-      duration: musicTracks.duration,
-      albumCoverArtUrl: musicAlbums.coverArtUrl,
-      albumTitle: musicAlbums.title,
-    })
-    .from(musicTracks)
-    .leftJoin(musicAlbums, eq(musicTracks.albumId, musicAlbums.id))
-    .where(inArray(musicTracks.id, ids));
+  await connectToDatabase();
+  const docs = await MusicTrackModel.find({ _id: { $in: ids } }).lean();
+  const albumIds = [...new Set(docs.filter((d: any) => d.albumId).map((d: any) => d.albumId.toString()))];
+  const albums = albumIds.length > 0
+    ? await MusicAlbumModel.find({ _id: { $in: albumIds } }).lean()
+    : [];
+  const albumMap = new Map(albums.map((a: any) => [a._id.toString(), a]));
+  return docs.map((d: any) => {
+    const album = d.albumId ? albumMap.get(d.albumId.toString()) : undefined;
+    return {
+      id: d._id.toString(),
+      title: d.title,
+      albumId: d.albumId?.toString(),
+      artistId: d.artistId?.toString(),
+      duration: d.duration,
+      albumCoverArtUrl: album?.coverArtUrl,
+      albumTitle: album?.title,
+    };
+  });
 }
 
 // ─── Artists ──────────────────────────────────────────────────────
 
 export async function createArtist(input: CreateArtistInput) {
-  const [artist] = await db.insert(musicArtists).values(input).returning();
-  return artist;
+  await connectToDatabase();
+  const doc = await MusicArtistModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getArtistById(id: string) {
-  const [artist] = await db.select().from(musicArtists).where(eq(musicArtists.id, id)).limit(1);
-  return artist ?? null;
+  await connectToDatabase();
+  const doc = await MusicArtistModel.findOne({ _id: id }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getArtistByMusicBrainzId(mbid: string) {
-  const [artist] = await db.select().from(musicArtists).where(eq(musicArtists.musicBrainzId, mbid)).limit(1);
-  return artist ?? null;
+  await connectToDatabase();
+  const doc = await MusicArtistModel.findOne({ musicBrainzId: mbid }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getArtistBySpotifyId(spotifyId: string) {
-  const [artist] = await db.select().from(musicArtists).where(eq(musicArtists.spotifyId, spotifyId)).limit(1);
-  return artist ?? null;
+  await connectToDatabase();
+  const doc = await MusicArtistModel.findOne({ spotifyId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function upsertArtistBySpotifyId(input: CreateArtistInput) {
   if (!input.spotifyId) return createArtist(input);
-  const existing = await getArtistBySpotifyId(input.spotifyId);
+  await connectToDatabase();
+  const existing = await MusicArtistModel.findOne({ spotifyId: input.spotifyId }).lean();
   if (existing) {
-    const [updated] = await db
-      .update(musicArtists)
-      .set({ ...input, updatedAt: new Date() })
-      .where(eq(musicArtists.id, existing.id))
-      .returning();
-    return updated;
+    const doc = await MusicArtistModel.findOneAndUpdate(
+      { _id: existing._id },
+      { ...input, updatedAt: new Date() },
+      { new: true },
+    ).lean();
+    return mapId(doc);
   }
-  const [created] = await db.insert(musicArtists).values(input).returning();
-  return created;
+  const doc = await MusicArtistModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function searchArtistsByName(query: string) {
-  return db
-    .select()
-    .from(musicArtists)
-    .where(sql`${musicArtists.name} ILIKE ${`%${query}%`}`)
-    .orderBy(musicArtists.name)
-    .limit(20);
+  await connectToDatabase();
+  const docs = await MusicArtistModel.find({ name: { $regex: query, $options: "i" } })
+    .sort({ name: 1 })
+    .limit(20)
+    .lean();
+  return mapId(docs);
 }
 
 export async function updateArtist(id: string, input: Partial<CreateArtistInput>) {
-  const [artist] = await db
-    .update(musicArtists)
-    .set({ ...input, updatedAt: new Date() })
-    .where(eq(musicArtists.id, id))
-    .returning();
-  return artist ?? null;
+  await connectToDatabase();
+  const doc = await MusicArtistModel.findOneAndUpdate(
+    { _id: id },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Albums ───────────────────────────────────────────────────────
 
 export async function createAlbum(input: CreateAlbumInput) {
-  const [album] = await db.insert(musicAlbums).values(input).returning();
-  return album;
+  await connectToDatabase();
+  const doc = await MusicAlbumModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getAlbumById(id: string) {
-  const [album] = await db.select().from(musicAlbums).where(eq(musicAlbums.id, id)).limit(1);
-  return album ?? null;
+  await connectToDatabase();
+  const doc = await MusicAlbumModel.findOne({ _id: id }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getAlbumByMusicBrainzId(mbid: string) {
-  const [album] = await db.select().from(musicAlbums).where(eq(musicAlbums.musicBrainzId, mbid)).limit(1);
-  return album ?? null;
+  await connectToDatabase();
+  const doc = await MusicAlbumModel.findOne({ musicBrainzId: mbid }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getAlbumBySpotifyId(spotifyId: string) {
-  const [album] = await db.select().from(musicAlbums).where(eq(musicAlbums.spotifyId, spotifyId)).limit(1);
-  return album ?? null;
+  await connectToDatabase();
+  const doc = await MusicAlbumModel.findOne({ spotifyId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function upsertAlbumBySpotifyId(input: CreateAlbumInput) {
   if (!input.spotifyId) return createAlbum(input);
-  const existing = await getAlbumBySpotifyId(input.spotifyId);
+  await connectToDatabase();
+  const existing = await MusicAlbumModel.findOne({ spotifyId: input.spotifyId }).lean();
   if (existing) {
-    const [updated] = await db
-      .update(musicAlbums)
-      .set({ ...input, updatedAt: new Date() })
-      .where(eq(musicAlbums.id, existing.id))
-      .returning();
-    return updated;
+    const doc = await MusicAlbumModel.findOneAndUpdate(
+      { _id: existing._id },
+      { ...input, updatedAt: new Date() },
+      { new: true },
+    ).lean();
+    return mapId(doc);
   }
-  const [created] = await db.insert(musicAlbums).values(input).returning();
-  return created;
+  const doc = await MusicAlbumModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getAlbumsByArtist(artistId: string) {
-  return db
-    .select()
-    .from(musicAlbums)
-    .where(eq(musicAlbums.artistId, artistId))
-    .orderBy(musicAlbums.releaseDate);
+  await connectToDatabase();
+  const docs = await MusicAlbumModel.find({ artistId }).sort({ releaseDate: 1 }).lean();
+  return mapId(docs);
 }
 
 export async function searchAlbumsByTitle(query: string) {
-  return db
-    .select()
-    .from(musicAlbums)
-    .where(sql`${musicAlbums.title} ILIKE ${`%${query}%`}`)
-    .orderBy(musicAlbums.title)
-    .limit(20);
+  await connectToDatabase();
+  const docs = await MusicAlbumModel.find({ title: { $regex: query, $options: "i" } })
+    .sort({ title: 1 })
+    .limit(20)
+    .lean();
+  return mapId(docs);
 }
 
 export async function updateAlbum(id: string, input: Partial<CreateAlbumInput>) {
-  const [album] = await db
-    .update(musicAlbums)
-    .set({ ...input, updatedAt: new Date() })
-    .where(eq(musicAlbums.id, id))
-    .returning();
-  return album ?? null;
+  await connectToDatabase();
+  const doc = await MusicAlbumModel.findOneAndUpdate(
+    { _id: id },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Tracks ───────────────────────────────────────────────────────
 
 export async function createTrack(input: CreateTrackInput) {
-  const [track] = await db.insert(musicTracks).values(input).returning();
-  return track;
+  await connectToDatabase();
+  const doc = await MusicTrackModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getTrackById(id: string) {
-  const [track] = await db.select().from(musicTracks).where(eq(musicTracks.id, id)).limit(1);
-  return track ?? null;
+  await connectToDatabase();
+  const doc = await MusicTrackModel.findOne({ _id: id }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getTrackByMusicBrainzId(mbid: string) {
-  const [track] = await db.select().from(musicTracks).where(eq(musicTracks.musicBrainzId, mbid)).limit(1);
-  return track ?? null;
+  await connectToDatabase();
+  const doc = await MusicTrackModel.findOne({ musicBrainzId: mbid }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getTrackBySpotifyId(spotifyId: string) {
-  const [track] = await db.select().from(musicTracks).where(eq(musicTracks.spotifyId, spotifyId)).limit(1);
-  return track ?? null;
+  await connectToDatabase();
+  const doc = await MusicTrackModel.findOne({ spotifyId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function upsertTrackBySpotifyId(input: CreateTrackInput) {
   if (!input.spotifyId) return createTrack(input);
-  const existing = await getTrackBySpotifyId(input.spotifyId);
+  await connectToDatabase();
+  const existing = await MusicTrackModel.findOne({ spotifyId: input.spotifyId }).lean();
   if (existing) {
-    const [updated] = await db
-      .update(musicTracks)
-      .set({ ...input, updatedAt: new Date() })
-      .where(eq(musicTracks.id, existing.id))
-      .returning();
-    return updated;
+    const doc = await MusicTrackModel.findOneAndUpdate(
+      { _id: existing._id },
+      { ...input, updatedAt: new Date() },
+      { new: true },
+    ).lean();
+    return mapId(doc);
   }
-  const [created] = await db.insert(musicTracks).values(input).returning();
-  return created;
+  const doc = await MusicTrackModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getTracksByAlbum(albumId: string) {
-  return db
-    .select()
-    .from(musicTracks)
-    .where(eq(musicTracks.albumId, albumId))
-    .orderBy(musicTracks.title);
+  await connectToDatabase();
+  const docs = await MusicTrackModel.find({ albumId }).sort({ title: 1 }).lean();
+  return mapId(docs);
 }
 
 export async function getTracksByArtist(artistId: string) {
-  return db
-    .select()
-    .from(musicTracks)
-    .where(eq(musicTracks.artistId, artistId))
-    .orderBy(musicTracks.title);
+  await connectToDatabase();
+  const docs = await MusicTrackModel.find({ artistId }).sort({ title: 1 }).lean();
+  return mapId(docs);
 }
 
 export async function searchTracksByTitle(query: string) {
-  return db
-    .select()
-    .from(musicTracks)
-    .where(sql`${musicTracks.title} ILIKE ${`%${query}%`}`)
-    .orderBy(musicTracks.title)
-    .limit(20);
+  await connectToDatabase();
+  const docs = await MusicTrackModel.find({ title: { $regex: query, $options: "i" } })
+    .sort({ title: 1 })
+    .limit(20)
+    .lean();
+  return mapId(docs);
 }
 
 export async function updateTrack(id: string, input: Partial<CreateTrackInput>) {
-  const [track] = await db
-    .update(musicTracks)
-    .set({ ...input, updatedAt: new Date() })
-    .where(eq(musicTracks.id, id))
-    .returning();
-  return track ?? null;
+  await connectToDatabase();
+  const doc = await MusicTrackModel.findOneAndUpdate(
+    { _id: id },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Listening History ────────────────────────────────────────────
 
 export async function createListeningEntry(input: CreateListeningInput) {
-  const [entry] = await db.insert(musicListeningHistory).values(input).returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await MusicListeningHistoryModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getListeningHistory(userId: string, limit = 50, offset = 0) {
-  return db
-    .select()
-    .from(musicListeningHistory)
-    .where(eq(musicListeningHistory.userId, userId))
-    .orderBy(desc(musicListeningHistory.listenedAt))
+  await connectToDatabase();
+  const docs = await MusicListeningHistoryModel.find({ userId })
+    .sort({ listenedAt: -1 })
+    .skip(offset)
     .limit(limit)
-    .offset(offset);
+    .lean();
+  return mapId(docs);
 }
 
 export async function getListeningHistoryByDateRange(userId: string, start: Date, end: Date) {
-  return db
-    .select()
-    .from(musicListeningHistory)
-    .where(
-      and(
-        eq(musicListeningHistory.userId, userId),
-        gte(musicListeningHistory.listenedAt, start),
-        lte(musicListeningHistory.listenedAt, end),
-      ),
-    )
-    .orderBy(desc(musicListeningHistory.listenedAt));
+  await connectToDatabase();
+  const docs = await MusicListeningHistoryModel.find({
+    userId,
+    listenedAt: { $gte: start, $lte: end },
+  })
+    .sort({ listenedAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getListeningHistoryByTrack(userId: string, trackId: string) {
-  return db
-    .select()
-    .from(musicListeningHistory)
-    .where(
-      and(eq(musicListeningHistory.userId, userId), eq(musicListeningHistory.trackId, trackId)),
-    )
-    .orderBy(desc(musicListeningHistory.listenedAt));
+  await connectToDatabase();
+  const docs = await MusicListeningHistoryModel.find({ userId, trackId })
+    .sort({ listenedAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 // ─── Journal ──────────────────────────────────────────────────────
 
 export async function createJournalEntry(input: CreateJournalInput) {
-  const [entry] = await db.insert(musicJournal).values(input).returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await MusicJournalModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getJournalEntryById(id: string, userId: string) {
-  const [entry] = await db
-    .select()
-    .from(musicJournal)
-    .where(and(eq(musicJournal.id, id), eq(musicJournal.userId, userId)))
-    .limit(1);
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await MusicJournalModel.findOne({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getJournalEntries(userId: string, limit = 50, offset = 0) {
-  return db
-    .select()
-    .from(musicJournal)
-    .where(eq(musicJournal.userId, userId))
-    .orderBy(desc(musicJournal.createdAt))
+  await connectToDatabase();
+  const docs = await MusicJournalModel.find({ userId })
+    .sort({ createdAt: -1 })
+    .skip(offset)
     .limit(limit)
-    .offset(offset);
+    .lean();
+  return mapId(docs);
 }
 
 export async function getJournalEntriesByTrack(userId: string, trackId: string) {
-  return db
-    .select()
-    .from(musicJournal)
-    .where(and(eq(musicJournal.userId, userId), eq(musicJournal.trackId, trackId)))
-    .orderBy(desc(musicJournal.createdAt));
+  await connectToDatabase();
+  const docs = await MusicJournalModel.find({ userId, trackId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function updateJournalEntry(id: string, userId: string, input: Partial<CreateJournalInput>) {
-  const [entry] = await db
-    .update(musicJournal)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(musicJournal.id, id), eq(musicJournal.userId, userId)))
-    .returning();
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await MusicJournalModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function deleteJournalEntry(id: string, userId: string) {
-  const [entry] = await db
-    .delete(musicJournal)
-    .where(and(eq(musicJournal.id, id), eq(musicJournal.userId, userId)))
-    .returning();
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await MusicJournalModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Memories ─────────────────────────────────────────────────────
 
 export async function createMemory(input: CreateMemoryInput) {
-  const [memory] = await db.insert(musicMemories).values(input).returning();
-  return memory;
+  await connectToDatabase();
+  const doc = await MusicMemoryModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getMemories(userId: string, limit = 50, offset = 0) {
-  return db
-    .select()
-    .from(musicMemories)
-    .where(eq(musicMemories.userId, userId))
-    .orderBy(desc(musicMemories.createdAt))
+  await connectToDatabase();
+  const docs = await MusicMemoryModel.find({ userId })
+    .sort({ createdAt: -1 })
+    .skip(offset)
     .limit(limit)
-    .offset(offset);
+    .lean();
+  return mapId(docs);
 }
 
 export async function getMemoryById(id: string, userId: string) {
-  const [memory] = await db
-    .select()
-    .from(musicMemories)
-    .where(and(eq(musicMemories.id, id), eq(musicMemories.userId, userId)))
-    .limit(1);
-  return memory ?? null;
+  await connectToDatabase();
+  const doc = await MusicMemoryModel.findOne({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getMemoriesByTrack(userId: string, trackId: string) {
-  return db
-    .select()
-    .from(musicMemories)
-    .where(and(eq(musicMemories.userId, userId), eq(musicMemories.trackId, trackId)))
-    .orderBy(desc(musicMemories.createdAt));
+  await connectToDatabase();
+  const docs = await MusicMemoryModel.find({ userId, trackId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getMemoriesByEvent(userId: string, linkedEventId: string) {
-  return db
-    .select()
-    .from(musicMemories)
-    .where(
-      and(eq(musicMemories.userId, userId), eq(musicMemories.linkedEventId, linkedEventId)),
-    )
-    .orderBy(desc(musicMemories.createdAt));
+  await connectToDatabase();
+  const docs = await MusicMemoryModel.find({ userId, linkedEventId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function deleteMemory(id: string, userId: string) {
-  const [memory] = await db
-    .delete(musicMemories)
-    .where(and(eq(musicMemories.id, id), eq(musicMemories.userId, userId)))
-    .returning();
-  return memory ?? null;
+  await connectToDatabase();
+  const doc = await MusicMemoryModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Ratings ──────────────────────────────────────────────────────
 
 export async function createRating(input: CreateRatingInput) {
-  const [rating] = await db.insert(musicRatings).values(input).returning();
-  return rating;
+  await connectToDatabase();
+  const doc = await MusicRatingModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getRatingByEntity(userId: string, entityType: string, entityId: string) {
-  const [rating] = await db
-    .select()
-    .from(musicRatings)
-    .where(
-      and(
-        eq(musicRatings.userId, userId),
-        eq(musicRatings.entityType, entityType),
-        eq(musicRatings.entityId, entityId),
-      ),
-    )
-    .limit(1);
-  return rating ?? null;
+  await connectToDatabase();
+  const doc = await MusicRatingModel.findOne({ userId, entityType, entityId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getRatingsByUser(userId: string, limit = 50, offset = 0) {
-  return db
-    .select()
-    .from(musicRatings)
-    .where(eq(musicRatings.userId, userId))
-    .orderBy(desc(musicRatings.createdAt))
+  await connectToDatabase();
+  const docs = await MusicRatingModel.find({ userId })
+    .sort({ createdAt: -1 })
+    .skip(offset)
     .limit(limit)
-    .offset(offset);
+    .lean();
+  return mapId(docs);
 }
 
 export async function getRatingsByType(userId: string, entityType: string) {
-  return db
-    .select()
-    .from(musicRatings)
-    .where(and(eq(musicRatings.userId, userId), eq(musicRatings.entityType, entityType)))
-    .orderBy(desc(musicRatings.score));
+  await connectToDatabase();
+  const docs = await MusicRatingModel.find({ userId, entityType })
+    .sort({ score: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function updateRating(id: string, userId: string, input: { score?: number; review?: string }) {
-  const [rating] = await db
-    .update(musicRatings)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(musicRatings.id, id), eq(musicRatings.userId, userId)))
-    .returning();
-  return rating ?? null;
+  await connectToDatabase();
+  const doc = await MusicRatingModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function deleteRating(id: string, userId: string) {
-  const [rating] = await db
-    .delete(musicRatings)
-    .where(and(eq(musicRatings.id, id), eq(musicRatings.userId, userId)))
-    .returning();
-  return rating ?? null;
+  await connectToDatabase();
+  const doc = await MusicRatingModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Favorites ────────────────────────────────────────────────────
 
 export async function createFavorite(input: CreateFavoriteInput) {
-  const [fav] = await db.insert(musicFavorites).values(input).returning();
-  return fav;
+  await connectToDatabase();
+  const doc = await MusicFavoriteModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getFavorites(userId: string) {
-  return db
-    .select()
-    .from(musicFavorites)
-    .where(eq(musicFavorites.userId, userId))
-    .orderBy(desc(musicFavorites.createdAt));
+  await connectToDatabase();
+  const docs = await MusicFavoriteModel.find({ userId })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getFavoritesByType(userId: string, entityType: string) {
-  return db
-    .select()
-    .from(musicFavorites)
-    .where(and(eq(musicFavorites.userId, userId), eq(musicFavorites.entityType, entityType)))
-    .orderBy(desc(musicFavorites.createdAt));
+  await connectToDatabase();
+  const docs = await MusicFavoriteModel.find({ userId, entityType })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function isFavorite(userId: string, entityType: string, entityId: string) {
-  const [fav] = await db
-    .select()
-    .from(musicFavorites)
-    .where(
-      and(
-        eq(musicFavorites.userId, userId),
-        eq(musicFavorites.entityType, entityType),
-        eq(musicFavorites.entityId, entityId),
-      ),
-    )
-    .limit(1);
-  return !!fav;
+  await connectToDatabase();
+  const doc = await MusicFavoriteModel.findOne({ userId, entityType, entityId }).lean();
+  return !!doc;
 }
 
 export async function deleteFavorite(userId: string, entityType: string, entityId: string) {
-  const [fav] = await db
-    .delete(musicFavorites)
-    .where(
-      and(
-        eq(musicFavorites.userId, userId),
-        eq(musicFavorites.entityType, entityType),
-        eq(musicFavorites.entityId, entityId),
-      ),
-    )
-    .returning();
-  return fav ?? null;
+  await connectToDatabase();
+  const doc = await MusicFavoriteModel.findOneAndDelete({ userId, entityType, entityId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Collections ──────────────────────────────────────────────────
 
 export async function createCollection(input: CreateCollectionInput) {
-  const [collection] = await db.insert(musicCollections).values(input).returning();
-  return collection;
+  await connectToDatabase();
+  const doc = await MusicCollectionModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getCollections(userId: string) {
-  return db
-    .select()
-    .from(musicCollections)
-    .where(and(eq(musicCollections.userId, userId), isNull(musicCollections.deletedAt)))
-    .orderBy(musicCollections.title);
+  await connectToDatabase();
+  const docs = await MusicCollectionModel.find({ userId, deletedAt: null })
+    .sort({ title: 1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getCollectionById(id: string, userId: string) {
-  const [collection] = await db
-    .select()
-    .from(musicCollections)
-    .where(
-      and(eq(musicCollections.id, id), eq(musicCollections.userId, userId), isNull(musicCollections.deletedAt)),
-    )
-    .limit(1);
-  return collection ?? null;
+  await connectToDatabase();
+  const doc = await MusicCollectionModel.findOne({ _id: id, userId, deletedAt: null }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function updateCollection(id: string, userId: string, input: Partial<CreateCollectionInput>) {
-  const [collection] = await db
-    .update(musicCollections)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(musicCollections.id, id), eq(musicCollections.userId, userId)))
-    .returning();
-  return collection ?? null;
+  await connectToDatabase();
+  const doc = await MusicCollectionModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function deleteCollection(id: string, userId: string) {
-  const [collection] = await db
-    .update(musicCollections)
-    .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(musicCollections.id, id), eq(musicCollections.userId, userId)))
-    .returning();
-  return collection ?? null;
+  await connectToDatabase();
+  const doc = await MusicCollectionModel.findOneAndUpdate(
+    { _id: id, userId },
+    { deletedAt: new Date(), updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Collection Items ─────────────────────────────────────────────
 
-/** Restricts collection-item rows to collections owned by `userId`. */
-function collectionOwnedByUser(userId: string) {
-  return inArray(
-    musicCollectionItems.collectionId,
-    db
-      .select({ id: musicCollections.id })
-      .from(musicCollections)
-      .where(eq(musicCollections.userId, userId)),
-  );
+async function getUserCollectionIds(userId: string): Promise<string[]> {
+  const cols = await MusicCollectionModel.find({ userId }, { _id: 1 }).lean();
+  return cols.map((c: any) => c._id.toString());
 }
 
 export async function addCollectionItem(input: CreateCollectionItemInput, userId: string) {
-  const [collection] = await db
-    .select({ id: musicCollections.id })
-    .from(musicCollections)
-    .where(and(eq(musicCollections.id, input.collectionId), eq(musicCollections.userId, userId)))
-    .limit(1);
-  if (!collection) return null;
-
-  const [item] = await db.insert(musicCollectionItems).values(input).returning();
-  return item;
+  await connectToDatabase();
+  const col = await MusicCollectionModel.findOne({ _id: input.collectionId, userId }).lean();
+  if (!col) return null;
+  const doc = await MusicCollectionItemModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getCollectionItems(collectionId: string, userId: string) {
-  return db
-    .select()
-    .from(musicCollectionItems)
-    .where(
-      and(eq(musicCollectionItems.collectionId, collectionId), collectionOwnedByUser(userId)),
-    )
-    .orderBy(musicCollectionItems.position);
+  await connectToDatabase();
+  const colIds = await getUserCollectionIds(userId);
+  if (!colIds.includes(collectionId)) return [];
+  const docs = await MusicCollectionItemModel.find({ collectionId })
+    .sort({ position: 1 })
+    .lean();
+  return mapId(docs);
 }
 
-/**
- * Collections owned by `userId` that contain the given entity. Distinct from
- * getCollectionItems, which lists the contents of one collection.
- */
 export async function getCollectionItemsForEntity(
   userId: string,
   entityType: string,
   entityId: string,
 ) {
-  return db
-    .select()
-    .from(musicCollectionItems)
-    .where(
-      and(
-        eq(musicCollectionItems.entityType, entityType),
-        eq(musicCollectionItems.entityId, entityId),
-        collectionOwnedByUser(userId),
-      ),
-    );
+  await connectToDatabase();
+  const colIds = await getUserCollectionIds(userId);
+  if (colIds.length === 0) return [];
+  const docs = await MusicCollectionItemModel.find({
+    entityType,
+    entityId,
+    collectionId: { $in: colIds },
+  }).lean();
+  return mapId(docs);
 }
 
 export async function removeCollectionItem(id: string, userId: string) {
-  const [item] = await db
-    .delete(musicCollectionItems)
-    .where(and(eq(musicCollectionItems.id, id), collectionOwnedByUser(userId)))
-    .returning();
-  return item ?? null;
+  await connectToDatabase();
+  const colIds = await getUserCollectionIds(userId);
+  if (colIds.length === 0) return null;
+  const doc = await MusicCollectionItemModel.findOneAndDelete({
+    _id: id,
+    collectionId: { $in: colIds },
+  }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function evaluateSmartFilter(userId: string, filter: Record<string, unknown>) {
   const type = filter.type as string | undefined;
 
   if (type === "most-listened") {
+    await connectToDatabase();
     const period = (filter.period as string) ?? "month";
     const daysAgo = period === "week" ? 7 : period === "year" ? 365 : 30;
     const since = new Date(Date.now() - daysAgo * 86400000);
 
-    const rows = await db
-      .select({
-        entityId: musicListeningHistory.trackId,
-        count: sql<number>`count(*)`,
-      })
-      .from(musicListeningHistory)
-      .where(
-        and(
-          eq(musicListeningHistory.userId, userId),
-          gte(musicListeningHistory.listenedAt, since),
-        ),
-      )
-      .groupBy(musicListeningHistory.trackId)
-      .orderBy(desc(sql`count(*)`))
-      .limit((filter.limit as number) ?? 20);
+    const rows = await MusicListeningHistoryModel.aggregate([
+      { $match: { userId, listenedAt: { $gte: since } } },
+      { $group: { _id: "$trackId", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: (filter.limit as number) ?? 20 },
+    ]);
 
-    return rows.filter((r) => r.entityId).map((r) => ({
-      entityType: "track" as const,
-      entityId: r.entityId!,
-    }));
+    return rows
+      .filter((r: any) => r._id)
+      .map((r: any) => ({
+        entityType: "track" as const,
+        entityId: r._id.toString(),
+      }));
   }
 
   if (type === "highest-rated") {
+    await connectToDatabase();
     const minScore = (filter.minScore as number) ?? 8;
-    const rows = await db
-      .select({
-        entityType: musicRatings.entityType,
-        entityId: musicRatings.entityId,
-      })
-      .from(musicRatings)
-      .where(
-        and(
-          eq(musicRatings.userId, userId),
-          gte(musicRatings.score, minScore),
-        ),
-      )
-      .limit((filter.limit as number) ?? 20);
-
-    return rows;
+    const docs = await MusicRatingModel.find({ userId, score: { $gte: minScore } })
+      .limit((filter.limit as number) ?? 20)
+      .lean();
+    return docs.map((d: any) => ({
+      entityType: d.entityType,
+      entityId: d.entityId,
+    }));
   }
 
   return [];
 }
 
 export async function reorderCollectionItem(id: string, position: number) {
-  const [item] = await db
-    .update(musicCollectionItems)
-    .set({ position })
-    .where(eq(musicCollectionItems.id, id))
-    .returning();
-  return item ?? null;
+  await connectToDatabase();
+  const doc = await MusicCollectionItemModel.findOneAndUpdate(
+    { _id: id },
+    { position },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Goal Config ──────────────────────────────────────────────────
 
 export async function createGoalConfig(input: CreateGoalConfigInput) {
-  const [config] = await db.insert(musicGoalConfig).values(input).returning();
-  return config;
+  await connectToDatabase();
+  const doc = await MusicGoalConfigModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getGoalConfigs(userId: string) {
-  return db
-    .select()
-    .from(musicGoalConfig)
-    .where(eq(musicGoalConfig.userId, userId));
+  await connectToDatabase();
+  const docs = await MusicGoalConfigModel.find({ userId }).lean();
+  return mapId(docs);
 }
 
 export async function getGoalConfigByGoalId(userId: string, goalId: string) {
-  const [config] = await db
-    .select()
-    .from(musicGoalConfig)
-    .where(and(eq(musicGoalConfig.userId, userId), eq(musicGoalConfig.goalId, goalId)))
-    .limit(1);
-  return config ?? null;
+  await connectToDatabase();
+  const doc = await MusicGoalConfigModel.findOne({ userId, goalId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function updateGoalConfig(id: string, userId: string, input: Partial<CreateGoalConfigInput>) {
-  const [config] = await db
-    .update(musicGoalConfig)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(musicGoalConfig.id, id), eq(musicGoalConfig.userId, userId)))
-    .returning();
-  return config ?? null;
+  await connectToDatabase();
+  const doc = await MusicGoalConfigModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function incrementGoalCount(id: string, userId: string, amount = 1) {
-  const [config] = await db
-    .update(musicGoalConfig)
-    .set({ currentCount: sql`${musicGoalConfig.currentCount} + ${amount}`, updatedAt: new Date() })
-    .where(and(eq(musicGoalConfig.id, id), eq(musicGoalConfig.userId, userId)))
-    .returning();
-  return config ?? null;
+  await connectToDatabase();
+  const doc = await MusicGoalConfigModel.findOneAndUpdate(
+    { _id: id, userId },
+    { $inc: { currentCount: amount }, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function deleteGoalConfig(id: string, userId: string) {
-  const [config] = await db
-    .delete(musicGoalConfig)
-    .where(and(eq(musicGoalConfig.id, id), eq(musicGoalConfig.userId, userId)))
-    .returning();
-  return config ?? null;
+  await connectToDatabase();
+  const doc = await MusicGoalConfigModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Analytics Queries ────────────────────────────────────────────
 
 export async function getMostListenedArtists(userId: string, limit = 10) {
-  return db
-    .select({
-      artistId: musicTracks.artistId,
-      count: sql<number>`count(*)`,
-    })
-    .from(musicListeningHistory)
-    .innerJoin(musicTracks, eq(musicListeningHistory.trackId, musicTracks.id))
-    .where(eq(musicListeningHistory.userId, userId))
-    .groupBy(musicTracks.artistId)
-    .orderBy(desc(sql`count(*)`))
-    .limit(limit);
+  await connectToDatabase();
+  const rows = await MusicListeningHistoryModel.aggregate([
+    { $match: { userId } },
+    {
+      $lookup: {
+        from: "musictracks",
+        localField: "trackId",
+        foreignField: "_id",
+        as: "track",
+      },
+    },
+    { $unwind: { path: "$track", preserveNullAndEmptyArrays: false } },
+    { $group: { _id: "$track.artistId", count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+    { $limit: limit },
+  ]);
+  return rows.map((r: any) => ({
+    artistId: r._id.toString(),
+    count: r.count,
+  }));
 }
 
 export async function getListeningStreaks(userId: string, lookbackDays = 400) {
+  await connectToDatabase();
   const since = new Date();
   since.setDate(since.getDate() - lookbackDays);
-  return db
-    .select({
-      date: sql<string>`DATE(${musicListeningHistory.listenedAt})`,
-      count: sql<number>`count(*)`,
-    })
-    .from(musicListeningHistory)
-    .where(
-      and(
-        eq(musicListeningHistory.userId, userId),
-        gte(musicListeningHistory.listenedAt, since),
-      ),
-    )
-    .groupBy(sql`DATE(${musicListeningHistory.listenedAt})`)
-    .orderBy(desc(sql`DATE(${musicListeningHistory.listenedAt})`));
+
+  const rows = await MusicListeningHistoryModel.aggregate([
+    { $match: { userId, listenedAt: { $gte: since } } },
+    {
+      $group: {
+        _id: {
+          $dateToString: { format: "%Y-%m-%d", date: "$listenedAt" },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { _id: -1 } },
+  ]);
+  return rows.map((r: any) => ({
+    date: r._id,
+    count: r.count,
+  }));
 }
 
 export async function getTotalListeningHours(userId: string) {
-  const [result] = await db
-    .select({
-      totalSeconds: sql<number>`COALESCE(SUM(${musicListeningHistory.duration}), 0)`,
-    })
-    .from(musicListeningHistory)
-    .where(eq(musicListeningHistory.userId, userId));
-  return (result?.totalSeconds ?? 0) / 3600;
+  await connectToDatabase();
+  const rows = await MusicListeningHistoryModel.aggregate([
+    { $match: { userId } },
+    { $group: { _id: null, totalSeconds: { $sum: { $ifNull: ["$duration", 0] } } } },
+  ]);
+  return ((rows[0]?.totalSeconds ?? 0) as number) / 3600;
 }
 
 export async function getYearlyListeningStats(userId: string, year: number) {
+  await connectToDatabase();
   const start = new Date(year, 0, 1);
   const end = new Date(year + 1, 0, 1);
-  return db
-    .select({
-      month: sql<number>`EXTRACT(MONTH FROM ${musicListeningHistory.listenedAt})`,
-      count: sql<number>`count(*)`,
-      totalDuration: sql<number>`COALESCE(SUM(${musicListeningHistory.duration}), 0)`,
-    })
-    .from(musicListeningHistory)
-    .where(
-      and(
-        eq(musicListeningHistory.userId, userId),
-        gte(musicListeningHistory.listenedAt, start),
-        lte(musicListeningHistory.listenedAt, end),
-      ),
-    )
-    .groupBy(sql`EXTRACT(MONTH FROM ${musicListeningHistory.listenedAt})`)
-    .orderBy(sql`EXTRACT(MONTH FROM ${musicListeningHistory.listenedAt})`);
+
+  const rows = await MusicListeningHistoryModel.aggregate([
+    { $match: { userId, listenedAt: { $gte: start, $lt: end } } },
+    {
+      $group: {
+        _id: { $month: "$listenedAt" },
+        count: { $sum: 1 },
+        totalDuration: { $sum: { $ifNull: ["$duration", 0] } },
+      },
+    },
+    { $sort: { _id: 1 } },
+  ]);
+  return rows.map((r: any) => ({
+    month: r._id,
+    count: r.count,
+    totalDuration: r.totalDuration,
+  }));
 }
 
 // ─── Notes ─────────────────────────────────────────────────────────
 
-export type MusicNote = typeof musicNotes.$inferSelect;
-export type CreateNoteInput = typeof musicNotes.$inferInsert;
-
-export type JournalSong = typeof musicJournalSongs.$inferSelect;
-export type CreateJournalSongInput = typeof musicJournalSongs.$inferInsert;
-
-export type MoodEntry = typeof musicMoodEntries.$inferSelect;
-export type CreateMoodEntryInput = typeof musicMoodEntries.$inferInsert;
-
 export async function createNote(input: CreateNoteInput) {
-  const [note] = await db.insert(musicNotes).values(input).returning();
-  return note;
+  await connectToDatabase();
+  const doc = await MusicNoteModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getNotesByEntity(userId: string, entityType: string, entityId: string) {
-  return db
-    .select()
-    .from(musicNotes)
-    .where(and(eq(musicNotes.userId, userId), eq(musicNotes.entityType, entityType), eq(musicNotes.entityId, entityId), isNull(musicNotes.deletedAt)))
-    .orderBy(desc(musicNotes.createdAt));
+  await connectToDatabase();
+  const docs = await MusicNoteModel.find({ userId, entityType, entityId, deletedAt: null })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getNoteById(id: string, userId: string) {
-  const [note] = await db
-    .select()
-    .from(musicNotes)
-    .where(and(eq(musicNotes.id, id), eq(musicNotes.userId, userId), isNull(musicNotes.deletedAt)))
-    .limit(1);
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await MusicNoteModel.findOne({ _id: id, userId, deletedAt: null }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function updateNote(id: string, userId: string, input: { content: string }) {
-  const [note] = await db
-    .update(musicNotes)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(musicNotes.id, id), eq(musicNotes.userId, userId)))
-    .returning();
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await MusicNoteModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function deleteNote(id: string, userId: string) {
-  const [note] = await db
-    .update(musicNotes)
-    .set({ deletedAt: new Date() })
-    .where(and(eq(musicNotes.id, id), eq(musicNotes.userId, userId)))
-    .returning();
-  return note ?? null;
+  await connectToDatabase();
+  const doc = await MusicNoteModel.findOneAndUpdate(
+    { _id: id, userId },
+    { deletedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Journal Songs (junction) ─────────────────────────────────────
 
 export async function addSongToJournal(input: CreateJournalSongInput) {
-  const [item] = await db.insert(musicJournalSongs).values(input).returning();
-  return item;
+  await connectToDatabase();
+  const doc = await MusicJournalSongModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getJournalSongs(journalId: string) {
-  return db
-    .select()
-    .from(musicJournalSongs)
-    .where(eq(musicJournalSongs.journalId, journalId))
-    .orderBy(musicJournalSongs.position);
+  await connectToDatabase();
+  const docs = await MusicJournalSongModel.find({ journalId })
+    .sort({ position: 1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function removeSongFromJournal(id: string) {
-  const [item] = await db.delete(musicJournalSongs).where(eq(musicJournalSongs.id, id)).returning();
-  return item ?? null;
+  await connectToDatabase();
+  const doc = await MusicJournalSongModel.findOneAndDelete({ _id: id }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 // ─── Mood Entries ─────────────────────────────────────────────────
 
 export async function createMoodEntry(input: CreateMoodEntryInput) {
-  const [entry] = await db.insert(musicMoodEntries).values(input).returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await MusicMoodEntryModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getMoodEntries(
   userId: string,
   options?: { dateFrom?: Date; dateTo?: Date; limit?: number; offset?: number },
 ) {
-  const conditions: ReturnType<typeof eq>[] = [eq(musicMoodEntries.userId, userId)];
-  if (options?.dateFrom) conditions.push(gte(musicMoodEntries.date, options.dateFrom));
-  if (options?.dateTo) conditions.push(lte(musicMoodEntries.date, options.dateTo));
-
-  return db
-    .select()
-    .from(musicMoodEntries)
-    .where(and(...conditions))
-    .orderBy(desc(musicMoodEntries.date))
+  await connectToDatabase();
+  const filter: any = { userId };
+  if (options?.dateFrom || options?.dateTo) {
+    filter.date = {};
+    if (options.dateFrom) filter.date.$gte = options.dateFrom;
+    if (options.dateTo) filter.date.$lte = options.dateTo;
+  }
+  const docs = await MusicMoodEntryModel.find(filter)
+    .sort({ date: -1 })
+    .skip(options?.offset ?? 0)
     .limit(options?.limit ?? 50)
-    .offset(options?.offset ?? 0);
+    .lean();
+  return mapId(docs);
 }
 
 export async function getMoodAnalytics(userId: string, days = 90) {
+  await connectToDatabase();
   const since = new Date();
   since.setDate(since.getDate() - days);
 
-  return db
-    .select({
-      mood: musicMoodEntries.mood,
-      count: sql<number>`count(*)`,
-    })
-    .from(musicMoodEntries)
-    .where(and(eq(musicMoodEntries.userId, userId), gte(musicMoodEntries.date, since)))
-    .groupBy(musicMoodEntries.mood)
-    .orderBy(sql`count(*) desc`);
+  const rows = await MusicMoodEntryModel.aggregate([
+    { $match: { userId, date: { $gte: since } } },
+    { $group: { _id: "$mood", count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+  ]);
+  return rows.map((r: any) => ({
+    mood: r._id,
+    count: r.count,
+  }));
 }
 
 // ─── Enhanced Memories ────────────────────────────────────────────
@@ -923,12 +1215,13 @@ export async function updateMemory(
   userId: string,
   input: Partial<CreateMemoryInput>,
 ) {
-  const [memory] = await db
-    .update(musicMemories)
-    .set({ ...input, updatedAt: new Date() })
-    .where(and(eq(musicMemories.id, id), eq(musicMemories.userId, userId)))
-    .returning();
-  return memory;
+  await connectToDatabase();
+  const doc = await MusicMemoryModel.findOneAndUpdate(
+    { _id: id, userId },
+    { ...input, updatedAt: new Date() },
+    { new: true },
+  ).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getMemoriesByDateRange(
@@ -936,118 +1229,121 @@ export async function getMemoriesByDateRange(
   dateFrom: Date,
   dateTo: Date,
 ) {
-  return db
-    .select()
-    .from(musicMemories)
-    .where(
-      and(
-        eq(musicMemories.userId, userId),
-        gte(musicMemories.memoryDate, dateFrom),
-        lte(musicMemories.memoryDate, dateTo),
-      ),
-    )
-    .orderBy(desc(musicMemories.memoryDate));
+  await connectToDatabase();
+  const docs = await MusicMemoryModel.find({
+    userId,
+    memoryDate: { $gte: dateFrom, $lte: dateTo },
+  })
+    .sort({ memoryDate: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getMemoriesByMood(userId: string, mood: string) {
-  return db
-    .select()
-    .from(musicMemories)
-    .where(and(eq(musicMemories.userId, userId), eq(musicMemories.mood, mood)))
-    .orderBy(desc(musicMemories.createdAt));
+  await connectToDatabase();
+  const docs = await MusicMemoryModel.find({ userId, mood })
+    .sort({ createdAt: -1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function getMemoriesOnThisDay(userId: string, month: number, day: number) {
-  return db
-    .select()
-    .from(musicMemories)
-    .where(
-      and(
-        eq(musicMemories.userId, userId),
-        sql`EXTRACT(MONTH FROM ${musicMemories.memoryDate}) = ${month}`,
-        sql`EXTRACT(DAY FROM ${musicMemories.memoryDate}) = ${day}`,
-        isNotNull(musicMemories.memoryDate),
-      ),
-    )
-    .orderBy(desc(musicMemories.createdAt));
+  await connectToDatabase();
+  const docs = await MusicMemoryModel.find({
+    userId,
+    memoryDate: { $ne: null },
+  }).lean();
+  const filtered = docs.filter((d: any) => {
+    if (!d.memoryDate) return false;
+    const dt = new Date(d.memoryDate);
+    return dt.getMonth() + 1 === month && dt.getDate() === day;
+  });
+  return mapId(filtered).sort((a: any, b: any) =>
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
 }
 
 // ─── Library ────────────────────────────────────────────────────────
 
 export async function addToLibrary(input: CreateLibraryInput) {
-  const [entry] = await db.insert(musicLibrary).values(input).returning();
-  return entry;
+  await connectToDatabase();
+  const doc = await MusicLibraryModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getLibrary(userId: string, limit = 100, offset = 0) {
-  return db
-    .select()
-    .from(musicLibrary)
-    .where(eq(musicLibrary.userId, userId))
-    .orderBy(desc(musicLibrary.addedAt))
+  await connectToDatabase();
+  const docs = await MusicLibraryModel.find({ userId })
+    .sort({ addedAt: -1 })
+    .skip(offset)
     .limit(limit)
-    .offset(offset);
+    .lean();
+  return mapId(docs);
 }
 
 export async function removeFromLibrary(id: string, userId: string) {
-  const [entry] = await db
-    .delete(musicLibrary)
-    .where(and(eq(musicLibrary.id, id), eq(musicLibrary.userId, userId)))
-    .returning();
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await MusicLibraryModel.findOneAndDelete({ _id: id, userId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function removeTrackFromLibrary(userId: string, trackId: string) {
-  const [entry] = await db
-    .delete(musicLibrary)
-    .where(and(eq(musicLibrary.userId, userId), eq(musicLibrary.trackId, trackId)))
-    .returning();
-  return entry ?? null;
+  await connectToDatabase();
+  const doc = await MusicLibraryModel.findOneAndDelete({ userId, trackId }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function isInLibrary(userId: string, trackId: string) {
-  const [entry] = await db
-    .select()
-    .from(musicLibrary)
-    .where(and(eq(musicLibrary.userId, userId), eq(musicLibrary.trackId, trackId)))
-    .limit(1);
-  return !!entry;
+  await connectToDatabase();
+  const doc = await MusicLibraryModel.findOne({ userId, trackId }).lean();
+  return !!doc;
 }
 
 export async function getLibraryTrackIds(userId: string) {
-  const rows = await db
-    .select({ trackId: musicLibrary.trackId })
-    .from(musicLibrary)
-    .where(eq(musicLibrary.userId, userId));
-  return rows.map((r) => r.trackId);
+  await connectToDatabase();
+  const docs = await MusicLibraryModel.find({ userId }, { trackId: 1 }).lean();
+  return docs.map((r: any) => r.trackId.toString());
 }
 
 // ─── Memory Songs (junction) ────────────────────────────────────────
 
 export async function addSongToMemory(input: CreateMemorySongInput) {
-  const [item] = await db.insert(musicMemorySongs).values(input).returning();
-  return item;
+  await connectToDatabase();
+  const doc = await MusicMemorySongModel.create(input);
+  return mapId(doc.toObject());
 }
 
 export async function getMemorySongs(memoryId: string) {
-  return db
-    .select()
-    .from(musicMemorySongs)
-    .where(eq(musicMemorySongs.memoryId, memoryId))
-    .orderBy(musicMemorySongs.position);
+  await connectToDatabase();
+  const docs = await MusicMemorySongModel.find({ memoryId })
+    .sort({ position: 1 })
+    .lean();
+  return mapId(docs);
 }
 
 export async function removeSongFromMemory(id: string) {
-  const [item] = await db.delete(musicMemorySongs).where(eq(musicMemorySongs.id, id)).returning();
-  return item ?? null;
+  await connectToDatabase();
+  const doc = await MusicMemorySongModel.findOneAndDelete({ _id: id }).lean();
+  return doc ? mapId(doc) : null;
 }
 
 export async function getMemoriesByTrackViaSongs(userId: string, trackId: string) {
-  return db
-    .select({ memoryId: musicMemorySongs.memoryId })
-    .from(musicMemorySongs)
-    .innerJoin(musicMemories, eq(musicMemorySongs.memoryId, musicMemories.id))
-    .where(and(eq(musicMemories.userId, userId), eq(musicMemorySongs.trackId, trackId)));
+  await connectToDatabase();
+  const rows = await MusicMemorySongModel.aggregate([
+    { $match: { trackId } },
+    {
+      $lookup: {
+        from: "musicmemories",
+        localField: "memoryId",
+        foreignField: "_id",
+        as: "memory",
+      },
+    },
+    { $unwind: { path: "$memory", preserveNullAndEmptyArrays: false } },
+    { $match: { "memory.userId": userId } },
+    { $project: { memoryId: 1 } },
+  ]);
+  return rows.map((r: any) => ({
+    memoryId: r.memoryId.toString(),
+  }));
 }
-
-

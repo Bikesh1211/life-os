@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { useSupabase } from "@/infrastructure/providers/supabase-provider";
+import { useAuth } from "@/infrastructure/providers/auth-provider";
 import { useGamificationProfile } from "./use-gamification";
 import { apiFetch } from "@/core/api/http";
 
@@ -101,7 +101,7 @@ function useGoalSummary() {
 const EMPTY_GOALS: GoalSummary = { total: 0, active: 0, completed: 0 };
 
 export function useProfile() {
-  const { user, isLoading: authLoading } = useSupabase();
+  const { user, isLoading: authLoading } = useAuth();
   const gamification = useGamificationProfile();
   const habits = useHabitDashboard();
   const routines = useRoutineAnalytics();
@@ -121,12 +121,12 @@ export function useProfile() {
     !authLoading && gamification.data
       ? {
           user: {
-            fullName: user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? null,
-            firstName: user?.user_metadata?.given_name ?? null,
-            lastName: user?.user_metadata?.family_name ?? null,
+            fullName: user?.fullName ?? null,
+            firstName: user?.fullName?.split(" ")[0] ?? null,
+            lastName: user?.fullName?.split(" ").slice(1).join(" ") ?? null,
             email: user?.email ?? null,
-            imageUrl: user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? "",
-            createdAt: user?.created_at ? new Date(user.created_at) : null,
+            imageUrl: user?.avatarUrl ?? "",
+            createdAt: null,
           },
           gamification: gamification.data,
           habits: habits.data ?? null,

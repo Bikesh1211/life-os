@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/core/auth";
-import { eq } from "drizzle-orm";
-import { db } from "@/core/database/client";
-import { sidebarPreferences } from "@/core/database/sidebar-preferences.schema";
+import { connectToDatabase } from "@/lib/mongodb";
+import { SidebarPreferenceModel } from "@/lib/models";
 
 export async function GET() {
   const userId = await getCurrentUserId();
@@ -10,13 +9,11 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const rows = await db
-    .select()
-    .from(sidebarPreferences)
-    .where(eq(sidebarPreferences.userId, userId))
-    .limit(1);
+  await connectToDatabase();
 
-  if (rows.length === 0) {
+  const doc = await SidebarPreferenceModel.findOne({ userId }).lean();
+
+  if (!doc) {
     return NextResponse.json({
       favorites: ["dashboard", "notes", "timeline", "calendar"],
       visibility: { hiddenGroups: [], hiddenItems: [] },
@@ -24,8 +21,8 @@ export async function GET() {
   }
 
   return NextResponse.json({
-    favorites: JSON.parse(rows[0].favorites),
-    visibility: JSON.parse(rows[0].visibility),
+    favorites: doc.favorites ?? [],
+    visibility: doc.visibility ?? { hiddenGroups: [], hiddenItems: [] },
   });
 }
 
@@ -48,21 +45,17 @@ export async function PUT(request: Request) {
     return NextResponse.json({ error: "Invalid visibility" }, { status: 400 });
   }
 
-  const update: Record<string, string> = {};
-  if (favorites !== undefined) update.favorites = JSON.stringify(favorites);
-  if (visibility !== undefined) update.visibility = JSON.stringify(visibility);
+  await connectToDatabase();
 
-  await db
-    .insert(sidebarPreferences)
-    .values({
-      userId,
-      favorites: update.favorites ?? "[]",
-      visibility: update.visibility ?? '{"hiddenGroups":[],"hiddenItems":[]}',
-    })
-    .onConflictDoUpdate({
-      target: sidebarPreferences.userId,
-      set: update,
-    });
+  const update: Record<string, any> = {};
+  if (favorites !== undefined) update.favorites = favorites;
+  if (visibility !== undefined) update.visibility = visibility;
+
+  await SidebarPreferenceModel.findOneAndUpdate(
+    { userId },
+    { $set: update },
+    { upsert: true, new: true },
+  );
 
   return NextResponse.json({ success: true });
 }

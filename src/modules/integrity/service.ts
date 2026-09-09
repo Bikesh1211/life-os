@@ -103,14 +103,17 @@ export async function createCommitment(userId: string, input: CreateCommitmentIn
   const commitment = await repo.createCommitment({
     ...data,
     userId,
-    dueDate: data.dueDate ? new Date(data.dueDate) : null,
-    startDate: data.startDate ? new Date(data.startDate) : null,
-  });
+    dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+    startDate: data.startDate ? new Date(data.startDate) : undefined,
+    linkedEntityType: data.linkedEntityType ?? undefined,
+    linkedEntityId: data.linkedEntityId ?? undefined,
+  } as any);
 
   await repo.createEvent({
     commitmentId: commitment.id,
+    userId,
     eventType: "created",
-    metadata: JSON.stringify({ title: data.title }),
+    metadata: { title: data.title },
   });
 
   return commitment;
@@ -144,6 +147,7 @@ export async function updateCommitment(
   if (statusChanged && commitment) {
     await repo.createEvent({
       commitmentId: commitment.id,
+      userId,
       eventType: data.status === "completed_unverified" || data.status === "completed_verified"
         ? "completed"
         : data.status === "failed"
@@ -155,7 +159,7 @@ export async function updateCommitment(
               : data.status === "in_progress"
                 ? "started"
                 : "progress_updated",
-      metadata: JSON.stringify({ from: existing.status, to: data.status }),
+      metadata: { from: existing.status, to: data.status },
     });
 
     if (
@@ -178,8 +182,9 @@ export async function deleteCommitment(userId: string, commitmentId: string) {
   if (commitment) {
     await repo.createEvent({
       commitmentId: commitment.id,
+      userId,
       eventType: "cancelled",
-      metadata: JSON.stringify({ reason: "Deleted by user" }),
+      metadata: { reason: "Deleted by user" },
     });
   }
   return commitment;
@@ -386,8 +391,9 @@ export async function addEvidence(
 
   await repo.createEvent({
     commitmentId,
+    userId,
     eventType: "evidence_uploaded",
-    metadata: JSON.stringify(evidence),
+    metadata: evidence,
   });
 
   if (commitment.status === "completed_unverified") {
@@ -427,7 +433,7 @@ export async function upsertCheckin(
     excuseTags: input.excuseTags ? [...input.excuseTags] : null,
     id: existing?.id,
   };
-  return repo.upsertCheckin(data);
+  return repo.upsertCheckin(data as any);
 }
 
 export async function getAnalytics(userId: string) {
@@ -593,8 +599,9 @@ export async function convertToCommitment(
 
   await repo.createEvent({
     commitmentId: commitment.id,
+    userId,
     eventType: "created",
-    metadata: JSON.stringify({ title, linkedEntityType: entityType, linkedEntityId: entityId }),
+    metadata: { title, linkedEntityType: entityType, linkedEntityId: entityId },
   });
 
   return commitment;
@@ -615,19 +622,21 @@ export async function syncLinkedEntityStatus(
         });
         await repo.createEvent({
           commitmentId: commitment.id,
+          userId,
           eventType: "completed",
-          metadata: JSON.stringify({ source: entityType, sourceId: entityId, autoTransitioned: true }),
+          metadata: { source: entityType, sourceId: entityId, autoTransitioned: true },
         });
         await awardIntegrityXp(userId, commitment, "completed_unverified");
       } else if (newStatus === "cancelled" || newStatus === "deleted") {
         await repo.updateCommitment(userId, commitment.id, {
           status: "cancelled" as any,
           cancellationReason: `Linked ${entityType} was ${newStatus}`,
-        });
+        } as any);
         await repo.createEvent({
           commitmentId: commitment.id,
+          userId,
           eventType: "cancelled",
-          metadata: JSON.stringify({ source: entityType, sourceId: entityId, reason: `Linked ${entityType} was ${newStatus}` }),
+          metadata: { source: entityType, sourceId: entityId, reason: `Linked ${entityType} was ${newStatus}` },
         });
       }
     }
@@ -978,15 +987,14 @@ export async function computeDailySnapshot(userId: string) {
     date: today,
     score,
     streak,
-    level: level.level,
-    levelTitle: level.title,
-    subScores: JSON.stringify(subScores),
+    level: level.title,
+    subScores,
     commitmentRate,
-    isAllCompleted: String(isAllCompleted),
+    allCompleted: isAllCompleted,
     id: existing?.id,
   };
 
-  const snapshot = await repo.upsertSnapshot(data);
+  const snapshot = await repo.upsertSnapshot(data as any);
 
   // Check for milestones
   const events = await repo.getRecentEvents(userId, 200);
@@ -999,8 +1007,9 @@ export async function computeDailySnapshot(userId: string) {
   })) {
     await repo.createEvent({
       commitmentId: "00000000-0000-0000-0000-000000000000",
+      userId,
       eventType: "milestone_reached",
-      metadata: JSON.stringify({ type: "streak_7_days", title: "First Week Completed", streak }),
+      metadata: { type: "streak_7_days", title: "First Week Completed", streak },
     });
   }
 
@@ -1011,8 +1020,9 @@ export async function computeDailySnapshot(userId: string) {
   })) {
     await repo.createEvent({
       commitmentId: "00000000-0000-0000-0000-000000000000",
+      userId,
       eventType: "milestone_reached",
-      metadata: JSON.stringify({ type: "streak_30_days", title: "30-Day Streak!", streak }),
+      metadata: { type: "streak_30_days", title: "30-Day Streak!", streak },
     });
   }
 
@@ -1023,8 +1033,9 @@ export async function computeDailySnapshot(userId: string) {
   })) {
     await repo.createEvent({
       commitmentId: "00000000-0000-0000-0000-000000000000",
+      userId,
       eventType: "milestone_reached",
-      metadata: JSON.stringify({ type: "score_life_master", title: "Life Master Achieved", score }),
+      metadata: { type: "score_life_master", title: "Life Master Achieved", score },
     });
   }
 

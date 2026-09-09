@@ -35,7 +35,7 @@ import { APP_NAME } from "@/core/constants";
 import { useAppShell } from "@/app/(app)/AppShellProvider";
 import { useSidebarVisibility } from "@/core/sidebar-visibility";
 import { useSidebarFavorites } from "@/core/sidebar-favorites";
-import { useSupabase } from "@/infrastructure/providers/supabase-provider";
+import { useAuth } from "@/infrastructure/providers/auth-provider";
 import { useMantineColorScheme, useComputedColorScheme, Text, Tooltip, Avatar } from "@mantine/core";
 
 const NAV_ICON_SIZE = 18;
@@ -307,8 +307,8 @@ export function SidebarContent({
   showBottomCollapse?: boolean;
 }) {
   const router = useRouter();
-  const { supabase } = useSupabase();
-  const { user } = useSupabase();
+  const { signOut } = useAuth();
+  const { user } = useAuth();
   const { closeMobile } = useAppShell();
   const openSpotlight = useCallback(() => {
     closeMobile();
@@ -407,13 +407,13 @@ export function SidebarContent({
       <div className="border-t border-gray-100/80 dark:border-white/[0.06] px-4 py-3">
         <div className="flex items-center gap-3 mb-2">
           <Avatar
-            src={user?.user_metadata?.avatar_url ?? user?.user_metadata?.picture ?? ""}
-            alt={user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "User"}
+            src={user?.avatarUrl ?? ""}
+            alt={user?.fullName ?? "User"}
             size="sm"
             radius="xl"
             className="ring-2 ring-white/20 dark:ring-white/10 flex-shrink-0"
           >
-            {(user?.user_metadata?.full_name ?? user?.user_metadata?.name ?? "U").charAt(0).toUpperCase()}
+            {(user?.fullName ?? "U").charAt(0).toUpperCase()}
           </Avatar>
           <div className="min-w-0 flex-1">
             {user?.email && (
@@ -426,8 +426,7 @@ export function SidebarContent({
         <div className="flex items-center justify-between">
           <button
             onClick={async () => {
-              await supabase.auth.signOut();
-              router.push("/sign-in");
+              await signOut();
             }}
             className="flex items-center gap-2 text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
           >

@@ -121,8 +121,7 @@ export function GoalsContent({
                 return (
                   <Table.Tr key={g.id}>
                     <Table.Td>
-                      <Text fw={500}>{g.title}</Text>
-                      <Text size="xs" c="dimmed">{g.goalType}</Text>
+                      <Text fw={500}>{g.goalType}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Group gap="xs" wrap="nowrap">
@@ -156,7 +155,7 @@ export function GoalsContent({
           <Text size="sm" fw={600} mb="sm">Completed Goals</Text>
           {completed.map((g) => (
             <Group key={g.id} gap="xs" mb={4}>
-              <Text size="sm">{g.title}</Text>
+              <Text size="sm">{g.goalType}</Text>
               <Badge size="sm" color="gray">{Number(g.currentValue)}/{Number(g.targetValue)} {g.unit}</Badge>
             </Group>
           ))}
